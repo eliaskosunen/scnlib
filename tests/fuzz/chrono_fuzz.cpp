@@ -22,11 +22,11 @@
 namespace scn::fuzz {
 template <typename CharT, typename Source>
 void do_basic_run_for_source(Source&& source,
-                             const format_strings_type<CharT>& format_strings)
+                             std::basic_string_view<CharT> format_string)
 {
-    do_basic_run_for_type<CharT, std::tm>(source, format_strings);
-    do_basic_run_for_type<CharT, tm_with_tz>(source, format_strings);
-    do_basic_run_for_type<CharT, datetime_components>(source, format_strings);
+    do_basic_run_for_type<CharT, std::tm>(source, format_string);
+    do_basic_run_for_type<CharT, tm_with_tz>(source, format_string);
+    do_basic_run_for_type<CharT, datetime_components>(source, format_string);
 }
 
 namespace {

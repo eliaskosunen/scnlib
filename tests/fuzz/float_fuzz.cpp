@@ -20,11 +20,27 @@
 namespace scn::fuzz {
 template <typename CharT, typename Source>
 void do_basic_run_for_source(Source&& source,
-                             const format_strings_type<CharT>& format_strings)
+                             std::basic_string_view<CharT> format_string)
 {
-    do_basic_run_for_type<CharT, float>(source, format_strings);
-    do_basic_run_for_type<CharT, double>(source, format_strings);
-    do_basic_run_for_type<CharT, long double>(source, format_strings);
+    do_basic_run_for_type<CharT, float>(source, format_string);
+    do_basic_run_for_type<CharT, double>(source, format_string);
+    do_basic_run_for_type<CharT, long double>(source, format_string);
+
+#if SCN_HAS_STD_F16
+    do_basic_run_for_type<CharT, std::float16_t>(source, format_string);
+#endif
+#if SCN_HAS_STD_F32
+    do_basic_run_for_type<CharT, std::float32_t>(source, format_string);
+#endif
+#if SCN_HAS_STD_F64
+    do_basic_run_for_type<CharT, std::float64_t>(source, format_string);
+#endif
+#if SCN_HAS_STD_F128
+    do_basic_run_for_type<CharT, std::float128_t>(source, format_string);
+#endif
+#if SCN_HAS_STD_BF16
+    do_basic_run_for_type<CharT, std::bfloat16_t>(source, format_string);
+#endif
 }
 
 namespace {

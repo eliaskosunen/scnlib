@@ -20,14 +20,19 @@
 namespace scn::fuzz {
 template <typename CharT, typename Source>
 void do_basic_run_for_source(Source&& source,
-                             const format_strings_type<CharT>& format_strings)
+                             std::basic_string_view<CharT> format_string)
 {
-    do_basic_run_for_type<CharT, signed char>(source, format_strings);
-    do_basic_run_for_type<CharT, unsigned char>(source, format_strings);
-    do_basic_run_for_type<CharT, int>(source, format_strings);
-    do_basic_run_for_type<CharT, unsigned>(source, format_strings);
-    do_basic_run_for_type<CharT, long long>(source, format_strings);
-    do_basic_run_for_type<CharT, unsigned long long>(source, format_strings);
+    do_basic_run_for_type<CharT, signed char>(source, format_string);
+    do_basic_run_for_type<CharT, unsigned char>(source, format_string);
+    do_basic_run_for_type<CharT, int>(source, format_string);
+    do_basic_run_for_type<CharT, unsigned>(source, format_string);
+    do_basic_run_for_type<CharT, long long>(source, format_string);
+    do_basic_run_for_type<CharT, unsigned long long>(source, format_string);
+
+#if SCN_HAS_INT128
+    do_basic_run_for_type<CharT, scn::int128>(source, format_string);
+    do_basic_run_for_type<CharT, scn::uint128>(source, format_string);
+#endif
 }
 
 namespace {

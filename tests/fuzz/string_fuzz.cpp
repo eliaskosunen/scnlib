@@ -20,13 +20,14 @@
 namespace scn::fuzz {
 template <typename CharT, typename Source>
 void do_basic_run_for_source(Source&& source,
-                             const format_strings_type<CharT>& format_strings)
+                             std::basic_string_view<CharT> format_string)
 {
     do_basic_run_for_type<CharT, std::basic_string<CharT>>(source,
-                                                           format_strings);
+                                                           format_string);
+
     if constexpr (scn::ranges::contiguous_range<Source>) {
         do_basic_run_for_type<CharT, std::basic_string_view<CharT>>(
-            source, format_strings);
+            source, format_string);
     }
 }
 

@@ -4513,7 +4513,7 @@ class to_input_view : private detail::to_input_view_base<V>,
             std::enable_if_t<
                 C && std::is_convertible_v<iterator_t<V>,
                                            iterator_t<parent_type>>>* = nullptr>
-        constexpr iterator(iterator<!C> other)
+        constexpr iterator(iterator<!Const> other)
             : base_type(SCN_MOVE(other.m_current))
         {
         }
@@ -4700,19 +4700,22 @@ struct pair_concat_first_tag {};
 struct pair_concat_second_tag {};
 
 template <typename FirstIt, typename SecondIt>
-struct pair_concat_iterator_storage {
+struct pair_concat_iterator_noncopyable_storage {
+    static_assert(std::is_move_constructible_v<FirstIt>);
+    static_assert(std::is_move_constructible_v<SecondIt>);
+
 protected:
     using first_iterator = FirstIt;
     using second_iterator = SecondIt;
 
-    pair_concat_iterator_storage() = default;
+    pair_concat_iterator_noncopyable_storage() = default;
 
-    pair_concat_iterator_storage(pair_concat_first_tag, FirstIt f)
+    pair_concat_iterator_noncopyable_storage(pair_concat_first_tag, FirstIt f)
         : m_is_first(true)
     {
         _make_first(SCN_MOVE(f));
     }
-    pair_concat_iterator_storage(pair_concat_second_tag, SecondIt s)
+    pair_concat_iterator_noncopyable_storage(pair_concat_second_tag, SecondIt s)
         : m_is_first(false)
     {
         _make_second(SCN_MOVE(s));
@@ -4720,42 +4723,13 @@ protected:
 
     // Not exception safe, but I don't care enough (yet)
 
-    template <typename F = FirstIt,
-              typename S = SecondIt,
-              std::enable_if_t<std::is_copy_constructible_v<F> &&
-                               std::is_copy_constructible_v<S>>* = nullptr>
-    pair_concat_iterator_storage(const pair_concat_iterator_storage& other)
-    {
-        if (other.m_is_first) {
-            _make_first(other._get_first());
-        }
-        else {
-            _make_second(other._get_second());
-        }
-    }
+    pair_concat_iterator_noncopyable_storage(
+        const pair_concat_iterator_noncopyable_storage& other) = delete;
+    pair_concat_iterator_noncopyable_storage& operator=(
+        const pair_concat_iterator_noncopyable_storage& other) = delete;
 
-    template <typename F = FirstIt,
-              typename S = SecondIt,
-              std::enable_if_t<std::is_copy_constructible_v<F> &&
-                               std::is_copy_constructible_v<S>>* = nullptr>
-    pair_concat_iterator_storage& operator=(
-        const pair_concat_iterator_storage& other)
-    {
-        _destroy();
-        if (other.m_is_first) {
-            _make_first(other._get_first());
-        }
-        else {
-            _make_second(other._get_second());
-        }
-        return *this;
-    }
-
-    template <typename F = FirstIt,
-              typename S = SecondIt,
-              std::enable_if_t<std::is_move_constructible_v<F> &&
-                               std::is_move_constructible_v<S>>* = nullptr>
-    pair_concat_iterator_storage(pair_concat_iterator_storage&& other)
+    pair_concat_iterator_noncopyable_storage(
+        pair_concat_iterator_noncopyable_storage&& other)
     {
         if (other.m_is_first) {
             _make_first(SCN_MOVE(other._get_first()));
@@ -4765,12 +4739,8 @@ protected:
         }
     }
 
-    template <typename F = FirstIt,
-              typename S = SecondIt,
-              std::enable_if_t<std::is_move_constructible_v<F> &&
-                               std::is_move_constructible_v<S>>* = nullptr>
-    pair_concat_iterator_storage& operator=(
-        pair_concat_iterator_storage&& other)
+    pair_concat_iterator_noncopyable_storage& operator=(
+        pair_concat_iterator_noncopyable_storage&& other)
     {
         _destroy();
         if (other.m_is_first) {
@@ -4782,7 +4752,7 @@ protected:
         return *this;
     }
 
-    ~pair_concat_iterator_storage()
+    ~pair_concat_iterator_noncopyable_storage()
     {
         _destroy();
     }
@@ -4841,6 +4811,20 @@ protected:
         m_is_first = false;
     }
 
+    template <typename F = FirstIt,
+              typename S = SecondIt,
+              std::enable_if_t<std::is_copy_constructible_v<F> &&
+                               std::is_copy_constructible_v<S>>* = nullptr>
+    void _copy(const pair_concat_iterator_noncopyable_storage& other)
+    {
+        if (other.m_is_first) {
+            _make_first(other._get_first());
+        }
+        else {
+            _make_second(other._get_second());
+        }
+    }
+
 private:
     static constexpr auto storage_size =
         detail::max(sizeof(FirstIt), sizeof(SecondIt));
@@ -4850,6 +4834,36 @@ private:
     alignas(storage_alignment) unsigned char m_storage[storage_size];
     bool m_is_first{true};
 };
+
+template <typename FirstIt, typename SecondIt>
+struct pair_concat_iterator_copyable_storage
+    : pair_concat_iterator_noncopyable_storage<FirstIt, SecondIt> {
+protected:
+    using pair_concat_iterator_noncopyable_storage<FirstIt, SecondIt>::
+        pair_concat_iterator_noncopyable_storage;
+
+    pair_concat_iterator_copyable_storage(
+        const pair_concat_iterator_copyable_storage& other)
+        : pair_concat_iterator_noncopyable_storage<FirstIt, SecondIt>()
+    {
+        this->_copy(other);
+    }
+
+    pair_concat_iterator_copyable_storage& operator=(
+        const pair_concat_iterator_copyable_storage& other)
+    {
+        this->_destroy();
+        this->_copy(other);
+        return *this;
+    }
+};
+
+template <typename FirstIt, typename SecondIt>
+using pair_concat_iterator_storage =
+    mp_if_c<std::is_copy_constructible_v<FirstIt> &&
+                std::is_copy_constructible_v<SecondIt>,
+            pair_concat_iterator_copyable_storage<FirstIt, SecondIt>,
+            pair_concat_iterator_noncopyable_storage<FirstIt, SecondIt>>;
 
 struct pair_concat_access;
 
