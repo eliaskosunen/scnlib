@@ -13,24 +13,26 @@ cmake .. \
 
 cmake --build .
 
-# Binary targets
-cp tests/fuzz/scn_fuzz_* "$OUT"
-
 fuzz_src_dir="$(pwd)/../tests/fuzz"
 
 # Dictionaries and seed corpora
-copy_data() {
-  cp "$fuzz_src_dir/dictionaries/$1.txt" "$OUT/scn_fuzz_$2.dict"
+copy_target() {
+  target="$1"
+  data_to_use="$2"
 
-  zip "$OUT/scn_fuzz_$2_seed_corpus.zip" "$fuzz_src_dir"/seed-corpora/"$1"/*
+  cp "$(pwd)/tests/fuzz/scn_fuzz_$target" "$OUT"
+
+  cp "$fuzz_src_dir/dictionaries/$data_to_use.txt" "$OUT/scn_fuzz_$target.dict"
+
+  zip "$OUT/scn_fuzz_$target_seed_corpus.zip" "$fuzz_src_dir"/seed-corpora/"$data_to_use"/*
 }
-copy_data chrono chrono
-copy_data float float
-copy_data format format
-copy_data int int
-copy_data string string
-copy_data string string_impl
+copy_target chrono chrono
+copy_target float float
+copy_target format format
+copy_target int int
+copy_target string string
+copy_target string_impl string
 
 # TODO: Currently fails in CI, with "Failed to sync with underlying source",
 # possibly a read-only filesystem?
-#copy_data string file
+#copy_target file string
