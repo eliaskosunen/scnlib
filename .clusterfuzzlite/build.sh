@@ -6,7 +6,7 @@ mkdir build
 cd build
 
 cmake .. \
-  -G Ninja -DCMAKE_BUILD_TYPE=Debug -DCMAKE_CXX_STANDARD=17 \
+  -G Ninja -DCMAKE_BUILD_TYPE=Debug -DCMAKE_CXX_STANDARD=23 \
   -DSCN_DISABLE_TOP_PROJECT=ON -DSCN_FUZZING=ON \
   -DSCN_FUZZING_LDFLAGS="$LIB_FUZZING_ENGINE" \
   -DSCN_REGEX_BACKEND=re2
@@ -30,4 +30,7 @@ copy_data format format
 copy_data int int
 copy_data string string
 copy_data string string_impl
-copy_data string file
+
+# TODO: Currently fails in CI, with "Failed to sync with underlying source",
+# possibly a read-only filesystem?
+#copy_data string file
