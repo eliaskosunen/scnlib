@@ -2745,8 +2745,7 @@ struct contiguous_context_wrapper {
     }
     detail::default_context<CharT>& get_custom()
     {
-        using iterator =
-            typename detail::basic_scan_buffer<CharT>::forward_iterator;
+        using iterator = typename detail::basic_scan_buffer<CharT>::iterator;
         auto begin =
             iterator{detail::make_string_view_from_pointers<CharT>(
                          contiguous_ctx.original_begin(), contiguous_ctx.end()),

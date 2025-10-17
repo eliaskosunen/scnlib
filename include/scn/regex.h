@@ -175,7 +175,7 @@ public:
 #if SCN_REGEX_SUPPORTS_NAMED_CAPTURES
     basic_regex_match(std::basic_string_view<CharT> str,
                       std::basic_string<CharT> name)
-        : m_str(str), m_name(name)
+        : m_str(str), m_name(SCN_MOVE(name))
     {
     }
 #endif

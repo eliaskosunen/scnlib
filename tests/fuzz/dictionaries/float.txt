@@ -37,3 +37,6 @@
 "infinity"
 "nan"
 "NaN"
+"NAN("
+")"
+"NAN(payload)"

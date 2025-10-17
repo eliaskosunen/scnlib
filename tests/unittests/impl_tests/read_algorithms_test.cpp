@@ -38,7 +38,7 @@ static auto make_non_contiguous_buffer_range(std::string_view in)
     buffer.emplace(mem);
 
     return scn::ranges::subrange{
-        scn::detail::basic_scan_buffer<char>::forward_iterator{&*buffer, 0},
+        scn::detail::basic_scan_buffer<char>::iterator{&*buffer, 0},
         scn::ranges::default_sentinel};
 }
 

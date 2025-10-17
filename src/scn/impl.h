@@ -1526,10 +1526,9 @@ bool is_entire_source_contiguous(Range r)
                   ranges::sized_range<Range>) {
         return true;
     }
-    else if constexpr (std::is_same_v<
-                           ranges::const_iterator_t<Range>,
-                           typename detail::basic_scan_buffer<
-                               detail::char_t<Range>>::forward_iterator>) {
+    else if constexpr (std::is_same_v<ranges::const_iterator_t<Range>,
+                                      typename detail::basic_scan_buffer<
+                                          detail::char_t<Range>>::iterator>) {
         auto beg = r.begin();
         if (!beg.stores_parent()) {
             return true;
@@ -1550,10 +1549,9 @@ std::size_t contiguous_beginning_size(Range r)
                   ranges::sized_range<Range>) {
         return r.size();
     }
-    else if constexpr (std::is_same_v<
-                           ranges::const_iterator_t<Range>,
-                           typename detail::basic_scan_buffer<
-                               detail::char_t<Range>>::forward_iterator>) {
+    else if constexpr (std::is_same_v<ranges::const_iterator_t<Range>,
+                                      typename detail::basic_scan_buffer<
+                                          detail::char_t<Range>>::iterator>) {
         if constexpr (ranges::common_range<Range>) {
             auto seg = r.begin().contiguous_segment();
             auto dist =
@@ -1578,10 +1576,9 @@ auto get_contiguous_beginning(Range r)
                   ranges::sized_range<Range>) {
         return r;
     }
-    else if constexpr (std::is_same_v<
-                           ranges::const_iterator_t<Range>,
-                           typename detail::basic_scan_buffer<
-                               detail::char_t<Range>>::forward_iterator>) {
+    else if constexpr (std::is_same_v<ranges::const_iterator_t<Range>,
+                                      typename detail::basic_scan_buffer<
+                                          detail::char_t<Range>>::iterator>) {
         if constexpr (ranges::common_range<Range>) {
             auto seg = r.begin().contiguous_segment();
             auto dist =
@@ -1606,10 +1603,9 @@ auto get_as_contiguous(Range r)
                   ranges::sized_range<Range>) {
         return r;
     }
-    else if constexpr (std::is_same_v<
-                           ranges::const_iterator_t<Range>,
-                           typename detail::basic_scan_buffer<
-                               detail::char_t<Range>>::forward_iterator>) {
+    else if constexpr (std::is_same_v<ranges::const_iterator_t<Range>,
+                                      typename detail::basic_scan_buffer<
+                                          detail::char_t<Range>>::iterator>) {
         if constexpr (ranges::common_range<Range>) {
             return detail::make_string_view_from_pointers(
                 r.begin().to_contiguous_segment_iterator(),
@@ -1634,10 +1630,9 @@ std::size_t guaranteed_minimum_size(Range r)
     if constexpr (ranges::sized_range<Range>) {
         return r.size();
     }
-    else if constexpr (std::is_same_v<
-                           ranges::const_iterator_t<Range>,
-                           typename detail::basic_scan_buffer<
-                               detail::char_t<Range>>::forward_iterator>) {
+    else if constexpr (std::is_same_v<ranges::const_iterator_t<Range>,
+                                      typename detail::basic_scan_buffer<
+                                          detail::char_t<Range>>::iterator>) {
         if constexpr (ranges::common_range<Range>) {
             return static_cast<size_t>(ranges::distance(r.begin(), r.end()));
         }
@@ -2169,7 +2164,7 @@ private:
         }
         else if constexpr (std::is_same_v<ranges::iterator_t<Range>,
                                           typename detail::basic_scan_buffer<
-                                              value_t>::forward_iterator> &&
+                                              value_t>::iterator> &&
                            ranges::common_range<Range>) {
             auto beg_seg = range.begin().contiguous_segment();
             auto end_seg = range.end().contiguous_segment();
@@ -5305,7 +5300,7 @@ struct regex_matches_reader
         if constexpr (!std::is_same_v<SourceCharT, DestCharT>) {
             return detail::unexpected_scan_error(
                 scan_error::invalid_format_string,
-                "Cannot transcode is regex_matches_reader");
+                "Cannot transcode with regex_matches_reader");
         }
         else if constexpr (!SCN_REGEX_SUPPORTS_WIDE_STRINGS &&
                            !std::is_same_v<SourceCharT, char>) {
@@ -6512,11 +6507,9 @@ struct default_arg_reader {
     detail::default_context<char_type> make_custom_ctx()
     {
         if constexpr (is_contiguous_context<Context>) {
-            auto it =
-                typename detail::basic_scan_buffer<char_type>::forward_iterator{
-                    std::basic_string_view<char_type>(range.data(),
-                                                      range.size()),
-                    0};
+            auto it = typename detail::basic_scan_buffer<char_type>::iterator{
+                std::basic_string_view<char_type>(range.data(), range.size()),
+                0};
             return {it, ranges::default_sentinel, args, loc};
         }
         else {

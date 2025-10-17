@@ -6127,11 +6127,10 @@ struct scan_file_access {
 template <typename CharT>
 class basic_scan_buffer {
 public:
-    class forward_iterator;
+    class iterator;
 
     using char_type = CharT;
-    using range_type =
-        ranges::subrange<forward_iterator, ranges::default_sentinel_t>;
+    using range_type = ranges::subrange<iterator, ranges::default_sentinel_t>;
 
     basic_scan_buffer(const basic_scan_buffer&) = delete;
     basic_scan_buffer& operator=(const basic_scan_buffer&) = delete;
@@ -6232,7 +6231,7 @@ public:
     }
 
 protected:
-    friend class forward_iterator;
+    friend class iterator;
 
     struct contiguous_tag {};
     struct non_contiguous_tag {};
@@ -6270,24 +6269,24 @@ protected:
 };
 
 template <typename CharT>
-class basic_scan_buffer<CharT>::forward_iterator {
+class basic_scan_buffer<CharT>::iterator {
 public:
     using value_type = CharT;
     using reference = CharT;
     using pointer = CharT*;
     using difference_type = std::ptrdiff_t;
-    using iterator_category = std::forward_iterator_tag;
+    using iterator_category = std::bidirectional_iterator_tag;
 
-    forward_iterator() = default;
+    iterator() = default;
 
-    forward_iterator(basic_scan_buffer<CharT>* parent, std::ptrdiff_t pos)
+    iterator(basic_scan_buffer<CharT>* parent, std::ptrdiff_t pos)
         : m_parent(parent), m_end(nullptr), m_position(pos)
     {
         SCN_EXPECT(parent);
         SCN_EXPECT(!parent->is_contiguous());
     }
 
-    forward_iterator(std::basic_string_view<CharT> view, std::ptrdiff_t pos)
+    iterator(std::basic_string_view<CharT> view, std::ptrdiff_t pos)
         : m_begin(const_cast<CharT*>(view.data())),
           m_end(const_cast<CharT*>(view.data() + view.size())),
           m_position(pos)
@@ -6329,21 +6328,37 @@ public:
         return contiguous_segment().data();
     }
 
-    forward_iterator& operator++()
+    iterator& operator++()
     {
         ++m_position;
         return *this;
     }
 
-    forward_iterator operator++(int)
+    iterator operator++(int)
     {
         auto copy = *this;
         operator++();
         return copy;
     }
 
+    iterator& operator--()
+    {
+        SCN_EXPECT(m_position > 0);
+        --m_position;
+        return *this;
+    }
+
+    iterator operator--(int)
+    {
+        auto copy = *this;
+        operator--();
+        return copy;
+    }
+
     CharT operator*() const
     {
+        SCN_EXPECT(position() >= 0);
+
         if (!stores_parent()) {
             SCN_EXPECT(m_begin);
             auto ptr = m_begin + position();
@@ -6357,52 +6372,45 @@ public:
         return parent()->get_character_at(m_position);
     }
 
-    forward_iterator& batch_advance(std::ptrdiff_t n)
+    iterator& batch_advance(std::ptrdiff_t n)
     {
-        SCN_EXPECT(n >= 0);
+        SCN_EXPECT(n >= 0 || m_position >= -n);
         m_position += n;
         return *this;
     }
 
-    forward_iterator& batch_advance_to(std::ptrdiff_t i)
+    iterator& batch_advance_to(std::ptrdiff_t i)
     {
-        SCN_EXPECT(i >= m_position);
         m_position = i;
         return *this;
     }
 
-    friend bool operator==(const forward_iterator& lhs,
-                           const forward_iterator& rhs)
+    friend bool operator==(const iterator& lhs, const iterator& rhs)
     {
         (void)lhs.read_at_position();
         (void)rhs.read_at_position();
         return lhs.erased_data_ptr() == rhs.erased_data_ptr() &&
                lhs.m_position == rhs.m_position;
     }
-    friend bool operator!=(const forward_iterator& lhs,
-                           const forward_iterator& rhs)
+    friend bool operator!=(const iterator& lhs, const iterator& rhs)
     {
         return !(lhs == rhs);
     }
 
-    friend bool operator==(const forward_iterator& x,
-                           ranges::default_sentinel_t)
+    friend bool operator==(const iterator& x, ranges::default_sentinel_t)
     {
         return x.is_at_end();
     }
-    friend bool operator==(ranges::default_sentinel_t,
-                           const forward_iterator& x)
+    friend bool operator==(ranges::default_sentinel_t, const iterator& x)
     {
         return x.is_at_end();
     }
 
-    friend bool operator!=(const forward_iterator& x,
-                           ranges::default_sentinel_t)
+    friend bool operator!=(const iterator& x, ranges::default_sentinel_t)
     {
         return !x.is_at_end();
     }
-    friend bool operator!=(ranges::default_sentinel_t,
-                           const forward_iterator& x)
+    friend bool operator!=(ranges::default_sentinel_t, const iterator& x)
     {
         return !x.is_at_end();
     }
@@ -6464,14 +6472,13 @@ template <typename CharT>
 SCN_NODISCARD auto basic_scan_buffer<CharT>::get() -> range_type
 {
     if (is_contiguous()) {
-        return ranges::subrange{forward_iterator{m_current_view, 0},
+        return ranges::subrange{iterator{m_current_view, 0},
                                 ranges::default_sentinel};
     }
-    return ranges::subrange{forward_iterator{this, 0},
-                            ranges::default_sentinel};
+    return ranges::subrange{iterator{this, 0}, ranges::default_sentinel};
 }
 
-static_assert(ranges::forward_range<scan_buffer::range_type>);
+static_assert(ranges::bidirectional_range<scan_buffer::range_type>);
 
 template <typename CharT>
 class basic_scan_string_buffer : public basic_scan_buffer<CharT> {
