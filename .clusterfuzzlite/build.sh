@@ -24,7 +24,7 @@ copy_target() {
 
   cp "$fuzz_src_dir/dictionaries/$data_to_use.txt" "$OUT/scn_fuzz_$target.dict"
 
-  zip "$OUT/scn_fuzz_$target_seed_corpus.zip" "$fuzz_src_dir"/seed-corpora/"$data_to_use"/*
+  zip "$OUT/scn_fuzz_${target}_seed_corpus.zip" "$fuzz_src_dir"/seed-corpora/"$data_to_use"/*
 }
 copy_target chrono chrono
 copy_target float float
