@@ -27,7 +27,7 @@ otherwise all the read values can be accessed through a `std::tuple` with `value
 
 \code{.cpp}
 // Scanning an int
-auto result = scn::scan<int>("123", "{}"):
+auto result = scn::scan<int>("123", "{}");
 auto i = result->value();
 // i == 123
 
