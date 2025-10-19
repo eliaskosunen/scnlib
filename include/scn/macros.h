@@ -141,6 +141,12 @@
 #define SCN_REGEX_SUPPORTS_UTF8_CLASSIFICATION 0
 #endif
 
+#if SCN_REGEX_BACKEND == SCN_REGEX_BACKEND_RE2
+#define SCN_REGEX_SUPPORTS_NON_CONTIGUOUS_SOURCES 0
+#else
+#define SCN_REGEX_SUPPORTS_NON_CONTIGUOUS_SOURCES 1
+#endif
+
 // SCN_DISABLE_IOSTREAM
 // If 1, removes all references and functionality related to standard streams.
 #ifndef SCN_DISABLE_IOSTREAM

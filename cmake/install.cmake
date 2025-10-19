@@ -57,13 +57,6 @@ write_basic_package_version_file(
         COMPATIBILITY SameMajorVersion
 )
 
-set(SCN_FIND_DEPENDENCIES "include(CMakeFindDependencyMacro)\n")
-set(SCN_ADDITIONAL_LIBRARIES "")
-if (NOT SCN_DISABLE_FAST_FLOAT AND SCN_USE_EXTERNAL_FAST_FLOAT)
-    set(SCN_FIND_DEPENDENCIES "${SCN_FIND_DEPENDENCIES}\n    find_dependency(FastFloat 5.3.0)")
-    set(SCN_ADDITIONAL_LIBRARIES "${SCN_ADDITIONAL_LIBRARIES} FastFloat::fast_float")
-endif()
-
 configure_package_config_file(
         "${PROJECT_SOURCE_DIR}/cmake/scn-config.cmake.in"
         "${CMAKE_CURRENT_BINARY_DIR}/scn-config.cmake"

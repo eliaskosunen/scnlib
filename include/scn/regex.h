@@ -76,6 +76,13 @@ SCN_BEGIN_NAMESPACE
  * </tr>
  *
  * <tr>
+ * <td>Non-contiguous sources as input</td>
+ * <td>Yes</td>
+ * <td>Yes</td>
+ * <td>No</td>
+ * </tr>
+ *
+ * <tr>
  * <td>Unicode character classes (i.e. `\pL`)</td>
  * <td>No</td>
  * <td>Yes-ish <sup>[1]</sup></td>
@@ -98,8 +105,6 @@ SCN_BEGIN_NAMESPACE
  * To do regex matching, the scanned type must either be a string
  * (`std::basic_string` or `std::basic_string_view`), or
  * `scn::basic_regex_matches`.
- * Due to limitations of the underlying regex engines,
- * the source must be contiguous.
  *
  * <table>
  * <caption id="regex-flags-table">
@@ -174,8 +179,8 @@ public:
 
 #if SCN_REGEX_SUPPORTS_NAMED_CAPTURES
     basic_regex_match(std::basic_string_view<CharT> str,
-                      std::basic_string<CharT> name)
-        : m_str(str), m_name(SCN_MOVE(name))
+                      std::basic_string_view<CharT> name)
+        : m_str(str), m_name(name)
     {
     }
 #endif
@@ -207,14 +212,15 @@ private:
     std::basic_string_view<CharT> m_str;
 
 #if SCN_REGEX_SUPPORTS_NAMED_CAPTURES
-    std::optional<std::basic_string<CharT>> m_name;
+    std::optional<std::basic_string_view<CharT>> m_name;
 #endif
 };
 
 /**
  * Can be used to get all subexpression captures of a regex match.
- * Interface similar to
- * `std::vector<std::optional<basic_regex_match<CharT>>>`.
+ * Interface similar to a
+ * `const std::vector<std::optional<basic_regex_match<CharT>>>`.
+ * Stores `[0]` as a string, and the other matches as views into that string.
  *
  * \code{.cpp}
  * auto result =
@@ -228,44 +234,212 @@ private:
  * \ingroup regex
  */
 template <typename CharT>
-class basic_regex_matches
-    : private std::vector<std::optional<basic_regex_match<CharT>>> {
-    using base = std::vector<std::optional<basic_regex_match<CharT>>>;
-
+class basic_regex_matches {
 public:
+    struct submatch {
+        std::size_t pos{};
+        std::size_t len{};
+#if SCN_REGEX_SUPPORTS_NAMED_CAPTURES
+        std::basic_string<CharT> name{};
+#endif
+
+        explicit operator bool() const
+        {
+            return len != 0;
+        }
+    };
+
     using match_type = basic_regex_match<CharT>;
-    using typename base::const_iterator;
-    using typename base::const_reverse_iterator;
-    using typename base::iterator;
-    using typename base::pointer;
-    using typename base::reference;
-    using typename base::reverse_iterator;
-    using typename base::size_type;
-    using typename base::value_type;
 
-    using base::base;
+    using value_type = std::optional<match_type>;
+    using size_type = std::size_t;
 
-    using base::emplace;
-    using base::emplace_back;
-    using base::insert;
-    using base::push_back;
+    basic_regex_matches() = default;
 
-    using base::reserve;
-    using base::resize;
+    basic_regex_matches(std::basic_string<CharT> match,
+                        std::vector<submatch> submatches)
+        : m_match(SCN_MOVE(match)), m_submatches(SCN_MOVE(submatches))
+    {
+    }
 
-    using base::at;
-    using base::operator[];
+    SCN_NODISCARD std::optional<match_type> operator[](std::size_t i) const
+    {
+        if (i == 0) {
+            return match_type{m_match};
+        }
+        SCN_EXPECT(i <= m_submatches.size());
+        const auto& sm = m_submatches[i - 1];
+        if (!sm) {
+            return std::nullopt;
+        }
+#if SCN_REGEX_SUPPORTS_NAMED_CAPTURES
+        if (sm.name.empty()) {
+            return match_type{detail::make_string_view_from_pointers(
+                m_match.data() + sm.pos, m_match.data() + sm.pos + sm.len)};
+        }
+        return match_type{
+            detail::make_string_view_from_pointers(
+                m_match.data() + sm.pos, m_match.data() + sm.pos + sm.len),
+            sm.name};
+#else
+        return match_type{detail::make_string_view_from_pointers(
+            m_match.data() + sm.pos, m_match.data() + sm.pos + sm.len)};
+#endif
+    }
 
-    using base::begin;
-    using base::end;
-    using base::rbegin;
-    using base::rend;
+    SCN_NODISCARD std::optional<match_type> at(std::size_t i) const
+    {
+        if (i == 0) {
+            return match_type{m_match};
+        }
+        const auto& sm = m_submatches.at(i - 1);
+        if (!sm) {
+            return std::nullopt;
+        }
+#if SCN_REGEX_SUPPORTS_NAMED_CAPTURES
+        if (sm.name.empty()) {
+            return match_type{
+                std::basic_string_view<CharT>{m_match}.substr(sm.pos, sm.len)};
+        }
+        return match_type{
+            std::basic_string_view<CharT>{m_match}.substr(sm.pos, sm.len),
+            sm.name};
+#else
+        return match_type{
+            std::basic_string_view<CharT>{m_match}.substr(sm.pos, sm.len)};
+#endif
+    }
 
-    using base::data;
-    using base::size;
+    SCN_NODISCARD std::size_t size() const
+    {
+        return m_submatches.size() + 1u;
+    }
 
-    using base::swap;
+    struct iterator {
+        using value_type = std::optional<match_type>;
+        using difference_type = std::ptrdiff_t;
+        using pointer = value_type*;
+        using reference = value_type;
+        using iterator_category = std::random_access_iterator_tag;
+
+        iterator() = default;
+
+        iterator(const basic_regex_matches& parent, std::size_t index)
+            : m_parent(&parent), m_index(index)
+        {
+        }
+
+        iterator& operator++()
+        {
+            SCN_EXPECT(m_parent);
+            SCN_EXPECT(m_index < m_parent->size());
+            ++m_index;
+            return *this;
+        }
+
+        iterator operator++(int)
+        {
+            auto tmp = *this;
+            ++*this;
+            return tmp;
+        }
+
+        iterator& operator--()
+        {
+            SCN_EXPECT(m_parent);
+            SCN_EXPECT(m_index > 0);
+            --m_index;
+            return *this;
+        }
+
+        iterator operator--(int)
+        {
+            auto tmp = *this;
+            --*this;
+            return tmp;
+        }
+
+        value_type operator*() const
+        {
+            SCN_EXPECT(m_parent);
+            return (*m_parent)[m_index];
+        }
+
+        bool operator==(const iterator& other) const
+        {
+            return m_parent == other.m_parent && m_index == other.m_index;
+        }
+
+        bool operator!=(const iterator& other) const
+        {
+            return !(*this == other);
+        }
+
+        iterator& operator+=(difference_type n)
+        {
+            SCN_EXPECT(m_parent);
+            SCN_EXPECT(static_cast<difference_type>(m_index) + n <=
+                       static_cast<difference_type>(m_parent->size()));
+            SCN_EXPECT(static_cast<difference_type>(m_index) + n >= 0);
+            m_index += n;
+            return *this;
+        }
+
+        friend iterator operator+(const iterator& it, difference_type n)
+        {
+            auto copy = it;
+            copy += n;
+            return copy;
+        }
+
+        friend iterator operator+(difference_type n, const iterator& it)
+        {
+            return it + n;
+        }
+
+        iterator& operator-=(difference_type n)
+        {
+            SCN_EXPECT(m_parent);
+            SCN_EXPECT(static_cast<difference_type>(m_index) - n <=
+                       static_cast<difference_type>(m_parent->size()));
+            SCN_EXPECT(static_cast<difference_type>(m_index) - n >= 0);
+            m_index -= n;
+            return *this;
+        }
+
+        iterator operator-(difference_type n) const
+        {
+            auto copy = *this;
+            copy -= n;
+            return copy;
+        }
+
+        value_type operator[](difference_type n)
+        {
+            return *(*this + n);
+        }
+
+    private:
+        const basic_regex_matches* m_parent{nullptr};
+        std::size_t m_index{0};
+    };
+
+    SCN_NODISCARD iterator begin() const
+    {
+        return iterator{*this, 0};
+    }
+
+    SCN_NODISCARD iterator end() const
+    {
+        return iterator{*this, size()};
+    }
+
+private:
+    std::basic_string<CharT> m_match{};
+    std::vector<submatch> m_submatches{};
 };
+
+static_assert(ranges::bidirectional_range<basic_regex_matches<char>>);
 
 template <typename CharT>
 struct scanner<basic_regex_matches<CharT>, CharT>
@@ -286,18 +460,14 @@ struct scanner<basic_regex_matches<CharT>, CharT>
 
         if (this->m_specs.type == detail::presentation_type::regex ||
             this->m_specs.type == detail::presentation_type::regex_escaped) {
+#if !SCN_REGEX_SUPPORTS_NON_CONTIGUOUS_SOURCES
             if (!pctx.is_source_contiguous()) {
                 SCN_UNLIKELY_ATTR
                 // clang-format off
                 checker.on_error("Cannot read a regex from a non-contiguous source");
                 // clang-format on
             }
-            if (!pctx.is_source_borrowed()) {
-                SCN_UNLIKELY_ATTR
-                // clang-format off
-                checker.on_error("Cannot read a regex from a non-borrowed source");
-                // clang-format on
-            }
+#endif
         }
 
         return it;
