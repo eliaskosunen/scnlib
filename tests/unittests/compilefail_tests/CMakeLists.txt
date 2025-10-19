@@ -22,9 +22,7 @@ if (NOT SCN_DISABLE_REGEX)
             regex_empty.cpp
             regex_flag_invalid.cpp
             regex_flag_multiple.cpp
-            regex_matches_non_contiguous_source.cpp
             regex_no_presentation.cpp
-            regex_non_contiguous_source.cpp
             regex_unterminated.cpp
             regex_wide_strings.cpp
     )

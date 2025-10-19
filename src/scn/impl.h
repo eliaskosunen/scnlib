@@ -26,6 +26,7 @@
 #include <cmath>
 #include <cwchar>
 #include <functional>
+#include <memory>
 #include <vector>
 
 #if SCN_HAS_BITOPS
@@ -4913,6 +4914,62 @@ constexpr auto make_regex_flags(detail::regex_flags flags)
     }
     return result;
 }
+
+template <typename CharT>
+auto make_regex(std::basic_string_view<CharT> pattern,
+                boost::regex_constants::syntax_option_type flags)
+{
+#if SCN_REGEX_BOOST_USE_ICU
+    return boost::make_u32regex(pattern.data(), pattern.data() + pattern.size(),
+                                flags);
+#else
+    return boost::basic_regex<CharT>(pattern.data(),
+                                     pattern.data() + pattern.size(), flags);
+#endif
+}
+
+template <typename CharT, typename Input>
+auto make_regex_input(Input& input)
+{
+    auto common = ranges::views::common(input);
+    static_assert(ranges::borrowed_range<decltype(common)>);
+
+#if SCN_REGEX_BOOST_USE_ICU
+    if constexpr (sizeof(CharT) == sizeof(char32_t)) {
+        return common;
+    }
+    // If we pass a non-UTF-32 range to Boost.Regex with ICU,
+    // the internals of that library will decrement the end iterator
+    // while doing range checking.
+    // We can't support that, so we need to pass in a UTF-32 range.
+    // Luckily, Boost.Regex provides a clean interface to make that happen.
+    else if constexpr (sizeof(CharT) == sizeof(char16_t)) {
+        using I = decltype(common.begin());
+        return ranges::subrange{boost::u16_to_u32_iterator<I>{common.begin()},
+                                boost::u16_to_u32_iterator<I>{common.end()}};
+    }
+    else {
+        using I = decltype(common.begin());
+        return ranges::subrange{boost::u8_to_u32_iterator<I>{common.begin()},
+                                boost::u8_to_u32_iterator<I>{common.end()}};
+    }
+#else
+    return common;
+#endif
+}
+
+template <typename Regex, typename Input, typename Matches>
+bool do_regex_search(Regex& regex, Input& input, Matches& matches)
+{
+#if SCN_REGEX_BOOST_USE_ICU
+    return boost::u32regex_search(input.begin(), input.end(), matches, regex,
+                                  boost::match_continuous);
+#else
+    return boost::regex_search(input.begin(), input.end(), matches, regex,
+                               boost::match_continuous);
+#endif
+}
+
 #elif SCN_REGEX_BACKEND == SCN_REGEX_BACKEND_RE2
 inline auto make_regex_flags(detail::regex_flags flags)
     -> std::pair<RE2::Options, std::string_view>
@@ -4944,9 +5001,7 @@ auto read_regex_string_impl(std::basic_string_view<CharT> pattern,
                             Input input)
     -> scan_expected<ranges::iterator_t<Input>>
 {
-    static_assert(ranges::contiguous_range<Input> &&
-                  ranges::borrowed_range<Input> &&
-                  std::is_same_v<ranges::range_value_t<Input>, CharT>);
+    static_assert(std::is_same_v<ranges::range_value_t<Input>, CharT>);
 
 #if SCN_REGEX_BACKEND == SCN_REGEX_BACKEND_STD
     std::basic_regex<CharT> re{};
@@ -4960,11 +5015,12 @@ auto read_regex_string_impl(std::basic_string_view<CharT> pattern,
                                              "Invalid regex");
     }
 
-    std::match_results<const CharT*> matches{};
+    auto common_input = ranges::views::common(input);
+    std::match_results<decltype(common_input.begin())> matches{};
     try {
-        bool found = std::regex_search(input.data(),
-                                       input.data() + input.size(), matches, re,
-                                       std::regex_constants::match_continuous);
+        bool found =
+            std::regex_search(common_input.begin(), common_input.end(), matches,
+                              re, std::regex_constants::match_continuous);
         if (!found || matches.prefix().matched) {
             return detail::unexpected_scan_error(
                 scan_error::invalid_scanned_value,
@@ -4977,37 +5033,21 @@ auto read_regex_string_impl(std::basic_string_view<CharT> pattern,
             "Regex matching failed with an error");
     }
 
-    return input.begin() + ranges::distance(input.data(), matches[0].second);
+    SCN_ENSURE(matches.ready());
+    return std::next(input.begin(), matches.length(0));
 #elif SCN_REGEX_BACKEND == SCN_REGEX_BACKEND_BOOST
     auto re =
-#if SCN_REGEX_BOOST_USE_ICU
-        boost::make_u32regex(pattern.data(), pattern.data() + pattern.size(),
-                             make_regex_flags(flags) |
-                                 boost::regex_constants::no_except |
-                                 boost::regex_constants::nosubs);
-#else
-        boost::basic_regex<CharT>{pattern.data(), pattern.size(),
-                                  make_regex_flags(flags) |
-                                      boost::regex_constants::no_except |
-                                      boost::regex_constants::nosubs};
-#endif
+        make_regex(pattern, make_regex_flags(flags) | boost::regex::no_except |
+                                boost::regex::nosubs);
     if (re.status() != 0) {
         return detail::unexpected_scan_error(scan_error::invalid_format_string,
                                              "Invalid regex");
     }
 
-    boost::match_results<const CharT*> matches{};
+    auto regex_input = make_regex_input<CharT>(input);
+    boost::match_results<decltype(regex_input.begin())> matches{};
     try {
-        bool found =
-#if SCN_REGEX_BOOST_USE_ICU
-            boost::u32regex_search(input.data(), input.data() + input.size(),
-                                   matches, re,
-                                   boost::regex_constants::match_continuous);
-#else
-            boost::regex_search(input.data(), input.data() + input.size(),
-                                matches, re,
-                                boost::regex_constants::match_continuous);
-#endif
+        bool found = do_regex_search(re, regex_input, matches);
         if (!found || matches.prefix().matched) {
             return detail::unexpected_scan_error(
                 scan_error::invalid_scanned_value,
@@ -5019,8 +5059,28 @@ auto read_regex_string_impl(std::basic_string_view<CharT> pattern,
             scan_error::invalid_format_string,
             "Regex matching failed with an error");
     }
+    catch (const std::out_of_range&) {
+        return detail::unexpected_scan_error(
+            scan_error::invalid_scanned_value,
+            "Regex matching failed with invalid encoding");
+    }
 
-    return input.begin() + ranges::distance(input.data(), matches[0].second);
+#if SCN_REGEX_BOOST_USE_ICU
+    auto get_source_iterator = [&](auto it) {
+        if constexpr (sizeof(CharT) == sizeof(char32_t)) {
+            return it;
+        }
+        else {
+            return it.base();
+        }
+    };
+
+    return std::next(input.begin(),
+                     std::distance(get_source_iterator(regex_input.begin()),
+                                   get_source_iterator(matches[0].second)));
+#else
+    return std::next(input.begin(), matches.length(0));
+#endif
 #elif SCN_REGEX_BACKEND == SCN_REGEX_BACKEND_RE2
     static_assert(std::is_same_v<CharT, char>);
     std::string flagged_pattern{};
@@ -5041,14 +5101,23 @@ auto read_regex_string_impl(std::basic_string_view<CharT> pattern,
             "Failed to parse regular expression");
     }
 
+    if (!is_entire_source_contiguous(input)) {
+        return detail::unexpected_scan_error(
+            scan_error::insufficient_source,
+            "Regex scanning with re2 requires a contiguous source");
+    }
+    auto contiguous_input = get_as_contiguous(input);
     auto new_input = detail::make_string_view_from_pointers(
-        detail::to_address(input.begin()), detail::to_address(input.end()));
+        detail::to_address(contiguous_input.begin()),
+        detail::to_address(contiguous_input.end()));
+    const auto original_begin = new_input.begin();
     bool found = re2::RE2::Consume(&new_input, re);
     if (!found) {
         return detail::unexpected_scan_error(scan_error::invalid_scanned_value,
                                              "Regular expression didn't match");
     }
-    return input.begin() + ranges::distance(input.data(), new_input.data());
+    return std::next(input.begin(),
+                     std::distance(original_begin, new_input.begin()));
 #endif  // SCN_REGEX_BACKEND == ...
 }
 
@@ -5059,9 +5128,7 @@ auto read_regex_matches_impl(std::basic_string_view<CharT> pattern,
                              basic_regex_matches<CharT>& value)
     -> scan_expected<ranges::iterator_t<Input>>
 {
-    static_assert(ranges::contiguous_range<Input> &&
-                  ranges::borrowed_range<Input> &&
-                  std::is_same_v<ranges::range_value_t<Input>, CharT>);
+    static_assert(std::is_same_v<ranges::range_value_t<Input>, CharT>);
 
 #if SCN_REGEX_BACKEND == SCN_REGEX_BACKEND_STD
     std::basic_regex<CharT> re{};
@@ -5074,11 +5141,12 @@ auto read_regex_matches_impl(std::basic_string_view<CharT> pattern,
                                              "Invalid regex");
     }
 
-    std::match_results<const CharT*> matches{};
+    auto common_input = ranges::views::common(input);
+    std::match_results<decltype(common_input.begin())> matches{};
     try {
-        bool found = std::regex_search(input.data(),
-                                       input.data() + input.size(), matches, re,
-                                       std::regex_constants::match_continuous);
+        bool found =
+            std::regex_search(common_input.begin(), common_input.end(), matches,
+                              re, std::regex_constants::match_continuous);
         if (!found || matches.prefix().matched) {
             return detail::unexpected_scan_error(
                 scan_error::invalid_scanned_value,
@@ -5091,15 +5159,24 @@ auto read_regex_matches_impl(std::basic_string_view<CharT> pattern,
             "Regex matching failed with an error");
     }
 
-    value.resize(matches.size());
-    std::transform(matches.begin(), matches.end(), value.begin(),
-                   [](auto&& match) -> std::optional<basic_regex_match<CharT>> {
-                       if (!match.matched)
-                           return std::nullopt;
-                       return detail::make_string_view_from_pointers(
-                           match.first, match.second);
-                   });
-    return input.begin() + ranges::distance(input.data(), matches[0].second);
+    SCN_ENSURE(matches.ready());
+
+    auto full_match = matches[0].str();
+    std::vector<typename basic_regex_matches<CharT>::submatch> submatches(
+        matches.size() - 1);
+
+    for (std::size_t i = 1; i < matches.size(); ++i) {
+        if (!matches[i].matched) {
+            continue;
+        }
+        submatches[i - 1].pos = static_cast<std::size_t>(matches.position(i));
+        submatches[i - 1].len = static_cast<std::size_t>(matches.length(i));
+    }
+
+    value =
+        basic_regex_matches<CharT>{SCN_MOVE(full_match), SCN_MOVE(submatches)};
+
+    return std::next(input.begin(), matches.length(0));
 #elif SCN_REGEX_BACKEND == SCN_REGEX_BACKEND_BOOST
     std::vector<std::basic_string<CharT>> names;
     for (size_t i = 0; i < pattern.size();) {
@@ -5129,32 +5206,17 @@ auto read_regex_matches_impl(std::basic_string_view<CharT> pattern,
     }
 
     auto re =
-#if SCN_REGEX_BOOST_USE_ICU
-        boost::make_u32regex(
-            pattern.data(), pattern.data() + pattern.size(),
-            make_regex_flags(flags) | boost::regex_constants::no_except);
-#else
-        boost::basic_regex<CharT>{
-            pattern.data(), pattern.size(),
-            make_regex_flags(flags) | boost::regex_constants::no_except};
-#endif
+        make_regex(pattern, make_regex_flags(flags) | boost::regex::no_except);
     if (re.status() != 0) {
         return detail::unexpected_scan_error(scan_error::invalid_format_string,
                                              "Invalid regex");
     }
 
-    boost::match_results<const CharT*> matches{};
+    auto regex_input = make_regex_input<CharT>(input);
+    boost::match_results<decltype(regex_input.begin())> matches{};
+
     try {
-        bool found =
-#if SCN_REGEX_BOOST_USE_ICU
-            boost::u32regex_search(input.data(), input.data() + input.size(),
-                                   matches, re,
-                                   boost::regex_constants::match_continuous);
-#else
-            boost::regex_search(input.data(), input.data() + input.size(),
-                                matches, re,
-                                boost::regex_constants::match_continuous);
-#endif
+        bool found = do_regex_search(re, regex_input, matches);
         if (!found || matches.prefix().matched) {
             return detail::unexpected_scan_error(
                 scan_error::invalid_scanned_value,
@@ -5166,25 +5228,79 @@ auto read_regex_matches_impl(std::basic_string_view<CharT> pattern,
             scan_error::invalid_format_string,
             "Regex matching failed with an error");
     }
+    catch (const std::out_of_range&) {
+        return detail::unexpected_scan_error(
+            scan_error::invalid_scanned_value,
+            "Regex matching failed with invalid encoding");
+    }
 
-    value.resize(matches.size());
-    std::transform(
-        matches.begin(), matches.end(), value.begin(),
-        [&](auto&& match) -> std::optional<basic_regex_match<CharT>> {
-            if (!match.matched)
-                return std::nullopt;
-            auto sv = detail::make_string_view_from_pointers(match.first,
-                                                             match.second);
+    std::vector<typename basic_regex_matches<CharT>::submatch> submatches(
+        matches.size() - 1);
 
-            if (auto name_it = std::find_if(
-                    names.begin(), names.end(),
-                    [&](const auto& name) { return match == matches[name]; });
-                name_it != names.end()) {
-                return basic_regex_match<CharT>{sv, *name_it};
-            }
-            return sv;
-        });
-    return input.begin() + ranges::distance(input.data(), matches[0].second);
+#if !SCN_REGEX_BOOST_USE_ICU
+    auto full_match = matches[0].str();
+
+    for (std::size_t i = 1; i < matches.size(); ++i) {
+        if (!matches[static_cast<int>(i)].matched) {
+            continue;
+        }
+
+        submatches[i - 1].pos = static_cast<std::size_t>(
+            matches.position(static_cast<unsigned>(i)));
+        submatches[i - 1].len =
+            static_cast<std::size_t>(matches.length(static_cast<int>(i)));
+    }
+#else
+    auto u32_full_match = matches[0].str();
+    std::basic_string<CharT> full_match{};
+    if constexpr (sizeof(CharT) == sizeof(char32_t)) {
+        full_match.assign(reinterpret_cast<const CharT*>(u32_full_match.data()),
+                          u32_full_match.size());
+    }
+    else {
+        transcode_to_string(
+            std::basic_string_view<
+                typename decltype(u32_full_match)::value_type>{u32_full_match},
+            full_match);
+    }
+
+    auto get_source_iterator = [&](auto it) {
+        if constexpr (sizeof(CharT) == sizeof(char32_t)) {
+            return it;
+        }
+        else {
+            return it.base();
+        }
+    };
+    const auto src_beg = get_source_iterator(regex_input.begin());
+
+    for (std::size_t i = 1; i < matches.size(); ++i) {
+        auto& match = matches[static_cast<int>(i)];
+        if (!match.matched) {
+            continue;
+        }
+
+        const auto beg = get_source_iterator(match.first);
+        const auto end = get_source_iterator(match.second);
+        submatches[i - 1].pos =
+            static_cast<std::size_t>(std::distance(src_beg, beg));
+        submatches[i - 1].len =
+            static_cast<std::size_t>(std::distance(beg, end));
+    }
+#endif
+    for (auto& name : names) {
+        auto idx = matches.named_subexpression_index(name.data(),
+                                                     name.data() + name.size());
+        if (idx > 0) {
+            submatches[static_cast<std::size_t>(idx - 1)].name = SCN_MOVE(name);
+        }
+    }
+
+    const auto n = static_cast<std::ptrdiff_t>(full_match.size());
+    value =
+        basic_regex_matches<CharT>{SCN_MOVE(full_match), SCN_MOVE(submatches)};
+
+    return std::next(input.begin(), n);
 #elif SCN_REGEX_BACKEND == SCN_REGEX_BACKEND_RE2
     static_assert(std::is_same_v<CharT, char>);
     std::string flagged_pattern{};
@@ -5203,44 +5319,103 @@ auto read_regex_matches_impl(std::basic_string_view<CharT> pattern,
             scan_error::invalid_format_string,
             "Failed to parse regular expression");
     }
-    // TODO: Optimize into a single batch allocation
-    const auto max_matches_n =
-        static_cast<size_t>(re.NumberOfCapturingGroups());
-    std::vector<std::optional<std::string_view>> matches(max_matches_n);
-    std::vector<re2::RE2::Arg> match_args(max_matches_n);
-    std::vector<re2::RE2::Arg*> match_argptrs(max_matches_n);
-    std::transform(matches.begin(), matches.end(), match_args.begin(),
-                   [](auto& val) { return re2::RE2::Arg{&val}; });
-    std::transform(match_args.begin(), match_args.end(), match_argptrs.begin(),
-                   [](auto& arg) { return &arg; });
+
+    if (!is_entire_source_contiguous(input)) {
+        return detail::unexpected_scan_error(
+            scan_error::insufficient_source,
+            "Regex scanning with re2 requires a contiguous source");
+    }
+    auto contiguous_input = get_as_contiguous(input);
     auto new_input = detail::make_string_view_from_pointers(
-        detail::to_address(input.begin()), detail::to_address(input.end()));
-    bool found = re2::RE2::ConsumeN(&new_input, re, match_argptrs.data(),
-                                    static_cast<int>(match_argptrs.size()));
+        detail::to_address(contiguous_input.begin()),
+        detail::to_address(contiguous_input.end()));
+
+    const auto max_matches_n =
+        static_cast<std::size_t>(re.NumberOfCapturingGroups());
+    std::optional<std::string_view>* matches{};
+    re2::RE2::Arg* match_args{};
+    re2::RE2::Arg** match_argptrs{};
+
+    const auto round_up = [](std::size_t n, std::size_t multiple) {
+        return (n + multiple - 1) & ~(multiple - 1);
+    };
+    const auto memory_needed_for = [&](auto* ptr) {
+        using T = std::remove_pointer_t<decltype(ptr)>;
+        return round_up(sizeof(T), alignof(T));
+    };
+    const auto memory_needed =
+        round_up(memory_needed_for(matches) * max_matches_n,
+                 alignof(std::max_align_t)) +
+        round_up(memory_needed_for(match_args) * max_matches_n,
+                 alignof(std::max_align_t)) +
+        (memory_needed_for(match_argptrs) * max_matches_n);
+    auto memory =
+        std::unique_ptr<unsigned char[]>(new unsigned char[memory_needed]);
+
+    {
+        auto* ptr = memory.get();
+        matches = static_cast<std::optional<std::string_view>*>(
+            SCN_ASSUME_ALIGNED(ptr, alignof(std::optional<std::string_view>)));
+        ptr += round_up(memory_needed_for(matches) * max_matches_n,
+                        alignof(std::max_align_t));
+        match_args = static_cast<re2::RE2::Arg*>(
+            SCN_ASSUME_ALIGNED(ptr, alignof(re2::RE2::Arg)));
+        ptr += round_up(memory_needed_for(match_args) * max_matches_n,
+                        alignof(std::max_align_t));
+        match_argptrs = static_cast<re2::RE2::Arg**>(
+            SCN_ASSUME_ALIGNED(ptr, alignof(re2::RE2::Arg*)));
+
+        for (std::size_t i = 0; i < max_matches_n; ++i) {
+            auto* match = ::new (&matches[i]) std::optional<std::string_view>{};
+            auto* arg = ::new (&match_args[i]) re2::RE2::Arg{match};
+            ::new (&match_argptrs[i]) re2::RE2::Arg* {arg};
+        }
+    }
+
+    bool found = re2::RE2::ConsumeN(&new_input, re, match_argptrs,
+                                    static_cast<int>(max_matches_n));
     if (!found) {
         return detail::unexpected_scan_error(scan_error::invalid_scanned_value,
                                              "Regular expression didn't match");
     }
-    value.resize(matches.size() + 1);
-    value[0] =
-        detail::make_string_view_from_pointers(input.data(), new_input.data());
-    std::transform(matches.begin(), matches.end(), value.begin() + 1,
-                   [&](auto&& match) -> std::optional<regex_match> {
-                       if (!match)
-                           return std::nullopt;
-                       return *match;
-                   });
-    {
-        const auto& capturing_groups = re.CapturingGroupNames();
-        for (size_t i = 1; i < value.size(); ++i) {
-            if (auto it = capturing_groups.find(static_cast<int>(i));
-                it != capturing_groups.end()) {
-                auto val = value[i]->get();
-                value[i].emplace(val, it->second);
-            };
+
+    std::basic_string<CharT> full_match{};
+    full_match.assign(contiguous_input.data(),
+                      static_cast<std::size_t>(std::distance(
+                          contiguous_input.data(), new_input.data())));
+
+    std::vector<typename basic_regex_matches<CharT>::submatch> submatches{
+        max_matches_n};
+    for (std::size_t i = 0; i < max_matches_n; ++i) {
+        auto match = matches[i];
+        {
+            using argptr_t = re2::RE2::Arg*;
+            match_argptrs[i].~argptr_t();
+            using arg_t = re2::RE2::Arg;
+            match_args[i].~arg_t();
+            using match_t = std::optional<std::string_view>;
+            matches[i].~match_t();
+        }
+
+        if (!match) {
+            continue;
+        }
+
+        submatches[i].pos = static_cast<std::size_t>(
+            std::distance(contiguous_input.data(), match->data()));
+        submatches[i].len = match->size();
+
+        if (auto it = re.CapturingGroupNames().find(static_cast<int>(i + 1));
+            it != re.CapturingGroupNames().end()) {
+            submatches[i].name = it->second;
         }
     }
-    return input.begin() + ranges::distance(input.data(), new_input.data());
+
+    value =
+        basic_regex_matches<CharT>{SCN_MOVE(full_match), SCN_MOVE(submatches)};
+
+    return std::next(input.begin(),
+                     std::distance(contiguous_input.data(), new_input.data()));
 #endif  // SCN_REGEX_BACKEND == ...
 }
 
@@ -5309,21 +5484,10 @@ struct regex_matches_reader
                 "Regex backend doesn't support wide strings as input");
         }
         else {
-            if (!is_entire_source_contiguous(range)) {
-                return detail::unexpected_scan_error(
-                    scan_error::invalid_format_string,
-                    "Cannot use regex with a non-contiguous source "
-                    "range");
-            }
-
-            auto input = get_as_contiguous(range);
-            SCN_TRY(it,
-                    impl(input,
-                         specs.type == detail::presentation_type::regex_escaped,
-                         specs.get_charset_string<SourceCharT>(),
-                         specs.regexp_flags, value));
-            return ranges::next(range.begin(),
-                                ranges::distance(input.begin(), it));
+            return impl(range,
+                        specs.type == detail::presentation_type::regex_escaped,
+                        specs.get_charset_string<SourceCharT>(),
+                        specs.regexp_flags, value);
         }
     }
 
@@ -5527,18 +5691,7 @@ private:
                 "Regex backend doesn't support wide strings as input");
         }
         else {
-            if (!is_entire_source_contiguous(range)) {
-                return detail::unexpected_scan_error(
-                    scan_error::invalid_format_string,
-                    "Cannot use regex with a non-contiguous source "
-                    "range");
-            }
-
-            auto input = get_as_contiguous(range);
-            SCN_TRY(it,
-                    read_regex_string_impl<SourceCharT>(pattern, flags, input));
-            return ranges::next(range.begin(),
-                                ranges::distance(input.begin(), it));
+            return read_regex_string_impl<SourceCharT>(pattern, flags, range);
         }
     }
 };

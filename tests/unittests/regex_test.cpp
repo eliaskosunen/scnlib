@@ -21,9 +21,26 @@
 #include <scn/scan.h>
 #include <scn/xchar.h>
 
+#include <deque>
+
 using namespace std::string_view_literals;
 
 #if !SCN_DISABLE_REGEX
+
+template <typename CharT>
+auto regex_matches_are(
+    std::initializer_list<std::basic_string_view<CharT>> elems)
+{
+    using matcher_t = decltype(testing::Optional(testing::Property(
+        &scn::basic_regex_match<CharT>::get, std::basic_string_view<CharT>{})));
+    std::vector<matcher_t> matchers;
+    matchers.reserve(elems.size());
+    for (const auto& elem : elems) {
+        matchers.emplace_back(testing::Optional(
+            testing::Property(&scn::basic_regex_match<CharT>::get, elem)));
+    }
+    return testing::ElementsAreArray(matchers.begin(), matchers.end());
+}
 
 TEST(RegexTest, InvalidRegexString)
 {
@@ -68,13 +85,8 @@ TEST(RegexTest, Matches)
         scn::scan<scn::regex_matches>("foobar123", "{:/([a-zA-Z]+)([0-9]+)/}");
     ASSERT_TRUE(r);
     EXPECT_TRUE(r->range().empty());
-    EXPECT_THAT(r->value(), testing::ElementsAre(
-                                testing::Optional(testing::Property(
-                                    &scn::regex_match::get, "foobar123"sv)),
-                                testing::Optional(testing::Property(
-                                    &scn::regex_match::get, "foobar"sv)),
-                                testing::Optional(testing::Property(
-                                    &scn::regex_match::get, "123"sv))));
+    EXPECT_THAT(r->value(),
+                regex_matches_are<char>({"foobar123", "foobar", "123"}));
 }
 
 #if SCN_REGEX_SUPPORTS_NAMED_CAPTURES
@@ -132,13 +144,8 @@ TEST(RegexTest, WideMatches)
                                             L"{:/([a-zA-Z]+)([0-9]+)/}");
     ASSERT_TRUE(r);
     EXPECT_TRUE(r->range().empty());
-    EXPECT_THAT(r->value(), testing::ElementsAre(
-                                testing::Optional(testing::Property(
-                                    &scn::wregex_match::get, L"foobar123"sv)),
-                                testing::Optional(testing::Property(
-                                    &scn::wregex_match::get, L"foobar"sv)),
-                                testing::Optional(testing::Property(
-                                    &scn::wregex_match::get, L"123"sv))));
+    EXPECT_THAT(r->value(),
+                regex_matches_are<wchar_t>({L"foobar123", L"foobar", L"123"}));
 }
 #endif
 
@@ -243,11 +250,7 @@ TEST(RegexTest, NoCaseFlagMatches)
     auto r = scn::scan<scn::regex_matches>("FooBar123", "{:/([a-z]+)/i}");
     ASSERT_TRUE(r);
     EXPECT_FALSE(r->range().empty());
-    EXPECT_THAT(r->value(),
-                testing::ElementsAre(testing::Optional(testing::Property(
-                                         &scn::regex_match::get, "FooBar"sv)),
-                                     testing::Optional(testing::Property(
-                                         &scn::regex_match::get, "FooBar"sv))));
+    EXPECT_THAT(r->value(), regex_matches_are<char>({"FooBar", "FooBar"}));
 }
 
 TEST(RegexTest, NoCaseAndNoCaptureFlagStringView)
@@ -264,9 +267,7 @@ TEST(RegexTest, NoCaseAndNoCaptureFlagMatches)
         scn::scan<scn::regex_matches>("FooBar123", "{:/([a-z]+)([0-9]+)/in}");
     ASSERT_TRUE(r);
     EXPECT_TRUE(r->range().empty());
-    EXPECT_THAT(r->value(),
-                testing::ElementsAre(testing::Optional(
-                    testing::Property(&scn::regex_match::get, "FooBar123"sv))));
+    EXPECT_THAT(r->value(), regex_matches_are<char>({"FooBar123"}));
 }
 
 TEST(RegexTest, EscapedSlashInPattern)
@@ -274,7 +275,30 @@ TEST(RegexTest, EscapedSlashInPattern)
     auto r = scn::scan<std::string_view>("foo/bar", "{:/[a-z]+\\/[a-z]+/}");
     ASSERT_TRUE(r);
     EXPECT_TRUE(r->range().empty());
-    EXPECT_THAT(r->value(), "foo/bar");
+    EXPECT_EQ(r->value(), "foo/bar");
 }
+
+#if SCN_REGEX_BACKEND == SCN_REGEX_BACKEND_STD || \
+    SCN_REGEX_BACKEND == SCN_REGEX_BACKEND_BOOST
+
+TEST(RegexTest, NonContiguousSource)
+{
+    auto source = std::deque<char>{'F', 'o', 'o', '4', '2'};
+    auto r = scn::scan<std::string>(source, "{:/[a-zA-Z]+/}");
+    ASSERT_TRUE(r);
+    EXPECT_FALSE(r->range().empty());
+    EXPECT_EQ(r->value(), "Foo");
+}
+
+TEST(RegexTest, NonContiguousSourceWithMatches)
+{
+    auto source = std::deque<char>{'F', 'o', 'o', '4', '2'};
+    auto r = scn::scan<scn::regex_matches>(source, "{:/[a-zA-Z]+/}");
+    ASSERT_TRUE(r);
+    EXPECT_FALSE(r->range().empty());
+    EXPECT_THAT(r->value(), regex_matches_are<char>({"Foo"}));
+}
+
+#endif
 
 #endif  // !SCN_DISABLE_REGEX

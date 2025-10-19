@@ -4162,12 +4162,12 @@ public:
         return *this;
     }
     template <typename II = I,
-              typename = std::void_t<decltype(SCN_DECLVAL(I&)++)>>
+              typename = std::void_t<decltype(SCN_DECLVAL(II&)++)>>
     constexpr decltype(auto) operator++(int)
     {
         // This is a non-conforming implementation
         SCN_EXPECT(base_type::_is_iterator());
-        if constexpr (forward_iterator<I>) {
+        if constexpr (forward_iterator<II>) {
             auto tmp = *this;
             ++*this;
             return tmp;
@@ -4175,6 +4175,27 @@ public:
         else {
             return base_type::template _get_as<I>()++;
         }
+    }
+
+    // Non-conforming extension: make bidirectional
+
+    template <typename II = I,
+              typename = std::void_t<decltype(--SCN_DECLVAL(II&))>>
+    constexpr common_iterator& operator--()
+    {
+        SCN_EXPECT(base_type::_is_iterator());
+        ++base_type::template _get_as<II>();
+        return *this;
+    }
+
+    template <typename II = I,
+              typename = std::void_t<decltype(SCN_DECLVAL(II&)--)>>
+    constexpr decltype(auto) operator--(int)
+    {
+        SCN_EXPECT(base_type::_is_iterator());
+        auto tmp = *this;
+        --*this;
+        return tmp;
     }
 
     // TODO: compare with convertible common_iterators
@@ -4255,10 +4276,13 @@ struct iterator_traits<scn::ranges::common_iterator<I, S>> {
         scn::ranges::iter_reference_t<scn::ranges::common_iterator<I, S>>>;
     using reference =
         scn::ranges::iter_reference_t<scn::ranges::common_iterator<I, S>>;
-    using iterator_category =
-        std::conditional_t<scn::ranges::forward_iterator<I>,
-                           std::forward_iterator_tag,
-                           std::input_iterator_tag>;
+    using iterator_category = scn::detail::mp_cond<
+        scn::detail::mp_bool<scn::ranges::bidirectional_iterator<I>>,
+        std::bidirectional_iterator_tag,
+        scn::detail::mp_bool<scn::ranges::forward_iterator<I>>,
+        std::forward_iterator_tag,
+        std::true_type,
+        std::input_iterator_tag>;
     using iterator_concept = iterator_category;
 };
 
@@ -5415,9 +5439,12 @@ public:
         /// (between 0 and the smallest subnormal float)
         value_negative_underflow,
 
-        /// Value of this type can't be parsed,
-        /// either from this source or not at all.
+        /// Scanning of values of this type isn't supported
         type_not_supported,
+
+        /// Source type used can't be used to scan this value
+        /// (i.e., string_view from a non-contiguous and non-borrowed source)
+        insufficient_source,
 
         max_error
     };
@@ -5459,6 +5486,7 @@ public:
             case invalid_fill:
             case length_too_short:
             case type_not_supported:
+            case insufficient_source:
                 return std::errc::invalid_argument;
             case invalid_source_state:
                 return std::errc::io_error;
@@ -11388,16 +11416,15 @@ constexpr typename ParseCtx::iterator scanner_parse_for_builtin_type(
 #if !SCN_DISABLE_REGEX
     if (specs.type == presentation_type::regex ||
         specs.type == presentation_type::regex_escaped) {
+#if SCN_REGEX_BACKEND != SCN_REGEX_BACKEND_STD && \
+    SCN_REGEX_BACKEND != SCN_REGEX_BACKEND_BOOST
         if (!pctx.is_source_contiguous()) {
             SCN_UNLIKELY_ATTR
             // clang-format off
             checker.on_error("Cannot read a regex from a non-contiguous source");
             // clang-format on
         }
-        if (!pctx.is_source_borrowed()) {
-            SCN_UNLIKELY_ATTR
-            checker.on_error("Cannot read a regex from a non-borrowed source");
-        }
+#endif
     }
 #endif
 

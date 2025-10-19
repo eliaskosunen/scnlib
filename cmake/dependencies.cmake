@@ -196,7 +196,19 @@ if (SCN_REGEX_BACKEND STREQUAL "Boost")
     endif ()
 
     if (NOT TARGET Boost::regex)
+        cmake_policy(PUSH)
+        if (CMAKE_VERSION VERSION_GREATER_EQUAL "3.30")
+            # CMake v3.30 has deprecated find_package(Boost) (using a built-in FindBoost.cmake),
+            # instead preferring find_package(Boost CONFIG),
+            # which would use the BoostConfig.cmake file shipped with Boost.
+            # However, that file appeared in Boost v1.70, which was released in 2019,
+            # and we want to support Boost versions older than that.
+            # For that reason, we're explicitly opting-in to not using that,
+            # while it's still possible.
+            cmake_policy(SET CMP0167 OLD)
+        endif ()
         find_package(Boost REQUIRED COMPONENTS regex)
+        cmake_policy(POP)
     else ()
         message(STATUS "Target Boost::regex already defined, not doing find_package(Boost COMPONENTS regex)")
     endif ()
