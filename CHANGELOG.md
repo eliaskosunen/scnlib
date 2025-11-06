@@ -28,8 +28,6 @@ std::ifstream strm{...};
 scn::scan<...>(strm, ...);
 ```
 
- * (TODO:) Fill and alignment character handling has been removed.
-
  * Previously deprecated `scn::visit_scan_arg` is now removed. Use `scn::basic_scan_arg::visit` instead.
  * The `basic_scan_context` constructor only taking an iterator is now deprecated.
    Instead, use the new constructors that take a range, or both an interator and a sentinel.
@@ -60,7 +58,6 @@ scn::scan<...>(strm, ...);
    Aliases for these types are provided and used, with `scn::int128` and `scn::uint128`.
  * The payload of a NaN in floating-point values is now parsed and stored in the scanned floating-point value.
  * C++20 modules support
- * Shared library support
  * More optimized reading for source ranges that are both `bidirectional_range`s and `sized_range`s.
 
 ### Fixes
@@ -68,6 +65,8 @@ scn::scan<...>(strm, ...);
  * Tons of compiler warning fixes
  * Fix compiler errors occurring from accidental use of ADL when calling `decay_copy` unqualified
  * Files are no longer considered "borrowed" by `scn::basic_scan_parse_context`
+ * Fix symbol visibility when compiling as a shared library
+ * Add compatibility with fast_float v7 and v8
 
 ## 4.0.1
 

@@ -113,7 +113,7 @@ set_target_properties(
         scn PROPERTIES
         VERSION 4.0.1
         SOVERSION 4.0.1
-        PUBLIC_HEADER "${SCN_PUBLIC_HEADERS}"
+        PUBLIC_HEADER "${SCN_PUBLIC_HEADERS};${SCN_EXPORT_HEADER}"
 )
 add_library(scn::scn ALIAS scn)
 

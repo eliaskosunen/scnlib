@@ -40,12 +40,22 @@ void run(const uint8_t* data, size_t size)
 
     const auto inputs = make_input_views(data, size);
 
-    const auto f = format_strings_type<char>{"{}",     "{:L}",   "{:s}",
-                                             "{:64c}", "{:64U}", "{:[A-Za-z]}"};
+    auto f = format_strings_type<char>{"{}",     "{:L}",   "{:s}",
+                                       "{:64c}", "{:64U}", "{:[A-Za-z]}"};
+#if !SCN_DISABLE_REGEX
+    f.push_back("{:/A-Za-z/}");
+    f.push_back("{:/:alnum:/}");
+    f.push_back("{:/(.*?)/}");
+#endif
     do_basic_run(inputs.narrow, f);
 
-    const auto wf = format_strings_type<wchar_t>{
+    auto wf = format_strings_type<wchar_t>{
         L"{}", L"{:L}", L"{:s}", L"{:64c}", L"{:64U}", L"{:[A-Za-z]}"};
+#if !SCN_DISABLE_REGEX
+    wf.push_back(L"{:/A-Za-z/}");
+    wf.push_back(L"{:/:alnum:/}");
+    wf.push_back(L"{:/(.*?)/}");
+#endif
     do_basic_run(inputs.wide_copied, wf);
     do_basic_run(inputs.wide_reinterpreted, wf);
     if (!inputs.wide_transcoded.empty()) {
