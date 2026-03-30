@@ -514,14 +514,51 @@ inline int count_trailing_zeroes(uint64_t val)
 #elif SCN_POSIX
     return ::ctzll(val);
 #else
-#define SCN_HAS_BITS_CTZ 0
-    SCN_EXPECT(false);
-    SCN_UNREACHABLE;
+#define SCN_HAS_NATIVE_BITS_CTZ_IMPL 0
+    int ret{};
+    std::uint64_t mask{1};
+    while ((val & mask) == 0) {
+        mask <<= 1;
+        ++ret;
+    }
+    return ret;
 #endif
 }
 
-#ifndef SCN_HAS_BITS_CTZ
-#define SCN_HAS_BITS_CTZ 1
+inline int count_leading_zeroes(uint64_t val)
+{
+    SCN_EXPECT(val != 0);
+#if SCN_HAS_BITOPS
+    return std::countl_zero(val);
+#elif SCN_GCC_COMPAT
+    return __builtin_clzll(val);
+#elif SCN_MSVC && SCN_WINDOWS_64BIT
+    DWORD ret{};
+    _BitScanReverse(&ret, val);
+    return static_cast<int>(ret);
+#elif SCN_MSVC && !SCN_WINDOWS_64BIT
+    DWORD ret{};
+    if (_BitScanReverse(&ret, static_cast<uint32_t>(val >> 32))) {
+        return static_cast<int>(ret);
+    }
+
+    _BitScanReverse(&ret, static_cast<uint32_t>(val));
+    return static_cast<int>(ret + 32);
+#elif SCN_POSIX
+    return ::clzll(val);
+#else
+    int ret{};
+    std::uint64_t mask = 1ull << 63ull;
+    while ((val & mask) == 0) {
+        mask >>= 1;
+        ++ret;
+    }
+    return ret;
+#endif
+}
+
+#ifndef SCN_HAS_NATIVE_BITS_IMPL
+#define SCN_HAS_NATIVE_BITS_IMPL 1
 #endif
 
 constexpr uint64_t has_zero_byte(uint64_t word)

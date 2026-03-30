@@ -194,25 +194,31 @@ protected:
 
 #if SCN_HAS_STD_F16 || SCN_HAS_STD_F32 || SCN_HAS_STD_F64 || \
     SCN_HAS_STD_F128 || SCN_HAS_STD_BF16
-        T tmp_reader{};
-        float_type value{};
+        if constexpr (!std::is_same_v<float_type, float> &&
+                      !std::is_same_v<float_type, double> &&
+                      !std::is_same_v<float_type, long double>) {
+            T tmp_reader{};
+            float_type value{};
 
-        auto result = [&]() {
-            if constexpr (is_char) {
-                return tmp_reader.read_default("42.0"sv, value);
-            }
-            else {
-                return tmp_reader.read_default(L"42.0"sv, value);
-            }
-        }();
+            auto result = [&]() {
+                if constexpr (is_char) {
+                    return tmp_reader.read_default("42.0"sv, value);
+                }
+                else {
+                    return tmp_reader.read_default(L"42.0"sv, value);
+                }
+            }();
 
-        if (!result) {
-            if (result.error().code() == scn::scan_error::type_not_supported) {
-                GTEST_SKIP() << "Type not supported";
+            if (!result) {
+                if (result.error().code() ==
+                    scn::scan_error::type_not_supported) {
+                    GTEST_SKIP() << "Type not supported";
+                }
             }
+            ASSERT_TRUE(result);
+            ASSERT_TRUE(
+                check_floating_eq(value, static_cast<float_type>(42.0)));
         }
-        ASSERT_TRUE(result);
-        ASSERT_TRUE(check_floating_eq(value, static_cast<float_type>(42.0)));
 #endif
     }
 
