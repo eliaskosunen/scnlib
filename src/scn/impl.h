@@ -4249,6 +4249,535 @@ public:
 };
 
 /////////////////////////////////////////////////////////////////
+// Custom floating-point parser
+/////////////////////////////////////////////////////////////////
+
+struct uint128_polyfill {
+    SCN_GCC_PUSH
+    SCN_GCC_IGNORE("-Wreorder")
+
+    SCN_CLANG_PUSH
+    SCN_CLANG_IGNORE("-Wreorder-ctor")
+
+#if !SCN_IS_BIG_ENDIAN
+    std::uint64_t low;
+    std::uint64_t high;
+#else
+    std::uint64_t high;
+    std::uint64_t low;
+#endif
+
+    uint128_polyfill() = default;
+
+    uint128_polyfill(std::uint64_t x) : high(0), low(x) {}
+
+#if SCN_HAS_INT128
+    uint128_polyfill(uint128 x)
+        : high(static_cast<std::uint64_t>(x >> 64)),
+          low(static_cast<std::uint64_t>(x))
+    {
+    }
+#endif
+
+    SCN_CLANG_POP  // -Wreorder-ctor
+    SCN_GCC_POP  // -Wreorder
+};
+
+SCN_GCC_PUSH
+SCN_GCC_IGNORE("-Wconversion")
+
+template <typename F>
+struct float_traits_impl_f32 {
+    using type = F;
+    // can hold the entire value (incl. padding)
+    using int_type = std::uint32_t;
+    // can hold the significand/nan payload (only)
+    using significand_int_type = std::uint32_t;
+
+    static constexpr unsigned exponent_bits = 8;
+    static constexpr unsigned significand_bits = 23;
+    static constexpr unsigned fraction_bits = significand_bits;
+
+    struct value_repr {
+#if !SCN_IS_BIG_ENDIAN
+        unsigned significand : 23;
+        unsigned exponent : 8;
+        unsigned sign : 1;
+#else
+        unsigned sign : 1;
+        unsigned exponent : 8;
+        unsigned significand : 23;
+#endif
+
+        void apply_significand(significand_int_type s)
+        {
+            significand = s;
+        }
+    };
+
+    static constexpr unsigned nan_payload_bits = 22;
+
+    struct nan_repr {
+#if !SCN_IS_BIG_ENDIAN
+        unsigned payload : 22;
+        unsigned quiet_nan : 1;
+        unsigned exponent : 8;
+        unsigned sign : 1;
+#else
+        unsigned sign : 1;
+        unsigned exponent : 8;
+        unsigned quiet_nan : 1;
+        unsigned payload : 22;
+#endif
+
+        void apply_payload(significand_int_type p)
+        {
+            SCN_EXPECT(quiet_nan == 1);
+            SCN_EXPECT(exponent == (1u << exponent_bits) - 1u);
+            payload = p;
+        }
+    };
+};
+
+template <typename F>
+struct float_traits_impl_f64 {
+    using type = F;
+    using int_type = std::uint64_t;
+    using significand_int_type = std::uint64_t;
+
+    static constexpr unsigned exponent_bits = 11;
+    static constexpr unsigned significand_bits = 52;
+    static constexpr unsigned fraction_bits = significand_bits;
+
+    struct value_repr {
+#if !SCN_IS_BIG_ENDIAN && !SCN_IS_FLOAT_BIG_ENDIAN
+        unsigned significand1 : 32;
+        unsigned significand0 : 20;
+        unsigned exponent : 11;
+        unsigned sign : 1;
+#elif !SCN_IS_BIG_ENDIAN && SCN_IS_FLOAT_BIG_ENDIAN
+        unsigned significand0 : 20;
+        unsigned exponent : 11;
+        unsigned sign : 1;
+        unsigned significand1 : 32;
+#else
+        unsigned sign : 1;
+        unsigned exponent : 11;
+        unsigned significand0 : 20;
+        unsigned significand1 : 32;
+#endif
+
+        void apply_significand(significand_int_type s)
+        {
+            significand0 = static_cast<unsigned>(s >> 32);
+            significand1 = static_cast<unsigned>(s);
+        }
+    };
+
+    static constexpr unsigned nan_payload_bits = 51;
+
+    struct nan_repr {
+#if !SCN_IS_BIG_ENDIAN && !SCN_IS_FLOAT_BIG_ENDIAN
+        unsigned payload1 : 32;
+        unsigned payload0 : 19;
+        unsigned quiet_nan : 1;
+        unsigned exponent : 11;
+        unsigned sign : 1;
+#elif !SCN_IS_BIG_ENDIAN && SCN_IS_FLOAT_BIG_ENDIAN
+        unsigned payload0 : 20;
+        unsigned quiet_nan : 1;
+        unsigned exponent : 11;
+        unsigned sign : 1;
+        unsigned payload1 : 32;
+#else
+        unsigned sign : 1;
+        unsigned exponent : 11;
+        unsigned quiet_nan : 1;
+        unsigned payload0 : 20;
+        unsigned payload1 : 32;
+#endif
+
+        void apply_payload(significand_int_type p)
+        {
+            SCN_EXPECT(quiet_nan == 1);
+            SCN_EXPECT(exponent == (1u << exponent_bits) - 1u);
+            payload0 = static_cast<unsigned>(p >> 32);
+            payload1 = static_cast<unsigned>(p);
+        }
+    };
+};
+
+template <typename F>
+struct float_traits_impl_f80 {
+    using type = F;
+    using int_type = uint128_polyfill;
+    using significand_int_type = std::uint64_t;
+
+    static constexpr unsigned exponent_bits = 15;
+    static constexpr unsigned significand_bits = 64;
+    static constexpr unsigned fraction_bits = significand_bits - 1;
+
+    struct value_repr {
+#if !SCN_IS_BIG_ENDIAN && !SCN_IS_FLOAT_BIG_ENDIAN
+        unsigned significand1 : 32;
+        unsigned significand0 : 31;
+        unsigned one : 1;
+        unsigned exponent : 15;
+        unsigned sign : 1;
+#elif !SCN_IS_BIG_ENDIAN && SCN_IS_FLOAT_BIG_ENDIAN
+        unsigned exponent : 11;
+        unsigned sign : 1;
+        unsigned padding : 16;
+        unsigned significand0 : 31;
+        unsigned one : 1;
+        unsigned significand1 : 32;
+#else
+        unsigned padding : 16;
+        unsigned sign : 1;
+        unsigned exponent : 15;
+        unsigned one : 1;
+        unsigned significand0 : 31;
+        unsigned significand1 : 32;
+#endif
+
+        void apply_significand(significand_int_type s)
+        {
+            significand0 = static_cast<unsigned>(s >> 32);
+            significand1 = static_cast<unsigned>(s);
+        }
+    };
+
+    static constexpr unsigned nan_payload_bits = 62;
+
+    struct nan_repr {
+#if !SCN_IS_BIG_ENDIAN && !SCN_IS_FLOAT_BIG_ENDIAN
+        unsigned payload1 : 32;
+        unsigned payload0 : 30;
+        unsigned quiet_nan : 1;
+        unsigned one : 1;
+        unsigned exponent : 15;
+        unsigned sign : 1;
+#elif !SCN_IS_BIG_ENDIAN && SCN_IS_FLOAT_BIG_ENDIAN
+        unsigned exponent : 15;
+        unsigned sign : 1;
+        unsigned padding : 16;
+        unsigned payload0 : 30;
+        unsigned quiet_nan : 1;
+        unsigned one : 1;
+        unsigned payload1 : 32;
+#else
+        unsigned padding : 16;
+        unsigned sign : 1;
+        unsigned exponent : 15;
+        unsigned one : 1;
+        unsigned quiet_nan : 1;
+        unsigned payload0 : 30;
+        unsigned payload1 : 32;
+#endif
+
+        void apply_payload(significand_int_type p)
+        {
+            SCN_EXPECT(quiet_nan == 1);
+            SCN_EXPECT(exponent == (1u << exponent_bits) - 1u);
+            payload0 = static_cast<unsigned>(p >> 32);
+            payload1 = static_cast<unsigned>(p);
+        }
+    };
+};
+
+template <typename F>
+struct float_traits_impl_f128 {
+    using type = F;
+    using int_type = uint128_polyfill;
+    using significand_int_type = uint128_polyfill;
+
+    static constexpr unsigned exponent_bits = 15;
+    static constexpr unsigned significand_bits = 112;
+    static constexpr unsigned fraction_bits = significand_bits;
+
+    struct value_repr {
+#if !SCN_IS_BIG_ENDIAN && !SCN_IS_FLOAT_BIG_ENDIAN
+        unsigned significand3 : 32;
+        unsigned significand2 : 32;
+        unsigned significand1 : 32;
+        unsigned significand0 : 16;
+        unsigned exponent : 15;
+        unsigned sign : 1;
+#elif !SCN_IS_BIG_ENDIAN && SCN_IS_FLOAT_BIG_ENDIAN
+        unsigned significand0 : 16;
+        unsigned exponent : 15;
+        unsigned sign : 1;
+        unsigned significand1 : 32;
+        unsigned significand2 : 32;
+        unsigned significand3 : 32;
+#else
+        unsigned sign : 1;
+        unsigned exponent : 15;
+        unsigned significand0 : 16;
+        unsigned significand1 : 32;
+        unsigned significand2 : 32;
+        unsigned significand3 : 32;
+#endif
+
+        void apply_significand(significand_int_type s)
+        {
+            significand0 = static_cast<unsigned>(s.high >> 32);
+            significand1 = static_cast<unsigned>(s.high);
+            significand2 = static_cast<unsigned>(s.low >> 32);
+            significand3 = static_cast<unsigned>(s.low);
+        }
+    };
+
+    static constexpr unsigned nan_payload_bits = 111;
+
+    struct nan_repr {
+#if !SCN_IS_BIG_ENDIAN && !SCN_IS_FLOAT_BIG_ENDIAN
+        unsigned payload3 : 32;
+        unsigned payload2 : 32;
+        unsigned payload1 : 32;
+        unsigned payload0 : 15;
+        unsigned quiet_nan : 1;
+        unsigned exponent : 15;
+        unsigned sign : 1;
+#elif !SCN_IS_BIG_ENDIAN && SCN_IS_FLOAT_BIG_ENDIAN
+        unsigned payload0 : 15;
+        unsigned quiet_nan : 1;
+        unsigned exponent : 15;
+        unsigned sign : 1;
+        unsigned payload1 : 32;
+        unsigned payload2 : 32;
+        unsigned payload3 : 32;
+#else
+        unsigned sign : 1;
+        unsigned exponent : 15;
+        unsigned quiet_nan : 1;
+        unsigned payload0 : 15;
+        unsigned payload1 : 32;
+        unsigned payload2 : 32;
+        unsigned payload3 : 32;
+#endif
+
+        void apply_payload(significand_int_type p)
+        {
+            SCN_EXPECT(quiet_nan == 1);
+            SCN_EXPECT(exponent == (1u << exponent_bits) - 1u);
+            payload0 = static_cast<unsigned>(p.high >> 32);
+            payload1 = static_cast<unsigned>(p.high);
+            payload2 = static_cast<unsigned>(p.low >> 32);
+            payload3 = static_cast<unsigned>(p.low);
+        }
+    };
+};
+
+template <typename F>
+struct float_traits_impl_doubledouble {
+    using type = F;
+    using int_type = uint128_polyfill;
+    using significand_int_type = uint128_polyfill;
+
+    using base = float_traits_impl_f64<double>;
+
+    static constexpr unsigned exponent_bits = base::exponent_bits * 2;
+    static constexpr unsigned significand_bits = base::significand_bits * 2;
+    static constexpr unsigned fraction_bits = base::fraction_bits * 2;
+
+    struct value_repr {
+        base::value_repr high;
+        base::value_repr low;
+
+        void apply_significand(significand_int_type s)
+        {
+            high.apply_significand(
+                static_cast<base::significand_int_type>(s.high));
+            low.apply_significand(
+                static_cast<base::significand_int_type>(s.low));
+        }
+    };
+
+    static constexpr unsigned nan_payload_bits = base::nan_payload_bits * 2;
+
+    struct nan_repr {
+        base::nan_repr high;
+        base::nan_repr low;
+
+        void apply_payload(significand_int_type p)
+        {
+            high.apply_payload(static_cast<base::significand_int_type>(p.high));
+            low.apply_payload(static_cast<base::significand_int_type>(p.low));
+        }
+    };
+};
+
+template <typename F>
+struct float_traits_impl_f16 {
+    using type = F;
+    using int_type = std::uint16_t;
+    using significand_int_type = std::uint16_t;
+
+    static constexpr unsigned exponent_bits = 5;
+    static constexpr unsigned significand_bits = 10;
+    static constexpr unsigned fraction_bits = significand_bits;
+
+    struct value_repr {
+#if !SCN_IS_BIG_ENDIAN
+        unsigned significand : 10;
+        unsigned exponent : 5;
+        unsigned sign : 1;
+#else
+        unsigned sign : 1;
+        unsigned exponent : 5;
+        unsigned significand : 10;
+#endif
+
+        void apply_significand(significand_int_type s)
+        {
+            significand = s;
+        }
+    };
+
+    static constexpr unsigned nan_payload_bits = 9;
+
+    struct nan_repr {
+#if !SCN_IS_BIG_ENDIAN
+        unsigned payload : 9;
+        unsigned quiet_nan : 1;
+        unsigned exponent : 5;
+        unsigned sign : 1;
+#else
+        unsigned sign : 1;
+        unsigned exponent : 5;
+        unsigned quiet_nan : 1;
+        unsigned payload : 9;
+#endif
+
+        void apply_payload(significand_int_type p)
+        {
+            SCN_EXPECT(quiet_nan == 1);
+            SCN_EXPECT(exponent == (1u << exponent_bits) - 1u);
+            payload = p;
+        }
+    };
+};
+
+template <typename F>
+struct float_traits_impl_bf16 {
+    using type = F;
+    using int_type = std::uint16_t;
+    using significand_int_type = std::uint8_t;
+
+    static constexpr unsigned exponent_bits = 8;
+    static constexpr unsigned significand_bits = 7;
+    static constexpr unsigned fraction_bits = significand_bits;
+
+    struct value_repr {
+#if !SCN_IS_BIG_ENDIAN
+        unsigned significand : 7;
+        unsigned exponent : 8;
+        unsigned sign : 1;
+#else
+        unsigned sign : 1;
+        unsigned exponent : 8;
+        unsigned significand : 7;
+#endif
+
+        void apply_significand(significand_int_type s)
+        {
+            significand = s;
+        }
+    };
+
+    static constexpr unsigned nan_payload_bits = 6;
+
+    struct nan_repr {
+#if !SCN_IS_BIG_ENDIAN
+        unsigned payload : 6;
+        unsigned quiet_nan : 1;
+        unsigned exponent : 8;
+        unsigned sign : 1;
+#else
+        unsigned sign : 1;
+        unsigned exponent : 8;
+        unsigned quiet_nan : 1;
+        unsigned payload : 6;
+#endif
+
+        void apply_payload(significand_int_type p)
+        {
+            SCN_EXPECT(quiet_nan == 1);
+            SCN_EXPECT(exponent == (1u << exponent_bits) - 1u);
+            payload = p;
+        }
+    };
+};
+
+template <typename...>
+struct float_traits_impl_none {};
+
+template <typename F>
+struct float_traits;
+
+template <>
+struct float_traits<float> : float_traits_impl_f32<float> {};
+
+template <>
+struct float_traits<double> : float_traits_impl_f64<double> {};
+
+template <>
+struct float_traits<long double>
+    : detail::mp_cond<
+          // long double is equivalent to a double,
+          // true on (non-mingw) Windows, Arm32, and Apple Arm64
+          detail::mp_bool<sizeof(double) == sizeof(long double)>,
+          detail::mp_defer<float_traits_impl_f64, long double>,
+          // x87 long double, on non-Windows x86
+          detail::mp_bool<std::numeric_limits<long double>::digits == 64>,
+          detail::mp_defer<float_traits_impl_f80, long double>,
+          // binary128 long double,
+          // true on non-Apple non-Windows Arm64
+          detail::mp_bool<std::numeric_limits<long double>::digits == 113>,
+          detail::mp_defer<float_traits_impl_f128, long double>,
+          // double-double (two regular doubles next to each other),
+          // true on PowerPC
+          detail::mp_bool<std::numeric_limits<long double>::digits == 106>,
+          detail::mp_defer<float_traits_impl_doubledouble, long double>,
+          // Exotic long double, no payload setting support
+          std::true_type,
+          detail::mp_defer<float_traits_impl_none>>::type {};
+
+#if SCN_HAS_STD_F16
+template <>
+struct float_traits<std::float16_t> : float_traits_impl_f16<std::float16_t> {};
+#endif
+
+#if SCN_HAS_STD_F32
+template <>
+struct float_traits<std::float32_t> : float_traits_impl_f32<std::float32_t> {};
+#endif
+
+#if SCN_HAS_STD_F64
+template <>
+struct float_traits<std::float64_t> : float_traits_impl_f64<std::float64_t> {};
+#endif
+
+#if SCN_HAS_STD_F128
+template <>
+struct float_traits<std::float128_t> : float_traits_impl_f128<std::float128_t> {
+};
+#endif
+
+#if SCN_HAS_STD_BF16
+template <>
+struct float_traits<std::bfloat16_t> : float_traits_impl_bf16<std::bfloat16_t> {
+};
+#endif
+
+SCN_GCC_POP  // -Wconversion
+
+    namespace
+{
+}
+
+/////////////////////////////////////////////////////////////////
 // Floating-point reader
 /////////////////////////////////////////////////////////////////
 
