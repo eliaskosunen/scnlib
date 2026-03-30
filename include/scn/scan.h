@@ -6946,14 +6946,17 @@ auto impl(const std::basic_string<CharT, Traits, Allocator>& r,
     }
 }
 
-// String literals:
-// CharT(&)[] -> string_buffer
+// String literals (CharT(&)[N]) -> string_buffer
+// If N != 0, and the last char is null, assume null-termination and drop it
 template <typename CharT,
           std::size_t N,
           std::enable_if_t<is_valid_char_type<CharT>>* = nullptr>
 auto impl(const CharT (&r)[N], priority_tag<3>) noexcept
 {
-    return std::basic_string_view<CharT>{r, N - 1};
+    if (N != 0 && r[N - 1] == 0) {
+        return std::basic_string_view<CharT>{r, N - 1};
+    }
+    return std::basic_string_view<CharT>{r, N};
 }
 
 // FILE* -> file_buffer
