@@ -19,7 +19,6 @@
 #include <scn/impl.h>
 #include <scn/istream.h>
 
-#include <cfenv>
 #include <mutex>
 
 #if !SCN_DISABLE_LOCALE
@@ -571,6 +570,450 @@ struct impl_init_data {
 };
 
 ////////////////////////////////////////////////////////////////////
+// Custom implementation using Simple Decimal Conversion
+// Fallback for all CharT and FloatT
+////////////////////////////////////////////////////////////////////
+
+template <typename CharT, typename T>
+struct sdc_impl {
+    sdc_impl(impl_init_data<CharT>& data) : m_data(data) {}
+
+    template <typename F>
+    scan_expected<std::ptrdiff_t> operator()(T& value, F&&)
+    {
+        float_rounding_guard guard{};
+
+        auto input = m_data.input.view();
+        SCN_EXPECT(!input.empty());
+
+        if (m_data.kind == float_reader_base::float_kind::hex_with_prefix) {
+            if (!(m_data.options & float_reader_base::allow_hex)) {
+                return detail::unexpected_scan_error(
+                    scan_error::invalid_scanned_value,
+                    "Scanned a hexfloat, which was not allowed");
+            }
+            auto r = parse_hexfloat(value, input.substr(2));
+            if (r) {
+                return *r + 2;
+            }
+            return unexpected(r.error());
+        }
+        if (m_data.kind == float_reader_base::float_kind::hex_without_prefix) {
+            if (!(m_data.options & float_reader_base::allow_hex)) {
+                return detail::unexpected_scan_error(
+                    scan_error::invalid_scanned_value,
+                    "Scanned a hexfloat, which was not allowed");
+            }
+            return parse_hexfloat(value, input);
+        }
+
+        if (!(m_data.options & float_reader_base::allow_fixed) &&
+            !(m_data.options & float_reader_base::allow_scientific)) {
+            return detail::unexpected_scan_error(
+                scan_error::invalid_scanned_value,
+                "Expected a hexfloat, didn't scan one");
+        }
+
+        return parse_decfloat(
+            value, input, std::invoke([&] noexcept {
+                if (m_data.options & float_reader_base::allow_fixed &&
+                    m_data.options & float_reader_base::allow_scientific) {
+                    return exponent_flag::allow;
+                }
+                if (m_data.options & float_reader_base::allow_fixed) {
+                    return exponent_flag::disallow;
+                }
+                if (m_data.options & float_reader_base::allow_scientific) {
+                    return exponent_flag::require;
+                }
+                SCN_EXPECT(false);
+                SCN_UNREACHABLE;
+            }));
+    }
+
+private:
+    using parts = float_parts<CharT>;
+
+    enum class exponent_flag {
+        disallow,
+        allow,
+        require,
+    };
+
+    static scan_expected<std::ptrdiff_t> parse_decfloat(
+        T& value,
+        std::basic_string_view<CharT> input,
+        exponent_flag exp)
+    {
+        auto p = parse_dec_parts(input, exp);
+        if (!p) {
+            return detail::unexpected_scan_error(
+                scan_error::invalid_scanned_value, "Invalid float format");
+        }
+
+        high_precision_decimal hpd{};
+        if (auto res = high_precision_decimal::populate(hpd, *p); !res) {
+            return unexpected(res.error());
+        }
+        if (auto res = simple_decimal_conversion(value, hpd); !res) {
+            return unexpected(res.error());
+        }
+
+        return std::distance(input.begin(), p->end);
+    }
+
+    static scan_expected<std::ptrdiff_t> parse_hexfloat(
+        T& value,
+        std::basic_string_view<CharT> input)
+    {
+        auto p = parse_hex_parts(input);
+        if (!p) {
+            return detail::unexpected_scan_error(
+                scan_error::invalid_scanned_value, "Invalid hexfloat format");
+        }
+
+        using significand_int_type =
+            typename float_traits<T>::significand_int_type;
+        // The entire significand, including a leading "1.",
+        // must be storable in `significand_int_type`
+        static_assert(float_traits<T>::fraction_bits + 1 <=
+                          sizeof(significand_int_type) * 8,
+                      "");
+
+        // Parse all hex digits (before and after the radix point) into
+        // hex_sig, an integer in significand_int_type, maintaining the
+        // invariant:
+        //   actual_value ≈ hex_sig * 2^exp2
+        // with sticky capturing any non-zero bits dropped below hex_sig.
+        //
+        // When hex_sig is full (top 4 bits non-zero), further digits are less
+        // significant: they go to sticky, and exp2 is incremented by 4 to
+        // keep the invariant.
+
+        static constexpr auto total_bits =
+            static_cast<int>(sizeof(significand_int_type) * 8);
+        significand_int_type significand{0u};
+        int dropped_significand_digits{};
+        bool sticky = false;
+
+        auto add_digit = [&](uint8_t d) {
+            if ((significand >> static_cast<unsigned>(total_bits - 4)) !=
+                significand_int_type{0u}) {
+                // significand is full, this digit is a dropped lower-order bit
+                sticky |= (d != 0);
+                ++dropped_significand_digits;
+            }
+            else {
+                significand <<= significand_int_type{4u};
+                significand |= significand_int_type{d};
+            }
+        };
+        for (CharT c : p->before_radix_point) {
+            add_digit(char_to_int(c));
+        }
+        for (CharT c : p->after_radix_point) {
+            add_digit(char_to_int(c));
+        }
+
+        // Handle zero
+        if (significand == significand_int_type{0u}) {
+            value = static_cast<T>(0.0);
+            return std::distance(input.begin(), p->end);
+        }
+
+        // Handle explicit binary exponent
+        int binary_exponent = 0;
+        if (!p->exponent.empty()) {
+            auto exp_opt = parse_exponent(p->exponent, p->exponent_positive);
+            if (!exp_opt) {
+                return detail::unexpected_scan_error(
+                    scan_error::invalid_scanned_value,
+                    "Invalid hexfloat binary exponent");
+            }
+            binary_exponent = *exp_opt;
+        }
+
+        auto exp2 = binary_exponent -
+                    4 * static_cast<int>(p->after_radix_point.size()) +
+                    4 * dropped_significand_digits;
+
+        // Normalize value to 1.fraction * 2^exponent (for normal values)
+        //
+        // Find bit-width of significand: MSB is at bit position N-1.
+        // value
+        //   = hex_sig * 2^exp2
+        //   = (1 + frac/2^(N - 1)) * 2^(N - 1 + exp2)
+        const auto N = total_bits -
+                       static_cast<unsigned>(count_leading_zeroes(significand));
+
+        static constexpr int exp_bias =
+            (1 << (float_traits<T>::exponent_bits - 1)) - 1;
+        static constexpr int fraction_bits = float_traits<T>::fraction_bits;
+        static constexpr int max_biased_exp =
+            (1 << float_traits<T>::exponent_bits) - 1;
+
+        auto biased_exp = static_cast<int>(N) - 1 + exp2 + exp_bias;
+
+        // Check for overflow (value too large → infinity)
+        if (biased_exp >= max_biased_exp) {
+            return detail::unexpected_scan_error(
+                scan_error::value_positive_overflow,
+                "Hexfloat value too large");
+        }
+
+        // Step 5: Truncate and/or round the fraction to fit in the value.
+        //
+        // Right-shift `val` by `n` bits with round-to-nearest-even.
+        // Any bits shifted away are OR-ed into the outer `sticky` flag.
+        auto right_shift_round = [&](significand_int_type val, unsigned n) {
+            SCN_EXPECT(n >= 1 && n < total_bits);
+            const auto round_bit =
+                static_cast<bool>((val >> (n - 1)) & significand_int_type{1u});
+            if (n >= 2) {
+                const auto sticky_mask = (significand_int_type{1u} << (n - 1)) -
+                                         significand_int_type{1u};
+                sticky |= (val & sticky_mask);
+            }
+            auto result = val >> n;
+            if (round_bit && (sticky || (result & significand_int_type{1u}))) {
+                result += significand_int_type{1u};
+            }
+            return static_cast<significand_int_type>(result);
+        };
+
+        if (biased_exp > 0) {
+            // Normal: strip the implicit leading 1, then shift the remaining
+            // N-1 fraction bits to fill the fraction_bits field.
+            significand ^= significand_int_type{1u}
+                           << (N - 1);
+
+            const int shift = static_cast<int>(N) - 1 - fraction_bits;
+            if (shift > 0) {
+                significand = right_shift_round(significand,
+                                                static_cast<unsigned>(shift));
+                // If rounding carried out of the fraction field, adjust
+                if (significand == (significand_int_type{1u}
+                                    << static_cast<unsigned>(fraction_bits))) {
+                    significand = significand_int_type{0u};
+                    if (++biased_exp >= max_biased_exp) {
+                        return detail::unexpected_scan_error(
+                            scan_error::value_positive_overflow,
+                            "Hexfloat value too large after rounding");
+                    }
+                }
+            }
+            else {
+                significand <<= static_cast<unsigned>(-shift);
+            }
+        }
+        else {
+            // Subnormal (biased_exp <= 0): shift the full significand
+            // (including the leading 1) to fill the fraction_bits field.
+            // significand_stored = significand * 2^(biased_exp + fraction_bits
+            // - N)
+            const int e_shift =
+                biased_exp + fraction_bits - static_cast<int>(N);
+            biased_exp = 0;  // subnormals are stored with biased_exp = 0
+
+            if (e_shift < 0) {
+                const auto shift = static_cast<unsigned>(-e_shift);
+                if (shift >= total_bits) {
+                    return detail::unexpected_scan_error(
+                        scan_error::value_positive_underflow,
+                        "Hexfloat value too small");
+                }
+                significand = right_shift_round(significand, shift);
+                // If rounding carried up to the minimum normal, adjust
+                if (significand == (significand_int_type{1u}
+                                    << static_cast<unsigned>(fraction_bits))) {
+                    significand = significand_int_type{0u};
+                    biased_exp = 1;
+                }
+            }
+            else {
+                significand <<= static_cast<unsigned>(e_shift);
+            }
+
+            if (significand == significand_int_type{0u} && biased_exp == 0) {
+                return detail::unexpected_scan_error(
+                    scan_error::value_positive_underflow,
+                    "Hexfloat value rounds to zero");
+            }
+        }
+
+        typename float_traits<T>::value_repr repr{};
+        SCN_ENSURE(biased_exp >= 0);
+        repr.apply_exponent(biased_exp);
+        repr.apply_significand(significand);
+        std::memcpy(&value, &repr, sizeof(repr));
+
+        return std::distance(input.begin(), p->end);
+    }
+
+    static std::optional<int> parse_exponent(
+        std::basic_string_view<CharT> input,
+        bool is_positive)
+    {
+        if (input.empty()) {
+            return 0;
+        }
+
+        int value{};
+        auto r = parse_integer_value(
+            input, value,
+            is_positive ? sign_type::plus_sign : sign_type::minus_sign, 10);
+        if (!r || *r != input.end()) {
+            return std::nullopt;
+        }
+        SCN_ENSURE(r.value() == input.end());
+        return value;
+    }
+
+    template <int Base, CharT ExpLowerCase, CharT ExpUpperCase>
+    static std::optional<parts> parse_parts(std::basic_string_view<CharT> input,
+                                            exponent_flag expflag)
+    {
+        SCN_EXPECT(!input.empty());
+        auto it = input.begin();
+
+        parts p{};
+
+        // Skip leading zeroes
+        bool got_digits = false;
+        for (; it != input.end() && *it == CharT{'0'}; ++it) {
+            got_digits = true;
+        }
+        if (it == input.end()) {
+            p.end = it;
+            p.before_radix_point = input.substr(0, 1);
+            SCN_ENSURE(p.before_radix_point.front() == CharT{'0'});
+            return p;
+        }
+        const auto beg = it;
+
+        bool got_radix_point = false;
+        if (*it == CharT{'.'}) {
+            p.before_radix_point =
+                detail::make_string_view_from_iterators<CharT>(it, it);
+            got_radix_point = true;
+            ++it;
+        }
+        if (it == input.end()) {
+            p.end = it;
+            p.before_radix_point = input.substr(0, 1);
+            SCN_ENSURE(p.before_radix_point.front() == CharT{'0'});
+            return p;
+        }
+
+        for (; it != input.end(); ++it) {
+            if (*it == CharT{'.'}) {
+                if (got_radix_point) {
+                    break;
+                }
+                got_radix_point = true;
+                p.before_radix_point =
+                    detail::make_string_view_from_iterators<CharT>(beg, it);
+                p.after_radix_point =
+                    detail::make_string_view_from_iterators<CharT>(it + 1,
+                                                                   it + 1);
+                continue;
+            }
+            if (auto d = char_to_int(*it); d < Base) {
+                got_digits = true;
+                continue;
+            }
+            break;
+        }
+        if (!got_digits) {
+            return std::nullopt;
+        }
+        if (!got_radix_point) {
+            p.before_radix_point =
+                detail::make_string_view_from_iterators<CharT>(beg, it);
+        }
+        else {
+            p.after_radix_point =
+                detail::make_string_view_from_iterators<CharT>(
+                    std::next(p.before_radix_point.end()), it);
+        }
+        if (it == input.end()) {
+            if (expflag == exponent_flag::require) {
+                return std::nullopt;
+            }
+            p.end = it;
+            return p;
+        }
+
+        if (expflag != exponent_flag::disallow &&
+            (*it == ExpLowerCase || *it == ExpUpperCase)) {
+            ++it;
+            if (it == input.end()) {
+                p.end = --it;
+                return p;
+            }
+
+            if (*it == CharT{'+'}) {
+                ++it;
+                if (it == input.end()) {
+                    p.end = it - 2;
+                    return p;
+                }
+            }
+            else if (*it == CharT{'-'}) {
+                ++it;
+                if (it == input.end()) {
+                    p.end = it - 2;
+                    return p;
+                }
+                p.exponent_positive = false;
+            }
+            const auto exp_begin = it;
+
+            for (; it != input.end() && char_to_int(*it) < Base; ++it) {}
+            if (it == exp_begin) {
+                p.end = it - 2;
+                return p;
+            }
+            p.exponent =
+                detail::make_string_view_from_iterators<CharT>(exp_begin, it);
+        }
+        p.end = it;
+
+        if (expflag == exponent_flag::require && p.exponent.empty()) {
+            return std::nullopt;
+        }
+
+        return p;
+    }
+
+    static std::optional<parts> parse_dec_parts(
+        std::basic_string_view<CharT> input,
+        exponent_flag exp)
+    {
+        return parse_parts<10, CharT{'e'}, CharT{'E'}>(input, exp);
+    }
+
+    static std::optional<parts> parse_hex_parts(
+        std::basic_string_view<CharT> input)
+    {
+        return parse_parts<16, CharT{'p'}, CharT{'P'}>(input,
+                                                       exponent_flag::allow);
+    }
+
+    impl_init_data<CharT>& m_data;
+};
+
+struct sdc_impl_traits {
+    template <typename CharT, typename FloatT>
+    static constexpr bool enabled =
+        std::numeric_limits<FloatT>::is_iec559 &&
+        !std::is_base_of_v<float_traits_impl_none_base, float_traits<FloatT>>;
+
+    template <typename CharT, typename FloatT>
+    using type = sdc_impl<CharT, FloatT>;
+};
+
+////////////////////////////////////////////////////////////////////
 // strtod-based implementation
 // Fallback for all CharT and standard FloatT
 // (plus possibly float16 on glibc)
@@ -852,8 +1295,8 @@ inline constexpr bool has_charconv_for<
 
 #if SCN_STDLIB_GLIBCXX
 // libstdc++ has buggy std::from_chars for long double
-template <>
-inline constexpr bool has_charconv_for<long double, void> = false;
+// template <>
+// inline constexpr bool has_charconv_for<long double, void> = false;
 
 // libstdc++ delegates float16_t and bfloat16_t to float,
 // which will lead to erroneous over-/underflow detection
@@ -949,217 +1392,11 @@ public:
             // std::from_chars doesn't give us a way to distinguish between
             // different kinds of over-/underflow:
             // per the standard, `value` is unmodified.
-            // Do some parsing manually to try to determine what's up.
+            // Fall back to try to determine what's up.
 
-            // Get the exponent of the parsed float.
-            // This is used to grok the order of magnitude
-            // to determine whether we overflowed or underflowed.
-
-            const auto [exponent, exponent_base] =
-                [kind = m_kind,
-                 input = detail::make_string_view_from_pointers<char>(
-                     input_view.data(),
-                     result.ptr)]() mutable -> std::pair<int, int> {
-                if (kind == float_reader_base::float_kind::generic) {
-                    kind =
-                        read_until_code_unit(input,
-                                             [](char ch) {
-                                                 return ch == 'e' || ch == 'E';
-                                             }) == input.end()
-                            ? float_reader_base::float_kind::fixed
-                            : float_reader_base::float_kind::scientific;
-                }
-
-                if (kind == float_reader_base::float_kind::fixed) {
-                    // xxx.yyy
-
-                    auto decimal_point_it = read_until_code_unit(input, '.');
-                    auto whole_part =
-                        detail::make_string_view_from_iterators<char>(
-                            read_while_code_unit(input, '0'), decimal_point_it);
-
-                    if (!whole_part.empty()) {
-                        // xxx.yyy
-                        // Non-zero digits before the decimal point,
-                        // that determines the base-10 exponent
-                        return {static_cast<int>(whole_part.size()), 10};
-                    }
-
-                    auto decimal_part =
-                        detail::make_string_view_from_iterators<char>(
-                            decimal_point_it == input.end()
-                                ? decimal_point_it
-                                : decimal_point_it + 1,
-                            input.end());
-                    auto decimal_initial_zeroes_part =
-                        detail::make_string_view_from_iterators<char>(
-                            decimal_part.begin(),
-                            read_while_code_unit(decimal_part, '0'));
-
-                    // 0.000yyy
-                    // Base-10 exponent determined by number of zeroes
-                    // after the decimal point, plus one (0.y -> exponent is -1)
-                    return {-(1 + static_cast<int>(
-                                      decimal_initial_zeroes_part.size())),
-                            10};
-                }
-
-                if (kind == float_reader_base::float_kind::scientific) {
-                    // xxx.yyyEzzz
-
-                    auto exponent_it = read_until_code_unit(
-                        input, [](char ch) { return ch == 'e' || ch == 'E'; });
-                    auto significand_part =
-                        detail::make_string_view_from_iterators<char>(
-                            input.begin(), exponent_it);
-
-                    auto decimal_point_it =
-                        read_until_code_unit(significand_part, '.');
-                    auto whole_part =
-                        detail::make_string_view_from_iterators<char>(
-                            read_while_code_unit(significand_part, '0'),
-                            decimal_point_it);
-                    auto decimal_part =
-                        detail::make_string_view_from_iterators<char>(
-                            detail::to_address(decimal_point_it) ==
-                                    detail::to_address(exponent_it)
-                                ? decimal_point_it
-                                : decimal_point_it + 1,
-                            exponent_it);
-
-                    SCN_EXPECT(exponent_it != input.end());
-                    auto exponent_part =
-                        detail::make_string_view_from_iterators<char>(
-                            exponent_it + 1, input.end());
-                    int exponent_value{};
-                    if (auto r = reader_impl_for_int<char>{}.read_default(
-                            exponent_part, exponent_value, {});
-                        !r) {
-                        if (r.error() == scan_error::value_positive_overflow) {
-                            return {std::numeric_limits<int>::max(), 0};
-                        }
-                        if (r.error() == scan_error::value_negative_overflow) {
-                            return {std::numeric_limits<int>::min(), 0};
-                        }
-                        SCN_EXPECT(false);
-                        SCN_UNREACHABLE;
-                    }
-
-                    if (!whole_part.empty()) {
-                        return {static_cast<int>(whole_part.size()) +
-                                    exponent_value,
-                                10};
-                    }
-
-                    auto decimal_initial_zeroes_part =
-                        detail::make_string_view_from_iterators<char>(
-                            decimal_part.begin(),
-                            read_while_code_unit(decimal_part, '0'));
-                    return {-(1 + static_cast<int>(
-                                      decimal_initial_zeroes_part.size())) +
-                                exponent_value,
-                            10};
-                }
-
-                if (kind == float_reader_base::float_kind::hex_with_prefix ||
-                    kind == float_reader_base::float_kind::hex_without_prefix) {
-                    // xxx.yyyPzzz
-                    // Hex prefix ("0x") has been stripped previously
-                    auto exponent_it = read_until_code_unit(
-                        input, [](char ch) { return ch == 'p' || ch == 'P'; });
-                    auto significand_part =
-                        detail::make_string_view_from_iterators<char>(
-                            input.begin(), exponent_it);
-
-                    auto radix_point_it =
-                        read_until_code_unit(significand_part, '.');
-                    auto whole_part =
-                        detail::make_string_view_from_iterators<char>(
-                            read_while_code_unit(significand_part, '0'),
-                            radix_point_it);
-                    auto fractional_part =
-                        detail::make_string_view_from_iterators<char>(
-                            detail::to_address(radix_point_it) ==
-                                    detail::to_address(exponent_it)
-                                ? radix_point_it
-                                : radix_point_it + 1,
-                            exponent_it);
-
-                    SCN_EXPECT(exponent_it != input.end());
-                    auto exponent_part =
-                        detail::make_string_view_from_iterators<char>(
-                            exponent_it + 1, input.end());
-                    int exponent_value{};
-                    if (auto r = reader_impl_for_int<char>{}.read_default(
-                            exponent_part, exponent_value, {});
-                        !r) {
-                        if (r.error() == scan_error::value_positive_overflow) {
-                            return {std::numeric_limits<int>::max(), 0};
-                        }
-                        if (r.error() == scan_error::value_negative_overflow) {
-                            return {std::numeric_limits<int>::min(), 0};
-                        }
-                        SCN_EXPECT(false);
-                        SCN_UNREACHABLE;
-                    }
-
-                    if (!whole_part.empty()) {
-                        return {static_cast<int>(whole_part.size()) +
-                                    exponent_value / 8,
-                                16};
-                    }
-
-                    auto fractional_initial_zeroes_part =
-                        detail::make_string_view_from_iterators<char>(
-                            fractional_part.begin(),
-                            read_while_code_unit(fractional_part, '0'));
-                    return {-(1 + static_cast<int>(
-                                      fractional_initial_zeroes_part.size())) +
-                                exponent_value / 8,
-                            16};
-                }
-
-                SCN_EXPECT(false);
-                SCN_UNREACHABLE;
-            }();
-
-            if (exponent > 0) {
-                return detail::unexpected_scan_error(
-                    scan_error::value_positive_overflow,
-                    "std::from_chars: result_out_of_range, value too large");
-            }
-
-            // Some implementations treat subnormals as underflow.
-            // We don't want that, we consider them to be valid values.
-            // Check if the exponent we got could be a subnormal,
-            // and fall back if that's the case.
-
-            if (exponent_base == 10) {
-                if (exponent >= static_cast<int>(std::log10(
-                                    std::numeric_limits<T>::denorm_min()))) {
-                    return fallback(detail::unexpected_scan_error(
-                        scan_error::value_positive_underflow,
-                        "std::from_chars: result_out_of_range, "
-                        "value too small, possibly subnormal"));
-                }
-            }
-            if (exponent_base == 16) {
-                if (exponent >=
-                    static_cast<int>(
-                        std::log2(std::numeric_limits<T>::denorm_min()) /
-                        std::log2(static_cast<T>(16.0)))) {
-                    return fallback(detail::unexpected_scan_error(
-                        scan_error::value_positive_underflow,
-                        "std::from_chars: result_out_of_range, "
-                        "value too small, possibly subnormal"));
-                }
-            }
-
-            // Definitely smaller than the smallest subnormal,
-            // just error out.
-            return detail::unexpected_scan_error(
-                scan_error::value_positive_underflow,
-                "std::from_chars: result_out_of_range, value too small");
+            return fallback(detail::unexpected_scan_error(
+                scan_error::invalid_scanned_value,
+                "std::from_chars: Unknown result_out_of_range error"));
         }
 
         return result.ptr - m_input.view().data();
@@ -1320,17 +1557,18 @@ struct fast_float_impl_traits {
 // Dispatch implementation
 ////////////////////////////////////////////////////////////////////
 
-template <typename F, typename Payload>
-void apply_nan_payload(F& value, Payload payload)
+template <typename F>
+void apply_nan_payload(F& value,
+                       typename float_traits<F>::significand_int_type payload)
 {
     static_assert(
         !std::is_base_of_v<float_traits<F>, float_traits_impl_none<F>>, "");
 
     using traits = float_traits<F>;
-    typename traits::nan_repr bits{};
-    std::memcpy(&bits, &value, sizeof(bits));
-    bits.apply_payload(payload);
-    std::memcpy(&value, &bits, sizeof(bits));
+    typename traits::nan_repr repr{};
+    std::memcpy(&repr, &value, sizeof(repr));
+    repr.apply_payload(payload);
+    std::memcpy(&value, &repr, sizeof(repr));
 }
 
 template <typename Traits, typename CharT, typename FloatT>
@@ -1416,18 +1654,21 @@ scan_expected<std::ptrdiff_t> dispatch_parse_float_value(impl_init_data<CharT>&,
         "No valid floating-point parser available for this type");
 }
 
-template <typename CharT, typename T, typename Impl, typename... Impls>
+template <typename CharT, typename T, typename Trait, typename... Traits>
 scan_expected<std::ptrdiff_t> dispatch_parse_float_value(
     impl_init_data<CharT>& data,
     T& value)
 {
-    if constexpr (std::is_same_v<Impl, float_null_impl>) {
-        return dispatch_parse_float_value<CharT, T, Impls...>(data, value);
+    using first_impl = get_float_impl_for<Trait, CharT, T>;
+    if constexpr (std::is_same_v<first_impl, float_null_impl>) {
+        return dispatch_parse_float_value<CharT, T, Traits...>(data, value);
     }
     else {
         auto next =
             [&](scan_expected<void> err) -> scan_expected<std::ptrdiff_t> {
-            if constexpr ((std::is_same_v<Impls, float_null_impl> && ...)) {
+            if constexpr ((std::is_same_v<get_float_impl_for<Traits, CharT, T>,
+                                          float_null_impl> &&
+                           ...)) {
                 // If this is the last valid impl we have,
                 // propagate the error we got
                 if (!err.has_value()) {
@@ -1435,9 +1676,10 @@ scan_expected<std::ptrdiff_t> dispatch_parse_float_value(
                 }
             }
             // We still have valid impls to go, try those out
-            return dispatch_parse_float_value<CharT, T, Impls...>(data, value);
+            return dispatch_parse_float_value<CharT, T, Traits...>(data, value);
         };
-        return parse_float_value_using_impl<CharT, T, Impl>(data, value, next);
+        return parse_float_value_using_impl<CharT, T, first_impl>(data, value,
+                                                                  next);
     }
 }
 
@@ -1485,14 +1727,8 @@ scan_expected<std::ptrdiff_t> parse_float_value(
             value = std::numeric_limits<T>::quiet_NaN();
 
             if constexpr (std::numeric_limits<T>::is_iec559) {
-                // Use uint64, if the mantissa of T has 64 (or less) bits.
-#if SCN_HAS_INT128
                 using payload_type =
-                    std::conditional_t<std::numeric_limits<T>::digits <= 64,
-                                       std::uint64_t, uint128>;
-#else
-                using payload_type = std::uint64_t;
-#endif
+                    typename float_traits<T>::significand_int_type;
                 payload_type payload{};
                 if (auto result = reader_impl_for_int<CharT>{}.read_default(
                         nan_payload.view(), payload, {})) {
@@ -1528,10 +1764,9 @@ scan_expected<std::ptrdiff_t> parse_float_value(
                                              "Invalid floating-point digit");
     }
 
-    return dispatch_parse_float_value<
-        CharT, T, get_float_impl_for<fast_float_impl_traits, CharT, T>,
-        get_float_impl_for<from_chars_impl_traits, CharT, T>,
-        get_float_impl_for<strtod_impl_traits, CharT, T>>(data, value);
+    return dispatch_parse_float_value<CharT, T, fast_float_impl_traits,
+                                      from_chars_impl_traits, sdc_impl_traits,
+                                      strtod_impl_traits>(data, value);
 }
 }  // namespace
 
@@ -1541,21 +1776,23 @@ scan_expected<std::ptrdiff_t> float_reader<CharT>::parse_value_impl(T& value)
 {
     auto n = parse_float_value<CharT>({this->m_buffer, m_kind, m_options},
                                       m_nan_payload_buffer, value);
+
     if (SCN_LIKELY(n)) {
         value = this->setsign(value);
-        return n;
+    }
+    else {
+        if (n.error().code() == scan_error::value_positive_overflow &&
+            m_sign == sign_type::minus_sign) {
+            n.error() = scan_error{scan_error::value_negative_overflow,
+                                   n.error().msg()};
+        }
+        if (n.error().code() == scan_error::value_positive_underflow &&
+            m_sign == sign_type::minus_sign) {
+            n.error() = scan_error{scan_error::value_negative_underflow,
+                                   n.error().msg()};
+        }
     }
 
-    if (n.error().code() == scan_error::value_positive_overflow &&
-        m_sign == sign_type::minus_sign) {
-        return detail::unexpected_scan_error(
-            scan_error::value_negative_overflow, n.error().msg());
-    }
-    if (n.error().code() == scan_error::value_positive_underflow &&
-        m_sign == sign_type::minus_sign) {
-        return detail::unexpected_scan_error(
-            scan_error::value_negative_underflow, n.error().msg());
-    }
     return n;
 }
 
@@ -1724,6 +1961,7 @@ constexpr bool check_integer_overflow(uint64_t val,
                                       int base,
                                       bool is_negative)
 {
+    static_assert(sizeof(T) <= sizeof(uint64_t));
     SCN_UNUSED(is_negative);  // not really
 
     auto max_digits = maxdigits_u64(base);
@@ -1747,13 +1985,15 @@ constexpr bool check_integer_overflow(uint64_t val,
 template <typename T, typename Acc>
 constexpr T store_result(Acc acc, bool is_negative)
 {
-    if (is_negative) {
-        SCN_MSVC_PUSH
-        SCN_MSVC_IGNORE(4146)
-        return static_cast<T>(
-            -std::numeric_limits<T>::max() -
-            static_cast<T>(acc - std::numeric_limits<T>::max()));
-        SCN_MSVC_POP
+    if constexpr (std::is_signed_v<T>) {
+        if (is_negative) {
+            SCN_MSVC_PUSH
+            SCN_MSVC_IGNORE(4146)
+            return static_cast<T>(
+                -std::numeric_limits<T>::max() -
+                static_cast<T>(acc - std::numeric_limits<T>::max()));
+            SCN_MSVC_POP
+        }
     }
 
     return static_cast<T>(acc);
@@ -1816,38 +2056,55 @@ auto parse_regular_integer(std::basic_string_view<CharT> input,
     return begin;
 }
 
-#if SCN_HAS_INT128
 // int128 is parsed with a different algorithm,
 // going over the input char-by-char and checking for overflow on each step.
 // It's slower, but simpler,
 // and we don't have to build separate lookup tables for it.
-template <typename CharT, typename T>
+template <typename SignedT, typename UnsignedT, typename CharT, typename T>
+[[maybe_unused]]
 auto parse_int128(std::basic_string_view<CharT> input,
                   T& val,
                   int base,
                   bool is_negative) -> scan_expected<const CharT*>
 {
-    constexpr uint128 uint_max = std::numeric_limits<uint128>::max();
-    constexpr uint128 int_max = uint_max >> 1;
-    constexpr uint128 abs_int_min = int_max + 1;
+    constexpr UnsignedT uint_max = std::numeric_limits<UnsignedT>::max();
+    [[maybe_unused]] constexpr UnsignedT int_max = uint_max >> UnsignedT{1u};
+    [[maybe_unused]] constexpr UnsignedT abs_int_min = int_max + UnsignedT{1u};
 
     SCN_GCC_COMPAT_PUSH
     SCN_GCC_COMPAT_IGNORE("-Wsign-conversion")
-    auto const [limit_val, max_digit] = [&]() -> std::pair<uint128, uint128> {
-        if constexpr (std::is_same_v<T, int128>) {
+    auto const [limit_val,
+                max_digit] = [&]() -> std::pair<UnsignedT, UnsignedT> {
+        if constexpr (std::is_same_v<T, SignedT>) {
             if (is_negative) {
                 return {abs_int_min / base, abs_int_min % static_cast<T>(base)};
             }
             return {int_max / base, int_max % static_cast<T>(base)};
         }
-        else {
+        else if constexpr (!std::is_same_v<T, uint128_polyfill>) {
             return {uint_max / base, uint_max % static_cast<T>(base)};
+        }
+        else {
+            SCN_EXPECT(base == 10 || base == 2 || base == 8 || base == 16);
+            if (base == 2) {
+                return {uint_max >> T{1u}, uint_max & T{1u}};
+            }
+            if (base == 8) {
+                return {uint_max >> T{3u}, uint_max & T{7u}};
+            }
+            if (base == 16) {
+                return {uint_max >> T{4u}, uint_max & T{15u}};
+            }
+            // Can't be bothered to figure out the math for base-10,
+            // using base-16, this is fine because this will only ever be used
+            // for filling NaN payloads that don't use the full 128 bits anyway
+            return {uint_max >> T{4u}, uint_max & T{15u}};
         }
     }();
 
     const CharT* begin = input.data();
     const CharT* const end = input.data() + input.size();
-    uint128 acc{};
+    UnsignedT acc{};
 
     while (begin != end) {
         const auto digit = char_to_int(*begin);
@@ -1856,7 +2113,24 @@ auto parse_int128(std::basic_string_view<CharT> input,
         }
         if (acc < limit_val || (acc == limit_val && digit <= max_digit)) {
             SCN_LIKELY_ATTR
-            acc = acc * static_cast<T>(base) + static_cast<T>(digit);
+            if constexpr (std::is_same_v<T, uint128_polyfill>) {
+                if (base == 2) {
+                    acc = (acc << T{1u}) + static_cast<T>(digit);
+                }
+                else if (base == 8) {
+                    acc = (acc << T{3u}) + static_cast<T>(digit);
+                }
+                else if (base == 16) {
+                    acc = (acc << T{4u}) + static_cast<T>(digit);
+                }
+                else {
+                    acc =
+                        (acc << T{3u}) + (acc << T{1u}) + static_cast<T>(digit);
+                }
+            }
+            else {
+                acc = acc * static_cast<T>(base) + static_cast<T>(digit);
+            }
         }
         else {
             return detail::unexpected_scan_error(
@@ -1872,13 +2146,14 @@ auto parse_int128(std::basic_string_view<CharT> input,
     return begin;
 }
 
+#if SCN_HAS_INT128
 template <typename CharT>
 auto parse_regular_integer(std::basic_string_view<CharT> input,
                            int128& val,
                            int base,
                            bool is_negative) -> scan_expected<const CharT*>
 {
-    return parse_int128(input, val, base, is_negative);
+    return parse_int128<int128, uint128>(input, val, base, is_negative);
 }
 
 template <typename CharT>
@@ -1888,9 +2163,21 @@ auto parse_regular_integer(std::basic_string_view<CharT> input,
                            bool is_negative) -> scan_expected<const CharT*>
 {
     SCN_EXPECT(!is_negative);
-    return parse_int128(input, val, base, is_negative);
+    return parse_int128<int128, uint128>(input, val, base, is_negative);
 }
 #endif
+
+template <typename CharT>
+[[maybe_unused]] auto parse_regular_integer(std::basic_string_view<CharT> input,
+                                            uint128_polyfill& val,
+                                            int base,
+                                            bool is_negative)
+    -> scan_expected<const CharT*>
+{
+    SCN_EXPECT(!is_negative);
+    return parse_int128<void, uint128_polyfill>(input, val, base, is_negative);
+}
+
 }  // namespace
 
 template <typename CharT, typename T>
@@ -1921,7 +2208,7 @@ auto parse_integer_value(std::basic_string_view<CharT> source,
             }
         }
         if (SCN_UNLIKELY(start == end || char_to_int(*start) >= base)) {
-            value = 0;
+            value = T{0};
             return ranges::next(source.begin(),
                                 ranges::distance(source.data(), start));
         }

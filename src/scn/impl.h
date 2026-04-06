@@ -22,6 +22,7 @@
 #include <scn/xchar.h>
 
 #include <algorithm>
+#include <cfenv>
 #include <clocale>
 #include <cmath>
 #include <cwchar>
@@ -492,70 +493,181 @@ constexpr bool is_ascii_char(char32_t cp) noexcept
 // <bits>
 /////////////////////////////////////////////////////////////////
 
-inline int count_trailing_zeroes(uint64_t val)
+template <typename T,
+          std::enable_if_t<std::is_unsigned_v<T> &&
+                           sizeof(T) <= sizeof(uint64_t)>* = nullptr>
+int count_trailing_zeroes(T val)
 {
     SCN_EXPECT(val != 0);
+
 #if SCN_HAS_BITOPS
+    // Simple case: has C++20 <bit>
     return std::countr_zero(val);
+
 #elif SCN_GCC_COMPAT
-    return __builtin_ctzll(val);
+    // Has GCC builtins for int, long, and long long
+    if constexpr (std::is_same_v<T, long long>) {
+        return __builtin_ctzll(val);
+    }
+    else if constexpr (std::is_same_v<T, long>) {
+        return __builtin_ctzl(val);
+    }
+    else {
+        return __builtin_ctz(static_cast<unsigned>(val));
+    }
+
 #elif SCN_MSVC && SCN_WINDOWS_64BIT
-    DWORD ret{};
-    _BitScanForward64(&ret, val);
-    return static_cast<int>(ret);
-#elif SCN_MSVC && !SCN_WINDOWS_64BIT
-    DWORD ret{};
-    if (_BitScanForward(&ret, static_cast<uint32_t>(val))) {
+    // 64-bit MSVC, use BitScanForward(64)
+    if constexpr (sizeof(T) == sizeof(uint64_t)) {
+        DWORD ret{};
+        _BitScanForward64(&ret, val);
+        return static_cast<int>(ret);
+    }
+    else {
+        DWORD ret{};
+        _BitScanForward(&ret, static_cast<uint32_t>(val));
         return static_cast<int>(ret);
     }
 
-    _BitScanForward(&ret, static_cast<uint32_t>(val >> 32));
-    return static_cast<int>(ret + 32);
-#elif SCN_POSIX
-    return ::ctzll(val);
+#elif SCN_MSVC && !SCN_WINDOWS_64BIT
+    // 32-bit MSVC, need custom behavior for 64-bit integers
+    if constexpr (sizeof(T) == sizeof(uint64_t)) {
+        DWORD ret{};
+        if (_BitScanForward(&ret, static_cast<uint32_t>(val))) {
+            return static_cast<int>(ret);
+        }
+        _BitScanForward(&ret, static_cast<uint32_t>(val >> 32));
+        return static_cast<int>(ret);
+    }
+    else {
+        DWORD ret{};
+        _BitScanForward(&ret, static_cast<uint32_t>(val));
+        return static_cast<int>(ret);
+    }
+
 #else
-#define SCN_HAS_NATIVE_BITS_CTZ_IMPL 0
+    // Polyfill with a custom loop
     int ret{};
     std::uint64_t mask{1};
-    while ((val & mask) == 0) {
-        mask <<= 1;
+    while ((val & mask) == 0u) {
+        mask <<= 1ull;
         ++ret;
     }
     return ret;
+
+#define SCN_HAS_NATIVE_BITS_IMPL 0
+
 #endif
 }
 
-inline int count_leading_zeroes(uint64_t val)
+template <typename T>
+auto count_trailing_zeroes(T val) -> decltype(val.high, val.low, int{})
+{
+    if (val.low == 0) {
+        return count_trailing_zeroes(val.high) + sizeof(val.low) * 8;
+    }
+    return count_trailing_zeroes(val.low);
+}
+
+#if SCN_HAS_INT128
+template <typename T, std::enable_if_t<std::is_same_v<T, uint128>>* = nullptr>
+int count_trailing_zeroes(T val)
+{
+    const auto low = static_cast<uint64_t>(val);
+    if (low == 0) {
+        return count_trailing_zeroes(static_cast<uint64_t>(val >> 64u)) + 64;
+    }
+    return count_trailing_zeroes(low);
+}
+#endif
+
+template <typename T,
+          std::enable_if_t<std::is_unsigned_v<T> &&
+                           sizeof(T) <= sizeof(uint64_t)>* = nullptr>
+int count_leading_zeroes(T val)
 {
     SCN_EXPECT(val != 0);
+
 #if SCN_HAS_BITOPS
+    // Simple case: has C++20 <bit>
     return std::countl_zero(val);
+
 #elif SCN_GCC_COMPAT
-    return __builtin_clzll(val);
-#elif SCN_MSVC && SCN_WINDOWS_64BIT
-    DWORD ret{};
-    _BitScanReverse(&ret, val);
-    return static_cast<int>(ret);
-#elif SCN_MSVC && !SCN_WINDOWS_64BIT
-    DWORD ret{};
-    if (_BitScanReverse(&ret, static_cast<uint32_t>(val >> 32))) {
-        return static_cast<int>(ret);
+    // Has GCC builtins for int, long, and long long
+    if constexpr (std::is_same_v<T, long long>) {
+        return __builtin_clzll(val);
+    }
+    else if constexpr (std::is_same_v<T, long>) {
+        return __builtin_clzl(val);
+    }
+    else {
+        return __builtin_clz(static_cast<unsigned>(val)) -
+               static_cast<int>(sizeof(unsigned) - sizeof(T)) * 8;
     }
 
-    _BitScanReverse(&ret, static_cast<uint32_t>(val));
-    return static_cast<int>(ret + 32);
-#elif SCN_POSIX
-    return ::clzll(val);
+#elif SCN_MSVC && SCN_WINDOWS_64BIT
+    // 64-bit MSVC, use BitScanReverse(64)
+    if constexpr (sizeof(T) == sizeof(uint64_t)) {
+        DWORD ret{};
+        _BitScanReverse64(&ret, val);
+        return static_cast<int>(ret);
+    }
+    else {
+        DWORD ret{};
+        _BitScanReverse(&ret, static_cast<uint32_t>(val));
+        return static_cast<int>(ret) - (sizeof(unsigned) - sizeof(T)) * 8;
+    }
+
+#elif SCN_MSVC && !SCN_WINDOWS_64BIT
+    // 32-bit MSVC, need custom behavior for 64-bit integers
+    if constexpr (sizeof(T) == sizeof(uint64_t)) {
+        DWORD ret{};
+        if (_BitScanForward(&ret, static_cast<uint32_t>(val))) {
+            return static_cast<int>(ret);
+        }
+        _BitScanForward(&ret, static_cast<uint32_t>(val >> 32));
+        return static_cast<int>(ret);
+    }
+    else {
+        DWORD ret{};
+        _BitScanForward(&ret, static_cast<uint32_t>(val));
+        return static_cast<int>(ret) - (sizeof(unsigned) - sizeof(T)) * 8;
+    }
+
 #else
+    // Polyfill with a custom loop
     int ret{};
-    std::uint64_t mask = 1ull << 63ull;
-    while ((val & mask) == 0) {
-        mask >>= 1;
+    std::uint64_t mask{1};
+    while ((val & mask) == 0u) {
+        mask <<= 1ull;
         ++ret;
     }
     return ret;
+
 #endif
 }
+
+template <typename T>
+auto count_leading_zeroes(T val) -> decltype(val.high, val.low, int{})
+{
+    if (val.high == 0) {
+        return count_leading_zeroes(val.low) +
+               static_cast<int>(sizeof(val.high)) * 8;
+    }
+    return count_leading_zeroes(val.high);
+}
+
+#if SCN_HAS_INT128
+template <typename T, std::enable_if_t<std::is_same_v<T, uint128>>* = nullptr>
+int count_leading_zeroes(T val)
+{
+    const auto high = static_cast<uint64_t>(val >> 64u);
+    if (high == 0) {
+        return count_leading_zeroes(static_cast<uint64_t>(val)) + 64;
+    }
+    return count_leading_zeroes(high);
+}
+#endif
 
 #ifndef SCN_HAS_NATIVE_BITS_IMPL
 #define SCN_HAS_NATIVE_BITS_IMPL 1
@@ -2699,7 +2811,8 @@ auto read_until_code_units(Range range, const CodeUnits& needle)
             auto it = first;
             for (auto needle_it = needle.begin();; ++it, (void)++needle_it) {
                 if (needle_it == needle.end()) {
-                    return first;
+                    it = SCN_MOVE(first);
+                    return it;
                 }
                 if (it == range.end()) {
                     return it;
@@ -4252,6 +4365,26 @@ public:
 // Custom floating-point parser
 /////////////////////////////////////////////////////////////////
 
+struct float_rounding_guard {
+    float_rounding_guard()
+    {
+        m_mode = std::fegetround();
+        if (m_mode != FE_TONEAREST) {
+            std::fesetround(FE_TONEAREST);
+        }
+    }
+
+    ~float_rounding_guard()
+    {
+        if (m_mode != FE_TONEAREST) {
+            std::fesetround(m_mode);
+        }
+    }
+
+private:
+    int m_mode{};
+};
+
 struct uint128_polyfill {
     SCN_GCC_PUSH
     SCN_GCC_IGNORE("-Wreorder")
@@ -4260,28 +4393,245 @@ struct uint128_polyfill {
     SCN_CLANG_IGNORE("-Wreorder-ctor")
 
 #if !SCN_IS_BIG_ENDIAN
-    std::uint64_t low;
-    std::uint64_t high;
+    std::uint64_t low{};
+    std::uint64_t high{};
 #else
-    std::uint64_t high;
-    std::uint64_t low;
+    std::uint64_t high{};
+    std::uint64_t low{};
 #endif
 
-    uint128_polyfill() = default;
+    constexpr uint128_polyfill() = default;
 
-    uint128_polyfill(std::uint64_t x) : high(0), low(x) {}
+    template <typename T,
+              std::enable_if_t<std::is_integral_v<T> && std::is_unsigned_v<T> &&
+                               sizeof(T) <= 8>* = nullptr>
+    constexpr uint128_polyfill(T x)
+        : high(0u), low(static_cast<std::uint64_t>(x))
+    {
+    }
 
-#if SCN_HAS_INT128
-    uint128_polyfill(uint128 x)
-        : high(static_cast<std::uint64_t>(x >> 64)),
+    template <typename T,
+              std::enable_if_t<std::is_integral_v<T> && std::is_unsigned_v<T> &&
+                               (sizeof(T) <= 16 && sizeof(T) > 8)>* = nullptr>
+    constexpr uint128_polyfill(T x)
+        : high(static_cast<std::uint64_t>(x >> 64u)),
           low(static_cast<std::uint64_t>(x))
     {
     }
-#endif
 
-    SCN_CLANG_POP  // -Wreorder-ctor
-    SCN_GCC_POP  // -Wreorder
+    template <typename T, std::enable_if_t<std::is_same_v<T, int>>* = nullptr>
+    constexpr explicit uint128_polyfill(T x)
+        : uint128_polyfill(static_cast<std::uint64_t>(x))
+    {
+        SCN_EXPECT(x >= 0);
+    }
+
+    constexpr friend bool operator==(const uint128_polyfill& a,
+                                     const uint128_polyfill& b)
+    {
+        return a.high == b.high && a.low == b.low;
+    }
+
+    constexpr friend bool operator!=(const uint128_polyfill& a,
+                                     const uint128_polyfill& b)
+    {
+        return !(a == b);
+    }
+
+    constexpr friend bool operator<(const uint128_polyfill& a,
+                                    const uint128_polyfill& b)
+    {
+        if (a.high == b.high) {
+            return a.low < b.low;
+        }
+        return a.high < b.high;
+    }
+
+    constexpr friend bool operator>(const uint128_polyfill& a,
+                                    const uint128_polyfill& b)
+    {
+        return b < a;
+    }
+
+    constexpr friend bool operator<=(const uint128_polyfill& a,
+                                     const uint128_polyfill& b)
+    {
+        return !(b > a);
+    }
+
+    constexpr friend bool operator>=(const uint128_polyfill& a,
+                                     const uint128_polyfill& b)
+    {
+        return !(b < a);
+    }
+
+    constexpr explicit operator bool() const
+    {
+        return *this != uint128_polyfill{0u};
+    }
+
+    constexpr friend uint128_polyfill operator+(const uint128_polyfill& a,
+                                                const uint128_polyfill& b)
+    {
+        uint128_polyfill result;
+        result.high = a.high + b.high + (a.low + b.low < a.low);
+        result.low = a.low + b.low;
+        return result;
+    }
+
+    constexpr friend uint128_polyfill& operator+=(uint128_polyfill& self,
+                                                  const uint128_polyfill& x)
+    {
+        self = self + x;
+        return self;
+    }
+
+    constexpr friend uint128_polyfill operator-(const uint128_polyfill& a,
+                                                const uint128_polyfill& b)
+    {
+        uint128_polyfill result;
+        result.high = a.high - b.high - (a.low - b.low < a.low);
+        result.low = a.low - b.low;
+        return result;
+    }
+
+    constexpr friend uint128_polyfill& operator-=(uint128_polyfill& self,
+                                                  const uint128_polyfill& x)
+    {
+        self = self - x;
+        return self;
+    }
+
+    constexpr friend uint128_polyfill operator&(const uint128_polyfill& a,
+                                                const uint128_polyfill& b)
+    {
+        uint128_polyfill result;
+        result.high = a.high & b.high;
+        result.low = a.low & b.low;
+        return result;
+    }
+
+    constexpr friend uint128_polyfill& operator&=(uint128_polyfill& self,
+                                                  const uint128_polyfill& x)
+    {
+        self = self & x;
+        return self;
+    }
+
+    constexpr friend uint128_polyfill operator|(const uint128_polyfill& a,
+                                                const uint128_polyfill& b)
+    {
+        uint128_polyfill result;
+        result.high = a.high | b.high;
+        result.low = a.low | b.low;
+        return result;
+    }
+
+    constexpr friend uint128_polyfill& operator|=(uint128_polyfill& self,
+                                                  const uint128_polyfill& x)
+    {
+        self = self | x;
+        return self;
+    }
+
+    constexpr friend uint128_polyfill operator~(const uint128_polyfill& x)
+    {
+        uint128_polyfill result;
+        result.high = ~x.high;
+        result.low = ~x.low;
+        return result;
+    }
+
+    constexpr friend uint128_polyfill operator^(const uint128_polyfill& a,
+                                                const uint128_polyfill& b)
+    {
+        uint128_polyfill result;
+        result.high = a.high ^ b.high;
+        result.low = a.low ^ b.low;
+        return result;
+    }
+
+    constexpr friend uint128_polyfill& operator^=(uint128_polyfill& self,
+                                                  const uint128_polyfill& x)
+    {
+        self = self ^ x;
+        return self;
+    }
+
+    constexpr friend uint128_polyfill operator<<(const uint128_polyfill& a,
+                                                 const uint128_polyfill& b)
+    {
+        if (b.high || b.low >= 128) {
+            return {};
+        }
+
+        const auto shift = b.low;
+        if (shift == 0) {
+            return a;
+        }
+
+        uint128_polyfill result{};
+        if (shift < 64) {
+            result.high = (a.high << shift) + (a.low >> (64 - shift));
+            result.low = a.low << shift;
+        }
+        else {
+            result.high = a.low << (shift - 64);
+        }
+        return result;
+    }
+
+    constexpr friend uint128_polyfill& operator<<=(uint128_polyfill& self,
+                                                   const uint128_polyfill& x)
+    {
+        self = self << x;
+        return self;
+    }
+
+    constexpr friend uint128_polyfill operator>>(const uint128_polyfill& a,
+                                                 const uint128_polyfill& b)
+    {
+        if (b.high || b.low >= 128) {
+            return {};
+        }
+
+        const auto shift = b.low;
+        if (shift == 0) {
+            return a;
+        }
+
+        uint128_polyfill result{};
+        if (shift < 64) {
+            result.high = a.high >> shift;
+            result.low = (a.high << (64 - shift)) + (a.low >> shift);
+        }
+        else {
+            result.low = a.high >> (shift - 64);
+        }
+        return result;
+    }
+
+    constexpr friend uint128_polyfill& operator>>=(uint128_polyfill& self,
+                                                   const uint128_polyfill& x)
+    {
+        self = self >> x;
+        return self;
+    }
+
+    constexpr explicit operator unsigned() const
+    {
+        return static_cast<unsigned>(low);
+    }
+
+    SCN_CLANG_POP    // -Wreorder-ctor
+        SCN_GCC_POP  // -Wreorder
 };
+
+#if SCN_HAS_INT128
+using uint128_always_t = uint128;
+#else
+using uint128_always_t = uint128_polyfill;
+#endif
 
 SCN_GCC_PUSH
 SCN_GCC_IGNORE("-Wconversion")
@@ -4289,9 +4639,7 @@ SCN_GCC_IGNORE("-Wconversion")
 template <typename F>
 struct float_traits_impl_f32 {
     using type = F;
-    // can hold the entire value (incl. padding)
-    using int_type = std::uint32_t;
-    // can hold the significand/nan payload (only)
+    // can hold the significand/nan payload (only) + 4 bits
     using significand_int_type = std::uint32_t;
 
     static constexpr unsigned exponent_bits = 8;
@@ -4308,6 +4656,11 @@ struct float_traits_impl_f32 {
         unsigned exponent : 8;
         unsigned significand : 23;
 #endif
+
+        void apply_exponent(int e)
+        {
+            exponent = static_cast<unsigned>(e);
+        }
 
         void apply_significand(significand_int_type s)
         {
@@ -4342,7 +4695,6 @@ struct float_traits_impl_f32 {
 template <typename F>
 struct float_traits_impl_f64 {
     using type = F;
-    using int_type = std::uint64_t;
     using significand_int_type = std::uint64_t;
 
     static constexpr unsigned exponent_bits = 11;
@@ -4366,6 +4718,11 @@ struct float_traits_impl_f64 {
         unsigned significand0 : 20;
         unsigned significand1 : 32;
 #endif
+
+        void apply_exponent(int e)
+        {
+            exponent = static_cast<unsigned>(e);
+        }
 
         void apply_significand(significand_int_type s)
         {
@@ -4410,8 +4767,7 @@ struct float_traits_impl_f64 {
 template <typename F>
 struct float_traits_impl_f80 {
     using type = F;
-    using int_type = uint128_polyfill;
-    using significand_int_type = std::uint64_t;
+    using significand_int_type = uint128_always_t;
 
     static constexpr unsigned exponent_bits = 15;
     static constexpr unsigned significand_bits = 64;
@@ -4440,10 +4796,16 @@ struct float_traits_impl_f80 {
         unsigned significand1 : 32;
 #endif
 
+        void apply_exponent(int e)
+        {
+            exponent = static_cast<unsigned>(e);
+        }
+
         void apply_significand(significand_int_type s)
         {
             significand0 = static_cast<unsigned>(s >> 32);
             significand1 = static_cast<unsigned>(s);
+            one = exponent != 0;
         }
     };
 
@@ -4475,10 +4837,16 @@ struct float_traits_impl_f80 {
         unsigned payload1 : 32;
 #endif
 
+        void apply_exponent(int e)
+        {
+            exponent = static_cast<unsigned>(e);
+        }
+
         void apply_payload(significand_int_type p)
         {
             SCN_EXPECT(quiet_nan == 1);
             SCN_EXPECT(exponent == (1u << exponent_bits) - 1u);
+            one = 1;
             payload0 = static_cast<unsigned>(p >> 32);
             payload1 = static_cast<unsigned>(p);
         }
@@ -4488,8 +4856,7 @@ struct float_traits_impl_f80 {
 template <typename F>
 struct float_traits_impl_f128 {
     using type = F;
-    using int_type = uint128_polyfill;
-    using significand_int_type = uint128_polyfill;
+    using significand_int_type = uint128_always_t;
 
     static constexpr unsigned exponent_bits = 15;
     static constexpr unsigned significand_bits = 112;
@@ -4519,12 +4886,17 @@ struct float_traits_impl_f128 {
         unsigned significand3 : 32;
 #endif
 
+        void apply_exponent(int e)
+        {
+            exponent = static_cast<unsigned>(e);
+        }
+
         void apply_significand(significand_int_type s)
         {
-            significand0 = static_cast<unsigned>(s.high >> 32);
-            significand1 = static_cast<unsigned>(s.high);
-            significand2 = static_cast<unsigned>(s.low >> 32);
-            significand3 = static_cast<unsigned>(s.low);
+            significand0 = static_cast<unsigned>(s >> 96u);
+            significand1 = static_cast<unsigned>(s >> 64u);
+            significand2 = static_cast<unsigned>(s >> 32u);
+            significand3 = static_cast<unsigned>(s);
         }
     };
 
@@ -4561,10 +4933,10 @@ struct float_traits_impl_f128 {
         {
             SCN_EXPECT(quiet_nan == 1);
             SCN_EXPECT(exponent == (1u << exponent_bits) - 1u);
-            payload0 = static_cast<unsigned>(p.high >> 32);
-            payload1 = static_cast<unsigned>(p.high);
-            payload2 = static_cast<unsigned>(p.low >> 32);
-            payload3 = static_cast<unsigned>(p.low);
+            payload0 = static_cast<unsigned>(p >> 96u);
+            payload1 = static_cast<unsigned>(p >> 64u);
+            payload2 = static_cast<unsigned>(p >> 32u);
+            payload3 = static_cast<unsigned>(p);
         }
     };
 };
@@ -4572,12 +4944,11 @@ struct float_traits_impl_f128 {
 template <typename F>
 struct float_traits_impl_doubledouble {
     using type = F;
-    using int_type = uint128_polyfill;
-    using significand_int_type = uint128_polyfill;
+    using significand_int_type = uint128_always_t;
 
     using base = float_traits_impl_f64<double>;
 
-    static constexpr unsigned exponent_bits = base::exponent_bits * 2;
+    static constexpr unsigned exponent_bits = base::exponent_bits * 1;
     static constexpr unsigned significand_bits = base::significand_bits * 2;
     static constexpr unsigned fraction_bits = base::fraction_bits * 2;
 
@@ -4585,12 +4956,17 @@ struct float_traits_impl_doubledouble {
         base::value_repr high;
         base::value_repr low;
 
+        void apply_exponent(int e)
+        {
+            high.apply_exponent(e);
+            low.apply_exponent(e);
+        }
+
         void apply_significand(significand_int_type s)
         {
             high.apply_significand(
-                static_cast<base::significand_int_type>(s.high));
-            low.apply_significand(
-                static_cast<base::significand_int_type>(s.low));
+                static_cast<base::significand_int_type>(s >> 64u));
+            low.apply_significand(static_cast<base::significand_int_type>(s));
         }
     };
 
@@ -4602,8 +4978,9 @@ struct float_traits_impl_doubledouble {
 
         void apply_payload(significand_int_type p)
         {
-            high.apply_payload(static_cast<base::significand_int_type>(p.high));
-            low.apply_payload(static_cast<base::significand_int_type>(p.low));
+            high.apply_payload(
+                static_cast<base::significand_int_type>(p >> 64u));
+            low.apply_payload(static_cast<base::significand_int_type>(p));
         }
     };
 };
@@ -4611,7 +4988,6 @@ struct float_traits_impl_doubledouble {
 template <typename F>
 struct float_traits_impl_f16 {
     using type = F;
-    using int_type = std::uint16_t;
     using significand_int_type = std::uint16_t;
 
     static constexpr unsigned exponent_bits = 5;
@@ -4628,6 +5004,11 @@ struct float_traits_impl_f16 {
         unsigned exponent : 5;
         unsigned significand : 10;
 #endif
+
+        void apply_exponent(int e)
+        {
+            exponent = static_cast<unsigned>(e);
+        }
 
         void apply_significand(significand_int_type s)
         {
@@ -4662,8 +5043,7 @@ struct float_traits_impl_f16 {
 template <typename F>
 struct float_traits_impl_bf16 {
     using type = F;
-    using int_type = std::uint16_t;
-    using significand_int_type = std::uint8_t;
+    using significand_int_type = std::uint16_t;
 
     static constexpr unsigned exponent_bits = 8;
     static constexpr unsigned significand_bits = 7;
@@ -4679,6 +5059,11 @@ struct float_traits_impl_bf16 {
         unsigned exponent : 8;
         unsigned significand : 7;
 #endif
+
+        void apply_exponent(int e)
+        {
+            exponent = static_cast<unsigned>(e);
+        }
 
         void apply_significand(significand_int_type s)
         {
@@ -4710,8 +5095,10 @@ struct float_traits_impl_bf16 {
     };
 };
 
+struct float_traits_impl_none_base {};
+
 template <typename...>
-struct float_traits_impl_none {};
+struct float_traits_impl_none : float_traits_impl_none_base {};
 
 template <typename F>
 struct float_traits;
@@ -4775,6 +5162,604 @@ SCN_GCC_POP  // -Wconversion
 
     namespace
 {
+}
+
+template <typename CharT>
+struct float_parts {
+    std::basic_string_view<CharT> before_radix_point;
+    std::basic_string_view<CharT> after_radix_point;
+    std::basic_string_view<CharT> exponent;
+    typename std::basic_string_view<CharT>::iterator end;
+    bool exponent_positive{true};
+};
+
+// Simple Decimal Conversion (SDC), as described in
+// https://nigeltao.github.io/blog/2020/parse-number-f64-simple.html
+
+// Table generated with
+// ```
+// seq 60 | sed 's/^/5^/' | bc |
+// awk 'BEGIN{ print "\t{ 0, \"\" }," }
+// {
+//     log2 = log(2)/log(10)
+//     printf("\t{ %d, \"%s\" },\t// * %d\n",
+//            int(log2 * NR + 1), $0, 2 ** NR)
+// }'
+// ```
+
+// clang-format off
+constexpr std::pair<std::uint8_t, std::string_view> left_shift_table[] = {
+    {0, ""},
+    {1, "5"},                                            // * 2
+    {1, "25"},                                           // * 4
+    {1, "125"},                                          // * 8
+    {2, "625"},                                          // * 16
+    {2, "3125"},                                         // * 32
+    {2, "15625"},                                        // * 64
+    {3, "78125"},                                        // * 128
+    {3, "390625"},                                       // * 256
+    {3, "1953125"},                                      // * 512
+    {4, "9765625"},                                      // * 1024
+    {4, "48828125"},                                     // * 2048
+    {4, "244140625"},                                    // * 4096
+    {4, "1220703125"},                                   // * 8192
+    {5, "6103515625"},                                   // * 16384
+    {5, "30517578125"},                                  // * 32768
+    {5, "152587890625"},                                 // * 65536
+    {6, "762939453125"},                                 // * 131072
+    {6, "3814697265625"},                                // * 262144
+    {6, "19073486328125"},                               // * 524288
+    {7, "95367431640625"},                               // * 1048576
+    {7, "476837158203125"},                              // * 2097152
+    {7, "2384185791015625"},                             // * 4194304
+    {7, "11920928955078125"},                            // * 8388608
+    {8, "59604644775390625"},                            // * 16777216
+    {8, "298023223876953125"},                           // * 33554432
+    {8, "1490116119384765625"},                          // * 67108864
+    {9, "7450580596923828125"},                          // * 134217728
+    {9, "37252902984619140625"},                         // * 268435456
+    {9, "186264514923095703125"},                        // * 536870912
+    {10, "931322574615478515625"},                       // * 1073741824
+    {10, "4656612873077392578125"},                      // * 2147483648
+    {10, "23283064365386962890625"},                     // * 4294967296
+    {10, "116415321826934814453125"},                    // * 8589934592
+    {11, "582076609134674072265625"},                    // * 17179869184
+    {11, "2910383045673370361328125"},                   // * 34359738368
+    {11, "14551915228366851806640625"},                  // * 68719476736
+    {12, "72759576141834259033203125"},                  // * 137438953472
+    {12, "363797880709171295166015625"},                 // * 274877906944
+    {12, "1818989403545856475830078125"},                // * 549755813888
+    {13, "9094947017729282379150390625"},                // * 1099511627776
+    {13, "45474735088646411895751953125"},               // * 2199023255552
+    {13, "227373675443232059478759765625"},              // * 4398046511104
+    {13, "1136868377216160297393798828125"},             // * 8796093022208
+    {14, "5684341886080801486968994140625"},             // * 17592186044416
+    {14, "28421709430404007434844970703125"},            // * 35184372088832
+    {14, "142108547152020037174224853515625"},           // * 70368744177664
+    {15, "710542735760100185871124267578125"},           // * 140737488355328
+    {15, "3552713678800500929355621337890625"},          // * 281474976710656
+    {15, "17763568394002504646778106689453125"},         // * 562949953421312
+    {16, "88817841970012523233890533447265625"},         // * 1125899906842624
+    {16, "444089209850062616169452667236328125"},        // * 2251799813685248
+    {16, "2220446049250313080847263336181640625"},       // * 4503599627370496
+    {16, "11102230246251565404236316680908203125"},      // * 9007199254740992
+    {17, "55511151231257827021181583404541015625"},      // * 18014398509481984
+    {17, "277555756156289135105907917022705078125"},     // * 36028797018963968
+    {17, "1387778780781445675529539585113525390625"},    // * 72057594037927936
+    {18, "6938893903907228377647697925567626953125"},    // * 144115188075855872
+    {18, "34694469519536141888238489627838134765625"},   // * 288230376151711744
+    {18, "173472347597680709441192448139190673828125"},  // * 576460752303423488
+    {19, "867361737988403547205962240695953369140625"},  // * 1152921504606846976
+};
+// clang-format on
+
+struct high_precision_decimal {
+    std::uint32_t num_digits{};
+    std::int32_t decimal_point{};
+    bool truncated{false};
+    std::array<std::uint8_t, 800> digits;
+
+    high_precision_decimal() = default;
+    ~high_precision_decimal() = default;
+
+    high_precision_decimal(const high_precision_decimal&) = delete;
+    high_precision_decimal(high_precision_decimal&&) = delete;
+    high_precision_decimal& operator=(const high_precision_decimal&) = delete;
+    high_precision_decimal& operator=(high_precision_decimal&&) = delete;
+
+    template <typename CharT>
+    static scan_expected<void> populate(high_precision_decimal& hpd,
+                                        const float_parts<CharT>& parts)
+    {
+        std::size_t idx = 0;
+        for (CharT ch : parts.before_radix_point) {
+            if (idx < hpd.digits.size()) {
+                hpd.digits[idx] = char_to_int(ch);
+                SCN_ENSURE(hpd.digits[idx] < std::uint8_t{10});
+            }
+            else {
+                hpd.truncated = true;
+            }
+            idx++;
+        }
+        hpd.decimal_point = static_cast<std::int32_t>(idx);
+
+        for (CharT ch : parts.after_radix_point) {
+            if (idx < hpd.digits.size()) {
+                hpd.digits[idx] = char_to_int(ch);
+                SCN_ENSURE(hpd.digits[idx] < std::uint8_t{10});
+            }
+            else {
+                hpd.truncated = true;
+            }
+            idx++;
+        }
+        hpd.num_digits = static_cast<std::uint32_t>(idx);
+
+        if (!parts.exponent.empty()) {
+            std::int32_t exponent{};
+            auto r = parse_integer_value(parts.exponent, exponent,
+                                         parts.exponent_positive
+                                             ? sign_type::plus_sign
+                                             : sign_type::minus_sign,
+                                         10);
+            if (!r) {
+                return detail::unexpected_scan_error(
+                    r.error().code(),
+                    "Invalid exponent value for floating-point value");
+            }
+
+            hpd.decimal_point = static_cast<std::int32_t>(
+                static_cast<std::int64_t>(hpd.decimal_point) +
+                static_cast<std::int64_t>(exponent));
+        }
+
+        hpd.trim();
+
+        return {};
+    }
+
+    template <typename T>
+    struct rounded_significand_type {
+        using type = typename float_traits<T>::significand_int_type;
+        type significand;
+        bool rounded_up;
+    };
+
+    template <typename T>
+    SCN_NODISCARD rounded_significand_type<T> rounded_significand() const
+    {
+        if (num_digits == 0) {
+            return {0u, false};
+        }
+        if (decimal_point < 0) {
+            return {0u, false};
+        }
+
+        using result_type = typename float_traits<T>::significand_int_type;
+        using accumulator_type =
+            std::conditional_t<sizeof(result_type) <= sizeof(std::uint64_t),
+                               std::uint64_t, uint128_always_t>;
+
+        if (decimal_point >= std::numeric_limits<T>::max_digits10) {
+            return {static_cast<result_type>(~accumulator_type{}), false};
+        }
+
+        // Build up the integral part,
+        // including any implicit trailing zeroes after `num_digits`.
+        accumulator_type accumulator{};
+        std::size_t i = 0;
+        for (; i < static_cast<std::size_t>(decimal_point); ++i) {
+            // Multiply by 10 without using operator*,
+            // which uint128_polyfill doesn't have.
+            // `<< 3` is `* 8`, and `<< 1` is `* 2`
+            const auto accumulator_before = accumulator;
+            accumulator = (accumulator << 3u) + (accumulator << 1u) +
+                          (i < num_digits ? digits[i] : 0u);
+            SCN_EXPECT(accumulator > accumulator_before);  // check for overflow
+        }
+
+        // Check the decimal part (if any) for rounding
+        bool round_up = false;
+        if (i < num_digits) {
+            round_up = digits[i] >= 5;
+
+            // If the entire decimal part is ".5":
+            //  - if we're truncated, round up,
+            //  - otherwise, round to even
+            if (digits[i] == 5 && num_digits == i + 1) {
+                round_up = truncated || (i > 0 && digits[i - 1] % 2 != 0);
+            }
+        }
+        if (round_up) {
+            accumulator += 1u;
+        }
+        return {static_cast<result_type>(accumulator), round_up};
+    }
+
+    void trim()
+    {
+        while (num_digits > 0 && digits[num_digits - 1] == 0) {
+            --num_digits;
+        }
+    }
+
+    void left_shift(std::uint32_t shift)
+    {
+        if (num_digits == 0) {
+            return;
+        }
+
+        while (shift > 60u) {
+            left_shift(60u);
+            shift -= 60u;
+        }
+
+        SCN_EXPECT(shift <= 60);
+
+        const auto num_new_digits = count_new_digits(shift);
+
+        std::int32_t read_index = static_cast<std::int32_t>(num_digits) - 1;
+        std::uint32_t write_index = num_digits + num_new_digits;
+        std::uint64_t accumulator{};
+
+        // Accumulate `accumulator = digit * 2 ^ shift + carry`,
+        // write `accumulator % 10` to the write position,
+        // carry `accumulator / 10`
+        while (read_index >= 0) {
+            accumulator += static_cast<std::uint64_t>(
+                               digits[static_cast<std::size_t>(read_index)])
+                           << shift;
+
+            const auto quotient = accumulator / 10u;
+            const auto remainder = accumulator % 10u;
+
+            --write_index;
+            if (write_index < digits.size()) {
+                digits[write_index] = static_cast<std::uint8_t>(remainder);
+            }
+            else if (remainder > 0) {
+                truncated = true;
+            }
+            accumulator = quotient;
+            --read_index;
+        }
+
+        // Drain any remaining carry
+        while (accumulator > 0) {
+            const auto quotient = accumulator / 10u;
+            const auto remainder = accumulator % 10u;
+
+            --write_index;
+            if (write_index < digits.size()) {
+                digits[write_index] = static_cast<std::uint8_t>(remainder);
+            }
+            else if (remainder > 0) {
+                truncated = true;
+            }
+            accumulator = quotient;
+        }
+
+        num_digits += num_new_digits;
+        if (num_digits > static_cast<std::uint32_t>(digits.size())) {
+            num_digits = static_cast<std::uint32_t>(digits.size());
+        }
+        decimal_point += static_cast<std::int32_t>(num_new_digits);
+
+        trim();
+    }
+
+    void right_shift(std::uint32_t shift)
+    {
+        while (shift > 60u) {
+            right_shift(60u);
+            shift -= 60u;
+        }
+
+        SCN_EXPECT(shift <= 60);
+
+        std::uint32_t read_index{};
+        std::uint32_t write_index{};
+        std::uint64_t accumulator{};
+
+        // Accumulate digits until accumulator >= 2 ^ shift
+        // (i.e., we can extract a digit)
+        while (accumulator >> shift == 0) {
+            if (read_index < num_digits) {
+                accumulator = 10 * accumulator + digits[read_index];
+            }
+            else {
+                accumulator *= 10;
+            }
+            ++read_index;
+        }
+        // The leading read_index digits collapsed into accumulator
+        // without producing output,
+        // so the decimal point shifts left by (read_index - 1)
+        decimal_point -= static_cast<std::int32_t>(read_index) - 1;
+
+        // Extract quotient digit (accumulator >> shift),
+        // carry remainder (accumulator - digit * 2 ^ shift),
+        // bring in next output digit
+        while (read_index < num_digits) {
+            const auto digit = accumulator >> shift;
+            accumulator -= digit << shift;
+            accumulator = 10 * accumulator + digits[read_index++];
+            digits[write_index++] = static_cast<std::uint8_t>(digit);
+        }
+
+        // Drain remaining fractional digits
+        while (accumulator > 0) {
+            const auto digit = accumulator >> shift;
+            accumulator -= digit << shift;
+            if (write_index < digits.size()) {
+                digits[write_index++] = static_cast<std::uint8_t>(digit);
+            }
+            else if (digit > 0) {
+                truncated = true;
+            }
+            accumulator *= 10;
+        }
+
+        num_digits = write_index;
+        trim();
+    }
+
+private:
+    SCN_NODISCARD std::uint32_t count_new_digits(std::uint32_t shift) const
+    {
+        const auto& [delta, pow5] = left_shift_table[shift];
+        for (std::size_t i = 0; i < pow5.size(); ++i) {
+            if (i >= num_digits) {
+                return delta - 1;
+            }
+            if (const auto digit = char_to_int(pow5[i]); digits[i] != digit) {
+                return digits[i] < digit ? delta - 1 : delta;
+            }
+        }
+        return delta;
+    }
+};
+
+constexpr std::array<std::uint8_t, 19> powers_of_two = {
+    0, 3, 6, 9, 13, 16, 19, 23, 26, 29, 33, 36, 39, 43, 46, 49, 53, 56, 59};
+
+template <typename T>
+scan_expected<void> simple_decimal_conversion(T& result,
+                                              high_precision_decimal& value)
+{
+    SCN_EXPECT(std::fegetround() == FE_TONEAREST);
+
+    if (value.num_digits == 0) {
+        result = static_cast<T>(0.0);
+        return {};
+    }
+
+    constexpr std::int32_t exp_bias =
+        (1 << (float_traits<T>::exponent_bits - 1)) - 1;
+    std::int32_t exp2{};
+
+    // Scale by powers of two (i.e., shift left or right),
+    // until we're in the range [1, 2).
+
+    // "[R]epeatedly do Non-Rounding right-shifts until the HPD represents
+    // a number less than 1 (i.e.[,] its decimal_point field is non-positive)"
+    while (value.decimal_point > 0) {
+        const auto shift =
+            static_cast<std::size_t>(value.decimal_point) < powers_of_two.size()
+                ? powers_of_two[static_cast<std::size_t>(value.decimal_point)]
+                : 60u;
+        value.right_shift(shift);
+        exp2 += static_cast<int32_t>(shift);
+    }
+
+    // "Repeatedly do Non-Rounding left-shifts until the HPD represents
+    // a number in the range [1/2 ... 1] (i.e.[,] its decimal_point field
+    // is zero and its digits[0] is at least 5)"
+    SCN_EXPECT(value.num_digits > 0);
+    while (value.decimal_point < 0) {
+        const auto shift =
+            static_cast<std::size_t>(-value.decimal_point) <
+                    powers_of_two.size()
+                ? powers_of_two[static_cast<std::size_t>(-value.decimal_point)]
+                : 60u;
+        value.left_shift(shift);
+        exp2 -= static_cast<int32_t>(shift);
+    }
+    // We're in [0.1, 0.5), repeatedly shift left until we're in [0.5, 1)
+    while (value.decimal_point == 0 && value.digits[0] < 5u) {
+        value.left_shift(1);
+        exp2 -= 1;
+    }
+
+    // Shift once to get us in [1, 2)
+    value.left_shift(1);
+    exp2 -= 1;
+
+    constexpr auto max_exponent = exp_bias + 1;
+    if (exp2 >= max_exponent) {
+        // "If the exponent was too large then the parsed [value] is infinite"
+        return detail::unexpected_scan_error(
+            scan_error::value_positive_overflow,
+            "Parsed float exponent too large");
+    }
+
+    auto biased_exponent = exp2 + exp_bias;
+    // constexpr auto max_biased_exponent =
+    //     (1 << float_traits<T>::exponent_bits) - 1;
+    bool was_subnormal = false;
+
+    if (biased_exponent <= 0) {
+        // "If the exponent was too small then we would N-R right shift
+        // the mantissa (and adjust the biased base-2 exponent) until
+        // the exponent was in range (positive).
+        // This might end with the mantissa below 1/2,
+        // so that the parsed [value] is zero,
+        // but otherwise we'd return a subnormal [value].
+
+        was_subnormal = true;
+        while (biased_exponent < 0) {
+            value.right_shift(1);
+            biased_exponent += 1;
+        }
+        value.right_shift(1);
+    }
+
+    // "Multiply by (2 ** precision) and round to get [the] mantissa"
+    value.left_shift(float_traits<T>::fraction_bits);
+    auto [significand, significand_rounded_up] = value.rounded_significand<T>();
+
+    if (was_subnormal &&
+        (significand >> float_traits<T>::fraction_bits) != 0u) {
+        // Previously subnormal number became normal with the right-shifts
+        ++biased_exponent;
+    }
+
+    // Check that the mantissa fits (rounding may have added an extra bit).
+    // If it doesn't, shift down by one.
+    // if (significand_rounded_up &&
+    //    (significand == 0u || count_trailing_zeroes(significand) ==
+    //                              float_traits<T>::fraction_bits)) {
+    //    significand >>= 1u;
+    //    ++biased_exponent;
+    //    if (biased_exponent >= max_biased_exponent) {
+    //        return detail::unexpected_scan_error(
+    //            scan_error::value_positive_overflow,
+    //            "Parsed float exponent too large");
+    //    }
+    //}
+
+    if (significand == 0u && biased_exponent == 0 && value.decimal_point < 0) {
+        // Value rounded to zero, but the input was non-zero
+        //  -> underflow
+        return detail::unexpected_scan_error(
+            scan_error::value_positive_underflow,
+            "Parsed float rounds to zero, but is non-zero");
+    }
+
+    // Build resulting value
+    using repr_type = typename float_traits<T>::value_repr;
+    repr_type repr{};
+    SCN_ENSURE(biased_exponent >= 0);
+    repr.apply_exponent(biased_exponent);
+    repr.apply_significand(significand);
+
+    std::memcpy(&result, &repr, sizeof(repr_type));
+    return {};
+
+#if 0
+    // First, shift right, until we've a value that's certainly below 10.
+    std::int32_t exp2{};
+    while (value.decimal_point > 1) {
+        auto const shift = value.decimal_point < powers_of_two.size()
+                               ? powers_of_two[value.decimal_point]
+                               : 60u;
+        value.right_shift(shift);
+        // TODO: check overflow
+        exp2 += shift;
+    }
+
+    // Then, shift left, until we're in [0.1, 10].
+    while (value.decimal_point < 0) {
+        auto const shift = -value.decimal_point < powers_of_two.size()
+                               ? (powers_of_two[-value.decimal_point] + 1)
+                               : 60u;
+        value.left_shift(shift);
+        // TODO: check overflow
+        exp2 -= shift;
+    }
+
+    // Look at the first three digits to determine the shift needed
+    // to get us in [1, 2].
+
+    const auto additional_shift = std::invoke([&]() {
+        std::uint32_t first_digits{};
+        for (int i = 0; i < 3; ++i) {
+            first_digits = first_digits * 10 +
+                           (i < value.num_digits ? value.digits[i] : 0);
+        }
+
+        if (value.decimal_point == 0) {
+            // [0.1, 1]
+            if (first_digits < 125) {
+                return -4;
+            }
+            if (first_digits < 250) {
+                return -3;
+            }
+            if (first_digits < 500) {
+                return -2;
+            }
+            return -1;
+        }
+
+        // [1, 10]
+        if (first_digits < 200) {
+            return 0;
+        }
+        if (first_digits < 400) {
+            return 1;
+        }
+        if (first_digits < 800) {
+            return 2;
+        }
+        return 3;
+    });
+
+    // Shift to get us between [1, 2]
+    exp2 += additional_shift;
+    if (additional_shift > 0) {
+        value.right_shift(additional_shift);
+    }
+    else if (additional_shift < 0) {
+        value.left_shift(-additional_shift);
+    }
+
+#if 0
+    exp2 += additional_shift;
+    const auto final_lshift =
+        static_cast<std::int32_t>(float_traits<T>::fraction_bits) -
+        additional_shift;
+
+    // Right-shift exponent to normal
+    if (-exp_bias + 1 > exp2) {
+        const auto shift = -exp_bias + 1 - exp2;
+        value.right_shift(shift);
+        exp2 += shift;
+    }
+
+    // TODO: check overflow
+
+    // Shift left to extract the significand.
+    value.left_shift(final_lshift);
+#endif
+    // Shift left to extract the significand
+    value.left_shift(float_traits<T>::fraction_bits);
+    auto significand = value.rounded_significand<T>();
+
+    // Handle subnormals
+    if (exp2 + exp_bias <= 0) {
+        // TODO
+    }
+
+    // Rounding might have added a bit.
+    // If so, shift and re-check overflow
+    if (significand == significand_int_type{2}
+                           << static_cast<significand_int_type>(
+                                  float_traits<T>::fraction_bits)) {
+        significand >>= 1;
+        exp2++;
+        // TODO: check overflow
+    }
+
+    typename float_traits<T>::value_repr repr{};
+    repr.exponent = exp2 + exp_bias;
+    repr.apply_significand(significand);
+
+    T result{};
+    std::memcpy(&result, &repr, sizeof(T));
+    return result;
+#endif
 }
 
 /////////////////////////////////////////////////////////////////
@@ -7578,3 +8563,25 @@ struct custom_reader {
 
 SCN_END_NAMESPACE
 }  // namespace scn
+
+namespace std {
+
+template <>
+struct numeric_limits<::scn::impl::uint128_polyfill> {
+    static constexpr bool is_specialized = true;
+
+    static constexpr ::scn::impl::uint128_polyfill min() noexcept
+    {
+        return {0u};
+    }
+
+    static constexpr ::scn::impl::uint128_polyfill max() noexcept
+    {
+        ::scn::impl::uint128_polyfill result;
+        result.low = std::numeric_limits<uint64_t>::max();
+        result.high = std::numeric_limits<uint64_t>::max();
+        return result;
+    }
+};
+
+}  // namespace std

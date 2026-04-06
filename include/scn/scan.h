@@ -4155,6 +4155,11 @@ public:
 
     // TODO: operator->
 
+#if SCN_CLANG >= SCN_COMPILER(21, 1, 0)
+    SCN_CLANG_PUSH
+    SCN_CLANG_IGNORE("-Wnrvo")
+#endif
+
     constexpr common_iterator& operator++()
     {
         SCN_EXPECT(base_type::_is_iterator());
@@ -4197,6 +4202,10 @@ public:
         --*this;
         return tmp;
     }
+
+#if SCN_CLANG >= SCN_COMPILER(21, 1, 0)
+    SCN_CLANG_POP
+#endif
 
     // TODO: compare with convertible common_iterators
 

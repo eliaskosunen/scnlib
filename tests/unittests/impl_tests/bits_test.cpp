@@ -21,9 +21,9 @@
 
 TEST(BitsTest, CountTrailingZeroes)
 {
-    EXPECT_EQ(scn::impl::count_trailing_zeroes(0b0001), 0);
-    EXPECT_EQ(scn::impl::count_trailing_zeroes(0b1000), 3);
-    EXPECT_EQ(scn::impl::count_trailing_zeroes(0b1111), 0);
+    EXPECT_EQ(scn::impl::count_trailing_zeroes(0b0001u), 0);
+    EXPECT_EQ(scn::impl::count_trailing_zeroes(0b1000u), 3);
+    EXPECT_EQ(scn::impl::count_trailing_zeroes(0b1111u), 0);
 
     EXPECT_EQ(
         scn::impl::count_trailing_zeroes(std::numeric_limits<uint64_t>::max()),
