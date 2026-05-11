@@ -268,6 +268,16 @@ struct wrapped_pointer_iterator<std::__wrap_iter<Elem*>> {
         return it.base();
     }
 };
+#ifdef _LIBCPP_ABI_BOUNDED_ITERATORS
+template <typename Elem>
+struct wrapped_pointer_iterator<std::__bounded_iter<Elem*>> {
+    SCN_FORCE_INLINE static constexpr auto to_address(
+        const std::__bounded_iter<Elem*>& it) noexcept
+    {
+        return std::pointer_traits<std::__bounded_iter<Elem*>>::to_address(it);
+    }
+};
+#endif
 #endif
 
 template <typename I>
