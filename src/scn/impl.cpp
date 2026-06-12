@@ -30,49 +30,6 @@
 #include <iostream>
 #endif
 
-#ifndef SCN_DISABLE_FAST_FLOAT
-#define SCN_DISABLE_FAST_FLOAT 0
-#endif
-
-#if !SCN_DISABLE_FAST_FLOAT
-
-SCN_GCC_PUSH
-SCN_GCC_IGNORE("-Wold-style-cast")
-SCN_GCC_IGNORE("-Wnoexcept")
-SCN_GCC_IGNORE("-Wundef")
-SCN_GCC_IGNORE("-Wsign-conversion")
-SCN_GCC_IGNORE("-Wuseless-cast")
-
-SCN_CLANG_PUSH
-SCN_CLANG_IGNORE("-Wold-style-cast")
-SCN_CLANG_IGNORE("-Wdeprecated")
-SCN_CLANG_IGNORE("-Wcomma")
-SCN_CLANG_IGNORE("-Wundef")
-SCN_CLANG_IGNORE("-Wdocumentation-unknown-command")
-
-#if SCN_CLANG >= SCN_COMPILER(8, 0, 0)
-SCN_CLANG_IGNORE("-Wextra-semi-stmt")
-#endif
-
-#if SCN_CLANG >= SCN_COMPILER(16, 0, 0)
-SCN_CLANG_IGNORE("-Wunsafe-buffer-usage")
-#endif
-
-#if SCN_CLANG >= SCN_COMPILER(13, 0, 0)
-SCN_CLANG_IGNORE("-Wreserved-identifier")
-#endif
-
-#include <fast_float/fast_float.h>
-
-SCN_CLANG_POP
-SCN_GCC_POP
-
-#endif  // !SCN_DISABLE_FAST_FLOAT
-
-#if SCN_HAS_FLOAT_CHARCONV
-#include <charconv>
-#endif
-
 #define SCN_XLOCALE_POSIX 0
 #define SCN_XLOCALE_MSVC  1
 #define SCN_XLOCALE_OTHER 2
@@ -93,9 +50,13 @@ SCN_GCC_POP
 
 #include <features.h>
 
-#if !((__GLIBC__ > 2) || ((__GLIBC__ == 2) && (__GLIBC_MINOR__ > 25)))
-#include <xlocale.h>
 #define SCN_XLOCALE SCN_XLOCALE_POSIX
+
+#if !((__GLIBC__ > 2) || ((__GLIBC__ == 2) && (__GLIBC_MINOR__ > 25)))
+// xlocale.h was removed in glibc 2.26
+#include <xlocale.h>
+#else
+#include <clocale>
 #endif  // __GLIBC__ <= 2.25
 
 #elif defined(__FreeBSD_version) && __FreeBSD_version >= 1000010
@@ -453,7 +414,7 @@ SCN_PUBLIC scan_error handle_error(scan_error e)
 // Floating-point reader implementation
 /////////////////////////////////////////////////////////////////
 
-namespace impl {
+namespace impl::float_conversion {
 
 namespace {
 
@@ -558,120 +519,318 @@ SCN_NODISCARD bool is_float_negative_infinity(T value)
 
 SCN_GCC_COMPAT_POP  // -Wfloat-equal
 
-    namespace
-{
-}
-
-template <typename CharT>
-struct impl_init_data {
-    contiguous_range_factory<CharT>& input;
-    float_reader_base::float_kind kind;
-    unsigned options;
-};
+}  // namespace
 
 ////////////////////////////////////////////////////////////////////
-// Custom implementation using Simple Decimal Conversion
-// Fallback for all CharT and FloatT
+// strtod-based implementation
+// Fallback for all CharT and standard FloatT,
+// for FloatT that don't follow IEEE 754
+// (IEEE floats can always be handled by convert_custom)
 ////////////////////////////////////////////////////////////////////
 
-template <typename CharT, typename T>
-struct sdc_impl {
-    sdc_impl(impl_init_data<CharT>& data) : m_data(data) {}
+#if !SCN_DISABLE_STRTOD
 
-    template <typename F>
-    scan_expected<std::ptrdiff_t> operator()(T& value, F&&)
+namespace {
+
+template <typename T>
+struct convert_strtod {
+    convert_strtod(kind_type kind) : m_kind(kind) {}
+
+    template <typename CharT>
+    scan_expected<void> operator()(const CharT* source, T& value)
     {
-        float_rounding_guard guard{};
+        CharT* end{};
+        errno = 0;
 
-        auto input = m_data.input.view();
-        SCN_EXPECT(!input.empty());
-
-        if (m_data.kind == float_reader_base::float_kind::hex_with_prefix) {
-            if (!(m_data.options & float_reader_base::allow_hex)) {
-                return detail::unexpected_scan_error(
-                    scan_error::invalid_scanned_value,
-                    "Scanned a hexfloat, which was not allowed");
-            }
-            auto r = parse_hexfloat(value, input.substr(2));
-            if (r) {
-                return *r + 2;
-            }
-            return unexpected(r.error());
+        if constexpr (std::is_same_v<CharT, char>) {
+            value = generic_narrow_strtod(source, &end);
         }
-        if (m_data.kind == float_reader_base::float_kind::hex_without_prefix) {
-            if (!(m_data.options & float_reader_base::allow_hex)) {
-                return detail::unexpected_scan_error(
-                    scan_error::invalid_scanned_value,
-                    "Scanned a hexfloat, which was not allowed");
-            }
-            return parse_hexfloat(value, input);
+        else if constexpr (std::is_same_v<CharT, wchar_t>) {
+            value = generic_wide_strtod(source, &end);
+        }
+        else {
+            static_assert(detail::dependent_false<CharT>::value, "");
         }
 
-        if (!(m_data.options & float_reader_base::allow_fixed) &&
-            !(m_data.options & float_reader_base::allow_scientific)) {
-            return detail::unexpected_scan_error(
-                scan_error::invalid_scanned_value,
-                "Expected a hexfloat, didn't scan one");
-        }
+        const auto saved_errno = errno;
+        auto chars_read = end - source;
+        SCN_TRY_DISCARD(check_error(chars_read, saved_errno, value));
 
-        return parse_decfloat(
-            value, input, std::invoke([&] noexcept {
-                if (m_data.options & float_reader_base::allow_fixed &&
-                    m_data.options & float_reader_base::allow_scientific) {
-                    return exponent_flag::allow;
-                }
-                if (m_data.options & float_reader_base::allow_fixed) {
-                    return exponent_flag::disallow;
-                }
-                if (m_data.options & float_reader_base::allow_scientific) {
-                    return exponent_flag::require;
-                }
-                SCN_EXPECT(false);
-                SCN_UNREACHABLE;
-            }));
+        return {};
     }
 
 private:
-    using parts = float_parts<CharT>;
-
-    enum class exponent_flag {
-        disallow,
-        allow,
-        require,
-    };
-
-    static scan_expected<std::ptrdiff_t> parse_decfloat(
-        T& value,
-        std::basic_string_view<CharT> input,
-        exponent_flag exp)
+    SCN_NODISCARD static T generic_narrow_strtod(const char* str,
+                                                 char** str_end)
     {
-        auto p = parse_dec_parts(input, exp);
-        if (!p) {
+#if SCN_HAS_STD_F16 && defined(__HAVE_FLOAT16) && __HAVE_FLOAT16
+        if constexpr (std::is_same_v<T, std::float16_t>) {
+            set_clocale_classic_guard clocale_guard{LC_NUMERIC};
+            return static_cast<std::float16_t>(::strtof16(str, str_end));
+        }
+#endif
+
+#if SCN_XLOCALE == SCN_XLOCALE_POSIX
+        static locale_t cloc = ::newlocale(LC_ALL_MASK, "C", nullptr);
+        if constexpr (std::is_same_v<T, float>) {
+            return ::strtof_l(str, str_end, cloc);
+        }
+        else if constexpr (std::is_same_v<T, double>) {
+            return ::strtod_l(str, str_end, cloc);
+        }
+        else if constexpr (std::is_same_v<T, long double>) {
+            return ::strtold_l(str, str_end, cloc);
+        }
+#elif SCN_XLOCALE == SCN_XLOCALE_MSVC
+        static _locale_t cloc = ::_create_locale(LC_ALL, "C");
+        if constexpr (std::is_same_v<T, float>) {
+            return ::_strtof_l(str, str_end, cloc);
+        }
+        else if constexpr (std::is_same_v<T, double>) {
+            return ::_strtod_l(str, str_end, cloc);
+        }
+        else if constexpr (std::is_same_v<T, long double>) {
+            return ::_strtold_l(str, str_end, cloc);
+        }
+#else
+        set_clocale_classic_guard clocale_guard{LC_NUMERIC};
+        if constexpr (std::is_same_v<T, float>) {
+            return std::strtof(str, str_end);
+        }
+        else if constexpr (std::is_same_v<T, double>) {
+            return std::strtod(str, str_end);
+        }
+        else if constexpr (std::is_same_v<T, long double>) {
+            return std::strtold(str, str_end);
+        }
+#endif
+
+        SCN_EXPECT(false);
+        SCN_UNREACHABLE;
+    }
+
+    SCN_NODISCARD static T generic_wide_strtod(const wchar_t* str,
+                                               wchar_t** str_end)
+    {
+#if SCN_HAS_STD_F16 && defined(__HAVE_FLOAT16) && __HAVE_FLOAT16
+        if constexpr (std::is_same_v<T, std::float16_t>) {
+            set_clocale_classic_guard clocale_guard{LC_NUMERIC};
+            return static_cast<std::float16_t>(::wcstof16(str, str_end));
+        }
+#endif
+
+#if SCN_XLOCALE == SCN_XLOCALE_POSIX
+        static locale_t cloc = ::newlocale(LC_ALL_MASK, "C", NULL);
+        if constexpr (std::is_same_v<T, float>) {
+            return ::wcstof_l(str, str_end, cloc);
+        }
+        else if constexpr (std::is_same_v<T, double>) {
+            return ::wcstod_l(str, str_end, cloc);
+        }
+        else if constexpr (std::is_same_v<T, long double>) {
+            return ::wcstold_l(str, str_end, cloc);
+        }
+#elif SCN_XLOCALE == SCN_XLOCALE_MSVC
+        static _locale_t cloc = ::_create_locale(LC_ALL, "C");
+        if constexpr (std::is_same_v<T, float>) {
+            return ::_wcstof_l(str, str_end, cloc);
+        }
+        else if constexpr (std::is_same_v<T, double>) {
+            return ::_wcstod_l(str, str_end, cloc);
+        }
+        else if constexpr (std::is_same_v<T, long double>) {
+            return ::_wcstold_l(str, str_end, cloc);
+        }
+#else
+        set_clocale_classic_guard clocale_guard{LC_NUMERIC};
+        if constexpr (std::is_same_v<T, float>) {
+            return std::wcstof(str, str_end);
+        }
+        else if constexpr (std::is_same_v<T, double>) {
+            return std::wcstod(str, str_end);
+        }
+        else if constexpr (std::is_same_v<T, long double>) {
+            return std::wcstold(str, str_end);
+        }
+#endif
+
+        SCN_EXPECT(false);
+        SCN_UNREACHABLE;
+    }
+
+    SCN_NODISCARD scan_expected<void> check_error(std::ptrdiff_t chars_read,
+                                                  int c_errno,
+                                                  T value) const
+    {
+        if (is_float_any_zero(value) && chars_read == 0) {
+            SCN_UNLIKELY_ATTR
             return detail::unexpected_scan_error(
-                scan_error::invalid_scanned_value, "Invalid float format");
+                scan_error::invalid_scanned_value,
+                "strtod failed: No conversion");
         }
 
+        if (c_errno == ERANGE && is_float_positive_zero(value)) {
+            SCN_UNLIKELY_ATTR
+            return detail::unexpected_scan_error(
+                scan_error::value_positive_underflow,
+                "strtod failed: Value too small");
+        }
+        if (c_errno == ERANGE && is_float_negative_zero(value)) {
+            SCN_UNLIKELY_ATTR
+            return detail::unexpected_scan_error(
+                scan_error::value_negative_underflow,
+                "strtod failed: Value too small");
+        }
+
+        // Infinities are handled separately up the call stack,
+        // so getting an infinity here always means overflow
+        // (no need to even check errno,
+        // which actually isn't even set on all C stdlib implementations)
+        if (is_float_positive_infinity(value)) {
+            SCN_UNLIKELY_ATTR
+            return detail::unexpected_scan_error(
+                scan_error::value_positive_overflow,
+                "strtod failed: Value too large");
+        }
+        if (is_float_negative_infinity(value)) {
+            SCN_UNLIKELY_ATTR
+            return detail::unexpected_scan_error(
+                scan_error::value_negative_overflow,
+                "strtod failed: Value too large");
+        }
+
+        return {};
+    }
+
+    kind_type m_kind{};
+};
+
+}  // namespace
+
+template <typename CharT, typename T>
+auto convert_strtod_traits::convert(const CharT* source,
+                                    T& value,
+                                    kind_type kind,
+                                    bool& can_fallback) -> scan_expected<void>
+{
+    if constexpr (enabled<CharT, T>) {
+        can_fallback = false;
+        return convert_strtod<T>{kind}(source, value);
+    }
+    else {
+        SCN_EXPECT(false);
+        SCN_UNREACHABLE;
+    }
+}
+
+#define SCN_DEFINE_STRTOD_CONVERT(T)                               \
+    template SCN_PUBLIC auto convert_strtod_traits::convert(       \
+        const char*, T&, kind_type, bool&) -> scan_expected<void>; \
+    template SCN_PUBLIC auto convert_strtod_traits::convert(       \
+        const wchar_t*, T&, kind_type, bool&) -> scan_expected<void>;
+
+#if !SCN_DISABLE_TYPE_FLOAT
+SCN_DEFINE_STRTOD_CONVERT(float)
+#endif
+
+#if !SCN_DISABLE_TYPE_DOUBLE
+SCN_DEFINE_STRTOD_CONVERT(double)
+#endif
+
+#if !SCN_DISABLE_TYPE_LONG_DOUBLE
+SCN_DEFINE_STRTOD_CONVERT(long double)
+#endif
+
+#if SCN_HAS_STD_F16 && !SCN_DISABLE_TYPE_FLOAT16
+SCN_DEFINE_STRTOD_CONVERT(std::float16_t)
+#endif
+
+#if SCN_HAS_STD_F32 && !SCN_DISABLE_TYPE_FLOAT32
+SCN_DEFINE_STRTOD_CONVERT(std::float32_t)
+#endif
+
+#if SCN_HAS_STD_F64 && !SCN_DISABLE_TYPE_FLOAT64
+SCN_DEFINE_STRTOD_CONVERT(std::float64_t)
+#endif
+
+#if SCN_HAS_STD_F128 && !SCN_DISABLE_TYPE_FLOAT128
+SCN_DEFINE_STRTOD_CONVERT(std::float128_t)
+#endif
+
+#if SCN_HAS_STD_BF16 && !SCN_DISABLE_TYPE_BFLOAT16
+SCN_DEFINE_STRTOD_CONVERT(std::bfloat16_t)
+#endif
+
+#undef SCN_DEFINE_STRTOD_CONVERT
+
+#endif  // !SCN_DISABLE_STRTOD
+
+////////////////////////////////////////////////////////////////////
+// Custom implementation using Simple Decimal Conversion
+// Fallback for all CharT and IEEE FloatT
+////////////////////////////////////////////////////////////////////
+
+namespace {
+
+template <typename CharT>
+float_parts<CharT> parse_float_parts(
+    std::basic_string_view<CharT> source,
+    const typename source_reader<CharT>::state_type& state)
+{
+    float_parts<CharT> parts{};
+
+    parts.before_radix_point = source.substr(0, state.whole_part_digits_count);
+    auto idx = state.whole_part_digits_count;
+
+    if (state.has_radix_point) {
+        ++idx; // skip '.'
+        parts.after_radix_point = source.substr(idx, state.fractional_part_digits_count);
+        idx += state.fractional_part_digits_count;
+    }
+
+    if (state.exponent_digits_count > 0) {
+        ++idx; // skip 'e'/'p'
+        if (state.has_exponent_sign) {
+            parts.exponent_positive = source[idx] == CharT{'+'};
+            ++idx;
+        }
+        parts.exponent = source.substr(idx, state.exponent_digits_count);
+        idx += state.exponent_digits_count;
+    }
+
+    SCN_ENSURE(idx == source.size());
+    parts.end = source.end();
+    return parts;
+}
+
+struct convert_custom_dec {
+    convert_custom_dec(kind_type kind) : m_kind(kind) {}
+
+    template <typename CharT, typename T>
+    scan_expected<void> operator()(const float_parts<CharT>& parts, T& value)
+    {
+        float_rounding_guard guard{};
+
         high_precision_decimal hpd{};
-        if (auto res = high_precision_decimal::populate(hpd, *p); !res) {
+        if (auto res = high_precision_decimal::populate(hpd, parts); !res) {
             return unexpected(res.error());
         }
         if (auto res = simple_decimal_conversion(value, hpd); !res) {
             return unexpected(res.error());
         }
-
-        return std::distance(input.begin(), p->end);
+        return {};
     }
 
-    static scan_expected<std::ptrdiff_t> parse_hexfloat(
-        T& value,
-        std::basic_string_view<CharT> input)
-    {
-        auto p = parse_hex_parts(input);
-        if (!p) {
-            return detail::unexpected_scan_error(
-                scan_error::invalid_scanned_value, "Invalid hexfloat format");
-        }
+private:
+    kind_type m_kind;
+};
 
+struct convert_custom_hex {
+    convert_custom_hex(kind_type kind) : m_kind(kind) {}
+
+    template <typename CharT, typename T>
+    scan_expected<void> operator()(const float_parts<CharT>& parts, T& value)
+    {
         using significand_int_type =
             typename float_traits<T>::significand_int_type;
         // The entire significand, including a leading "1.",
@@ -708,23 +867,24 @@ private:
                 significand |= significand_int_type{d};
             }
         };
-        for (CharT c : p->before_radix_point) {
+        for (CharT c : parts.before_radix_point) {
             add_digit(char_to_int(c));
         }
-        for (CharT c : p->after_radix_point) {
+        for (CharT c : parts.after_radix_point) {
             add_digit(char_to_int(c));
         }
 
         // Handle zero
         if (significand == significand_int_type{0u}) {
             value = static_cast<T>(0.0);
-            return std::distance(input.begin(), p->end);
+            return {};
         }
 
         // Handle explicit binary exponent
         int binary_exponent = 0;
-        if (!p->exponent.empty()) {
-            auto exp_opt = parse_exponent(p->exponent, p->exponent_positive);
+        if (!parts.exponent.empty()) {
+            auto exp_opt =
+                parse_exponent(parts.exponent, parts.exponent_positive);
             if (!exp_opt) {
                 return detail::unexpected_scan_error(
                     scan_error::invalid_scanned_value,
@@ -734,7 +894,7 @@ private:
         }
 
         auto exp2 = binary_exponent -
-                    4 * static_cast<int>(p->after_radix_point.size()) +
+                    4 * static_cast<int>(parts.after_radix_point.size()) +
                     4 * dropped_significand_digits;
 
         // Normalize value to 1.fraction * 2^exponent (for normal values)
@@ -784,8 +944,7 @@ private:
         if (biased_exp > 0) {
             // Normal: strip the implicit leading 1, then shift the remaining
             // N-1 fraction bits to fill the fraction_bits field.
-            significand ^= significand_int_type{1u}
-                           << (N - 1);
+            significand ^= significand_int_type{1u} << (N - 1);
 
             const int shift = static_cast<int>(N) - 1 - fraction_bits;
             if (shift > 0) {
@@ -847,9 +1006,11 @@ private:
         repr.apply_significand(significand);
         std::memcpy(&value, &repr, sizeof(repr));
 
-        return std::distance(input.begin(), p->end);
+        return {};
     }
 
+private:
+    template <typename CharT>
     static std::optional<int> parse_exponent(
         std::basic_string_view<CharT> input,
         bool is_positive)
@@ -869,413 +1030,81 @@ private:
         return value;
     }
 
-    template <int Base, CharT ExpLowerCase, CharT ExpUpperCase>
-    static std::optional<parts> parse_parts(std::basic_string_view<CharT> input,
-                                            exponent_flag expflag)
-    {
-        SCN_EXPECT(!input.empty());
-        auto it = input.begin();
-
-        parts p{};
-
-        // Skip leading zeroes
-        bool got_digits = false;
-        for (; it != input.end() && *it == CharT{'0'}; ++it) {
-            got_digits = true;
-        }
-        if (it == input.end()) {
-            p.end = it;
-            p.before_radix_point = input.substr(0, 1);
-            SCN_ENSURE(p.before_radix_point.front() == CharT{'0'});
-            return p;
-        }
-        const auto beg = it;
-
-        bool got_radix_point = false;
-        if (*it == CharT{'.'}) {
-            p.before_radix_point =
-                detail::make_string_view_from_iterators<CharT>(it, it);
-            got_radix_point = true;
-            ++it;
-        }
-        if (it == input.end()) {
-            p.end = it;
-            p.before_radix_point = input.substr(0, 1);
-            SCN_ENSURE(p.before_radix_point.front() == CharT{'0'});
-            return p;
-        }
-
-        for (; it != input.end(); ++it) {
-            if (*it == CharT{'.'}) {
-                if (got_radix_point) {
-                    break;
-                }
-                got_radix_point = true;
-                p.before_radix_point =
-                    detail::make_string_view_from_iterators<CharT>(beg, it);
-                p.after_radix_point =
-                    detail::make_string_view_from_iterators<CharT>(it + 1,
-                                                                   it + 1);
-                continue;
-            }
-            if (auto d = char_to_int(*it); d < Base) {
-                got_digits = true;
-                continue;
-            }
-            break;
-        }
-        if (!got_digits) {
-            return std::nullopt;
-        }
-        if (!got_radix_point) {
-            p.before_radix_point =
-                detail::make_string_view_from_iterators<CharT>(beg, it);
-        }
-        else {
-            p.after_radix_point =
-                detail::make_string_view_from_iterators<CharT>(
-                    std::next(p.before_radix_point.end()), it);
-        }
-        if (it == input.end()) {
-            if (expflag == exponent_flag::require) {
-                return std::nullopt;
-            }
-            p.end = it;
-            return p;
-        }
-
-        if (expflag != exponent_flag::disallow &&
-            (*it == ExpLowerCase || *it == ExpUpperCase)) {
-            ++it;
-            if (it == input.end()) {
-                p.end = --it;
-                return p;
-            }
-
-            if (*it == CharT{'+'}) {
-                ++it;
-                if (it == input.end()) {
-                    p.end = it - 2;
-                    return p;
-                }
-            }
-            else if (*it == CharT{'-'}) {
-                ++it;
-                if (it == input.end()) {
-                    p.end = it - 2;
-                    return p;
-                }
-                p.exponent_positive = false;
-            }
-            const auto exp_begin = it;
-
-            for (; it != input.end() && char_to_int(*it) < Base; ++it) {}
-            if (it == exp_begin) {
-                p.end = it - 2;
-                return p;
-            }
-            p.exponent =
-                detail::make_string_view_from_iterators<CharT>(exp_begin, it);
-        }
-        p.end = it;
-
-        if (expflag == exponent_flag::require && p.exponent.empty()) {
-            return std::nullopt;
-        }
-
-        return p;
-    }
-
-    static std::optional<parts> parse_dec_parts(
-        std::basic_string_view<CharT> input,
-        exponent_flag exp)
-    {
-        return parse_parts<10, CharT{'e'}, CharT{'E'}>(input, exp);
-    }
-
-    static std::optional<parts> parse_hex_parts(
-        std::basic_string_view<CharT> input)
-    {
-        return parse_parts<16, CharT{'p'}, CharT{'P'}>(input,
-                                                       exponent_flag::allow);
-    }
-
-    impl_init_data<CharT>& m_data;
+    kind_type m_kind;
 };
 
-struct sdc_impl_traits {
-    template <typename CharT, typename FloatT>
-    static constexpr bool enabled =
-        std::numeric_limits<FloatT>::is_iec559 &&
-        !std::is_base_of_v<float_traits_impl_none_base, float_traits<FloatT>>;
-
-    template <typename CharT, typename FloatT>
-    using type = sdc_impl<CharT, FloatT>;
-};
-
-////////////////////////////////////////////////////////////////////
-// strtod-based implementation
-// Fallback for all CharT and standard FloatT
-// (plus possibly float16 on glibc)
-////////////////////////////////////////////////////////////////////
-
-#if !SCN_DISABLE_STRTOD
-template <typename T>
-struct strtod_impl_base {
-    template <typename CharT, typename Strtod>
-    scan_expected<std::ptrdiff_t> parse(T& value,
-                                        const CharT* src,
-                                        Strtod strtod_cb)
-    {
-        CharT* end{};
-        errno = 0;
-        value = strtod_cb(src, &end);
-        const auto saved_errno = errno;
-        auto chars_read = end - src;
-
-        SCN_TRY_DISCARD(this->check_error(chars_read, saved_errno, value));
-
-        if (m_kind == float_reader_base::float_kind::hex_without_prefix &&
-            chars_read >= 2) {
-            chars_read -= 2;
-        }
-
-        return chars_read;
-    }
-
-    template <typename CharT>
-    const CharT* get_null_terminated_source(
-        contiguous_range_factory<CharT>& input)
-    {
-        if (!input.stores_allocated_string()) {
-            // TODO: call float_reader::read_source?
-            auto first_space = read_until_classic_space(input.view());
-            input.assign(
-                std::basic_string<CharT>{input.view().begin(), first_space});
-        }
-
-        if (this->m_kind == float_reader_base::float_kind::hex_without_prefix) {
-            if constexpr (std::is_same_v<CharT, char>) {
-                input.get_allocated_string().insert(0, "0x");
-            }
-            else {
-                input.get_allocated_string().insert(0, L"0x");
-            }
-        }
-
-        return input.get_allocated_string().c_str();
-    }
-
-    SCN_NODISCARD scan_expected<void> check_error(std::ptrdiff_t chars_read,
-                                                  int c_errno,
-                                                  T value) const
-    {
-        if (is_float_any_zero(value) && chars_read == 0) {
-            SCN_UNLIKELY_ATTR
-            return detail::unexpected_scan_error(
-                scan_error::invalid_scanned_value,
-                "strtod failed: No conversion");
-        }
-
-        if (m_kind == float_reader_base::float_kind::hex_with_prefix &&
-            (m_options & float_reader_base::allow_hex) == 0) {
-            SCN_UNLIKELY_ATTR
-            return detail::unexpected_scan_error(
-                scan_error::invalid_scanned_value,
-                "strtod failed: Hexfloats parsed, "
-                "but they're disallowed by the format string");
-        }
-
-        if (c_errno == ERANGE && is_float_positive_zero(value)) {
-            SCN_UNLIKELY_ATTR
-            return detail::unexpected_scan_error(
-                scan_error::value_positive_underflow,
-                "strtod failed: Value too small");
-        }
-        if (c_errno == ERANGE && is_float_negative_zero(value)) {
-            SCN_UNLIKELY_ATTR
-            return detail::unexpected_scan_error(
-                scan_error::value_negative_underflow,
-                "strtod failed: Value too small");
-        }
-
-        // This doesn't set ERANGE on all C standard library implementations,
-        // so we need to check whether we were actually expecting infinity
-        if (m_kind != float_reader_base::float_kind::inf_short &&
-            m_kind != float_reader_base::float_kind::inf_long &&
-            is_float_positive_infinity(value)) {
-            SCN_UNLIKELY_ATTR
-            return detail::unexpected_scan_error(
-                scan_error::value_positive_overflow,
-                "strtod failed: Value too large");
-        }
-        if (m_kind != float_reader_base::float_kind::inf_short &&
-            m_kind != float_reader_base::float_kind::inf_long &&
-            is_float_negative_infinity(value)) {
-            SCN_UNLIKELY_ATTR
-            return detail::unexpected_scan_error(
-                scan_error::value_negative_overflow,
-                "strtod failed: Value too large");
-        }
-
-        return {};
-    }
-
-    static T generic_narrow_strtod(const char* str, char** str_end)
-    {
-#if SCN_HAS_STD_F16 && defined(__HAVE_FLOAT16) && __HAVE_FLOAT16
-        if constexpr (std::is_same_v<T, std::float16_t>) {
-            set_clocale_classic_guard clocale_guard{LC_NUMERIC};
-            return static_cast<std::float16_t>(::strtof16(str, str_end));
-        }
-#endif
-
-#if SCN_XLOCALE == SCN_XLOCALE_POSIX
-        static locale_t cloc = ::newlocale(LC_ALL_MASK, "C", NULL);
-        if constexpr (std::is_same_v<T, float>) {
-            return ::strtof_l(str, str_end, cloc);
-        }
-        else if constexpr (std::is_same_v<T, double>) {
-            return ::strtod_l(str, str_end, cloc);
-        }
-        else if constexpr (std::is_same_v<T, long double>) {
-            return ::strtold_l(str, str_end, cloc);
-        }
-#elif SCN_XLOCALE == SCN_XLOCALE_MSVC
-        static _locale_t cloc = ::_create_locale(LC_ALL, "C");
-        if constexpr (std::is_same_v<T, float>) {
-            return ::_strtof_l(str, str_end, cloc);
-        }
-        else if constexpr (std::is_same_v<T, double>) {
-            return ::_strtod_l(str, str_end, cloc);
-        }
-        else if constexpr (std::is_same_v<T, long double>) {
-            return ::_strtold_l(str, str_end, cloc);
-        }
-#else
-        set_clocale_classic_guard clocale_guard{LC_NUMERIC};
-        if constexpr (std::is_same_v<T, float>) {
-            return std::strtof(str, str_end);
-        }
-        else if constexpr (std::is_same_v<T, double>) {
-            return std::strtod(str, str_end);
-        }
-        else if constexpr (std::is_same_v<T, long double>) {
-            return std::strtold(str, str_end);
-        }
-#endif
-
-        SCN_EXPECT(false);
-        SCN_UNREACHABLE;
-    }
-
-    static T generic_wide_strtod(const wchar_t* str, wchar_t** str_end)
-    {
-#if SCN_HAS_STD_F16 && defined(__HAVE_FLOAT16) && __HAVE_FLOAT16
-        if constexpr (std::is_same_v<T, std::float16_t>) {
-            set_clocale_classic_guard clocale_guard{LC_NUMERIC};
-            return static_cast<std::float16_t>(::wcstof16(str, str_end));
-        }
-#endif
-
-#if SCN_XLOCALE == SCN_XLOCALE_POSIX
-        static locale_t cloc = ::newlocale(LC_ALL_MASK, "C", NULL);
-        if constexpr (std::is_same_v<T, float>) {
-            return ::wcstof_l(str, str_end, cloc);
-        }
-        else if constexpr (std::is_same_v<T, double>) {
-            return ::wcstod_l(str, str_end, cloc);
-        }
-        else if constexpr (std::is_same_v<T, long double>) {
-            return ::wcstold_l(str, str_end, cloc);
-        }
-#elif SCN_XLOCALE == SCN_XLOCALE_MSVC
-        static _locale_t cloc = ::_create_locale(LC_ALL, "C");
-        if constexpr (std::is_same_v<T, float>) {
-            return ::_wcstof_l(str, str_end, cloc);
-        }
-        else if constexpr (std::is_same_v<T, double>) {
-            return ::_wcstod_l(str, str_end, cloc);
-        }
-        else if constexpr (std::is_same_v<T, long double>) {
-            return ::_wcstold_l(str, str_end, cloc);
-        }
-#else
-        set_clocale_classic_guard clocale_guard{LC_NUMERIC};
-        if constexpr (std::is_same_v<T, float>) {
-            return std::wcstof(str, str_end);
-        }
-        else if constexpr (std::is_same_v<T, double>) {
-            return std::wcstod(str, str_end);
-        }
-        else if constexpr (std::is_same_v<T, long double>) {
-            return std::wcstold(str, str_end);
-        }
-#endif
-
-        SCN_EXPECT(false);
-        SCN_UNREACHABLE;
-    }
-
-    float_reader_base::float_kind m_kind;
-    unsigned m_options;
-};
+}  // namespace
 
 template <typename CharT, typename T>
-class strtod_impl : public strtod_impl_base<T> {
-public:
-    explicit strtod_impl(impl_init_data<CharT>& data)
-        : strtod_impl_base<T>{data.kind, data.options}, m_input(data.input)
-    {
-    }
+scan_expected<void> convert_custom_traits::convert(
+    std::basic_string_view<CharT> source,
+    T& value,
+    kind_type kind,
+    const typename source_reader<CharT>::state_type& state,
+    bool& can_fallback)
+{
+    if constexpr (enabled<CharT, T>) {
+        can_fallback = false;
 
-    template <typename F>
-    scan_expected<std::ptrdiff_t> operator()(T& value, F&&)
-    {
-        return this->parse(value, this->get_null_terminated_source(m_input),
-                           generic_strtod);
-    }
-
-private:
-    static T generic_strtod(const CharT* str, CharT** str_end)
-    {
-        if constexpr (std::is_same_v<CharT, char>) {
-            return strtod_impl_base<T>::generic_narrow_strtod(str, str_end);
+        if (kind == kind_type::hex_with_prefix) {
+            auto parts = parse_float_parts(source.substr(2), state);
+            return convert_custom_hex{kind}(parts, value);
         }
-        else {
-            return strtod_impl_base<T>::generic_wide_strtod(str, str_end);
+
+        auto parts = parse_float_parts(source, state);
+        if (kind == kind_type::hex_without_prefix) {
+            return convert_custom_hex{kind}(parts, value);
         }
+        return convert_custom_dec{kind}(parts, value);
     }
+    else {
+        SCN_EXPECT(false);
+        SCN_UNREACHABLE;
+    }
+}
 
-    contiguous_range_factory<CharT>& m_input;
-};
+#define SCN_DEFINE_CUSTOM_CONVERT(T)                                           \
+    template SCN_PUBLIC auto convert_custom_traits::convert(                   \
+        std::string_view, T&, kind_type,                                       \
+        const source_reader<char>::state_type&, bool&) -> scan_expected<void>; \
+    template SCN_PUBLIC auto convert_custom_traits::convert(                   \
+        std::wstring_view, T&, kind_type,                                      \
+        const source_reader<wchar_t>::state_type&, bool&)                      \
+        -> scan_expected<void>;
 
-struct strtod_impl_traits {
-    template <typename CharT, typename FloatT>
-    static constexpr bool enabled =
-        (std::is_same_v<CharT, char> || std::is_same_v<CharT, wchar_t>) &&
-        (std::is_same_v<FloatT, float> || std::is_same_v<FloatT, double> ||
-         std::is_same_v<FloatT, long double>
-#if SCN_HAS_STD_F16 && defined(__HAVE_FLOAT16) && __HAVE_FLOAT16
-         || std::is_same_v<FloatT, std::float16_t>
+#if !SCN_DISABLE_TYPE_FLOAT
+SCN_DEFINE_CUSTOM_CONVERT(float)
 #endif
-        );
 
-    template <typename CharT, typename FloatT>
-    using type = strtod_impl<CharT, FloatT>;
-};
-
-#else
-
-struct strtod_impl_traits {
-    template <typename, typename>
-    static constexpr bool enabled = false;
-
-    template <typename, typename>
-    using type = void;
-};
-
+#if !SCN_DISABLE_TYPE_DOUBLE
+SCN_DEFINE_CUSTOM_CONVERT(double)
 #endif
+
+#if !SCN_DISABLE_TYPE_LONG_DOUBLE
+SCN_DEFINE_CUSTOM_CONVERT(long double)
+#endif
+
+#if SCN_HAS_STD_F16 && !SCN_DISABLE_TYPE_FLOAT16
+SCN_DEFINE_CUSTOM_CONVERT(std::float16_t)
+#endif
+
+#if SCN_HAS_STD_F32 && !SCN_DISABLE_TYPE_FLOAT32
+SCN_DEFINE_CUSTOM_CONVERT(std::float32_t)
+#endif
+
+#if SCN_HAS_STD_F64 && !SCN_DISABLE_TYPE_FLOAT64
+SCN_DEFINE_CUSTOM_CONVERT(std::float64_t)
+#endif
+
+#if SCN_HAS_STD_F128 && !SCN_DISABLE_TYPE_FLOAT128
+SCN_DEFINE_CUSTOM_CONVERT(std::float128_t)
+#endif
+
+#if SCN_HAS_STD_BF16 && !SCN_DISABLE_TYPE_BFLOAT16
+SCN_DEFINE_CUSTOM_CONVERT(std::bfloat16_t)
+#endif
+
+#undef SCN_DEFINE_CUSTOM_CONVERT
 
 ////////////////////////////////////////////////////////////////////
 // std::from_chars-based implementation
@@ -1283,107 +1112,42 @@ struct strtod_impl_traits {
 ////////////////////////////////////////////////////////////////////
 
 #if SCN_HAS_FLOAT_CHARCONV && !SCN_DISABLE_FROM_CHARS
-template <typename Float, typename = void>
-inline constexpr bool has_charconv_for = false;
 
-template <typename Float>
-inline constexpr bool has_charconv_for<
-    Float,
-    std::void_t<decltype(std::from_chars(SCN_DECLVAL(const char*),
-                                         SCN_DECLVAL(const char*),
-                                         SCN_DECLVAL(Float&)))>> = true;
-
-#if SCN_STDLIB_GLIBCXX
-// libstdc++ has buggy std::from_chars for long double
-// template <>
-// inline constexpr bool has_charconv_for<long double, void> = false;
-
-// libstdc++ delegates float16_t and bfloat16_t to float,
-// which will lead to erroneous over-/underflow detection
-#if SCN_HAS_STD_F16
-template <>
-inline constexpr bool has_charconv_for<std::float16_t, void> = false;
-#endif
-#if SCN_HAS_STD_BF16
-template <>
-inline constexpr bool has_charconv_for<std::bfloat16_t, void> = false;
-#endif
-#endif
-
-struct SCN_MAYBE_UNUSED from_chars_impl_base {
-    SCN_MAYBE_UNUSED from_chars_impl_base(impl_init_data<char>& data)
-        : m_input(data.input), m_kind(data.kind), m_options(data.options)
+namespace {
+struct convert_from_chars {
+    convert_from_chars(kind_type kind, unsigned options)
+        : m_kind(kind), m_options(options)
     {
     }
 
-protected:
-    SCN_MAYBE_UNUSED scan_expected<std::chars_format> get_flags(
-        std::string_view& input) const
-    {
-        auto flags = map_options_to_flags();
-
-        if ((flags & std::chars_format::hex) != std::chars_format{}) {
-            if (m_kind == float_reader_base::float_kind::hex_without_prefix) {
-                return std::chars_format::hex;
-            }
-            else if (m_kind == float_reader_base::float_kind::hex_with_prefix) {
-                input = input.substr(2);
-                return std::chars_format::hex;
-            }
-
-            flags &= ~std::chars_format::hex;
-            if (flags == std::chars_format{}) {
-                return detail::unexpected_scan_error(
-                    scan_error::invalid_scanned_value,
-                    "std::from_chars: Expected a hexfloat");
-            }
-        }
-
-        return flags;
-    }
-
-    contiguous_range_factory<char>& m_input;
-    float_reader_base::float_kind m_kind;
-    unsigned m_options;
-
-private:
-    std::chars_format map_options_to_flags() const
+    template <typename T>
+    auto operator()(std::string_view source, T& value, bool& can_fallback)
+        -> scan_expected<std::string_view::iterator>
     {
         std::chars_format flags{};
-
-        if (m_options & float_reader_base::allow_fixed) {
-            flags |= std::chars_format::fixed;
+        std::size_t offset{0};
+        if (m_kind == kind_type::hex_with_prefix) {
+            offset = 2;
+            flags = std::chars_format::hex;
         }
-        if (m_options & float_reader_base::allow_scientific) {
-            flags |= std::chars_format::scientific;
+        else if (m_kind == kind_type::hex_without_prefix) {
+            flags = std::chars_format::hex;
         }
-        if (m_options & float_reader_base::allow_hex) {
-            flags |= std::chars_format::hex;
-        }
-
-        return flags;
-    }
-};
-
-template <typename T>
-class from_chars_impl : public from_chars_impl_base {
-public:
-    using from_chars_impl_base::from_chars_impl_base;
-
-    template <typename F>
-    scan_expected<std::ptrdiff_t> operator()(T& value, F&& fallback) const
-    {
-        auto input_view = m_input.view();
-        const auto flags = get_flags(input_view);
-        if (SCN_UNLIKELY(!flags)) {
-            return unexpected(flags.error());
+        else {
+            if (m_options & allow_fixed) {
+                flags |= std::chars_format::fixed;
+            }
+            if (m_options & allow_scientific) {
+                flags |= std::chars_format::scientific;
+            }
         }
 
-        const auto result = std::from_chars(
-            input_view.data(), input_view.data() + input_view.size(), value,
-            *flags);
+        const auto result =
+            std::from_chars(source.data() + offset,
+                            source.data() + source.size(), value, flags);
 
         if (SCN_UNLIKELY(result.ec == std::errc::invalid_argument)) {
+            can_fallback = false;
             return detail::unexpected_scan_error(
                 scan_error::invalid_scanned_value,
                 "std::from_chars: invalid_argument");
@@ -1394,33 +1158,78 @@ public:
             // per the standard, `value` is unmodified.
             // Fall back to try to determine what's up.
 
-            return fallback(detail::unexpected_scan_error(
+            can_fallback = true;
+            return detail::unexpected_scan_error(
                 scan_error::invalid_scanned_value,
-                "std::from_chars: Unknown result_out_of_range error"));
+                "std::from_chars: Unknown result_out_of_range error");
         }
 
-        return result.ptr - m_input.view().data();
+        return detail::make_string_view_iterator_from_pointer(source,
+                                                              result.ptr);
     }
+
+private:
+    kind_type m_kind{};
+    unsigned m_options{};
 };
 
-struct from_chars_impl_traits {
-    template <typename CharT, typename FloatT>
-    static constexpr bool enabled =
-        std::is_same_v<CharT, char> && has_charconv_for<FloatT>;
+}  // namespace
 
-    template <typename, typename FloatT>
-    using type = from_chars_impl<FloatT>;
-};
+template <typename T>
+scan_expected<std::string_view::iterator> convert_from_chars_traits::convert(
+    std::string_view source,
+    T& value,
+    kind_type kind,
+    unsigned options,
+    bool& can_fallback)
+{
+    if constexpr (enabled<char, T>) {
+        return convert_from_chars{kind, options}(source, value, can_fallback);
+    }
+    else {
+        SCN_EXPECT(false);
+        SCN_UNREACHABLE;
+    }
+}
 
-#else
+#define SCN_DEFINE_FROM_CHARS_CONVERT(T)                         \
+    template SCN_PUBLIC auto convert_from_chars_traits::convert( \
+        std::string_view, T&, kind_type, unsigned, bool&)        \
+        -> scan_expected<std::string_view::iterator>;
 
-struct from_chars_impl_traits {
-    template <typename, typename>
-    static constexpr bool enabled = false;
+#if !SCN_DISABLE_TYPE_FLOAT
+SCN_DEFINE_FROM_CHARS_CONVERT(float)
+#endif
 
-    template <typename, typename>
-    using type = void;
-};
+#if !SCN_DISABLE_TYPE_DOUBLE
+SCN_DEFINE_FROM_CHARS_CONVERT(double)
+#endif
+
+#if !SCN_DISABLE_TYPE_LONG_DOUBLE
+SCN_DEFINE_FROM_CHARS_CONVERT(long double)
+#endif
+
+#if SCN_HAS_STD_F16 && !SCN_DISABLE_TYPE_FLOAT16
+SCN_DEFINE_FROM_CHARS_CONVERT(std::float16_t)
+#endif
+
+#if SCN_HAS_STD_F32 && !SCN_DISABLE_TYPE_FLOAT32
+SCN_DEFINE_FROM_CHARS_CONVERT(std::float32_t)
+#endif
+
+#if SCN_HAS_STD_F64 && !SCN_DISABLE_TYPE_FLOAT64
+SCN_DEFINE_FROM_CHARS_CONVERT(std::float64_t)
+#endif
+
+#if SCN_HAS_STD_F128 && !SCN_DISABLE_TYPE_FLOAT128
+SCN_DEFINE_FROM_CHARS_CONVERT(std::float128_t)
+#endif
+
+#if SCN_HAS_STD_BF16 && !SCN_DISABLE_TYPE_BFLOAT16
+SCN_DEFINE_FROM_CHARS_CONVERT(std::bfloat16_t)
+#endif
+
+#undef SCN_DEFINE_FROM_CHARS_CONVERT
 
 #endif  // SCN_HAS_FLOAT_CHARCONV && !SCN_DISABLE_FROM_CHARS
 
@@ -1431,50 +1240,28 @@ struct from_chars_impl_traits {
 
 #if !SCN_DISABLE_FAST_FLOAT
 
-struct fast_float_impl_base {
-    SCN_CLANG_PUSH
-    SCN_CLANG_IGNORE("-Wunneeded-member-function")
-    // false positive
-
-    SCN_NODISCARD fast_float::chars_format get_flags() const
-    {
-        std::underlying_type_t<fast_float::chars_format> format_flags{};
-        if ((m_options & float_reader_base::allow_fixed) != 0) {
-            format_flags |=
-                static_cast<unsigned>(fast_float::chars_format::fixed);
-        }
-        if ((m_options & float_reader_base::allow_scientific) != 0) {
-            format_flags |=
-                static_cast<unsigned>(fast_float::chars_format::scientific);
-        }
-
-        return static_cast<fast_float::chars_format>(format_flags);
-    }
-
-    SCN_CLANG_POP
-
-    float_reader_base::float_kind m_kind;
-    unsigned m_options;
-};
-
-template <typename CharT, typename T>
-struct fast_float_impl : fast_float_impl_base {
-    fast_float_impl(impl_init_data<CharT>& data)
-        : fast_float_impl_base{data.m_kind, data.m_options}, m_input(data.input)
+namespace {
+struct convert_fast_float {
+    convert_fast_float(kind_type kind, unsigned options)
+        : m_kind(kind), m_options(options)
     {
     }
 
-    template <typename F>
-    scan_expected<std::ptrdiff_t> operator()(T& value, F&& fallback) const
+    template <typename CharT, typename T>
+    auto operator()(std::basic_string_view<CharT> source,
+                    T& value,
+                    bool& can_fallback)
+        -> scan_expected<typename std::basic_string_view<CharT>::iterator>
     {
-        if (m_kind == float_reader_base::float_kind::hex_without_prefix ||
-            m_kind == float_reader_base::float_kind::hex_with_prefix) {
-            // fast_float doesn't support hexfloats
-            return fallback({});
+        auto flags = fast_float::chars_format::no_infnan;
+        if (m_options & allow_fixed) {
+            flags |= fast_float::chars_format::fixed;
+        }
+        if (m_options & allow_scientific) {
+            flags |= fast_float::chars_format::scientific;
         }
 
-        const auto flags = get_flags();
-        const auto view = get_view();
+        const auto view = cast_source(source);
         const auto result = fast_float::from_chars(
             view.data(), view.data() + view.size(), value, flags);
 
@@ -1484,13 +1271,7 @@ struct fast_float_impl : fast_float_impl_base {
                 "fast_float: invalid_argument");
         }
         if (SCN_UNLIKELY(result.ec == std::errc::result_out_of_range)) {
-            // No need to handle -inf and -0.0,
-            // the sign is stripped from the input,
-            // so the result is always positive.
-            // The sign is applied outside this call,
-            // and these errors are turned into their negative counterparts,
-            // if necessary.
-
+            can_fallback = false;
             if (is_float_positive_infinity(value)) {
                 return detail::unexpected_scan_error(
                     scan_error::value_positive_overflow,
@@ -1502,345 +1283,109 @@ struct fast_float_impl : fast_float_impl_base {
                     "fast_float: result_out_of_range, value too small");
             }
 
-            return fallback(detail::unexpected_scan_error(
+            can_fallback = true;
+            return detail::unexpected_scan_error(
                 scan_error::invalid_scanned_value,
-                "fast_float: Unknown result_out_of_range error"));
+                "fast_float: Unknown result_out_of_range error");
         }
 
-        return result.ptr - view.data();
+        return detail::make_string_view_iterator_from_pointer(
+            source, reinterpret_cast<const CharT*>(result.ptr));
     }
 
 private:
-    auto get_view() const
+    template <typename CharT>
+    static auto cast_source(std::basic_string_view<CharT> source)
     {
         if constexpr (sizeof(CharT) == 1) {
-            return m_input.view();
+            return source;
         }
         else if constexpr (sizeof(CharT) == 2) {
             return std::u16string_view{
-                reinterpret_cast<const char16_t*>(m_input.view().data()),
-                m_input.view().size()};
+                reinterpret_cast<const char16_t*>(source.data()),
+                source.size()};
         }
         else {
             return std::u32string_view{
-                reinterpret_cast<const char32_t*>(m_input.view().data()),
-                m_input.view().size()};
+                reinterpret_cast<const char32_t*>(source.data()),
+                source.size()};
         }
     }
 
-    contiguous_range_factory<CharT>& m_input;
+    kind_type m_kind{};
+    unsigned m_options{};
 };
 
-struct fast_float_impl_traits {
-    template <typename CharT, typename FloatT>
-    static constexpr bool enabled =
-        fast_float::is_supported_char_type<CharT>() &&
-        fast_float::is_supported_float_type<CharT>();
+}  // namespace
 
-    template <typename CharT, typename FloatT>
-    using type = fast_float_impl<CharT, FloatT>;
-};
+template <typename CharT, typename T>
+scan_expected<typename std::basic_string_view<CharT>::iterator>
+convert_fast_float_traits::convert(std::basic_string_view<CharT> source,
+                                   T& value,
+                                   kind_type kind,
+                                   unsigned options,
+                                   bool& can_fallback)
+{
+    if constexpr (enabled<CharT, T>) {
+        return convert_fast_float{kind, options}(source, value, can_fallback);
+    }
+    else {
+        SCN_EXPECT(false);
+        SCN_UNREACHABLE;
+    }
+}
 
-#else
+#define SCN_DEFINE_FAST_FLOAT_CONVERT(T)                         \
+    template SCN_PUBLIC auto convert_fast_float_traits::convert( \
+        std::string_view, T&, kind_type, unsigned, bool&)        \
+        -> scan_expected<std::string_view::iterator>;            \
+    template SCN_PUBLIC auto convert_fast_float_traits::convert( \
+        std::wstring_view, T&, kind_type, unsigned, bool&)       \
+        -> scan_expected<std::wstring_view::iterator>;
 
-struct fast_float_impl_traits {
-    template <typename, typename>
-    static constexpr bool enabled = false;
+#if !SCN_DISABLE_TYPE_FLOAT
+SCN_DEFINE_FAST_FLOAT_CONVERT(float)
+#endif
 
-    template <typename, typename>
-    using type = void;
-};
+#if !SCN_DISABLE_TYPE_DOUBLE
+SCN_DEFINE_FAST_FLOAT_CONVERT(double)
+#endif
+
+#if !SCN_DISABLE_TYPE_LONG_DOUBLE
+SCN_DEFINE_FAST_FLOAT_CONVERT(long double)
+#endif
+
+#if SCN_HAS_STD_F16 && !SCN_DISABLE_TYPE_FLOAT16
+SCN_DEFINE_FAST_FLOAT_CONVERT(std::float16_t)
+#endif
+
+#if SCN_HAS_STD_F32 && !SCN_DISABLE_TYPE_FLOAT32
+SCN_DEFINE_FAST_FLOAT_CONVERT(std::float32_t)
+#endif
+
+#if SCN_HAS_STD_F64 && !SCN_DISABLE_TYPE_FLOAT64
+SCN_DEFINE_FAST_FLOAT_CONVERT(std::float64_t)
+#endif
+
+#if SCN_HAS_STD_F128 && !SCN_DISABLE_TYPE_FLOAT128
+SCN_DEFINE_FAST_FLOAT_CONVERT(std::float128_t)
+#endif
+
+#if SCN_HAS_STD_BF16 && !SCN_DISABLE_TYPE_BFLOAT16
+SCN_DEFINE_FAST_FLOAT_CONVERT(std::bfloat16_t)
+#endif
+
+#undef SCN_DEFINE_FAST_FLOAT_CONVERT
 
 #endif  // !SCN_DISABLE_FAST_FLOAT
 
-////////////////////////////////////////////////////////////////////
-// Dispatch implementation
-////////////////////////////////////////////////////////////////////
-
-template <typename F>
-void apply_nan_payload(F& value,
-                       typename float_traits<F>::significand_int_type payload)
-{
-    static_assert(
-        !std::is_base_of_v<float_traits<F>, float_traits_impl_none<F>>, "");
-
-    using traits = float_traits<F>;
-    typename traits::nan_repr repr{};
-    std::memcpy(&repr, &value, sizeof(repr));
-    repr.apply_payload(payload);
-    std::memcpy(&value, &repr, sizeof(repr));
-}
-
-template <typename Traits, typename CharT, typename FloatT>
-struct float_impl {
-    using char_type = CharT;
-    using float_type = FloatT;
-    using traits = Traits;
-    using impl_type = typename Traits::template type<CharT, FloatT>;
-};
-
-struct float_null_impl {};
-
-template <typename Traits, typename CharT, typename FloatT>
-using get_float_impl_for = detail::mp_cond<
-    // Default to FloatT, if available
-    detail::mp_bool<Traits::template enabled<CharT, FloatT>>,
-    float_impl<Traits, CharT, FloatT>,
-    // If FloatT is long double, but it's an alias to double, check that
-    detail::mp_bool<std::is_same_v<FloatT, long double> &&
-                    sizeof(double) == sizeof(long double) &&
-                    std::numeric_limits<double>::digits ==
-                        std::numeric_limits<long double>::digits &&
-                    Traits::template enabled<CharT, double>>,
-    float_impl<Traits, CharT, double>,
-#if SCN_HAS_STD_F32
-    // If FloatT is std::float32_t, but it's compatible with float, check that
-    detail::mp_bool<std::is_same_v<FloatT, std::float32_t> &&
-                    std::numeric_limits<float>::is_iec559 &&
-                    sizeof(float) == sizeof(std::float32_t) &&
-                    std::numeric_limits<float>::digits ==
-                        std::numeric_limits<std::float32_t>::digits &&
-                    Traits::template enabled<CharT, float>>,
-    float_impl<Traits, CharT, float>,
-#endif
-#if SCN_HAS_STD_F64
-    // If FloatT is std::float64_t, but it's compatible with double, check that
-    detail::mp_bool<std::is_same_v<FloatT, std::float64_t> &&
-                    std::numeric_limits<double>::is_iec559 &&
-                    sizeof(double) == sizeof(std::float64_t) &&
-                    std::numeric_limits<double>::digits ==
-                        std::numeric_limits<std::float64_t>::digits &&
-                    Traits::template enabled<CharT, double>>,
-    float_impl<Traits, CharT, double>,
-#endif
-#if SCN_HAS_STD_F128
-    // If FloatT is std::float128_t,
-    // but it's compatible with long double, check that
-    detail::mp_bool<std::is_same_v<FloatT, std::float128_t> &&
-                    std::numeric_limits<long double>::is_iec559 &&
-                    sizeof(long double) == sizeof(std::float128_t) &&
-                    std::numeric_limits<long double>::digits ==
-                        std::numeric_limits<std::float128_t>::digits &&
-                    Traits::template enabled<CharT, long double>>,
-    float_impl<Traits, CharT, long double>,
-#endif
-    // Nothing found
-    std::true_type,
-    float_null_impl>;
-
-template <typename CharT, typename T, typename Impl, typename Fallback>
-scan_expected<std::ptrdiff_t> parse_float_value_using_impl(
-    impl_init_data<CharT>& data,
-    T& value,
-    Fallback&& fallback)
-{
-    auto impl = typename Impl::impl_type{data};
-
-    if constexpr (std::is_same_v<T, typename Impl::float_type>) {
-        return impl(value, fallback);
-    }
-    else {
-        return impl(*reinterpret_cast<typename Impl::float_type*>(&value),
-                    fallback);
-    }
-}
-
-template <typename CharT, typename T>
-scan_expected<std::ptrdiff_t> dispatch_parse_float_value(impl_init_data<CharT>&,
-                                                         T&)
-{
-    return detail::unexpected_scan_error(
-        scan_error::type_not_supported,
-        "No valid floating-point parser available for this type");
-}
-
-template <typename CharT, typename T, typename Trait, typename... Traits>
-scan_expected<std::ptrdiff_t> dispatch_parse_float_value(
-    impl_init_data<CharT>& data,
-    T& value)
-{
-    using first_impl = get_float_impl_for<Trait, CharT, T>;
-    if constexpr (std::is_same_v<first_impl, float_null_impl>) {
-        return dispatch_parse_float_value<CharT, T, Traits...>(data, value);
-    }
-    else {
-        auto next =
-            [&](scan_expected<void> err) -> scan_expected<std::ptrdiff_t> {
-            if constexpr ((std::is_same_v<get_float_impl_for<Traits, CharT, T>,
-                                          float_null_impl> &&
-                           ...)) {
-                // If this is the last valid impl we have,
-                // propagate the error we got
-                if (!err.has_value()) {
-                    return unexpected(err.error());
-                }
-            }
-            // We still have valid impls to go, try those out
-            return dispatch_parse_float_value<CharT, T, Traits...>(data, value);
-        };
-        return parse_float_value_using_impl<CharT, T, first_impl>(data, value,
-                                                                  next);
-    }
-}
-
-template <typename CharT, typename T>
-scan_expected<std::ptrdiff_t> parse_float_value(
-    impl_init_data<CharT> data,
-    contiguous_range_factory<CharT>& nan_payload,
-    T& value)
-{
-    if (data.kind == float_reader_base::float_kind::inf_short) {
-        if constexpr (std::numeric_limits<T>::has_infinity) {
-            value = std::numeric_limits<T>::infinity();
-            return static_cast<std::ptrdiff_t>(std::strlen("inf"));
-        }
-        else {
-            return detail::unexpected_scan_error(
-                scan_error::invalid_scanned_value,
-                "Type doesn't support infinities");
-        }
-    }
-    if (data.kind == float_reader_base::float_kind::inf_long) {
-        if constexpr (std::numeric_limits<T>::has_infinity) {
-            value = std::numeric_limits<T>::infinity();
-            return static_cast<std::ptrdiff_t>(std::strlen("infinity"));
-        }
-        else {
-            return detail::unexpected_scan_error(
-                scan_error::invalid_scanned_value,
-                "Type doesn't support infinities");
-        }
-    }
-    if (data.kind == float_reader_base::float_kind::nan_simple) {
-        if constexpr (std::numeric_limits<T>::has_quiet_NaN) {
-            value = std::numeric_limits<T>::quiet_NaN();
-            return static_cast<std::ptrdiff_t>(std::strlen("nan"));
-        }
-        else {
-            return detail::unexpected_scan_error(
-                scan_error::invalid_scanned_value,
-                "Type doesn't support quiet NaNs");
-        }
-    }
-    if (data.kind == float_reader_base::float_kind::nan_with_payload) {
-        if constexpr (std::numeric_limits<T>::has_quiet_NaN) {
-            value = std::numeric_limits<T>::quiet_NaN();
-
-            if constexpr (std::numeric_limits<T>::is_iec559) {
-                using payload_type =
-                    typename float_traits<T>::significand_int_type;
-                payload_type payload{};
-                if (auto result = reader_impl_for_int<CharT>{}.read_default(
-                        nan_payload.view(), payload, {})) {
-                    apply_nan_payload(value, payload);
-                }
-                else if (result.error().code() ==
-                         scan_error::value_positive_overflow) {
-                    apply_nan_payload(value,
-                                      std::numeric_limits<payload_type>::max());
-                }
-            }
-
-            return static_cast<std::ptrdiff_t>(std::strlen("nan()") +
-                                               nan_payload.view().size());
-        }
-        else {
-            return detail::unexpected_scan_error(
-                scan_error::invalid_scanned_value,
-                "Type doesn't support quiet NaNs");
-        }
-    }
-
-    SCN_EXPECT(!data.input.view().empty());
-    if (data.kind == float_reader_base::float_kind::hex_without_prefix) {
-        if (SCN_UNLIKELY(char_to_int(data.input.view().front()) >= 16)) {
-            return detail::unexpected_scan_error(
-                scan_error::invalid_scanned_value,
-                "Invalid floating-point digit");
-        }
-    }
-    if (SCN_UNLIKELY(char_to_int(data.input.view().front()) >= 10)) {
-        return detail::unexpected_scan_error(scan_error::invalid_scanned_value,
-                                             "Invalid floating-point digit");
-    }
-
-    return dispatch_parse_float_value<CharT, T, fast_float_impl_traits,
-                                      from_chars_impl_traits, sdc_impl_traits,
-                                      strtod_impl_traits>(data, value);
-}
-}  // namespace
-
-template <typename CharT>
-template <typename T>
-scan_expected<std::ptrdiff_t> float_reader<CharT>::parse_value_impl(T& value)
-{
-    auto n = parse_float_value<CharT>({this->m_buffer, m_kind, m_options},
-                                      m_nan_payload_buffer, value);
-
-    if (SCN_LIKELY(n)) {
-        value = this->setsign(value);
-    }
-    else {
-        if (n.error().code() == scan_error::value_positive_overflow &&
-            m_sign == sign_type::minus_sign) {
-            n.error() = scan_error{scan_error::value_negative_overflow,
-                                   n.error().msg()};
-        }
-        if (n.error().code() == scan_error::value_positive_underflow &&
-            m_sign == sign_type::minus_sign) {
-            n.error() = scan_error{scan_error::value_negative_underflow,
-                                   n.error().msg()};
-        }
-    }
-
-    return n;
-}
-
-#define SCN_DEFINE_FLOAT_READER_TEMPLATE(CharT, FloatT)                     \
-    template SCN_PUBLIC auto float_reader<CharT>::parse_value_impl(FloatT&) \
-        -> scan_expected<std::ptrdiff_t>;
-
-#if !SCN_DISABLE_TYPE_FLOAT
-SCN_DEFINE_FLOAT_READER_TEMPLATE(char, float)
-SCN_DEFINE_FLOAT_READER_TEMPLATE(wchar_t, float)
-#endif
-#if !SCN_DISABLE_TYPE_DOUBLE
-SCN_DEFINE_FLOAT_READER_TEMPLATE(char, double)
-SCN_DEFINE_FLOAT_READER_TEMPLATE(wchar_t, double)
-#endif
-#if !SCN_DISABLE_TYPE_LONG_DOUBLE
-SCN_DEFINE_FLOAT_READER_TEMPLATE(char, long double)
-SCN_DEFINE_FLOAT_READER_TEMPLATE(wchar_t, long double)
-#endif
-
-// C++23 extended float types:
-
-#if SCN_HAS_STD_F16 && !SCN_DISABLE_TYPE_FLOAT16
-SCN_DEFINE_FLOAT_READER_TEMPLATE(char, std::float16_t)
-SCN_DEFINE_FLOAT_READER_TEMPLATE(wchar_t, std::float16_t)
-#endif
-#if SCN_HAS_STD_F32 && !SCN_DISABLE_TYPE_FLOAT32
-SCN_DEFINE_FLOAT_READER_TEMPLATE(char, std::float32_t)
-SCN_DEFINE_FLOAT_READER_TEMPLATE(wchar_t, std::float32_t)
-#endif
-#if SCN_HAS_STD_F64 && !SCN_DISABLE_TYPE_FLOAT64
-SCN_DEFINE_FLOAT_READER_TEMPLATE(char, std::float64_t)
-SCN_DEFINE_FLOAT_READER_TEMPLATE(wchar_t, std::float64_t)
-#endif
-#if SCN_HAS_STD_F128 && !SCN_DISABLE_TYPE_FLOAT128
-SCN_DEFINE_FLOAT_READER_TEMPLATE(char, std::float128_t)
-SCN_DEFINE_FLOAT_READER_TEMPLATE(wchar_t, std::float128_t)
-#endif
-#if SCN_HAS_STD_BF16 && !SCN_DISABLE_TYPE_BFLOAT16
-SCN_DEFINE_FLOAT_READER_TEMPLATE(char, std::bfloat16_t)
-SCN_DEFINE_FLOAT_READER_TEMPLATE(wchar_t, std::bfloat16_t)
-#endif
-
-#undef SCN_DEFINE_FLOAT_READER_TEMPLATE
+}  // namespace impl::float_conversion
 
 /////////////////////////////////////////////////////////////////
 // Integer reader implementation
 /////////////////////////////////////////////////////////////////
+
+namespace impl {
 
 namespace {
 uint64_t get_eight_digits_word(const char* input)

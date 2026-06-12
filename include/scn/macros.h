@@ -159,6 +159,13 @@
 #define SCN_DISABLE_LOCALE 0
 #endif
 
+// SCN_DISABLE_FAST_FLOAT
+// If 1, doesn't use fast_float for parsing floats,
+// making the library free of hard dependencies
+#ifndef SCN_DISABLE_FAST_FLOAT
+#define SCN_DISABLE_FAST_FLOAT 0
+#endif
+
 // SCN_DISABLE_FROM_CHARS
 // If 1, disallows the float scanner from falling back on std::from_chars,
 // even if it were available

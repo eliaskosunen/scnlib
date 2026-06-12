@@ -63,6 +63,45 @@ SCN_CLANG_POP
 #include <fcntl.h>
 #endif
 
+#if !SCN_DISABLE_FAST_FLOAT
+
+SCN_GCC_PUSH
+SCN_GCC_IGNORE("-Wold-style-cast")
+SCN_GCC_IGNORE("-Wnoexcept")
+SCN_GCC_IGNORE("-Wundef")
+SCN_GCC_IGNORE("-Wsign-conversion")
+SCN_GCC_IGNORE("-Wuseless-cast")
+
+SCN_CLANG_PUSH
+SCN_CLANG_IGNORE("-Wold-style-cast")
+SCN_CLANG_IGNORE("-Wdeprecated")
+SCN_CLANG_IGNORE("-Wcomma")
+SCN_CLANG_IGNORE("-Wundef")
+SCN_CLANG_IGNORE("-Wdocumentation-unknown-command")
+
+#if SCN_CLANG >= SCN_COMPILER(8, 0, 0)
+SCN_CLANG_IGNORE("-Wextra-semi-stmt")
+#endif
+
+#if SCN_CLANG >= SCN_COMPILER(13, 0, 0)
+SCN_CLANG_IGNORE("-Wreserved-identifier")
+#endif
+
+#if SCN_CLANG >= SCN_COMPILER(16, 0, 0)
+SCN_CLANG_IGNORE("-Wunsafe-buffer-usage")
+#endif
+
+#include <fast_float/fast_float.h>
+
+SCN_CLANG_POP
+SCN_GCC_POP
+
+#endif  // !SCN_DISABLE_FAST_FLOAT
+
+#if SCN_HAS_FLOAT_CHARCONV
+#include <charconv>
+#endif
+
 namespace scn {
 SCN_BEGIN_NAMESPACE
 
@@ -5646,651 +5685,923 @@ scan_expected<void> simple_decimal_conversion(T& result,
 
     std::memcpy(&result, &repr, sizeof(repr_type));
     return {};
-
-#if 0
-    // First, shift right, until we've a value that's certainly below 10.
-    std::int32_t exp2{};
-    while (value.decimal_point > 1) {
-        auto const shift = value.decimal_point < powers_of_two.size()
-                               ? powers_of_two[value.decimal_point]
-                               : 60u;
-        value.right_shift(shift);
-        // TODO: check overflow
-        exp2 += shift;
-    }
-
-    // Then, shift left, until we're in [0.1, 10].
-    while (value.decimal_point < 0) {
-        auto const shift = -value.decimal_point < powers_of_two.size()
-                               ? (powers_of_two[-value.decimal_point] + 1)
-                               : 60u;
-        value.left_shift(shift);
-        // TODO: check overflow
-        exp2 -= shift;
-    }
-
-    // Look at the first three digits to determine the shift needed
-    // to get us in [1, 2].
-
-    const auto additional_shift = std::invoke([&]() {
-        std::uint32_t first_digits{};
-        for (int i = 0; i < 3; ++i) {
-            first_digits = first_digits * 10 +
-                           (i < value.num_digits ? value.digits[i] : 0);
-        }
-
-        if (value.decimal_point == 0) {
-            // [0.1, 1]
-            if (first_digits < 125) {
-                return -4;
-            }
-            if (first_digits < 250) {
-                return -3;
-            }
-            if (first_digits < 500) {
-                return -2;
-            }
-            return -1;
-        }
-
-        // [1, 10]
-        if (first_digits < 200) {
-            return 0;
-        }
-        if (first_digits < 400) {
-            return 1;
-        }
-        if (first_digits < 800) {
-            return 2;
-        }
-        return 3;
-    });
-
-    // Shift to get us between [1, 2]
-    exp2 += additional_shift;
-    if (additional_shift > 0) {
-        value.right_shift(additional_shift);
-    }
-    else if (additional_shift < 0) {
-        value.left_shift(-additional_shift);
-    }
-
-#if 0
-    exp2 += additional_shift;
-    const auto final_lshift =
-        static_cast<std::int32_t>(float_traits<T>::fraction_bits) -
-        additional_shift;
-
-    // Right-shift exponent to normal
-    if (-exp_bias + 1 > exp2) {
-        const auto shift = -exp_bias + 1 - exp2;
-        value.right_shift(shift);
-        exp2 += shift;
-    }
-
-    // TODO: check overflow
-
-    // Shift left to extract the significand.
-    value.left_shift(final_lshift);
-#endif
-    // Shift left to extract the significand
-    value.left_shift(float_traits<T>::fraction_bits);
-    auto significand = value.rounded_significand<T>();
-
-    // Handle subnormals
-    if (exp2 + exp_bias <= 0) {
-        // TODO
-    }
-
-    // Rounding might have added a bit.
-    // If so, shift and re-check overflow
-    if (significand == significand_int_type{2}
-                           << static_cast<significand_int_type>(
-                                  float_traits<T>::fraction_bits)) {
-        significand >>= 1;
-        exp2++;
-        // TODO: check overflow
-    }
-
-    typename float_traits<T>::value_repr repr{};
-    repr.exponent = exp2 + exp_bias;
-    repr.apply_significand(significand);
-
-    T result{};
-    std::memcpy(&result, &repr, sizeof(T));
-    return result;
-#endif
 }
 
 /////////////////////////////////////////////////////////////////
-// Floating-point reader
+// Floating-point parser implementation
 /////////////////////////////////////////////////////////////////
 
-struct float_reader_base {
-    enum options_type {
-        allow_hex = 1,
-        allow_scientific = 2,
-        allow_fixed = 4,
-        allow_thsep = 8
-    };
-
-    enum class float_kind {
-        tbd = 0,
-        generic,             // fixed or scientific
-        fixed,               // xxx.yyy
-        scientific,          // xxx.yyyEzzz
-        hex_without_prefix,  // xxx.yyypzzz
-        hex_with_prefix,     // 0Xxxx.yyypzzz
-        inf_short,           // inf
-        inf_long,            // infinity
-        nan_simple,          // nan
-        nan_with_payload,    // nan(xxx)
-    };
-
-    constexpr float_reader_base() = default;
-    explicit constexpr float_reader_base(unsigned opt) : m_options(opt) {}
-
-protected:
-    unsigned m_options{allow_hex | allow_scientific | allow_fixed};
+namespace float_conversion {
+enum flags_type {
+    allow_hex = 1,
+    allow_scientific = 2,
+    allow_fixed = 4,
 };
 
 template <typename CharT>
-class float_reader : public numeric_reader<CharT>, public float_reader_base {
-    using numeric_base = numeric_reader<CharT>;
+struct parts {
+    using string_view_type = std::basic_string_view<CharT>;
 
-public:
-    using char_type = CharT;
+    string_view_type prefix;
+    string_view_type before_radix_point;
+    string_view_type after_radix_point;
+    string_view_type exponent;
 
-    constexpr float_reader() = default;
+    CharT exponent_delimiter{};
+    CharT exponent_sign{};
+};
 
-    explicit constexpr float_reader(unsigned opt) : float_reader_base(opt) {}
+enum class kind_type {
+    decimal,              // fixed or scientific
+    fixed,                // aaa.bbb (no exponent)
+    scientific,           // aaa.bbb(e|E)ccc
+    hex_without_prefix,   // aaa.bbb[(p|P)ccc]
+    hex_with_prefix,      // 0(x|X)aaa.bbb[(p|P)ccc]
+    inf_short,            // inf
+    inf_long,             // infinity
+    nan_without_payload,  // nan
+    nan_with_payload,     // nan(abc)
+};
 
-    template <typename Range>
-    SCN_NODISCARD auto read_source(Range range, detail::locale_ref)
-        -> scan_expected<ranges::const_iterator_t<Range>>
-    {
-        if (SCN_UNLIKELY(m_options & float_reader_base::allow_thsep)) {
-            m_locale_options = localized_number_formatting_options<CharT>{
-                classic_with_thsep_tag{}};
-        }
+template <typename CharT>
+struct options {
+    unsigned flags{allow_hex | allow_scientific | allow_fixed};
+    CharT radix_point{'.'};
+    std::optional<CharT> group_separator{};
+    std::string grouping{};
+};
 
-        return read_source_impl(range);
+template <typename Iterator, typename Sentinel>
+auto parse_nan(ranges::subrange<Iterator, Sentinel> source)
+    -> scan_expected<Iterator>
+{
+    SCN_EXPECT(source.begin() != source.end());
+    using char_type = ranges::iter_value_t<Iterator>;
+
+    auto it = source.begin();
+    const auto after_nan = read_matching_string_classic_nocase(source, "nan");
+    if (!after_nan) {
+        // Not a NaN, detected by not advancing the start
+        return source.begin();
     }
 
-#if !SCN_DISABLE_LOCALE
-    template <typename Range>
-    SCN_NODISCARD auto read_source_localized(Range range,
-                                             detail::locale_ref loc)
-        -> scan_expected<ranges::const_iterator_t<Range>>
-    {
-        m_locale_options = localized_number_formatting_options<CharT>{loc};
-        if (SCN_LIKELY((m_options & float_reader_base::allow_thsep) == 0)) {
-            m_locale_options.thousands_sep = CharT{0};
-        }
-
-        return read_source_impl(range);
-    }
-#endif
-
-    template <typename T>
-    SCN_NODISCARD scan_expected<std::ptrdiff_t> parse_value(T& value)
-    {
-        SCN_EXPECT(m_kind != float_kind::tbd);
-
-        const std::ptrdiff_t sign_len =
-            m_sign != sign_type::default_sign ? 1 : 0;
-
-        SCN_TRY(n, parse_value_impl(value));
-        return n + sign_len + ranges::ssize(m_thsep_indices);
-    }
-
-private:
-    template <typename Range>
-    auto read_source_impl(Range range)
-        -> scan_expected<ranges::const_iterator_t<Range>>
-    {
-        SCN_TRY(sign_result,
-                parse_numeric_sign(range).transform_error(make_eof_scan_error));
-        auto it = sign_result.first;
-        m_sign = sign_result.second;
-
-        auto digits_begin = it;
-        auto r = ranges::subrange{it, range.end()};
-        if constexpr (ranges::contiguous_range<Range> &&
-                      ranges::sized_range<Range>) {
-            if (SCN_UNLIKELY(m_locale_options.thousands_sep != 0 ||
-                             m_locale_options.decimal_point != CharT{'.'})) {
-                SCN_TRY_ASSIGN(
-                    it,
-                    do_read_source_impl(
-                        r,
-                        [&](const auto& rr) { return read_regular_float(rr); },
-                        [&](const auto& rr) { return read_hexfloat(rr); }));
-            }
-            else {
-                auto cb = [&](const auto& rr)
-                    -> scan_expected<ranges::const_iterator_t<decltype(rr)>> {
-                    auto res = read_all(rr);
-                    if (SCN_UNLIKELY(res == r.begin())) {
-                        return detail::unexpected_scan_error(
-                            scan_error::invalid_scanned_value,
-                            "Invalid float value");
-                    }
-                    return res;
-                };
-                SCN_TRY_ASSIGN(it, do_read_source_impl(r, cb, cb));
-            }
-        }
-        else {
-            SCN_TRY_ASSIGN(
-                it,
-                do_read_source_impl(
-                    r, [&](const auto& rr) { return read_regular_float(rr); },
-                    [&](const auto& rr) { return read_hexfloat(rr); }));
-        }
-
-        SCN_EXPECT(m_kind != float_kind::tbd);
-
-        if (m_kind != float_kind::inf_short && m_kind != float_kind::inf_long &&
-            m_kind != float_kind::nan_simple &&
-            m_kind != float_kind::nan_with_payload) {
-            this->m_buffer.assign(ranges::subrange{digits_begin, it});
-        }
-
-        handle_separators();
-
+    it = *after_nan;
+    if (it == source.end() || *it != char_type{'('}) {
         return it;
     }
+    ++it;
 
-    template <typename Range>
-    auto read_dec_digits(Range range, bool thsep_allowed)
-        -> parse_expected<ranges::const_iterator_t<Range>>
-    {
-        if (SCN_UNLIKELY(m_locale_options.thousands_sep != 0 &&
-                         thsep_allowed)) {
-            return read_while1_code_unit(range, [&](char_type ch) noexcept {
-                return char_to_int(ch) < 10 ||
-                       ch == m_locale_options.thousands_sep;
-            });
-        }
-
-        return read_while1_code_unit(
-            range, [](char_type ch) noexcept { return char_to_int(ch) < 10; });
-    }
-    template <typename Range>
-    auto read_hex_digits(Range range, bool thsep_allowed)
-        -> parse_expected<ranges::const_iterator_t<Range>>
-    {
-        if (SCN_UNLIKELY(m_locale_options.thousands_sep != 0 &&
-                         thsep_allowed)) {
-            return read_while1_code_unit(range, [&](char_type ch) noexcept {
-                return char_to_int(ch) < 16 ||
-                       ch == m_locale_options.thousands_sep;
-            });
-        }
-
-        return read_while1_code_unit(
-            range, [](char_type ch) noexcept { return char_to_int(ch) < 16; });
-    }
-    template <typename Range>
-    auto read_hex_prefix(Range range)
-        -> parse_expected<ranges::const_iterator_t<Range>>
-    {
-        return read_matching_string_classic_nocase(range, "0x");
-    }
-
-    template <typename Range>
-    auto read_inf(Range range)
-        -> parse_expected<ranges::const_iterator_t<Range>>
-    {
-        auto it = range.begin();
-        if (auto r = read_matching_string_classic_nocase(range, "inf"); !r) {
-            return unexpected(r.error());
-        }
-        else {
-            it = *r;
-        }
-
-        if (auto r = read_matching_string_classic_nocase(
-                ranges::subrange{it, range.end()}, "inity");
-            !r) {
-            m_kind = float_kind::inf_short;
-            return it;
-        }
-        else {
-            m_kind = float_kind::inf_long;
-            return *r;
+    for (; it != source.end(); ++it) {
+        if (char_to_int(*it) >= 36 && *it != char_type{'_'}) {
+            break;
         }
     }
+    if (it == source.end() || *it != char_type{')'}) {
+        return detail::unexpected_scan_error(scan_error::invalid_scanned_value,
+                                             "Invalid NaN payload value");
+    }
+    SCN_ENSURE(*it == char_type{')'});
+    ++it;
+    return it;
+}
 
-    template <typename Range>
-    auto read_nan(Range range) -> scan_expected<ranges::const_iterator_t<Range>>
-    {
-        auto it = range.begin();
-        if (auto r = read_matching_string_classic_nocase(range, "nan"); !r) {
-            return r.transform_error(map_parse_error_to_scan_error(
+template <typename Iterator>
+struct prepare_read_source_result {
+    kind_type kind{};
+    sign_type sign{};
+    Iterator start{};
+    std::optional<Iterator> definite_end{};
+};
+
+template <typename Source, typename CharT = detail::char_t<Source>>
+auto prepare_read_source(Source& source, unsigned flags, CharT radix_point)
+    -> scan_expected<prepare_read_source_result<ranges::iterator_t<Source>>>
+{
+    using result_type = prepare_read_source_result<ranges::iterator_t<Source>>;
+
+    SCN_TRY(sign_result,
+            parse_numeric_sign(source).transform_error(make_eof_scan_error));
+    const auto start = sign_result.first;
+    if (start == source.end()) {
+        return detail::unexpected_scan_error(
+            scan_error::invalid_scanned_value,
+            "Expected a floating point value after a sign, "
+            "got end of input instead");
+    }
+
+    if (auto inf_short = read_matching_string_classic_nocase(
+            ranges::subrange{start, source.end()}, "inf")) {
+        if (auto inf_long = read_matching_string_classic_nocase(
+                ranges::subrange{*inf_short, source.end()}, "inity")) {
+            return result_type{kind_type::inf_long, sign_result.second, start,
+                               *inf_long};
+        }
+        return result_type{kind_type::inf_short, sign_result.second, start,
+                           *inf_short};
+    }
+
+    if (auto nan = parse_nan(ranges::subrange{start, source.end()}); !nan) {
+        return unexpected(nan.error());
+    }
+    else if (ranges::distance(start, *nan) == 3) {
+        return result_type{kind_type::nan_without_payload, sign_result.second,
+                           start, *nan};
+    }
+    else if (ranges::distance(start, *nan) > 3) {
+        return result_type{kind_type::nan_with_payload, sign_result.second,
+                           start, *nan};
+    }
+
+    const bool allowed_hex = flags & allow_hex;
+    const bool allowed_nonhex = flags & ~allow_hex;
+
+    auto check_following_digit = [&](auto iter,
+                                     int base) -> scan_expected<void> {
+        if (iter == source.end()) {
+            return detail::unexpected_scan_error(
                 scan_error::invalid_scanned_value,
-                "Invalid floating-point NaN value"));
+                "Expected a floating-point value, got end of input instead");
         }
-        else {
-            it = *r;
+        const auto ch = *iter;
+        if (ch == radix_point) {
+            return {};
         }
-
-        if (auto r =
-                read_matching_code_unit(ranges::subrange{it, range.end()}, '(');
-            !r) {
-            m_kind = float_kind::nan_simple;
-            return it;
-        }
-        else {
-            it = *r;
-        }
-
-        auto payload_beg_it = it;
-        it = read_while_code_unit(
-            ranges::subrange{it, range.end()}, [](char_type ch) noexcept {
-                return is_ascii_char(ch) &&
-                       ((ch >= '0' && ch <= '9') || (ch >= 'a' && ch <= 'z') ||
-                        (ch >= 'A' && ch <= 'Z') || ch == '_');
-            });
-        m_nan_payload_buffer.assign(ranges::subrange{payload_beg_it, it});
-
-        m_kind = float_kind::nan_with_payload;
-        if (auto r = read_matching_code_unit(ranges::subrange{it, range.end()},
-                                             ')')) {
-            return *r;
+        if (is_ascii_char(ch) && char_to_int(ch) < base) {
+            return {};
         }
         return detail::unexpected_scan_error(
             scan_error::invalid_scanned_value,
-            "Invalid floating-point NaN payload");
+            "Expected a floating-point value, "
+            "got a non-numeric character instead");
+    };
+
+    if (allowed_hex && !allowed_nonhex) {
+        // Only hex allowed:
+        // Prefix "0x" allowed, but not required
+        if (auto after_prefix = read_matching_string_classic_nocase(
+                ranges::subrange{start, source.end()}, "0x");
+            after_prefix && check_following_digit(*after_prefix, 16)) {
+            return result_type{kind_type::hex_with_prefix, sign_result.second,
+                               start, std::nullopt};
+        }
+        return result_type{kind_type::hex_without_prefix, sign_result.second,
+                           start, std::nullopt};
+    }
+    if (allowed_hex && allowed_nonhex) {
+        // Both hex and nonhex allowed:
+        // Check for a "0x" prefix -> hex,
+        // nonhex otherwise
+        if (auto after_prefix = read_matching_string_classic_nocase(
+                ranges::subrange{start, source.end()}, "0x");
+            after_prefix && check_following_digit(*after_prefix, 16)) {
+            return result_type{kind_type::hex_with_prefix, sign_result.second,
+                               start, std::nullopt};
+        }
+        // fallthrough
     }
 
-    template <typename Range>
-    auto read_exponent(Range range, std::string_view exp)
-        -> ranges::const_iterator_t<Range>
+    if (auto r = check_following_digit(start, 10); !r) {
+        return unexpected(r.error());
+    }
+
+    return result_type{kind_type::decimal, sign_result.second, start,
+                       std::nullopt};
+}
+
+template <typename CharT>
+struct source_reader {
+    explicit source_reader(const options<CharT>& o) : m_options(o) {}
+
+    struct state_type {
+        std::basic_string<CharT> normalized_string{};
+        std::string thsep_positions{};
+        std::size_t significand_digits_count{};
+        std::size_t whole_part_digits_count{};
+        std::size_t fractional_part_digits_count{};
+        std::size_t exponent_digits_count{};
+        bool has_radix_point{};
+        bool has_exponent_sign{};
+    };
+
+    template <typename Iterator>
+    struct result_type {
+        Iterator end{};
+        kind_type kind{};
+    };
+
+    const state_type& state()
     {
-        if (auto r = read_one_of_code_unit(range, exp)) {
-            auto beg_exp_it = range.begin();
-            auto it = *r;
+        return m_state;
+    }
 
-            if (auto r_sign =
-                    parse_numeric_sign(ranges::subrange{it, range.end()})) {
-                it = r_sign->first;
-            }
+    template <typename Iterator, typename Sentinel>
+    scan_expected<result_type<Iterator>> read(
+        ranges::subrange<Iterator, Sentinel> source,
+        kind_type initial_kind)
+    {
+        auto it = source.begin();
 
-            if (auto r_exp = read_while1_code_unit(
-                    ranges::subrange{it, range.end()},
-                    [](char_type ch) noexcept { return char_to_int(ch) < 10; });
-                SCN_UNLIKELY(!r_exp)) {
-                it = beg_exp_it;
+        if (initial_kind == kind_type::decimal) {
+            // Nonhex
+            const bool exponent_allowed = m_options.flags & allow_scientific;
+            const bool exponent_required =
+                exponent_allowed && !(m_options.flags & allow_fixed);
+
+            if (auto res = parse_significand<10>(source)) {
+                it = SCN_MOVE(*res);
             }
             else {
-                it = *r_exp;
+                return unexpected(res.error());
             }
 
-            return it;
+            if (exponent_allowed) {
+                if (auto after_exp = parse_exponent(
+                        ranges::subrange{it, source.end()}, "eE")) {
+                    return result_type<Iterator>{*after_exp,
+                                                 kind_type::scientific};
+                }
+                if (exponent_required) {
+                    return detail::unexpected_scan_error(
+                        scan_error::invalid_scanned_value,
+                        "No exponent given for a floating-point value in the "
+                        "scientific format");
+                }
+            }
+
+            return result_type<Iterator>{it, kind_type::fixed};
         }
-        return range.begin();
+
+        {
+            // Hex
+            SCN_EXPECT(initial_kind == kind_type::hex_with_prefix ||
+                       initial_kind == kind_type::hex_without_prefix);
+
+            if (initial_kind == kind_type::hex_with_prefix) {
+                m_state.normalized_string.push_back('0');
+                m_state.normalized_string.push_back('x');
+                ranges::advance(it, 2);
+            }
+
+            if (auto res =
+                    parse_significand<16>(ranges::subrange{it, source.end()})) {
+                it = SCN_MOVE(*res);
+            }
+            else {
+                return unexpected(res.error());
+            }
+
+            if (auto after_exp =
+                    parse_exponent(ranges::subrange{it, source.end()}, "pP")) {
+                return result_type<Iterator>{*after_exp, initial_kind};
+            }
+            return result_type<Iterator>{it, initial_kind};
+        }
     }
 
-    template <typename Range>
-    auto read_hexfloat(Range range)
-        -> scan_expected<ranges::const_iterator_t<Range>>
+private:
+    template <int Base, typename Iterator, typename Sentinel>
+    Iterator parse_whole_part(ranges::subrange<Iterator, Sentinel> source)
     {
-        auto it = range.begin();
-
-        std::ptrdiff_t digits_count = 0;
-        if (auto r = read_hex_digits(ranges::subrange{it, range.end()}, true);
-            SCN_UNLIKELY(!r)) {
-            return r.transform_error(map_parse_error_to_scan_error(
-                scan_error::invalid_scanned_value,
-                "Invalid hexadecimal floating-point value"));
+        auto it = source.begin();
+        for (; it != source.end(); ++it) {
+            // Handle leading zeroes:
+            // count them as `significand_digits` so `0.` will be valid,
+            // but don't count them as `whole_part_digits`
+            // and don't put them in `normalized_string`,
+            // so we can skip them easily
+            if (*it == CharT{'0'}) {
+                ++m_state.significand_digits_count;
+            }
+            if (*it == m_options.group_separator) {
+                m_state.thsep_positions.push_back(
+                    static_cast<char>(m_state.significand_digits_count));
+                continue;
+            }
+            break;
         }
-        else {
-            digits_count += ranges::distance(it, *r);
-            it = *r;
+        for (; it != source.end(); ++it) {
+            if (*it == m_options.group_separator) {
+                m_state.thsep_positions.push_back(
+                    static_cast<char>(m_state.significand_digits_count));
+                continue;
+            }
+            if (char_to_int(*it) < Base) {
+                ++m_state.whole_part_digits_count;
+                ++m_state.significand_digits_count;
+                m_state.normalized_string.push_back(*it);
+                continue;
+            }
+            break;
         }
-
-        m_integral_part_length = digits_count;
-        if (auto r = read_matching_code_unit(ranges::subrange{it, range.end()},
-                                             m_locale_options.decimal_point)) {
-            it = *r;
-        }
-
-        if (auto r =
-                read_hex_digits(ranges::subrange{it, range.end()}, false)) {
-            digits_count += ranges::distance(it, *r);
-            it = *r;
-        }
-
-        if (SCN_UNLIKELY(digits_count == 0)) {
-            return detail::unexpected_scan_error(
-                scan_error::invalid_scanned_value,
-                "No significand digits in hexfloat");
-        }
-
-        it = read_exponent(ranges::subrange{it, range.end()}, "pP");
-
         return it;
     }
 
-    template <typename Range>
-    auto read_regular_float(Range range)
-        -> scan_expected<ranges::const_iterator_t<Range>>
+    template <int Base, typename Iterator, typename Sentinel>
+    scan_expected<Iterator> parse_significand(
+        ranges::subrange<Iterator, Sentinel> source)
     {
-        const bool allowed_exp = (m_options & allow_scientific) != 0;
-        const bool required_exp = allowed_exp && (m_options & allow_fixed) == 0;
+        auto it = parse_whole_part<Base>(source);
 
-        auto it = ranges::begin(range);
-        std::ptrdiff_t digits_count = 0;
-
-        if (auto r = read_dec_digits(ranges::subrange{it, range.end()}, true);
-            SCN_UNLIKELY(!r)) {
-            return r.transform_error(
-                map_parse_error_to_scan_error(scan_error::invalid_scanned_value,
-                                              "Invalid floating-point value"));
-        }
-        else {
-            digits_count += ranges::distance(it, *r);
-            it = *r;
+        if (auto point = read_matching_code_unit(
+                ranges::subrange{it, source.end()}, m_options.radix_point)) {
+            m_state.normalized_string.push_back(CharT{'.'});
+            m_state.has_radix_point = true;
+            it = *point;
         }
 
-        m_integral_part_length = digits_count;
-        if (auto r = read_matching_code_unit(ranges::subrange{it, range.end()},
-                                             m_locale_options.decimal_point)) {
-            it = *r;
+        for (; it != source.end(); ++it) {
+            if (char_to_int(*it) < Base) {
+                ++m_state.significand_digits_count;
+                ++m_state.fractional_part_digits_count;
+                m_state.normalized_string.push_back(*it);
+                continue;
+            }
+            break;
         }
 
-        if (auto r =
-                read_dec_digits(ranges::subrange{it, range.end()}, false)) {
-            digits_count += ranges::distance(it, *r);
-            it = *r;
-        }
-
-        if (SCN_UNLIKELY(digits_count == 0)) {
+        if (SCN_UNLIKELY(m_state.significand_digits_count == 0)) {
             return detail::unexpected_scan_error(
                 scan_error::invalid_scanned_value,
                 "No significand digits in float");
         }
 
-        auto beg_exp_it = it;
-        if (allowed_exp) {
-            it = read_exponent(ranges::subrange{it, range.end()}, "eE");
-        }
-        if (required_exp && beg_exp_it == it) {
-            return detail::unexpected_scan_error(
-                scan_error::invalid_scanned_value,
-                "No exponent given to scientific float");
-        }
-
-        m_kind =
-            (beg_exp_it == it) ? float_kind::fixed : float_kind::scientific;
-
         return it;
     }
 
-    template <typename Range, typename ReadRegular, typename ReadHex>
-    auto do_read_source_impl(Range range,
-                             ReadRegular&& read_regular,
-                             ReadHex&& read_hex)
-        -> scan_expected<ranges::const_iterator_t<Range>>
+    template <typename Iterator, typename Sentinel>
+    std::optional<Iterator> parse_exponent(
+        ranges::subrange<Iterator, Sentinel> source,
+        std::string_view prefix)
     {
-        const bool allowed_hex = (m_options & allow_hex) != 0;
-        const bool allowed_nonhex =
-            (m_options & ~static_cast<unsigned>(allow_thsep) &
-             ~static_cast<unsigned>(allow_hex)) != 0;
+        SCN_EXPECT(prefix.size() == 2);
+        if (auto after_exp = read_one_of_code_unit(source, prefix)) {
+            std::basic_string<CharT> normalized_exponent_string{
+                *source.begin()};
+            auto it = *after_exp;
 
-        if (auto r = read_inf(range); !r && m_kind != float_kind::tbd) {
-            return r.transform_error(map_parse_error_to_scan_error(
-                scan_error::invalid_scanned_value,
-                "Invalid infinite floating-point value"));
-        }
-        else if (r) {
-            return *r;
-        }
-
-        if (auto r = read_nan(range); !r && m_kind != float_kind::tbd) {
-            return unexpected(r.error());
-        }
-        else if (r) {
-            return *r;
-        }
-
-        if (allowed_hex && !allowed_nonhex) {
-            // only hex allowed:
-            // prefix "0x" allowed, not required
-            auto it = range.begin();
-
-            if (auto r = read_hex_prefix(range)) {
-                m_kind = float_kind::hex_with_prefix;
-                it = *r;
-            }
-            else {
-                m_kind = float_kind::hex_without_prefix;
+            if (auto sign = read_one_of_code_unit(
+                    ranges::subrange{it, source.end()}, "+-")) {
+                normalized_exponent_string.push_back(*it);
+                m_state.has_exponent_sign = true;
+                it = *sign;
             }
 
-            return read_hex(ranges::subrange{it, range.end()});
-        }
-        if (!allowed_hex && allowed_nonhex) {
-            // only nonhex allowed:
-            // no prefix allowed
-            m_kind = float_kind::generic;
-            return read_regular_float(range);
-        }
-        // both hex and nonhex allowed:
-        // check for "0x" prefix -> hex,
-        // regular otherwise
-
-        if (auto r = read_hex_prefix(range); SCN_UNLIKELY(r)) {
-            m_kind = float_kind::hex_with_prefix;
-            return read_hex(ranges::subrange{*r, range.end()});
-        }
-
-        m_kind = float_kind::generic;
-        return read_regular(range);
-    }
-
-    void handle_separators()
-    {
-        if (m_locale_options.thousands_sep == 0 &&
-            m_locale_options.decimal_point == CharT{'.'}) {
-            return;
-        }
-
-        auto& str = this->m_buffer.make_into_allocated_string();
-        if (m_locale_options.decimal_point != CharT{'.'}) {
-            for (auto& ch : str) {
-                if (ch == m_locale_options.decimal_point) {
-                    ch = CharT{'.'};
+            for (; it != source.end(); ++it) {
+                if (char_to_int(*it) < 10) {
+                    normalized_exponent_string.push_back(*it);
+                    ++m_state.exponent_digits_count;
+                    continue;
                 }
+                break;
             }
-        }
 
-        if (m_locale_options.thousands_sep == 0) {
-            return;
-        }
-
-        auto first =
-            std::find(str.begin(), str.end(), m_locale_options.thousands_sep);
-        if (first == str.end()) {
-            return;
-        }
-
-        m_thsep_indices.push_back(
-            static_cast<char>(ranges::distance(str.begin(), first)));
-
-        for (auto it = first; ++it != str.end();) {
-            if (*it != m_locale_options.thousands_sep) {
-                *first++ = std::move(*it);
+            if (SCN_UNLIKELY(m_state.exponent_digits_count == 0)) {
+                return std::nullopt;
             }
-            else {
-                m_thsep_indices.push_back(
-                    static_cast<char>(ranges::distance(str.begin(), it)));
-            }
+            m_state.normalized_string.append(normalized_exponent_string);
+            return it;
         }
-
-        str.erase(first, str.end());
+        return std::nullopt;
     }
 
-    template <typename T>
-    T setsign(T value) const
-    {
-        if (m_sign == sign_type::minus_sign) {
-            return std::copysign(value, static_cast<T>(-1.0));
-        }
-        return std::copysign(value, static_cast<T>(1.0));
-    }
-
-    template <typename T>
-    scan_expected<std::ptrdiff_t> parse_value_impl(T& value);
-
-    localized_number_formatting_options<CharT> m_locale_options{};
-    std::string m_thsep_indices{};
-    contiguous_range_factory<CharT> m_nan_payload_buffer{};
-    std::ptrdiff_t m_integral_part_length{-1};
-    sign_type m_sign{sign_type::default_sign};
-    float_kind m_kind{float_kind::tbd};
+    const options<CharT>& m_options;
+    state_type m_state{};
 };
 
-#define SCN_DECLARE_FLOAT_READER_TEMPLATE(CharT, FloatT)                   \
-    extern template SCN_PUBLIC auto float_reader<CharT>::parse_value_impl( \
-        FloatT&) -> scan_expected<std::ptrdiff_t>;
+struct SCN_MAYBE_UNUSED convert_traits_sample {
+    // If `false`, `kind_type::tbd` is allowed,
+    // has a `unsigned flags` parameter in `convert`,
+    // and `convert` returns an iterator (not `void`)
+    static constexpr bool need_definite_kind = false;
+    // If `true`, the `source` parameter has type `const CharT*`.
+    static constexpr bool need_null_termination = false;
+    // If `true`, `convert` has a `source_reader<CharT>::state_type` parameter,
+    // and needs `need_definite_kind` to be `true`.
+    static constexpr bool need_reader_state = false;
+    // If `true`, supports hexfloats
+    static constexpr bool support_hexfloat = false;
 
-#if !SCN_DISABLE_TYPE_FLOAT
-SCN_DECLARE_FLOAT_READER_TEMPLATE(char, float)
-SCN_DECLARE_FLOAT_READER_TEMPLATE(wchar_t, float)
+    template <typename CharT, typename T>
+    static constexpr bool enabled = false;
+};
+
+// Implementation using strtod (and variants) from the C stdlib.
+// Used as the final fallback for standard floating-point types
+// that don't follow IEEE 754.
+
+struct convert_strtod_traits {
+#if !SCN_DISABLE_STRTOD
+private:
+    template <typename CharT>
+    static constexpr bool enabled_char =
+        std::is_same_v<CharT, char> || std::is_same_v<CharT, wchar_t>;
+    template <typename T>
+    static constexpr bool enabled_float =
+        std::is_same_v<T, float> || std::is_same_v<T, double> ||
+        std::is_same_v<T, long double>
+#if SCN_HAS_STD_F16 && defined(__HAVE_FLOAT16) && __HAVE_FLOAT16
+        || std::is_same_v<T, std::float16_t>
 #endif
-#if !SCN_DISABLE_TYPE_DOUBLE
-SCN_DECLARE_FLOAT_READER_TEMPLATE(char, double)
-SCN_DECLARE_FLOAT_READER_TEMPLATE(wchar_t, double)
+        ;
+
+public:
+    static constexpr bool need_definite_kind = true;
+    static constexpr bool need_null_termination = true;
+    static constexpr bool need_reader_state = false;
+    static constexpr bool support_hexfloat = true;
+
+    template <typename CharT, typename T>
+    static constexpr bool enabled = enabled_char<CharT> && enabled_float<T>;
+
+    template <typename CharT, typename T>
+    static scan_expected<void> convert(const CharT* source,
+                                       T& value,
+                                       kind_type kind,
+                                       bool& can_fallback);
+#else
+    template <typename CharT, typename T>
+    static constexpr bool enabled = false;
 #endif
-#if !SCN_DISABLE_TYPE_LONG_DOUBLE
-SCN_DECLARE_FLOAT_READER_TEMPLATE(char, long double)
-SCN_DECLARE_FLOAT_READER_TEMPLATE(wchar_t, long double)
+};
+
+// Custom implementation using Simple Decimal Conversion for decimal values,
+// and another algorithm for hexfloats.
+// Used as a fallback for all CharT, and all IEEE FloatT
+
+struct convert_custom_traits {
+    static constexpr bool need_definite_kind = true;
+    static constexpr bool need_null_termination = false;
+    static constexpr bool need_reader_state = true;
+    static constexpr bool support_hexfloat = true;
+
+    template <typename CharT, typename T>
+    static constexpr bool enabled = std::numeric_limits<T>::is_iec559;
+
+    template <typename CharT, typename T>
+    static scan_expected<void> convert(
+        std::basic_string_view<CharT> source,
+        T& value,
+        kind_type kind,
+        const typename source_reader<CharT>::state_type& state,
+        bool& can_fallback);
+};
+
+// Implementation using std::from_chars.
+// Used as a fallback if supported by the stdlib,
+// for CharT=char
+
+#if SCN_HAS_FLOAT_CHARCONV && !SCN_DISABLE_FROM_CHARS
+template <typename T, typename = void>
+inline constexpr bool has_charconv_for = false;
+
+template <typename T>
+inline constexpr bool has_charconv_for<
+    T,
+    std::void_t<decltype(std::from_chars(SCN_DECLVAL(const char*),
+                                         SCN_DECLVAL(const char*),
+                                         SCN_DECLVAL(T&)))>> = true;
+
+#if SCN_STDLIB_GLIBCXX
+
+#if SCN_HAS_STD_F16
+template <>
+inline constexpr bool has_charconv_for<std::float16_t, void> = false;
 #endif
 
-#if SCN_HAS_STD_F16 && !SCN_DISABLE_TYPE_FLOAT16
-SCN_DECLARE_FLOAT_READER_TEMPLATE(char, std::float16_t)
-SCN_DECLARE_FLOAT_READER_TEMPLATE(wchar_t, std::float16_t)
-#endif
-#if SCN_HAS_STD_F32 && !SCN_DISABLE_TYPE_FLOAT32
-SCN_DECLARE_FLOAT_READER_TEMPLATE(char, std::float32_t)
-SCN_DECLARE_FLOAT_READER_TEMPLATE(wchar_t, std::float32_t)
-#endif
-#if SCN_HAS_STD_F64 && !SCN_DISABLE_TYPE_FLOAT64
-SCN_DECLARE_FLOAT_READER_TEMPLATE(char, std::float64_t)
-SCN_DECLARE_FLOAT_READER_TEMPLATE(wchar_t, std::float64_t)
-#endif
-#if SCN_HAS_STD_F128 && !SCN_DISABLE_TYPE_FLOAT128
-SCN_DECLARE_FLOAT_READER_TEMPLATE(char, std::float128_t)
-SCN_DECLARE_FLOAT_READER_TEMPLATE(wchar_t, std::float128_t)
-#endif
-#if SCN_HAS_STD_BF16 && !SCN_DISABLE_TYPE_BFLOAT16
-SCN_DECLARE_FLOAT_READER_TEMPLATE(char, std::bfloat16_t)
-SCN_DECLARE_FLOAT_READER_TEMPLATE(wchar_t, std::bfloat16_t)
+#if SCN_HAS_STD_BF16
+template <>
+inline constexpr bool has_charconv_for<std::bfloat16_t, void> = false;
 #endif
 
-#undef SCN_DECLARE_FLOAT_READER_TEMPLATE
+#endif  // GLIBCXX
+
+#endif
+
+struct convert_from_chars_traits {
+#if SCN_HAS_FLOAT_CHARCONV && !SCN_DISABLE_FROM_CHARS
+    static constexpr bool need_definite_kind = false;
+    static constexpr bool need_null_termination = false;
+    static constexpr bool need_reader_state = false;
+    static constexpr bool support_hexfloat = true;
+
+    template <typename CharT, typename T>
+    static constexpr bool enabled =
+        std::is_same_v<CharT, char> && has_charconv_for<T>;
+
+    template <typename T>
+    static scan_expected<std::string_view::iterator> convert(
+        std::string_view source,
+        T& value,
+        kind_type kind,
+        unsigned flags,
+        bool& can_fallback);
+#else
+    template <typename CharT, typename T>
+    static constexpr bool enabled = false;
+#endif
+};
+
+// Implementation using fast_float.
+// Used if the float type is supported by the library
+// (i.e., float, double, or an extended type, not long double)
+
+struct convert_fast_float_traits {
+#if !SCN_DISABLE_FAST_FLOAT
+    static constexpr bool need_definite_kind = false;
+    static constexpr bool need_null_termination = false;
+    static constexpr bool need_reader_state = false;
+    static constexpr bool support_hexfloat = false;
+
+    template <typename CharT, typename T>
+    static constexpr bool enabled =
+        fast_float::is_supported_char_type<CharT>() &&
+        fast_float::is_supported_float_type<T>();
+
+    template <typename CharT, typename T>
+    static scan_expected<typename std::basic_string_view<CharT>::iterator>
+    convert(std::basic_string_view<CharT> source,
+            T& value,
+            kind_type kind,
+            unsigned flags,
+            bool& can_fallback);
+#else
+    template <typename CharT, typename T>
+    static constexpr bool enabled = false;
+#endif
+};
+
+template <typename F>
+void apply_nan_payload(F& value,
+                       typename float_traits<F>::significand_int_type payload)
+{
+    static_assert(
+        !std::is_base_of_v<float_traits<F>, float_traits_impl_none<F>>, "");
+
+    using traits = float_traits<F>;
+    typename traits::nan_repr repr{};
+    std::memcpy(&repr, &value, sizeof(repr));
+    repr.apply_payload(payload);
+    std::memcpy(&value, &repr, sizeof(repr));
+}
+
+template <typename CharT>
+struct convert_float {
+    convert_float() = default;
+
+    template <typename Source, typename T>
+    auto convert_default(Source& source, T& value)
+        -> scan_expected<ranges::iterator_t<Source&>>
+    {
+        return do_convert<false>(source, value);
+    }
+
+    template <typename Source, typename T>
+    auto convert_specs(Source& source,
+                       T& value,
+                       const detail::format_specs& specs,
+                       detail::locale_ref loc)
+        -> scan_expected<ranges::iterator_t<Source&>>
+    {
+        switch (specs.type) {
+            case detail::presentation_type::float_fixed:
+                m_options.flags = allow_fixed;
+                break;
+
+            case detail::presentation_type::float_scientific:
+                m_options.flags = allow_scientific;
+                break;
+
+            case detail::presentation_type::float_hex:
+                m_options.flags = allow_hex;
+                break;
+
+            case detail::presentation_type::float_general:
+                m_options.flags = allow_scientific | allow_fixed;
+                break;
+
+            case detail::presentation_type::none:
+                m_options.flags = allow_scientific | allow_fixed | allow_hex;
+                break;
+
+            default:
+                SCN_EXPECT(false);
+                SCN_UNREACHABLE;
+        }
+
+        if (specs.localized) {
+#if !SCN_DISABLE_LOCALE
+            auto stdloc = loc.get<std::locale>();
+            const auto& numpunct =
+                get_or_add_facet<std::numpunct<CharT>>(stdloc);
+            m_options.radix_point = numpunct.decimal_point();
+            m_options.grouping = numpunct.grouping();
+            if (!m_options.grouping.empty()) {
+                m_options.group_separator = numpunct.thousands_sep();
+            }
+#else
+            m_options.group_separator.emplace(CharT{','});
+            m_options.grouping = "\3";
+#endif
+        }
+
+        if (specs.localized) {
+            return do_convert<true>(source, value);
+        }
+        return do_convert<false>(source, value);
+    }
+
+private:
+    template <bool ForceReaderUse, typename Source, typename T>
+    auto do_convert(Source& source, T& value)
+        -> scan_expected<ranges::iterator_t<Source>>
+    {
+        auto it = source.begin();
+
+        if (auto res = prepare_read_source(source, m_options.flags,
+                                           m_options.radix_point)) {
+            m_kind = res->kind;
+            m_sign = res->sign;
+            it = SCN_MOVE(res->start);
+
+            switch (m_kind) {
+                case kind_type::inf_short:
+                case kind_type::inf_long: {
+                    if constexpr (std::numeric_limits<T>::has_infinity) {
+                        value = m_sign == sign_type::minus_sign
+                                    ? -std::numeric_limits<T>::infinity()
+                                    : std::numeric_limits<T>::infinity();
+                        SCN_ENSURE(res->definite_end);
+                        return *res->definite_end;
+                    }
+                    else {
+                        return detail::unexpected_scan_error(
+                            scan_error::invalid_scanned_value,
+                            "Floating-point type doesn't support infinities");
+                    }
+                }
+
+                case kind_type::nan_without_payload: {
+                    if constexpr (std::numeric_limits<T>::has_quiet_NaN) {
+                        value = m_sign == sign_type::minus_sign
+                                    ? -std::numeric_limits<T>::quiet_NaN()
+                                    : std::numeric_limits<T>::quiet_NaN();
+                        SCN_ENSURE(res->definite_end);
+                        return *res->definite_end;
+                    }
+                    else {
+                        return detail::unexpected_scan_error(
+                            scan_error::invalid_scanned_value,
+                            "Floating-point type doesn't support NaNs");
+                    }
+                }
+
+                case kind_type::nan_with_payload: {
+                    if constexpr (std::numeric_limits<T>::has_quiet_NaN) {
+                        value = m_sign == sign_type::minus_sign
+                                    ? -std::numeric_limits<T>::quiet_NaN()
+                                    : std::numeric_limits<T>::quiet_NaN();
+
+                        SCN_ENSURE(res->definite_end);
+                        if constexpr (std::numeric_limits<T>::is_iec559) {
+                            std::string nan_payload;
+                            ranges::advance(it, std::strlen("nan("));
+                            for (; it != *res->definite_end; ++it) {
+                                if (*it == CharT{'_'}) {
+                                    continue;
+                                }
+                                if (*it == CharT{')'}) {
+                                    break;
+                                }
+                                SCN_EXPECT(is_ascii_char(*it) &&
+                                           char_to_int(*it) < 36);
+                                nan_payload.push_back(static_cast<char>(*it));
+                            }
+                            SCN_ENSURE(std::next(it) == *res->definite_end);
+
+                            using payload_type =
+                                typename float_traits<T>::significand_int_type;
+                            payload_type parsed_payload{};
+                            if (auto result =
+                                    reader_impl_for_int<CharT>{}.read_default(
+                                        std::string_view{nan_payload},
+                                        parsed_payload, {})) {
+                                apply_nan_payload(value, parsed_payload);
+                            }
+                            else if (result.error().code() ==
+                                     scan_error::value_positive_overflow) {
+                                apply_nan_payload(
+                                    value,
+                                    std::numeric_limits<payload_type>::max());
+                            }
+                        }
+
+                        return *res->definite_end;
+                    }
+                    else {
+                        return detail::unexpected_scan_error(
+                            scan_error::invalid_scanned_value,
+                            "Floating-point type doesn't support NaNs");
+                    }
+                }
+
+                default:
+                    SCN_ENSURE(!res->definite_end);
+            }
+        }
+        else {
+            return unexpected(res.error());
+        }
+
+        if (auto res =
+                iterate_traits<ForceReaderUse, convert_fast_float_traits,
+                               convert_from_chars_traits, convert_custom_traits,
+                               convert_strtod_traits>(
+                    ranges::subrange{it, source.end()}, value)) {
+            SCN_ENSURE(value == std::copysign(value, static_cast<T>(1.0)));
+            if (m_sign == sign_type::minus_sign) {
+                value = std::copysign(value, static_cast<T>(-1.0));
+            }
+            return *res;
+        }
+        else {
+            if (res.error().code() == scan_error::value_positive_overflow &&
+                m_sign == sign_type::minus_sign) {
+                return detail::unexpected_scan_error(
+                    scan_error::value_negative_overflow, res.error().msg());
+            }
+            if (res.error().code() == scan_error::value_positive_underflow &&
+                m_sign == sign_type::minus_sign) {
+                return detail::unexpected_scan_error(
+                    scan_error::value_negative_underflow, res.error().msg());
+            }
+            return unexpected(res.error());
+        }
+    }
+
+    template <bool ForceReaderUse,
+              typename Traits,
+              typename... OtherTraits,
+              typename Iterator,
+              typename Sentinel,
+              typename T,
+              std::enable_if_t<Traits::template enabled<CharT, T>>* = nullptr>
+    scan_expected<Iterator> iterate_traits(
+        ranges::subrange<Iterator, Sentinel> source,
+        T& value)
+    {
+        if (auto r = read_source_for<ForceReaderUse, Traits>(source); !r) {
+            return unexpected(r.error());
+        }
+
+        m_can_fall_back = false;
+        auto res = invoke_convert_for<Traits, Iterator>(source, value);
+        if (!res) {
+            if constexpr (sizeof...(OtherTraits) > 0 &&
+                          (OtherTraits::template enabled<CharT, T> || ...)) {
+                if (m_can_fall_back) {
+                    return iterate_traits<ForceReaderUse, OtherTraits...>(
+                        source, value);
+                }
+            }
+
+            return unexpected(res.error());
+        }
+
+        if constexpr (std::is_same_v<decltype(res), scan_expected<Iterator>>) {
+            return *res;
+        }
+        else {
+            SCN_ENSURE(m_definite_length != 0);
+            return std::next(source.begin(), m_definite_length);
+        }
+    }
+
+    template <bool ForceReaderUse,
+              typename Traits,
+              typename... OtherTraits,
+              typename Iterator,
+              typename Sentinel,
+              typename T,
+              std::enable_if_t<!Traits::template enabled<CharT, T>>* = nullptr>
+    scan_expected<Iterator> iterate_traits(
+        ranges::subrange<Iterator, Sentinel> source,
+        T& value)
+    {
+        static_assert(sizeof...(OtherTraits) > 0);
+        static_assert((OtherTraits::template enabled<CharT, T> || ...));
+
+        return iterate_traits<ForceReaderUse, OtherTraits...>(source, value);
+    }
+
+    template <bool ForceReaderUse, typename Traits, typename Source>
+    scan_expected<void> read_source_for(Source& source)
+    {
+        if constexpr (Traits::need_reader_state || Traits::need_definite_kind ||
+                      !ranges::contiguous_range<Source> || ForceReaderUse) {
+            if (m_reader) {
+                return {};
+            }
+
+            m_reader.emplace(m_options);
+            auto res = m_reader->read(source, m_kind);
+            if (!res) {
+                return unexpected(res.error());
+            }
+            m_definite_length = ranges::distance(source.begin(), res->end);
+            m_kind = res->kind;
+        }
+
+        return {};
+    }
+
+    template <typename Traits, typename Iterator, typename Sentinel, typename T>
+    auto invoke_convert_for(ranges::subrange<Iterator, Sentinel> source,
+                            T& value) -> scan_expected<Iterator>
+    {
+        if constexpr (!Traits::support_hexfloat) {
+            if (m_kind == kind_type::hex_with_prefix ||
+                m_kind == kind_type::hex_without_prefix) {
+                m_can_fall_back = true;
+                return detail::unexpected_scan_error(
+                    scan_error::invalid_scanned_value,
+                    "Hexfloats not supported by the implementation");
+            }
+        }
+
+        auto src = std::invoke([&] {
+            if constexpr (Traits::need_null_termination) {
+                SCN_EXPECT(m_reader);
+                return m_reader->state().normalized_string.c_str();
+            }
+            else {
+                if constexpr (ranges::contiguous_range<decltype(source)>) {
+                    if (m_reader) {
+                        SCN_EXPECT(m_definite_length != 0);
+                        return std::basic_string_view<CharT>{
+                            m_reader->state().normalized_string};
+                    }
+                    return std::basic_string_view<CharT>(
+                        ranges::data(source),
+                        ranges::data(source) + ranges::size(source));
+                }
+                else {
+                    SCN_EXPECT(m_reader);
+                    SCN_EXPECT(m_definite_length != 0);
+                    return std::basic_string_view<CharT>{
+                        m_reader->state().normalized_string};
+                }
+            }
+        });
+
+        auto make_return = [&](auto res) -> scan_expected<Iterator> {
+            if (!res) {
+                return unexpected(res.error());
+            }
+
+            if (m_definite_length == 0) {
+                if constexpr (!std::is_same_v<decltype(res),
+                                              scan_expected<void>>) {
+                    if constexpr (std::is_pointer_v<decltype(src)>) {
+                        m_definite_length = ranges::distance(src, *res);
+                    }
+                    else {
+                        m_definite_length = ranges::distance(src.begin(), *res);
+                    }
+                }
+                else {
+                    SCN_EXPECT(false);
+                }
+            }
+
+            SCN_ENSURE(m_definite_length != 0);
+            return std::next(source.begin(), m_definite_length);
+        };
+
+        if constexpr (Traits::need_reader_state) {
+            SCN_EXPECT(m_reader);
+            return make_return(Traits::convert(
+                src, value, m_kind, m_reader->state(), m_can_fall_back));
+        }
+        else if constexpr (!Traits::need_definite_kind) {
+            return make_return(Traits::convert(
+                src, value, m_kind, m_options.flags, m_can_fall_back));
+        }
+        else {
+            return make_return(
+                Traits::convert(src, value, m_kind, m_can_fall_back));
+        }
+    }
+
+    options<CharT> m_options{};
+    std::ptrdiff_t m_definite_length{};
+    kind_type m_kind{};
+    sign_type m_sign{};
+    bool m_can_fall_back{};
+
+    std::optional<source_reader<CharT>> m_reader{};
+};
+
+}  // namespace float_conversion
 
 template <typename CharT>
 class reader_impl_for_float
@@ -6309,14 +6620,8 @@ public:
         -> scan_expected<ranges::const_iterator_t<Range>>
     {
         SCN_UNUSED(loc);
-
-        float_reader<CharT> rd{};
-        return read_impl<Range>(
-            range, rd,
-            [](float_reader<CharT>& r, auto&&... args) {
-                return r.read_source(SCN_FWD(args)...);
-            },
-            value);
+        return float_conversion::convert_float<CharT>{}.convert_default(range,
+                                                                        value);
     }
 
     template <typename Range, typename T>
@@ -6324,90 +6629,9 @@ public:
                     const detail::format_specs& specs,
                     T& value,
                     detail::locale_ref loc)
-        -> scan_expected<ranges::const_iterator_t<Range>>
     {
-        float_reader<CharT> rd{get_options(specs)};
-
-#if !SCN_DISABLE_LOCALE
-        if (specs.localized) {
-            return read_impl<Range>(
-                range, rd,
-                [](float_reader<CharT>& r, auto&&... args) {
-                    return r.read_source_localized(SCN_FWD(args)...);
-                },
-                value, loc);
-        }
-#else
-        SCN_UNUSED(loc);
-#endif
-
-        return read_impl<Range>(
-            range, rd,
-            [](float_reader<CharT>& r, auto&&... args) {
-                return r.read_source(SCN_FWD(args)...);
-            },
-            value);
-    }
-
-private:
-    template <typename Range>
-    using read_source_callback_type =
-        scan_expected<ranges::const_iterator_t<Range>>(float_reader<CharT>&,
-                                                       Range,
-                                                       detail::locale_ref);
-
-    template <typename Range, typename T>
-    scan_expected<ranges::const_iterator_t<Range>> read_impl(
-        Range range,
-        float_reader<CharT>& rd,
-        function_ref<read_source_callback_type<Range>> read_source_cb,
-        T& value,
-        detail::locale_ref loc = {})
-    {
-        if (auto r = std::invoke(read_source_cb, rd, range, loc);
-            SCN_UNLIKELY(!r)) {
-            return unexpected(r.error());
-        }
-
-        SCN_TRY(n, rd.parse_value(value));
-        return ranges::next(range.begin(), n);
-    }
-
-    static unsigned get_options(const detail::format_specs& specs)
-    {
-        unsigned options{};
-        if (specs.localized) {
-            options |= float_reader_base::allow_thsep;
-        }
-
-        SCN_GCC_COMPAT_PUSH
-        SCN_GCC_COMPAT_IGNORE("-Wswitch-enum")
-
-        switch (specs.type) {
-            case detail::presentation_type::float_fixed:
-                return options | float_reader_base::allow_fixed;
-
-            case detail::presentation_type::float_scientific:
-                return options | float_reader_base::allow_scientific;
-
-            case detail::presentation_type::float_hex:
-                return options | float_reader_base::allow_hex;
-
-            case detail::presentation_type::float_general:
-                return options | float_reader_base::allow_scientific |
-                       float_reader_base::allow_fixed;
-
-            case detail::presentation_type::none:
-                return options | float_reader_base::allow_scientific |
-                       float_reader_base::allow_fixed |
-                       float_reader_base::allow_hex;
-
-            default:
-                SCN_EXPECT(false);
-                SCN_UNREACHABLE;
-        }
-
-        SCN_GCC_COMPAT_POP  // -Wswitch-enum
+        return float_conversion::convert_float<CharT>{}.convert_specs(
+            range, value, specs, loc);
     }
 };
 

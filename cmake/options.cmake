@@ -39,7 +39,7 @@ set(SCN_REGEX_BACKEND "std" CACHE STRING "Regex backend to use")
 set_property(CACHE SCN_REGEX_BACKEND PROPERTY STRINGS "std" "Boost" "re2")
 option(SCN_REGEX_BOOST_USE_ICU "Use ICU with the regex backend (Boost SCN_REGEX_BACKEND only)" OFF)
 
-option(SCN_DISABLE_FAST_FLOAT "Disable the external dependency on fast_float, requires std::from_chars for floats" OFF)
+option(SCN_DISABLE_FAST_FLOAT "Disable the external dependency on fast_float" OFF)
 option(SCN_USE_EXTERNAL_FAST_FLOAT "Use find_package for fast_float, instead of FetchContent" OFF)
 
 option(SCN_USE_EXTERNAL_GTEST "Use find_package for GTest, instead of FetchContent" OFF)
