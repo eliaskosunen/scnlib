@@ -415,6 +415,16 @@ protected:
 #endif
         false;
 
+    static constexpr bool is_supported =
+        scn::impl::float_conversion::convert_strtod_traits::
+            template enabled<char_type, float_type> ||
+        scn::impl::float_conversion::convert_custom_traits::
+            template enabled<char_type, float_type> ||
+        scn::impl::float_conversion::convert_from_chars_traits::
+            template enabled<char_type, float_type> ||
+        scn::impl::float_conversion::convert_fast_float_traits::
+            template enabled<char_type, float_type>;
+
     enum class float_kind {
         f16,
         f32,
@@ -445,41 +455,9 @@ protected:
 
     void SetUp() override
     {
-        // Check whether this type is supported.
-        // If not, skip the test (don't fail).
-        // This is only a runtime-checkable property for now,
-        // so we can't disable the tests beforehand.
-        // This can only fail for extended float types,
-        // so if we have none of them, we don't need to run this check.
-
-#if SCN_HAS_STD_F16 || SCN_HAS_STD_F32 || SCN_HAS_STD_F64 || \
-    SCN_HAS_STD_F128 || SCN_HAS_STD_BF16
-        if constexpr (!std::is_same_v<float_type, float> &&
-                      !std::is_same_v<float_type, double> &&
-                      !std::is_same_v<float_type, long double>) {
-            T tmp_reader{};
-            float_type value{};
-
-            auto result = [&]() {
-                if constexpr (is_char) {
-                    return tmp_reader.read_default("42.0"sv, value);
-                }
-                else {
-                    return tmp_reader.read_default(L"42.0"sv, value);
-                }
-            }();
-
-            if (!result) {
-                if (result.error().code() ==
-                    scn::scan_error::type_not_supported) {
-                    GTEST_SKIP() << "Type not supported";
-                }
-            }
-            ASSERT_TRUE(result);
-            ASSERT_TRUE(
-                check_floating_eq(value, static_cast<float_type>(42.0)));
+        if constexpr (!is_supported) {
+            FAIL() << "Type not supported";
         }
-#endif
     }
 
 #if SCN_HAS_STD_F128
@@ -1856,3 +1834,55 @@ TYPED_TEST(FloatValueReaderTest, LocalizedDecimalSeparator)
     EXPECT_TRUE(check_floating_eq(val, this->get_pi().first));
 }
 #endif  // !SCN_DISABLE_LOCALE
+
+TEST(FloatConvertCustomTest, DoubleLoopHex)
+{
+    for (auto exponent : {0, 1, 0x3ff, 0x7fe}) {
+        for (std::uint64_t fraction :
+             {0x0ull, 0x1ull, 0xfull, 0x7ffull, 0x7'ffff'ffff'ffffull,
+              0xf'ffff'ffff'fffeull, 0xf'ffff'ffff'ffffull}) {
+            scn::impl::float_traits<double>::value_repr repr{};
+            repr.apply_exponent(exponent);
+            repr.apply_significand(fraction);
+
+            double expected{};
+            std::memcpy(&expected, &repr, sizeof(double));
+
+            std::string source{};
+            {
+                std::ostringstream strm;
+                strm.flags(strm.floatfield);
+                strm << expected;
+                source = SCN_MOVE(strm).str();
+            }
+
+            std::string trace{};
+            {
+                std::ostringstream strm;
+                strm << std::hex << "exp:" << exponent << ", frac:" << fraction
+                     << " = " << source;
+                trace = SCN_MOVE(strm).str();
+            }
+            SCOPED_TRACE(trace);
+
+            scn::impl::float_conversion::options<char> options{};
+            options.flags = scn::impl::float_conversion::allow_hex;
+
+            scn::impl::float_conversion::source_reader<char> reader{options};
+            ASSERT_TRUE(reader.read(
+                scn::ranges::subrange{source.data(),
+                                      source.data() + source.size()},
+                scn::impl::float_conversion::kind_type::hex_with_prefix));
+
+            double parsed{};
+            bool can_fallback{};
+            auto res =
+                scn::impl::float_conversion::convert_custom_traits::convert(
+                    std::string_view{source}, parsed,
+                    scn::impl::float_conversion::kind_type::hex_with_prefix,
+                    reader.state(), can_fallback);
+            ASSERT_TRUE(res);
+            EXPECT_EQ(expected, parsed);
+        }
+    }
+}

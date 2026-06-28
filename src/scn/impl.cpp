@@ -30,9 +30,14 @@
 #include <iostream>
 #endif
 
+SCN_CLANG_PUSH
+SCN_CLANG_IGNORE("-Wunused-macros")
+
 #define SCN_XLOCALE_POSIX 0
 #define SCN_XLOCALE_MSVC  1
 #define SCN_XLOCALE_OTHER 2
+
+SCN_CLANG_POP
 
 #if SCN_DISABLE_LOCALE
 #define SCN_XLOCALE SCN_XLOCALE_OTHER
@@ -783,13 +788,14 @@ float_parts<CharT> parse_float_parts(
     auto idx = state.whole_part_digits_count;
 
     if (state.has_radix_point) {
-        ++idx; // skip '.'
-        parts.after_radix_point = source.substr(idx, state.fractional_part_digits_count);
+        ++idx;  // skip '.'
+        parts.after_radix_point =
+            source.substr(idx, state.fractional_part_digits_count);
         idx += state.fractional_part_digits_count;
     }
 
     if (state.exponent_digits_count > 0) {
-        ++idx; // skip 'e'/'p'
+        ++idx;  // skip 'e'/'p'
         if (state.has_exponent_sign) {
             parts.exponent_positive = source[idx] == CharT{'+'};
             ++idx;
@@ -804,7 +810,10 @@ float_parts<CharT> parse_float_parts(
 }
 
 struct convert_custom_dec {
-    convert_custom_dec(kind_type kind) : m_kind(kind) {}
+    convert_custom_dec(kind_type kind)
+    {
+        SCN_EXPECT(kind == kind_type::fixed || kind == kind_type::scientific);
+    }
 
     template <typename CharT, typename T>
     scan_expected<void> operator()(const float_parts<CharT>& parts, T& value)
@@ -820,13 +829,14 @@ struct convert_custom_dec {
         }
         return {};
     }
-
-private:
-    kind_type m_kind;
 };
 
 struct convert_custom_hex {
-    convert_custom_hex(kind_type kind) : m_kind(kind) {}
+    convert_custom_hex(kind_type kind)
+    {
+        SCN_EXPECT(kind == kind_type::hex_with_prefix ||
+                   kind == kind_type::hex_without_prefix);
+    }
 
     template <typename CharT, typename T>
     scan_expected<void> operator()(const float_parts<CharT>& parts, T& value)
@@ -1029,8 +1039,6 @@ private:
         SCN_ENSURE(r.value() == input.end());
         return value;
     }
-
-    kind_type m_kind;
 };
 
 }  // namespace
@@ -1242,9 +1250,10 @@ SCN_DEFINE_FROM_CHARS_CONVERT(std::bfloat16_t)
 
 namespace {
 struct convert_fast_float {
-    convert_fast_float(kind_type kind, unsigned options)
-        : m_kind(kind), m_options(options)
+    convert_fast_float(kind_type kind, unsigned options) : m_options(options)
     {
+        SCN_EXPECT(kind == kind_type::decimal || kind == kind_type::fixed ||
+                   kind == kind_type::scientific);
     }
 
     template <typename CharT, typename T>
@@ -1270,19 +1279,21 @@ struct convert_fast_float {
                 scan_error::invalid_scanned_value,
                 "fast_float: invalid_argument");
         }
-        if (SCN_UNLIKELY(result.ec == std::errc::result_out_of_range)) {
+        if (SCN_UNLIKELY(is_float_positive_infinity(value))) {
+            // Infinity, but input couldn't've been infinity
+            //  -> definitely overflow
             can_fallback = false;
-            if (is_float_positive_infinity(value)) {
-                return detail::unexpected_scan_error(
-                    scan_error::value_positive_overflow,
-                    "fast_float: result_out_of_range, value too large");
-            }
-            if (is_float_any_zero(value)) {
+            return detail::unexpected_scan_error(
+                scan_error::value_positive_overflow,
+                "fast_float: value too large");
+        }
+        if (SCN_UNLIKELY(result.ec == std::errc::result_out_of_range)) {
+            if (SCN_UNLIKELY(is_float_any_zero(value))) {
+                can_fallback = false;
                 return detail::unexpected_scan_error(
                     scan_error::value_positive_underflow,
-                    "fast_float: result_out_of_range, value too small");
+                    "fast_float: value too small");
             }
-
             can_fallback = true;
             return detail::unexpected_scan_error(
                 scan_error::invalid_scanned_value,
@@ -1312,7 +1323,6 @@ private:
         }
     }
 
-    kind_type m_kind{};
     unsigned m_options{};
 };
 

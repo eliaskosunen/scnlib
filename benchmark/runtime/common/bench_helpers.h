@@ -19,6 +19,11 @@
 
 #include <scn/scan.h>
 
+#if SCN_CLANG >= SCN_COMPILER(21, 0, 0)
+SCN_CLANG_PUSH
+SCN_CLANG_IGNORE("-Wunique-object-duplication")
+#endif
+
 inline std::mt19937_64& get_rng()
 {
     static std::random_device rd;
@@ -26,6 +31,10 @@ inline std::mt19937_64& get_rng()
     static std::mt19937_64 rng(seed);
     return rng;
 }
+
+#if SCN_CLANG >= SCN_COMPILER(21, 0, 0)
+SCN_CLANG_POP // -Wunique-object-duplication
+#endif
 
 // Stolen from ascii_ctype.h
 inline bool is_classic_ascii_space(char ch)

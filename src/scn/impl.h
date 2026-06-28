@@ -545,10 +545,10 @@ int count_trailing_zeroes(T val)
 
 #elif SCN_GCC_COMPAT
     // Has GCC builtins for int, long, and long long
-    if constexpr (std::is_same_v<T, long long>) {
+    if constexpr (std::is_same_v<T, unsigned long long>) {
         return __builtin_ctzll(val);
     }
-    else if constexpr (std::is_same_v<T, long>) {
+    else if constexpr (std::is_same_v<T, unsigned long>) {
         return __builtin_ctzl(val);
     }
     else {
@@ -633,10 +633,10 @@ int count_leading_zeroes(T val)
 
 #elif SCN_GCC_COMPAT
     // Has GCC builtins for int, long, and long long
-    if constexpr (std::is_same_v<T, long long>) {
+    if constexpr (std::is_same_v<T, unsigned long long>) {
         return __builtin_clzll(val);
     }
-    else if constexpr (std::is_same_v<T, long>) {
+    else if constexpr (std::is_same_v<T, unsigned long>) {
         return __builtin_clzl(val);
     }
     else {
@@ -5813,7 +5813,7 @@ auto prepare_read_source(Source& source, unsigned flags, CharT radix_point)
     }
 
     const bool allowed_hex = flags & allow_hex;
-    const bool allowed_nonhex = flags & ~allow_hex;
+    const bool allowed_nonhex = flags & ~static_cast<unsigned>(allow_hex);
 
     auto check_following_digit = [&](auto iter,
                                      int base) -> scan_expected<void> {
@@ -5870,7 +5870,7 @@ auto prepare_read_source(Source& source, unsigned flags, CharT radix_point)
 
 template <typename CharT>
 struct source_reader {
-    explicit source_reader(const options<CharT>& o) : m_options(o) {}
+    explicit source_reader(const options<CharT>& o) noexcept : m_options(o) {}
 
     struct state_type {
         std::basic_string<CharT> normalized_string{};
@@ -6262,6 +6262,9 @@ struct convert_float {
                        detail::locale_ref loc)
         -> scan_expected<ranges::iterator_t<Source&>>
     {
+        SCN_GCC_COMPAT_PUSH
+        SCN_GCC_COMPAT_IGNORE("-Wswitch-enum")
+
         switch (specs.type) {
             case detail::presentation_type::float_fixed:
                 m_options.flags = allow_fixed;
@@ -6287,6 +6290,8 @@ struct convert_float {
                 SCN_EXPECT(false);
                 SCN_UNREACHABLE;
         }
+
+        SCN_GCC_COMPAT_POP
 
         if (specs.localized) {
 #if !SCN_DISABLE_LOCALE
@@ -6322,6 +6327,9 @@ private:
             m_kind = res->kind;
             m_sign = res->sign;
             it = SCN_MOVE(res->start);
+
+            SCN_GCC_COMPAT_PUSH
+            SCN_GCC_COMPAT_IGNORE("-Wswitch-enum")
 
             switch (m_kind) {
                 case kind_type::inf_short:
@@ -6407,6 +6415,8 @@ private:
                 default:
                     SCN_ENSURE(!res->definite_end);
             }
+
+            SCN_GCC_COMPAT_POP
         }
         else {
             return unexpected(res.error());
@@ -6417,7 +6427,6 @@ private:
                                convert_from_chars_traits, convert_custom_traits,
                                convert_strtod_traits>(
                     ranges::subrange{it, source.end()}, value)) {
-            SCN_ENSURE(value == std::copysign(value, static_cast<T>(1.0)));
             if (m_sign == sign_type::minus_sign) {
                 value = std::copysign(value, static_cast<T>(-1.0));
             }
@@ -6528,7 +6537,7 @@ private:
             }
         }
 
-        auto src = std::invoke([&] {
+        auto src = std::invoke([&]() noexcept {
             if constexpr (Traits::need_null_termination) {
                 SCN_EXPECT(m_reader);
                 return m_reader->state().normalized_string.c_str();
@@ -6540,9 +6549,8 @@ private:
                         return std::basic_string_view<CharT>{
                             m_reader->state().normalized_string};
                     }
-                    return std::basic_string_view<CharT>(
-                        ranges::data(source),
-                        ranges::data(source) + ranges::size(source));
+                    return std::basic_string_view<CharT>(ranges::data(source),
+                                                         ranges::size(source));
                 }
                 else {
                     SCN_EXPECT(m_reader);
@@ -6577,6 +6585,8 @@ private:
             return std::next(source.begin(), m_definite_length);
         };
 
+        SCN_CLANG_PUSH_IGNORE_UNDEFINED_TEMPLATE
+
         if constexpr (Traits::need_reader_state) {
             SCN_EXPECT(m_reader);
             return make_return(Traits::convert(
@@ -6590,6 +6600,8 @@ private:
             return make_return(
                 Traits::convert(src, value, m_kind, m_can_fall_back));
         }
+
+        SCN_CLANG_POP_IGNORE_UNDEFINED_TEMPLATE
     }
 
     options<CharT> m_options{};
