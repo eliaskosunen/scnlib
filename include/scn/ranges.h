@@ -168,15 +168,16 @@ struct has_push_back : std::false_type {};
 template <typename Range, typename Element>
 struct has_push_back<Range,
                      Element,
-                     decltype(SCN_DECLVAL(Range&).push_back(
-                         SCN_DECLVAL(Element&&)))> : std::true_type {};
+                     std::void_t<decltype(SCN_DECLVAL(Range&).push_back(
+                         SCN_DECLVAL(Element&&)))>> : std::true_type {};
 
 template <typename Range, typename Element, typename Enable = void>
 struct has_push : std::false_type {};
 template <typename Range, typename Element>
-struct has_push<Range,
-                Element,
-                decltype(SCN_DECLVAL(Range&).push(SCN_DECLVAL(Element&&)))>
+struct has_push<
+    Range,
+    Element,
+    std::void_t<decltype(SCN_DECLVAL(Range&).push(SCN_DECLVAL(Element&&)))>>
     : std::true_type {};
 
 template <typename Range, typename Element, typename Enable = void>
@@ -211,7 +212,8 @@ void add_element_to_range(Range& r, Element&& elem)
 template <typename Range, typename Enable = void>
 struct has_max_size : std::false_type {};
 template <typename Range>
-struct has_max_size<Range, decltype(SCN_DECLVAL(const Range&).max_size())>
+struct has_max_size<Range,
+                    std::void_t<decltype(SCN_DECLVAL(const Range&).max_size())>>
     : std::true_type {};
 
 template <typename Range, typename DiffT = ranges::range_difference_t<Range>>
