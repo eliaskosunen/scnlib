@@ -76,6 +76,13 @@ make_scn_test(scn_impl_tests
         impl_tests/float_reader_test.cpp
         impl_tests/string_reader_test.cpp
 
+        impl_tests/float_conversion_test.h
+        impl_tests/float_conversion_test.cpp
+        impl_tests/float_conversion_test.impl_custom.cpp
+        impl_tests/float_conversion_test.impl_fast_float.cpp
+        impl_tests/float_conversion_test.impl_from_chars.cpp
+        impl_tests/float_conversion_test.impl_strtod.cpp
+
         impl_tests/integer_reader_test.h
         impl_tests/integer_reader_test.impl_narrow_classic.cpp
         impl_tests/integer_reader_test.impl_narrow_localized.cpp
