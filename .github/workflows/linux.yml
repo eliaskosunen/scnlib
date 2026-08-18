@@ -52,23 +52,36 @@ env:
   CCACHE_UNIFY: true
   DEBIAN_FRONTEND: noninteractive
 
+# todo: g++ 12, 11, 10, 9 on 22.04
+# clang++ 15, 14, 13 on 22.04
 jobs:
-  # recent gcc versions and pre-installed clang versions on native ubuntu 22.04 and 24.04
+  # recent gcc versions and pre-installed clang versions on native ubuntu 24.04 and 26.04
+  # 22.04 images will have been deprecated on 2026-09-17 and removed on 2027-04-17.
   ubuntu:
     runs-on: ubuntu-${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
-        os: [ 22.04 ]
+        os: [ 24.04 ]
         cxx:
+          # all pre-installed gcc versions
+          - g++-14
+          - g++-13
           - g++-12
-          - g++-11
-          - g++-10
-          - g++-9
         std: [ 17 ]
 
         include:
           # Explicitly pick out pre-installed clang + os pairs -- apt.llvm.org likes to fail on us
+          - os: 26.04
+            cxx: clang++-22
+            std: 17
+          - os: 26.04
+            cxx: clang++-21
+            std: 17
+          - os: 26.04
+            cxx: clang++-20
+            std: 17
+
           - os: 24.04
             cxx: clang++-18
             std: 17
@@ -79,44 +92,18 @@ jobs:
             cxx: clang++-16
             std: 17
 
-          - os: 22.04
-            cxx: clang++-15
+          # Preinstalled gcc versions on 26.04
+          - os: 26.04
+            cxx: g++-15
             std: 17
-          - os: 22.04
-            cxx: clang++-14
+          - os: 26.04
+            cxx: g++-14
             std: 17
-          - os: 22.04
-            cxx: clang++-13
-            std: 17
-
-          # g++ 12 and 13 (both preinstalled) on 24.04
-          - os: 24.04
+          - os: 26.04
             cxx: g++-13
             std: 17
-          - os: 24.04
-            cxx: g++-12
-            std: 17
 
-          # newest pre-installed gcc on 22.04 with C++20 and C++23 (C++17 created by the matrix)
-          - os: 22.04
-            cxx: g++-12
-            std: 20
-          - os: 22.04
-            cxx: g++-12
-            std: 23
-
-          # newest pre-installed clang on 22.04 with C++20 and C++23 (C++17 created by the matrix)
-          - os: 22.04
-            cxx: clang++-13
-            std: 20
-          - os: 22.04
-            cxx: clang++-13
-            std: 23
-
-          # newest pre-installed gcc on 24.04, with C++17, C++20, and C++23
-          - os: 24.04
-            cxx: g++-14
-            std: 17
+          # Newest pre-installed gcc on 24.04, with C++20 and C++23 (C++17 created by the matrix)
           - os: 24.04
             cxx: g++-14
             std: 20
@@ -124,12 +111,28 @@ jobs:
             cxx: g++-14
             std: 23
 
-          # newest pre-installed clang on 24.04, with C++20 and C++23 (C++17 already provided above)
+          # Newest pre-installed clang on 24.04, with C++20 and C++23 (C++17 created by the matrix)
           - os: 24.04
             cxx: clang++-18
             std: 20
           - os: 24.04
             cxx: clang++-18
+            std: 23
+
+          # Newest pre-installed gcc on 26.04, with C++20 and C++23 (C++17 already included above)
+          - os: 26.04
+            cxx: g++-15
+            std: 20
+          - os: 26.04
+            cxx: g++-15
+            std: 23
+
+          # Newest pre-installed clang on 26.04, with C++20 and C++23 (C++17 already included above)
+          - os: 26.04
+            cxx: clang++-22
+            std: 20
+          - os: 26.04
+            cxx: clang++-22
             std: 23
 
     env:
@@ -156,10 +159,6 @@ jobs:
           sudo apt-get --allow-unauthenticated -yq update
           
           ${APT_INSTALL} ccache
-
-          if [[ "${CXX}" == "g++-9" ]]; then
-            ${APT_INSTALL} g++-9
-          fi
 
       - name: Checkout
         uses: actions/checkout@v4
@@ -209,6 +208,30 @@ jobs:
       fail-fast: false
       matrix:
         include:
+          # gcc 9, 10, 11, and 12 (with C++17)
+          - cxx: g++-12
+            std: 17
+            image: gcc:12
+          - cxx: g++-11
+            std: 17
+            image: gcc:11
+          - cxx: g++-10
+            std: 17
+            image: gcc:10
+          - cxx: g++-9
+            std: 17
+            image: gcc:9
+
+          # clang 11, 12, 13, 14, and 15 (with C++17)
+          - cxx: clang++-15
+            std: 17
+            image: silkeh/clang:15
+          - cxx: clang++-14
+            std: 17
+            image: silkeh/clang:14
+          - cxx: clang++-13
+            std: 17
+            image: silkeh/clang:13
           - cxx: clang++-12
             std: 17
             image: silkeh/clang:12
@@ -414,8 +437,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        # 24.04 doesn't have libc++ (yet?)
-        os: [ 22.04 ]
+        os: [ 24.04 ]
         std: [ 17, 20, 23 ]
 
     env:
@@ -485,7 +507,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        version: [ 3.14, 3.21 ]
+        version: [ 3.14, 3.24 ]
 
     steps:
       - name: Checkout
@@ -627,10 +649,11 @@ jobs:
           ccache --show-stats
 
   asan-and-ubsan:
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
+        os: [ 24.04 ]
         std: [ 17, 20 ]
         cxx: [ clang++-18 ]
 
@@ -661,14 +684,14 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ${{ env.CCACHE_DIR }}
-          key: ccache-${{ github.workflow }}-ubuntu22.04-${{ env.CXX }}-std${{ matrix.std }}-sanitize-${{ github.sha }}
+          key: ccache-${{ github.workflow }}-ubuntu${{ matrix.os }}-${{ env.CXX }}-std${{ matrix.std }}-sanitize-${{ github.sha }}
           restore-keys: |
-            ccache-${{ github.workflow }}-ubuntu22.04-${{ env.CXX }}-std${{ matrix.std }}-sanitize-${{ github.ref }}
-            ccache-${{ github.workflow }}-ubuntu22.04-${{ env.CXX }}-std${{ matrix.std }}-sanitize-${{ github.base_ref }}
-            ccache-${{ github.workflow }}-ubuntu22.04-${{ env.CXX }}-std${{ matrix.std }}-sanitize
-            ccache-${{ github.workflow }}-ubuntu22.04-${{ env.CXX }}-std${{ matrix.std }}-${{ github.ref }}
-            ccache-${{ github.workflow }}-ubuntu22.04-${{ env.CXX }}-std${{ matrix.std }}-${{ github.base_ref }}
-            ccache-${{ github.workflow }}-ubuntu22.04-${{ env.CXX }}-std${{ matrix.std }}
+            ccache-${{ github.workflow }}-ubuntu${{ matrix.os }}-${{ env.CXX }}-std${{ matrix.std }}-sanitize-${{ github.ref }}
+            ccache-${{ github.workflow }}-ubuntu${{ matrix.os }}-${{ env.CXX }}-std${{ matrix.std }}-sanitize-${{ github.base_ref }}
+            ccache-${{ github.workflow }}-ubuntu${{ matrix.os }}-${{ env.CXX }}-std${{ matrix.std }}-sanitize
+            ccache-${{ github.workflow }}-ubuntu${{ matrix.os }}-${{ env.CXX }}-std${{ matrix.std }}-${{ github.ref }}
+            ccache-${{ github.workflow }}-ubuntu${{ matrix.os }}-${{ env.CXX }}-std${{ matrix.std }}-${{ github.base_ref }}
+            ccache-${{ github.workflow }}-ubuntu${{ matrix.os }}-${{ env.CXX }}-std${{ matrix.std }}
 
       - name: Setup ccache
         run: |
@@ -704,21 +727,23 @@ jobs:
           ctest --output-on-failure
 
   install-and-consume:
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-${{ matrix.os }}
 
     strategy:
       fail-fast: false
       matrix:
+        os:
+          - 24.04
         cxx:
-         - g++-11
+         - g++-14
         external_deps: [ 0, 1 ]
         shared_libs: [ "OFF", "ON" ]
 
         include:
-          - cxx: clang++-15
+          - cxx: clang++-18
             external_deps: 0
             shared_libs: "OFF"
-          - cxx: clang++-15
+          - cxx: clang++-18
             external_deps: 0
             shared_libs: "ON"
 
@@ -740,15 +765,15 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ${{ env.CCACHE_DIR }}
-          key: ccache-${{ github.workflow }}-ubuntu22.04-${{ env.CXX }}-std${{ env.CMAKE_CXX_STANDARD }}-install${{ matrix.external_deps }}${{ matrix.shared_libs }}-${{ github.sha }}
+          key: ccache-${{ github.workflow }}-ubuntu${{ matrix.os }}-${{ env.CXX }}-std${{ env.CMAKE_CXX_STANDARD }}-install${{ matrix.external_deps }}${{ matrix.shared_libs }}-${{ github.sha }}
           restore-keys: |
-            ccache-${{ github.workflow }}-ubuntu22.04-${{ env.CXX }}-std${{ env.CMAKE_CXX_STANDARD }}-install${{ matrix.external_deps }}${{ matrix.shared_libs }}-${{ github.ref }}
-            ccache-${{ github.workflow }}-ubuntu22.04-${{ env.CXX }}-std${{ env.CMAKE_CXX_STANDARD }}-install${{ matrix.external_deps }}${{ matrix.shared_libs }}-${{ github.base_ref }}
-            ccache-${{ github.workflow }}-ubuntu22.04-${{ env.CXX }}-std${{ env.CMAKE_CXX_STANDARD }}-install${{ matrix.external_deps }}${{ matrix.shared_libs }}
-            ccache-${{ github.workflow }}-ubuntu22.04-${{ env.CXX }}-std${{ env.CMAKE_CXX_STANDARD }}-${{ github.sha }}
-            ccache-${{ github.workflow }}-ubuntu22.04-${{ env.CXX }}-std${{ env.CMAKE_CXX_STANDARD }}-${{ github.ref }}
-            ccache-${{ github.workflow }}-ubuntu22.04-${{ env.CXX }}-std${{ env.CMAKE_CXX_STANDARD }}-${{ github.base_ref }}
-            ccache-${{ github.workflow }}-ubuntu22.04-${{ env.CXX }}-std${{ env.CMAKE_CXX_STANDARD }}
+            ccache-${{ github.workflow }}-ubuntu${{ matrix.os }}-${{ env.CXX }}-std${{ env.CMAKE_CXX_STANDARD }}-install${{ matrix.external_deps }}${{ matrix.shared_libs }}-${{ github.ref }}
+            ccache-${{ github.workflow }}-ubuntu${{ matrix.os }}-${{ env.CXX }}-std${{ env.CMAKE_CXX_STANDARD }}-install${{ matrix.external_deps }}${{ matrix.shared_libs }}-${{ github.base_ref }}
+            ccache-${{ github.workflow }}-ubuntu${{ matrix.os }}-${{ env.CXX }}-std${{ env.CMAKE_CXX_STANDARD }}-install${{ matrix.external_deps }}${{ matrix.shared_libs }}
+            ccache-${{ github.workflow }}-ubuntu${{ matrix.os }}-${{ env.CXX }}-std${{ env.CMAKE_CXX_STANDARD }}-${{ github.sha }}
+            ccache-${{ github.workflow }}-ubuntu${{ matrix.os }}-${{ env.CXX }}-std${{ env.CMAKE_CXX_STANDARD }}-${{ github.ref }}
+            ccache-${{ github.workflow }}-ubuntu${{ matrix.os }}-${{ env.CXX }}-std${{ env.CMAKE_CXX_STANDARD }}-${{ github.base_ref }}
+            ccache-${{ github.workflow }}-ubuntu${{ matrix.os }}-${{ env.CXX }}-std${{ env.CMAKE_CXX_STANDARD }}
 
       - name: Setup ccache
         run: |
@@ -859,15 +884,15 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ${{ env.CCACHE_DIR }}
-          key: ccache-${{ github.workflow }}-ubuntu22.04-${{ env.CXX }}-std${{ env.CMAKE_CXX_STANDARD }}-disable-${{ matrix.key }}-${{ github.sha }}
+          key: ccache-${{ github.workflow }}-ubuntu24.04-${{ env.CXX }}-std${{ env.CMAKE_CXX_STANDARD }}-disable-${{ matrix.key }}-${{ github.sha }}
           restore-keys: |
-            ccache-${{ github.workflow }}-ubuntu22.04-${{ env.CXX }}-std${{ env.CMAKE_CXX_STANDARD }}-disable-${{ matrix.key }}-${{ github.ref }}
-            ccache-${{ github.workflow }}-ubuntu22.04-${{ env.CXX }}-std${{ env.CMAKE_CXX_STANDARD }}-disable-${{ matrix.key }}-${{ github.base_ref }}
-            ccache-${{ github.workflow }}-ubuntu22.04-${{ env.CXX }}-std${{ env.CMAKE_CXX_STANDARD }}-disable-${{ matrix.key }}
-            ccache-${{ github.workflow }}-ubuntu22.04-${{ env.CXX }}-std${{ env.CMAKE_CXX_STANDARD }}-${{ github.sha }}
-            ccache-${{ github.workflow }}-ubuntu22.04-${{ env.CXX }}-std${{ env.CMAKE_CXX_STANDARD }}-${{ github.ref }}
-            ccache-${{ github.workflow }}-ubuntu22.04-${{ env.CXX }}-std${{ env.CMAKE_CXX_STANDARD }}-${{ github.base_ref }}
-            ccache-${{ github.workflow }}-ubuntu22.04-${{ env.CXX }}-std${{ env.CMAKE_CXX_STANDARD }}
+            ccache-${{ github.workflow }}-ubuntu24.04-${{ env.CXX }}-std${{ env.CMAKE_CXX_STANDARD }}-disable-${{ matrix.key }}-${{ github.ref }}
+            ccache-${{ github.workflow }}-ubuntu24.04-${{ env.CXX }}-std${{ env.CMAKE_CXX_STANDARD }}-disable-${{ matrix.key }}-${{ github.base_ref }}
+            ccache-${{ github.workflow }}-ubuntu24.04-${{ env.CXX }}-std${{ env.CMAKE_CXX_STANDARD }}-disable-${{ matrix.key }}
+            ccache-${{ github.workflow }}-ubuntu24.04-${{ env.CXX }}-std${{ env.CMAKE_CXX_STANDARD }}-${{ github.sha }}
+            ccache-${{ github.workflow }}-ubuntu24.04-${{ env.CXX }}-std${{ env.CMAKE_CXX_STANDARD }}-${{ github.ref }}
+            ccache-${{ github.workflow }}-ubuntu24.04-${{ env.CXX }}-std${{ env.CMAKE_CXX_STANDARD }}-${{ github.base_ref }}
+            ccache-${{ github.workflow }}-ubuntu24.04-${{ env.CXX }}-std${{ env.CMAKE_CXX_STANDARD }}
 
       - name: Setup ccache
         run: |
@@ -934,15 +959,15 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ${{ env.CCACHE_DIR }}
-          key: ccache-${{ github.workflow }}-ubuntu22.04-${{ env.CXX }}-std${{ env.CMAKE_CXX_STANDARD }}-special-${{ matrix.tag }}-${{ github.sha }}
+          key: ccache-${{ github.workflow }}-ubuntu24.04-${{ env.CXX }}-std${{ env.CMAKE_CXX_STANDARD }}-special-${{ matrix.tag }}-${{ github.sha }}
           restore-keys: |
-            ccache-${{ github.workflow }}-ubuntu22.04-${{ env.CXX }}-std${{ env.CMAKE_CXX_STANDARD }}-special-${{ matrix.tag }}-${{ github.ref }}
-            ccache-${{ github.workflow }}-ubuntu22.04-${{ env.CXX }}-std${{ env.CMAKE_CXX_STANDARD }}-special-${{ matrix.tag }}-${{ github.base_ref }}
-            ccache-${{ github.workflow }}-ubuntu22.04-${{ env.CXX }}-std${{ env.CMAKE_CXX_STANDARD }}-special-${{ matrix.tag }}
-            ccache-${{ github.workflow }}-ubuntu22.04-${{ env.CXX }}-std${{ env.CMAKE_CXX_STANDARD }}-${{ github.sha }}
-            ccache-${{ github.workflow }}-ubuntu22.04-${{ env.CXX }}-std${{ env.CMAKE_CXX_STANDARD }}-${{ github.ref }}
-            ccache-${{ github.workflow }}-ubuntu22.04-${{ env.CXX }}-std${{ env.CMAKE_CXX_STANDARD }}-${{ github.base_ref }}
-            ccache-${{ github.workflow }}-ubuntu22.04-${{ env.CXX }}-std${{ env.CMAKE_CXX_STANDARD }}
+            ccache-${{ github.workflow }}-ubuntu24.04-${{ env.CXX }}-std${{ env.CMAKE_CXX_STANDARD }}-special-${{ matrix.tag }}-${{ github.ref }}
+            ccache-${{ github.workflow }}-ubuntu24.04-${{ env.CXX }}-std${{ env.CMAKE_CXX_STANDARD }}-special-${{ matrix.tag }}-${{ github.base_ref }}
+            ccache-${{ github.workflow }}-ubuntu24.04-${{ env.CXX }}-std${{ env.CMAKE_CXX_STANDARD }}-special-${{ matrix.tag }}
+            ccache-${{ github.workflow }}-ubuntu24.04-${{ env.CXX }}-std${{ env.CMAKE_CXX_STANDARD }}-${{ github.sha }}
+            ccache-${{ github.workflow }}-ubuntu24.04-${{ env.CXX }}-std${{ env.CMAKE_CXX_STANDARD }}-${{ github.ref }}
+            ccache-${{ github.workflow }}-ubuntu24.04-${{ env.CXX }}-std${{ env.CMAKE_CXX_STANDARD }}-${{ github.base_ref }}
+            ccache-${{ github.workflow }}-ubuntu24.04-${{ env.CXX }}-std${{ env.CMAKE_CXX_STANDARD }}
 
       - name: Setup ccache
         run: |
@@ -1032,15 +1057,15 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ${{ env.CCACHE_DIR }}
-          key: ccache-${{ github.workflow }}-ubuntu22.04-${{ env.CXX }}-std${{ env.CMAKE_CXX_STANDARD }}-regex${{ matrix.engine }}-icu${{ matrix.icu }}-${{ github.sha }}
+          key: ccache-${{ github.workflow }}-ubuntu24.04-${{ env.CXX }}-std${{ env.CMAKE_CXX_STANDARD }}-regex${{ matrix.engine }}-icu${{ matrix.icu }}-${{ github.sha }}
           restore-keys: |
-            ccache-${{ github.workflow }}-ubuntu22.04-${{ env.CXX }}-std${{ env.CMAKE_CXX_STANDARD }}-regex${{ matrix.engine }}-icu${{ matrix.icu }}-${{ github.ref }}
-            ccache-${{ github.workflow }}-ubuntu22.04-${{ env.CXX }}-std${{ env.CMAKE_CXX_STANDARD }}-regex${{ matrix.engine }}-icu${{ matrix.icu }}-${{ github.base_ref }}
-            ccache-${{ github.workflow }}-ubuntu22.04-${{ env.CXX }}-std${{ env.CMAKE_CXX_STANDARD }}-regex${{ matrix.engine }}-icu${{ matrix.icu }}
-            ccache-${{ github.workflow }}-ubuntu22.04-${{ env.CXX }}-std${{ env.CMAKE_CXX_STANDARD }}-${{ github.sha }}
-            ccache-${{ github.workflow }}-ubuntu22.04-${{ env.CXX }}-std${{ env.CMAKE_CXX_STANDARD }}-${{ github.ref }}
-            ccache-${{ github.workflow }}-ubuntu22.04-${{ env.CXX }}-std${{ env.CMAKE_CXX_STANDARD }}-${{ github.base_ref }}
-            ccache-${{ github.workflow }}-ubuntu22.04-${{ env.CXX }}-std${{ env.CMAKE_CXX_STANDARD }}
+            ccache-${{ github.workflow }}-ubuntu24.04-${{ env.CXX }}-std${{ env.CMAKE_CXX_STANDARD }}-regex${{ matrix.engine }}-icu${{ matrix.icu }}-${{ github.ref }}
+            ccache-${{ github.workflow }}-ubuntu24.04-${{ env.CXX }}-std${{ env.CMAKE_CXX_STANDARD }}-regex${{ matrix.engine }}-icu${{ matrix.icu }}-${{ github.base_ref }}
+            ccache-${{ github.workflow }}-ubuntu24.04-${{ env.CXX }}-std${{ env.CMAKE_CXX_STANDARD }}-regex${{ matrix.engine }}-icu${{ matrix.icu }}
+            ccache-${{ github.workflow }}-ubuntu24.04-${{ env.CXX }}-std${{ env.CMAKE_CXX_STANDARD }}-${{ github.sha }}
+            ccache-${{ github.workflow }}-ubuntu24.04-${{ env.CXX }}-std${{ env.CMAKE_CXX_STANDARD }}-${{ github.ref }}
+            ccache-${{ github.workflow }}-ubuntu24.04-${{ env.CXX }}-std${{ env.CMAKE_CXX_STANDARD }}-${{ github.base_ref }}
+            ccache-${{ github.workflow }}-ubuntu24.04-${{ env.CXX }}-std${{ env.CMAKE_CXX_STANDARD }}
 
       - name: Setup ccache
         run: |
@@ -1073,7 +1098,7 @@ jobs:
         run: ctest --output-on-failure
 
   emscripten:
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
 
     env:
       CMAKE_CXX_STANDARD: 17

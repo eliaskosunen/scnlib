@@ -72,15 +72,29 @@ jobs:
             std: 23
             cxx: g++-14
 
-          # gcc 10 on 22.04 with C++17
-          - os: 22.04
+          # clang 18 on 24.04 with C++17 and C++20
+          - os: 24.04
             std: 17
-            cxx: g++-10
+            cxx: clang++-18
+          - os: 24.04
+            std: 20
+            cxx: clang++-18
 
-          # clang 13 on 22.04 with C++17
-          - os: 22.04
+          # gcc 15 on 26.04 with C++17 and C++20
+          - os: 26.04
             std: 17
-            cxx: clang++-13
+            cxx: g++-15
+          - os: 26.04
+            std: 20
+            cxx: g++-15
+
+          # clang 22 on 26.04 with C++17 and C++20
+          - os: 26.04
+            std: 17
+            cxx: clang++-22
+          - os: 26.04
+            std: 20
+            cxx: clang++-225
 
     env:
       CXX: ${{ matrix.cxx }}
@@ -145,7 +159,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ 2022 ]
+        os: [ 2022, 2025 ]
         platform: [ x64 ]
         std: [ 17 ]
         type: [ Debug ]
@@ -199,10 +213,11 @@ jobs:
         run: ctest -C ${{ matrix.type }} --output-on-failure
 
   lite-macos:
-    runs-on: macos-14
+    runs-on: macos-${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
+        os: [ 15, 26 ]
         cxx: [ clang++ ]
         std: [ 17 ]
 
@@ -224,11 +239,11 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ${{ env.CCACHE_DIR }}
-          key: ccache-macOS-macos12-${{ matrix.cxx }}-std${{ matrix.std }}-${{ github.sha }}
+          key: ccache-macOS-macos${{ matrix.os }}-${{ matrix.cxx }}-std${{ matrix.std }}-${{ github.sha }}
           restore-keys: |
-            ccache-macOS-macos12-${{ matrix.cxx }}-std${{ matrix.std }}-${{ github.ref }}
-            ccache-macOS-macos12-${{ matrix.cxx }}-std${{ matrix.std }}-${{ github.base_ref }}
-            ccache-macOS-macos12-${{ matrix.cxx }}-std${{ matrix.std }}
+            ccache-macOS-macos${{ matrix.os }}-${{ matrix.cxx }}-std${{ matrix.std }}-${{ github.ref }}
+            ccache-macOS-macos${{ matrix.os }}-${{ matrix.cxx }}-std${{ matrix.std }}-${{ github.base_ref }}
+            ccache-macOS-macos${{ matrix.os }}-${{ matrix.cxx }}-std${{ matrix.std }}
 
       - name: Setup ccache
         run: |

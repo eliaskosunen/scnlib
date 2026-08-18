@@ -46,7 +46,7 @@ jobs:
   # Run on non-amd64 architectures, through QEMU
 
   other-archs:
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
@@ -55,7 +55,7 @@ jobs:
 
         include:
           - arch: riscv64
-            distro: ubuntu22.04
+            distro: ubuntu24.04
 
           - base_image_tag: armv5
             arch: none
@@ -71,6 +71,10 @@ jobs:
             arch: none
             distro: none
             base_image: --platform=linux/mips64le mips64le/debian:bookworm
+
+          # TODO: add alpine support
+          #- arch: loongarch64
+          #  distro: alpine_latest
 
     env:
       CCACHE_DIR: "/tmp/ccache"
@@ -195,10 +199,10 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - os: 22.04
-            cxx: g++-9
-          - os: 22.04
-            cxx: clang++-14
+          - os: 26.04
+            cxx: g++-15
+          - os: 26.04
+            cxx: clang++-22
           - os: 24.04
             cxx: g++-14
           - os: 24.04
@@ -236,39 +240,38 @@ jobs:
 
   # Build and run test on native arm64 Windows
 
-  # TODO: Enable once runners are more readily available
-  #native-arm-windows:
-  #  runs-on: ubuntu-${{ matrix.os }}-arm
-  #  strategy:
-  #    fail-fast: false
-  #    matrix:
-  #      include:
-  #        - os: 11
-  #          type: Debug
+  native-arm-windows:
+    runs-on: windows-${{ matrix.os }}-arm
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: 11
+            type: Debug
 
-  #  env:
-  #    OS: ${{ matrix.os }}
+    env:
+      OS: ${{ matrix.os }}
 
-  #  steps:
-  #    - name: Create build environment
-  #      run: |
-  #        cmake -E make_directory ${{ runner.workspace }}/build
+    steps:
+      - name: Create build environment
+        run: |
+          cmake -E make_directory ${{ runner.workspace }}/build
 
-  #    - name: Checkout
-  #      uses: actions/checkout@v4
+      - name: Checkout
+        uses: actions/checkout@v4
 
-  #    - name: Run CMake
-  #      working-directory: ${{ runner.workspace }}/build
-  #      shell: bash
-  #      run: |
-  #        cmake -DSCN_CI=ON $GITHUB_WORKSPACE
+      - name: Run CMake
+        working-directory: ${{ runner.workspace }}/build
+        shell: bash
+        run: |
+          cmake -DSCN_CI=ON $GITHUB_WORKSPACE
 
-  #    - name: Build
-  #      working-directory: ${{ runner.workspace }}/build
-  #      run: |
-  #        cmake --build . --config ${{ matrix.type }} --parallel
+      - name: Build
+        working-directory: ${{ runner.workspace }}/build
+        run: |
+          cmake --build . --config ${{ matrix.type }} --parallel
 
-  #    - name: Test
-  #      working-directory: ${{ runner.workspace }}/build
-  #      run: |
-  #        ctest -C ${{ matrix.type }} --output-on-failure
+      - name: Test
+        working-directory: ${{ runner.workspace }}/build
+        run: |
+          ctest -C ${{ matrix.type }} --output-on-failure

@@ -54,32 +54,37 @@ jobs:
       fail-fast: false
       matrix:
         os:
-          - 15 # Arm64
-          - 15-intel # Intel
-          - 14 # Arm64
+          # arm64 macs
+          - 26
+          - 15
+          # intel (x86_64) macs
+          - 26-intel
+          - 15-intel
         cxx: [ brew-clang++, clang++ ]
         std: [ 17 ]
 
         include:
-          # brew-clang++ with later standards on macos 15
-          - os: 15
+          # brew-clang++ with later standards on macos 26
+          - os: 26
             cxx: brew-clang++
             std: 20
-          - os: 15
+          - os: 26
             cxx: brew-clang++
             std: 23
 
-          # gcc on macos 15 (arm64)
-          # 14 has the same gcc versions
-          - os: 15
+          # gcc on macos 26 (arm64)
+          - os: 26
             cxx: g++-15
             std: 17
-          - os: 15
+          - os: 26
             cxx: g++-14
             std: 17
-          - os: 15
+          - os: 26
             cxx: g++-13
             std: 17
+
+          # gcc on macos 15 (arm64)
+          # 15, 14, 13 are covered above, but macos 15 doesn't have gcc 12
           - os: 15
             cxx: g++-12
             std: 17

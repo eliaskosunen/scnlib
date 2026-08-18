@@ -59,8 +59,7 @@ jobs:
           # Deleted in June 2025, where we also lost VS2019 :(
           # - 2019
           - 2022
-          # Not necessary, both 2022 and 2025 have VS2022
-          # - 2025
+          - 2025
         platform: [ Win32, x64 ]
         type: [ Debug, Release ]
         std: [ 17 ]
@@ -120,8 +119,8 @@ jobs:
       fail-fast: false
       matrix:
         os:
-          # - 2019
           - 2022
+          - 2025
         std: [ 17, 20 ]
         platform: [ x64 ]
 
