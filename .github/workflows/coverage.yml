@@ -39,13 +39,13 @@ env:
   CCACHE_SLOPPINESS: "pch_defines,time_macros"
   CCACHE_UNIFY: true
   DEBIAN_FRONTEND: noninteractive
-  CXX: g++-14
+  CXX: g++-15
   CMAKE_C_COMPILER_LAUNCHER: ccache
   CMAKE_CXX_COMPILER_LAUNCHER: ccache
 
 jobs:
   codecov:
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
 
     steps:
       - name: Setup CMake and Ninja

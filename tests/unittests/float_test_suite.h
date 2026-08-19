@@ -18,11 +18,16 @@
 #pragma once
 
 #include <cstring>
+#include <cfloat>
 #include <iomanip>
 
 #include "test_common.h"
 
 #include <scn/scan.h>
+
+#if !defined(LDBL_MANT_DIG)
+#error "LDBL_MANT_DIG not defined, even though <cfloat> is included"
+#endif
 
 #if defined(__FINITE_MATH_ONLY__) && __FINITE_MATH_ONLY__
 inline constexpr bool finite_math_only = true;
@@ -162,13 +167,10 @@ using namespace std::string_view_literals;
 
 SCN_CLANG_POP
 
-SCN_GCC_PUSH
-SCN_GCC_IGNORE("-Woverflow")
-
 #if SCN_HAS_STD_F128
-#define SCN_FLOAT_CONSTANT(x) x##F128
+#define SCN_FLOAT_CONSTANT(x) x## F128
 #else
-#define SCN_FLOAT_CONSTANT(x) x##L
+#define SCN_FLOAT_CONSTANT(x) x## L
 #endif
 
 template <typename ResultFloatT, typename InputFloatT>
@@ -185,7 +187,7 @@ constexpr std::pair<ResultFloatT, std::string_view> make_float_pair(
 }
 
 #define SCN_MAKE_FLOAT_PAIR(Value, LiteralSuffix) \
-    make_float_pair<FloatT>(Value##LiteralSuffix, #Value)
+    make_float_pair<FloatT>(Value## LiteralSuffix, #Value)
 
 template <typename FloatT, float_kind Kind>
 struct float_test_suite_value_set;
@@ -250,10 +252,8 @@ struct float_test_suite_value_set<FloatT, float_kind::f64> {
     static constexpr auto overflow_hex_str = "0x1p1024"sv;
 };
 
-// MSVC hard-errors with large float constants (C2177),
-// even though we don't even instantiate these templates there
-#if !SCN_MSVC
-
+#if LDBL_MANT_DIG == 64
+// long double is f80
 template <typename FloatT>
 struct float_test_suite_value_set<FloatT, float_kind::f80> {
     static constexpr auto subnormal = SCN_MAKE_FLOAT_PAIR(3e-4940, L);
@@ -284,6 +284,10 @@ struct float_test_suite_value_set<FloatT, float_kind::f80> {
     static constexpr auto overflow_str = "2.0e4932"sv;
     static constexpr auto overflow_hex_str = "0x1p16384"sv;
 };
+#endif
+
+#if SCN_HAS_STD_F128 || LDBL_MANT_DIG == 113
+// We either have std::float128_t, or long double is f128
 
 #if SCN_HAS_STD_F128
 #define SCN_MAKE_F128_PAIR(Value) SCN_MAKE_FLOAT_PAIR(Value, F128)
@@ -320,7 +324,10 @@ struct float_test_suite_value_set<FloatT, float_kind::f128> {
     static constexpr auto overflow_str = "2.0e4932"sv;
     static constexpr auto overflow_hex_str = "0x1p16384"sv;
 };
+#endif
 
+#if LDBL_MANT_DIG == 106
+// long double is f2x64
 template <typename FloatT>
 struct float_test_suite_value_set<FloatT, float_kind::f2x64> {
     static constexpr auto subnormal = SCN_MAKE_FLOAT_PAIR(5e-320, L);
@@ -350,11 +357,9 @@ struct float_test_suite_value_set<FloatT, float_kind::f2x64> {
     static constexpr auto overflow_str = "2.0e308"sv;
     static constexpr auto overflow_hex_str = "0x1p308"sv;
 };
-
-#endif  // !SCN_MSVC
+#endif
 
 #if SCN_HAS_STD_F16
-
 template <typename FloatT>
 struct float_test_suite_value_set<FloatT, float_kind::f16> {
     static constexpr auto subnormal = SCN_MAKE_FLOAT_PAIR(5e-6, F16);
@@ -382,11 +387,9 @@ struct float_test_suite_value_set<FloatT, float_kind::f16> {
     static constexpr auto overflow_str = "7.0e4"sv;
     static constexpr auto overflow_hex_str = "0x1p16"sv;
 };
-
 #endif
 
 #if SCN_HAS_STD_BF16
-
 template <typename FloatT>
 struct float_test_suite_value_set<FloatT, float_kind::bf16> {
     static constexpr auto subnormal = SCN_MAKE_FLOAT_PAIR(2e-40, BF16);
@@ -417,10 +420,7 @@ struct float_test_suite_value_set<FloatT, float_kind::bf16> {
     static constexpr auto overflow_str = "4.0e38"sv;
     static constexpr auto overflow_hex_str = "0x1p128"sv;
 };
-
 #endif
-
-SCN_GCC_POP // -Woverflow
 
 template <typename T>
 using float_test_suite_values =
@@ -878,6 +878,18 @@ TYPED_TEST_P(FloatTestSuite, NanWithPayload)
     const auto make_check = [](const char* payload) {
         SCN_EXPECT(payload);
         return [payload](typename TestFixture::float_type parsed) {
+            if (check_nan_eq(std::nan(""), std::nan("1234"))) {
+                static bool warned = false;
+                if (!warned) {
+                    warned = true;
+                    std::cerr << "The input of std::nan is ignored in this platform. "
+                                 "Contents of NaN payloads are not checked in this test.\n";
+                    // TODO: maybe still check them somehow, perhaps by constructing the NaN here by hand
+                }
+
+                return testing::AssertionResult(std::isnan(parsed));
+            }
+
             if constexpr (std::is_same_v<typename TestFixture::float_type,
                                          float>) {
                 return check_nan_eq(parsed, std::nanf(payload));

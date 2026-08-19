@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 
+set -euxo pipefail
+
 # Clean up
 rm -rf ./coverage-*.info ./coverage-html
 lcov --zerocounters --directory .

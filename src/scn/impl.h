@@ -4429,6 +4429,7 @@ struct uint128_polyfill {
     SCN_GCC_IGNORE("-Wreorder")
 
     SCN_CLANG_PUSH
+    SCN_CLANG_IGNORE("-Wreorder")
     SCN_CLANG_IGNORE("-Wreorder-ctor")
 
 #if !SCN_IS_BIG_ENDIAN
@@ -4842,7 +4843,7 @@ struct float_traits_impl_f80 {
 
         void apply_significand(significand_int_type s)
         {
-            significand0 = static_cast<unsigned>(s >> 32);
+            significand0 = static_cast<unsigned>(s >> 32u);
             significand1 = static_cast<unsigned>(s);
             one = exponent != 0;
         }
@@ -4886,7 +4887,7 @@ struct float_traits_impl_f80 {
             SCN_EXPECT(quiet_nan == 1);
             SCN_EXPECT(exponent == (1u << exponent_bits) - 1u);
             one = 1;
-            payload0 = static_cast<unsigned>(p >> 32);
+            payload0 = static_cast<unsigned>(p >> 32u);
             payload1 = static_cast<unsigned>(p);
         }
     };
@@ -5009,17 +5010,19 @@ struct float_traits_impl_doubledouble {
         }
     };
 
-    static constexpr unsigned nan_payload_bits = base::nan_payload_bits * 2;
+    static constexpr unsigned nan_payload_bits = base::nan_payload_bits;
 
     struct nan_repr {
         base::nan_repr high;
-        base::nan_repr low;
+        base::value_repr low;
 
         void apply_payload(significand_int_type p)
         {
             high.apply_payload(
-                static_cast<base::significand_int_type>(p >> 64u));
-            low.apply_payload(static_cast<base::significand_int_type>(p));
+                static_cast<base::significand_int_type>(p));
+
+            low.apply_significand(0);
+            low.exponent = 0;
         }
     };
 };
