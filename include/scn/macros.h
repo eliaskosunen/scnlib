@@ -395,6 +395,13 @@
 #define SCN_CLANG_POP_IGNORE_UNSAFE_BUFFER_USAGE
 #endif
 
+// Thread safety annotation for Clang's thread safety analysis
+#if SCN_CLANG && __has_attribute(no_thread_safety_analysis)
+#define SCN_THREADSAFETY_NO_ANALYSIS __attribute__((no_thread_safety_analysis))
+#else
+#define SCN_THREADSAFETY_NO_ANALYSIS
+#endif
+
 #if SCN_GCC_COMPAT && defined(SCN_PRAGMA_APPLY)
 #define SCN_GCC_COMPAT_PUSH      SCN_PRAGMA_APPLY(GCC diagnostic push)
 #define SCN_GCC_COMPAT_POP       SCN_PRAGMA_APPLY(GCC diagnostic pop)

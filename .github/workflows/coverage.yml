@@ -58,10 +58,19 @@ jobs:
           sudo update-locale
           sudo locale -a
 
-          sudo apt-get install -yq lcov ccache
+          sudo apt-get install -yq ccache
 
           mkdir ${{ runner.workspace }}/build
           mkdir ${{ runner.workspace }}/report
+
+      - name: Install lcov 2.5
+        run: |
+          cd ${{ runner.temp }}
+          wget https://github.com/linux-test-project/lcov/releases/download/v2.5/lcov-2.5.tar.gz
+          tar -xzf lcov-2.5.tar.gz
+          cd lcov-2.5
+          sudo make install LCOV_NO_DOC=1
+          lcov --version
 
       - name: Checkout
         uses: actions/checkout@v4

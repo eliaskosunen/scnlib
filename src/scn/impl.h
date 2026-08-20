@@ -4662,6 +4662,14 @@ struct uint128_polyfill {
     {
         return static_cast<unsigned>(low);
     }
+    constexpr explicit operator unsigned long() const
+    {
+        return static_cast<unsigned long>(low);
+    }
+    constexpr explicit operator unsigned long long() const
+    {
+        return static_cast<unsigned long long>(low);
+    }
 
     SCN_CLANG_POP    // -Wreorder-ctor
         SCN_GCC_POP  // -Wreorder
@@ -4706,6 +4714,8 @@ struct float_traits_impl_f32 {
         {
             significand = s;
         }
+
+        void clear_padding() {}
     };
 
     static constexpr unsigned nan_payload_bits = 22;
@@ -4729,6 +4739,8 @@ struct float_traits_impl_f32 {
             SCN_EXPECT(exponent == (1u << exponent_bits) - 1u);
             payload = p;
         }
+
+        void clear_padding() {}
     };
 };
 
@@ -4769,6 +4781,8 @@ struct float_traits_impl_f64 {
             significand0 = static_cast<unsigned>(s >> 32);
             significand1 = static_cast<unsigned>(s);
         }
+
+        void clear_padding() {}
     };
 
     static constexpr unsigned nan_payload_bits = 51;
@@ -4801,6 +4815,8 @@ struct float_traits_impl_f64 {
             payload0 = static_cast<unsigned>(p >> 32);
             payload1 = static_cast<unsigned>(p);
         }
+
+        void clear_padding() {}
     };
 };
 
@@ -4820,6 +4836,7 @@ struct float_traits_impl_f80 {
         unsigned one : 1;
         unsigned exponent : 15;
         unsigned sign : 1;
+        unsigned padding : 16;
 #elif !SCN_IS_BIG_ENDIAN && SCN_IS_FLOAT_BIG_ENDIAN
         unsigned exponent : 11;
         unsigned sign : 1;
@@ -4847,6 +4864,11 @@ struct float_traits_impl_f80 {
             significand1 = static_cast<unsigned>(s);
             one = exponent != 0;
         }
+
+        void clear_padding()
+        {
+            padding = 0;
+        }
     };
 
     static constexpr unsigned nan_payload_bits = 62;
@@ -4859,6 +4881,7 @@ struct float_traits_impl_f80 {
         unsigned one : 1;
         unsigned exponent : 15;
         unsigned sign : 1;
+        unsigned padding : 16;
 #elif !SCN_IS_BIG_ENDIAN && SCN_IS_FLOAT_BIG_ENDIAN
         unsigned exponent : 15;
         unsigned sign : 1;
@@ -4889,6 +4912,11 @@ struct float_traits_impl_f80 {
             one = 1;
             payload0 = static_cast<unsigned>(p >> 32u);
             payload1 = static_cast<unsigned>(p);
+        }
+
+        void clear_padding()
+        {
+            padding = 0;
         }
     };
 };
@@ -4938,6 +4966,8 @@ struct float_traits_impl_f128 {
             significand2 = static_cast<unsigned>(s >> 32u);
             significand3 = static_cast<unsigned>(s);
         }
+
+        void clear_padding() {}
     };
 
     static constexpr unsigned nan_payload_bits = 111;
@@ -4978,6 +5008,8 @@ struct float_traits_impl_f128 {
             payload2 = static_cast<unsigned>(p >> 32u);
             payload3 = static_cast<unsigned>(p);
         }
+
+        void clear_padding() {}
     };
 };
 
@@ -5008,6 +5040,12 @@ struct float_traits_impl_doubledouble {
                 static_cast<base::significand_int_type>(s >> 64u));
             low.apply_significand(static_cast<base::significand_int_type>(s));
         }
+
+        void clear_padding()
+        {
+            high.clear_padding();
+            low.clear_padding();
+        }
     };
 
     static constexpr unsigned nan_payload_bits = base::nan_payload_bits;
@@ -5018,11 +5056,16 @@ struct float_traits_impl_doubledouble {
 
         void apply_payload(significand_int_type p)
         {
-            high.apply_payload(
-                static_cast<base::significand_int_type>(p));
+            high.apply_payload(static_cast<base::significand_int_type>(p));
 
             low.apply_significand(0);
             low.exponent = 0;
+        }
+
+        void clear_padding()
+        {
+            high.clear_padding();
+            low.clear_padding();
         }
     };
 };
@@ -5056,6 +5099,8 @@ struct float_traits_impl_f16 {
         {
             significand = s;
         }
+
+        void clear_padding() {}
     };
 
     static constexpr unsigned nan_payload_bits = 9;
@@ -5079,6 +5124,8 @@ struct float_traits_impl_f16 {
             SCN_EXPECT(exponent == (1u << exponent_bits) - 1u);
             payload = p;
         }
+
+        void clear_padding() {}
     };
 };
 
@@ -5111,6 +5158,8 @@ struct float_traits_impl_bf16 {
         {
             significand = s;
         }
+
+        void clear_padding() {}
     };
 
     static constexpr unsigned nan_payload_bits = 6;
@@ -5134,6 +5183,8 @@ struct float_traits_impl_bf16 {
             SCN_EXPECT(exponent == (1u << exponent_bits) - 1u);
             payload = p;
         }
+
+        void clear_padding() {}
     };
 };
 
@@ -6310,6 +6361,7 @@ struct basic_convert_float {
                 m_options.group_separator = numpunct.thousands_sep();
             }
 #else
+            SCN_UNUSED(loc);
             m_options.group_separator.emplace(CharT{','});
             m_options.grouping = "\3";
 #endif

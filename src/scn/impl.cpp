@@ -354,7 +354,7 @@ void prompt_print(const char* msg)
 
 SCN_CLANG_POP
 
-SCN_PUBLIC void stdin_acquire()
+SCN_PUBLIC void stdin_acquire() SCN_THREADSAFETY_NO_ANALYSIS
 {
     stdin_mutex.lock();
 #if !SCN_DISABLE_IOSTREAM
@@ -364,7 +364,7 @@ SCN_PUBLIC void stdin_acquire()
 #endif
 }
 
-SCN_PUBLIC void stdin_release()
+SCN_PUBLIC void stdin_release() SCN_THREADSAFETY_NO_ANALYSIS
 {
     get_stdin_buffer().reset();
     stdin_mutex.unlock();
@@ -439,12 +439,13 @@ SCN_NODISCARD bool is_float_positive_zero(T value)
 {
 #if defined(__NO_SIGNED_ZEROS__) && __NO_SIGNED_ZEROS__
     using repr = typename float_traits<T>::value_repr;
+
     repr expected{};
+
     repr received{};
     std::memcpy(&received, &value, sizeof(repr));
-    if constexpr (std::is_base_of_v<float_traits_x87, float_traits<T>>) {
-        received.padding = 0;
-    }
+    received.clear_padding();
+
     return std::memcmp(&received, &expected, sizeof(repr)) == 0;
 #else
     return value == static_cast<T>(0.0);
@@ -455,13 +456,14 @@ SCN_NODISCARD bool is_float_negative_zero(T value)
 {
 #if defined(__NO_SIGNED_ZEROS__) && __NO_SIGNED_ZEROS__
     using repr = typename float_traits<T>::value_repr;
+
     repr expected{};
-    expected.negative = 1;
+    expected.sign = 1;
+
     repr received{};
     std::memcpy(&received, &value, sizeof(repr));
-    if constexpr (std::is_base_of_v<float_traits_x87, float_traits<T>>) {
-        received.padding = 0;
-    }
+    received.clear_padding();
+
     return std::memcmp(&received, &expected, sizeof(repr)) == 0;
 #else
     return value == static_cast<T>(-0.0);
@@ -474,17 +476,15 @@ SCN_NODISCARD bool is_float_positive_infinity(T value)
     if constexpr (std::numeric_limits<T>::has_infinity) {
 #if defined(__FINITE_MATH_ONLY__) && __FINITE_MATH_ONLY__
         using repr = typename float_traits<T>::value_repr;
+
         repr expected{};
-        SCN_GCC_PUSH
-        SCN_GCC_IGNORE("-Woverflow")
-        expected.exponent = std::numeric_limits<unsigned>::max();
-        SCN_GCC_POP
+        expected.apply_exponent((1u << float_traits<T>::exponent_bits) - 1u);
+        expected.apply_significand(0u);
+
         repr received{};
         std::memcpy(&received, &value, sizeof(repr));
-        if constexpr (std::is_base_of_v<float_traits_x87, float_traits<T>>) {
-            expected.one = 1;
-            received.padding = 0;
-        }
+        received.clear_padding();
+
         return std::memcmp(&received, &expected, sizeof(repr)) == 0;
 #else
         return value == std::numeric_limits<T>::infinity();
@@ -500,18 +500,16 @@ SCN_NODISCARD bool is_float_negative_infinity(T value)
     if constexpr (std::numeric_limits<T>::has_infinity) {
 #if defined(__FINITE_MATH_ONLY__) && __FINITE_MATH_ONLY__
         using repr = typename float_traits<T>::value_repr;
+
         repr expected{};
-        SCN_GCC_PUSH
-        SCN_GCC_IGNORE("-Woverflow")
-        expected.exponent = std::numeric_limits<unsigned>::max();
-        SCN_GCC_POP
-        expected.negative = 1;
+        expected.apply_exponent((1u << float_traits<T>::exponent_bits) - 1u);
+        expected.apply_significand(0);
+        expected.sign = 1;
+
         repr received{};
         std::memcpy(&received, &value, sizeof(repr));
-        if constexpr (std::is_base_of_v<float_traits_x87, float_traits<T>>) {
-            expected.one = 1;
-            received.padding = 0;
-        }
+        received.clear_padding();
+
         return std::memcmp(&received, &expected, sizeof(repr)) == 0;
 #else
         return value == -std::numeric_limits<T>::infinity();
@@ -625,7 +623,7 @@ private:
 #endif
 
 #if SCN_XLOCALE == SCN_XLOCALE_POSIX
-        static locale_t cloc = ::newlocale(LC_ALL_MASK, "C", NULL);
+        static locale_t cloc = ::newlocale(LC_ALL_MASK, "C", nullptr);
         if constexpr (std::is_same_v<T, float>) {
             return ::wcstof_l(str, str_end, cloc);
         }
@@ -942,7 +940,7 @@ struct convert_custom_hex {
             if (n >= 2) {
                 const auto sticky_mask = (significand_int_type{1u} << (n - 1)) -
                                          significand_int_type{1u};
-                sticky |= (val & sticky_mask);
+                sticky |= ((val & sticky_mask) != 0);
             }
             auto result = val >> n;
             if (round_bit && (sticky || (result & significand_int_type{1u}))) {
@@ -1262,17 +1260,21 @@ struct convert_fast_float {
                     bool& can_fallback)
         -> scan_expected<typename std::basic_string_view<CharT>::iterator>
     {
-        auto flags = fast_float::chars_format::no_infnan;
+        auto flags =
+            static_cast<std::uint64_t>(fast_float::chars_format::no_infnan);
         if (m_options & allow_fixed) {
-            flags |= fast_float::chars_format::fixed;
+            flags |=
+                static_cast<std::uint64_t>(fast_float::chars_format::fixed);
         }
         if (m_options & allow_scientific) {
-            flags |= fast_float::chars_format::scientific;
+            flags |= static_cast<std::uint64_t>(
+                fast_float::chars_format::scientific);
         }
 
         const auto view = cast_source(source);
         const auto result = fast_float::from_chars(
-            view.data(), view.data() + view.size(), value, flags);
+            view.data(), view.data() + view.size(), value,
+            static_cast<fast_float::chars_format>(flags));
 
         if (SCN_UNLIKELY(result.ec == std::errc::invalid_argument)) {
             return detail::unexpected_scan_error(

@@ -441,8 +441,8 @@ jobs:
         std: [ 17, 20, 23 ]
 
     env:
-      CC: clang
-      CXX: clang++
+      CC: clang-18
+      CXX: clang++-18
       OS: ${{ matrix.os }}
       CMAKE_C_COMPILER_LAUNCHER: ccache
       CMAKE_CXX_COMPILER_LAUNCHER: ccache
@@ -458,7 +458,8 @@ jobs:
         run: |
           mkdir -p ${{ runner.workspace }}/build
 
-          ${APT_INSTALL} ccache
+          # libc++ we get through apt on 24.04 is v18
+          ${APT_INSTALL} ccache libc++-dev libc++abi-dev
 
           sudo locale-gen en_US.UTF-8
           sudo locale-gen fi_FI.UTF-8

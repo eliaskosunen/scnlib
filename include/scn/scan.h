@@ -8106,7 +8106,7 @@ public:
     /// Advance the beginning of the format string to `it`
     constexpr void advance_to(iterator it)
     {
-        m_format.remove_prefix(static_cast<std::size_t>(it - begin()));
+        m_format.remove_prefix(static_cast<std::size_t>(std::distance(begin(), it)));
     }
 
     constexpr size_t next_arg_id()
@@ -11790,8 +11790,8 @@ using vscan_result = scan_expected<detail::scan_result_value_type<Source>>;
 
 namespace detail {
 
-SCN_PUBLIC void stdin_acquire();
-SCN_PUBLIC void stdin_release();
+SCN_PUBLIC void stdin_acquire() SCN_THREADSAFETY_NO_ANALYSIS;
+SCN_PUBLIC void stdin_release() SCN_THREADSAFETY_NO_ANALYSIS;
 
 SCN_PUBLIC scan_buffer& make_scan_buffer(stdin_tag_t,
                                          make_scan_buffer_tag) noexcept;

@@ -17,8 +17,8 @@
 
 #pragma once
 
-#include <cstring>
 #include <cfloat>
+#include <cstring>
 #include <iomanip>
 
 #include "test_common.h"
@@ -168,9 +168,9 @@ using namespace std::string_view_literals;
 SCN_CLANG_POP
 
 #if SCN_HAS_STD_F128
-#define SCN_FLOAT_CONSTANT(x) x## F128
+#define SCN_FLOAT_CONSTANT(x) x##F128
 #else
-#define SCN_FLOAT_CONSTANT(x) x## L
+#define SCN_FLOAT_CONSTANT(x) x##L
 #endif
 
 template <typename ResultFloatT, typename InputFloatT>
@@ -187,7 +187,7 @@ constexpr std::pair<ResultFloatT, std::string_view> make_float_pair(
 }
 
 #define SCN_MAKE_FLOAT_PAIR(Value, LiteralSuffix) \
-    make_float_pair<FloatT>(Value## LiteralSuffix, #Value)
+    make_float_pair<FloatT>(Value##LiteralSuffix, #Value)
 
 template <typename FloatT, float_kind Kind>
 struct float_test_suite_value_set;
@@ -522,10 +522,17 @@ protected:
         interface_type i{};
         typename base::float_type parsed{};
 
+        const auto skipped_count_before =
+            testing::UnitTest::GetInstance()->skipped_test_count();
+
         if (auto result = run_test(i, input, parsed); !result) {
             return testing::AssertionFailure()
                    << "Failed with " << result.error().code() << " ("
                    << result.error().msg() << ")";
+        }
+        if (skipped_count_before <
+            testing::UnitTest::GetInstance()->skipped_test_count()) {
+            return testing::AssertionSuccess() << "Test skipped";
         }
 
         return std::forward<F>(check)(parsed);
@@ -787,7 +794,7 @@ TYPED_TEST_P(FloatTestSuite, TrailingZeroes)
 TYPED_TEST_P(FloatTestSuite, Hex)
 {
     if (!TestFixture::interface_type::supports_hex) {
-        GTEST_SKIP() << "Hexfloats not supported";
+        GTEST_SKIP() << "Hexfloats not supported by the reader";
     }
 
     EXPECT_TRUE(TestFixture::test_success(
@@ -814,7 +821,7 @@ TYPED_TEST_P(FloatTestSuite, Hex)
 TYPED_TEST_P(FloatTestSuite, Infinity)
 {
     if (!TestFixture::interface_type::supports_inf) {
-        GTEST_SKIP() << "Infinities not supported";
+        GTEST_SKIP() << "Infinities not supported by the reader";
     }
 
     EXPECT_TRUE(TestFixture::test_success(
@@ -854,8 +861,11 @@ TYPED_TEST_P(FloatTestSuite, Infinity)
 
 TYPED_TEST_P(FloatTestSuite, Nan)
 {
+    if (!std::numeric_limits<typename TestFixture::float_type>::has_quiet_NaN || finite_math_only) {
+        GTEST_SKIP() << "NaNs not supported by the float type";
+    }
     if (!TestFixture::interface_type::supports_nan) {
-        GTEST_SKIP() << "NaNs not supported";
+        GTEST_SKIP() << "NaNs not supported by the reader";
     }
 
     const auto check = [](typename TestFixture::float_type parsed) {
@@ -871,8 +881,11 @@ TYPED_TEST_P(FloatTestSuite, Nan)
 
 TYPED_TEST_P(FloatTestSuite, NanWithPayload)
 {
+    if (!std::numeric_limits<typename TestFixture::float_type>::has_quiet_NaN || finite_math_only) {
+        GTEST_SKIP() << "NaNs not supported by the float type";
+    }
     if (!TestFixture::interface_type::supports_nan) {
-        GTEST_SKIP() << "NaNs not supported";
+        GTEST_SKIP() << "NaNs not supported by the reader";
     }
 
     const auto make_check = [](const char* payload) {
@@ -882,9 +895,12 @@ TYPED_TEST_P(FloatTestSuite, NanWithPayload)
                 static bool warned = false;
                 if (!warned) {
                     warned = true;
-                    std::cerr << "The input of std::nan is ignored in this platform. "
-                                 "Contents of NaN payloads are not checked in this test.\n";
-                    // TODO: maybe still check them somehow, perhaps by constructing the NaN here by hand
+                    std::cerr
+                        << "The input of std::nan is ignored in this platform. "
+                           "Contents of NaN payloads are not checked in this "
+                           "test.\n";
+                    // TODO: maybe still check them somehow, perhaps by
+                    // constructing the NaN here by hand
                 }
 
                 return testing::AssertionResult(std::isnan(parsed));
@@ -930,7 +946,7 @@ TYPED_TEST_P(FloatTestSuite, Overflow)
 TYPED_TEST_P(FloatTestSuite, OverflowHex)
 {
     if (!TestFixture::interface_type::supports_hex) {
-        GTEST_SKIP() << "Hexfloats not supported";
+        GTEST_SKIP() << "Hexfloats not supported by the reader";
     }
 
     EXPECT_TRUE(
@@ -948,7 +964,7 @@ TYPED_TEST_P(FloatTestSuite, Underflow)
 TYPED_TEST_P(FloatTestSuite, UnderflowHex)
 {
     if (!TestFixture::interface_type::supports_hex) {
-        GTEST_SKIP() << "Hexfloats not supported";
+        GTEST_SKIP() << "Hexfloats not supported by the reader";
     }
 
     EXPECT_TRUE(
@@ -965,7 +981,7 @@ TYPED_TEST_P(FloatTestSuite, Subnormal)
 TYPED_TEST_P(FloatTestSuite, SubnormalHex)
 {
     if (!TestFixture::interface_type::supports_hex) {
-        GTEST_SKIP() << "Hexfloats not supported";
+        GTEST_SKIP() << "Hexfloats not supported by the reader";
     }
 
     ASSERT_FALSE(std::isnormal(TestFixture::values::subnormal_hex.first));
@@ -985,7 +1001,7 @@ TYPED_TEST_P(FloatTestSuite, SubnormalMax)
 TYPED_TEST_P(FloatTestSuite, SubnormalMaxHex)
 {
     if (!TestFixture::interface_type::supports_hex) {
-        GTEST_SKIP() << "Hexfloats not supported";
+        GTEST_SKIP() << "Hexfloats not supported by the reader";
     }
 
     ASSERT_EQ(
@@ -1008,7 +1024,7 @@ TYPED_TEST_P(FloatTestSuite, SubnormalMin)
 TYPED_TEST_P(FloatTestSuite, SubnormalMinHex)
 {
     if (!TestFixture::interface_type::supports_hex) {
-        GTEST_SKIP() << "Hexfloats not supported";
+        GTEST_SKIP() << "Hexfloats not supported by the reader";
     }
 
     ASSERT_EQ(
@@ -1028,7 +1044,7 @@ TYPED_TEST_P(FloatTestSuite, Max)
 TYPED_TEST_P(FloatTestSuite, MaxHex)
 {
     if (!TestFixture::interface_type::supports_hex) {
-        GTEST_SKIP() << "Hexfloats not supported";
+        GTEST_SKIP() << "Hexfloats not supported by the reader";
     }
 
     ASSERT_EQ(TestFixture::values::normal_max_hex.first,
@@ -1046,7 +1062,7 @@ TYPED_TEST_P(FloatTestSuite, NormalMin)
 TYPED_TEST_P(FloatTestSuite, NormalMinHex)
 {
     if (!TestFixture::interface_type::supports_hex) {
-        GTEST_SKIP() << "Hexfloats not supported";
+        GTEST_SKIP() << "Hexfloats not supported by the reader";
     }
 
     ASSERT_EQ(TestFixture::values::normal_min_hex.first,
