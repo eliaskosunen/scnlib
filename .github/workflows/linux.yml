@@ -161,10 +161,10 @@ jobs:
           ${APT_INSTALL} ccache
 
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Load ccache
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: ${{ env.CCACHE_DIR }}
           key: ccache-${{ github.workflow }}-ubuntu${{ matrix.os }}-${{ matrix.cxx }}-std${{ matrix.std }}-${{ github.sha }}
@@ -258,7 +258,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Install dependencies
         run: |
@@ -277,7 +277,7 @@ jobs:
           $GITHUB_WORKSPACE/bin/cmake --version
 
       - name: Load ccache
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: ${{ env.CCACHE_DIR }}
           key: ccache-${{ github.workflow }}-docker-${{ matrix.cxx }}-std${{ matrix.std }}-${{ github.sha }}
@@ -361,7 +361,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
         # clang images already come with everything we need (they are custom-built)
         # gcc images need cmake, ccache, and ninja
@@ -394,7 +394,7 @@ jobs:
           ninja --version
 
       - name: Load ccache
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: ${{ env.CCACHE_DIR }}
           key: ccache-${{ github.workflow }}-docker-${{ matrix.cxx }}-std${{ matrix.std }}-${{ github.sha }}
@@ -452,7 +452,7 @@ jobs:
         uses: lukka/get-cmake@latest
 
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Create Build Environment
         run: |
@@ -467,7 +467,7 @@ jobs:
           sudo locale -a
 
       - name: Load ccache
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: ${{ env.CCACHE_DIR }}
           key: ccache-${{ github.workflow }}-ubuntu${{ matrix.os }}-${{ env.CXX }}-std${{ matrix.std }}-libcxx-${{ github.sha }}
@@ -512,10 +512,10 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Load ccache
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: ${{ env.CCACHE_DIR }}
           key: ccache-${{ github.workflow }}-alpine${{ matrix.version }}-${{ github.sha }}
@@ -604,10 +604,10 @@ jobs:
           ${APT_INSTALL} ccache
 
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Load ccache
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: ${{ env.CCACHE_DIR }}
           key: ccache-${{ github.workflow }}-ubuntu24.04-g++-13-std17-cmake-${{ matrix.cmake }}-${{ matrix.generator }}-${{ github.sha }}
@@ -679,10 +679,10 @@ jobs:
           mkdir ${{ runner.workspace }}/build
 
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Load ccache
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: ${{ env.CCACHE_DIR }}
           key: ccache-${{ github.workflow }}-ubuntu${{ matrix.os }}-${{ env.CXX }}-std${{ matrix.std }}-sanitize-${{ github.sha }}
@@ -763,7 +763,7 @@ jobs:
           ${APT_INSTALL} ccache
 
       - name: Load ccache
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: ${{ env.CCACHE_DIR }}
           key: ccache-${{ github.workflow }}-ubuntu${{ matrix.os }}-${{ env.CXX }}-std${{ env.CMAKE_CXX_STANDARD }}-install${{ matrix.external_deps }}${{ matrix.shared_libs }}-${{ github.sha }}
@@ -784,7 +784,7 @@ jobs:
           ccache --show-config
 
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Build fast_float
         if: matrix.external_deps == 1
@@ -874,7 +874,7 @@ jobs:
         uses: lukka/get-cmake@latest
 
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Create Build Environment
         run: |
@@ -882,7 +882,7 @@ jobs:
           ${APT_INSTALL} ccache
 
       - name: Load ccache
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: ${{ env.CCACHE_DIR }}
           key: ccache-${{ github.workflow }}-ubuntu24.04-${{ env.CXX }}-std${{ env.CMAKE_CXX_STANDARD }}-disable-${{ matrix.key }}-${{ github.sha }}
@@ -949,7 +949,7 @@ jobs:
         uses: lukka/get-cmake@latest
 
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Create Build Environment
         run: |
@@ -957,7 +957,7 @@ jobs:
           ${APT_INSTALL} ccache
 
       - name: Load ccache
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: ${{ env.CCACHE_DIR }}
           key: ccache-${{ github.workflow }}-ubuntu24.04-${{ env.CXX }}-std${{ env.CMAKE_CXX_STANDARD }}-special-${{ matrix.tag }}-${{ github.sha }}
@@ -1052,10 +1052,10 @@ jobs:
           sudo cmake --build . --target install
 
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Load ccache
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: ${{ env.CCACHE_DIR }}
           key: ccache-${{ github.workflow }}-ubuntu24.04-${{ env.CXX }}-std${{ env.CMAKE_CXX_STANDARD }}-regex${{ matrix.engine }}-icu${{ matrix.icu }}-${{ github.sha }}
@@ -1114,10 +1114,10 @@ jobs:
         run: |
           ${APT_INSTALL} ccache
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Load ccache
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: ${{ env.CCACHE_DIR }}
           key: ccache-${{ github.workflow }}-emscripten-${{ github.sha }}

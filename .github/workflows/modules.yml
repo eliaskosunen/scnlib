@@ -79,7 +79,7 @@ jobs:
       # No ccache, don't want to add additional variables to already finicky modules stuff
 
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Build fast_float
         if: matrix.external_deps == 1
@@ -156,7 +156,7 @@ jobs:
       # No ccache, don't want to add additional variables to already finicky modules stuff
 
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Setup environment
         run: |

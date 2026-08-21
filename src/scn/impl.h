@@ -5387,7 +5387,11 @@ struct high_precision_decimal {
             }
             idx++;
         }
+
+        SCN_GCC_PUSH
+        SCN_GCC_IGNORE("-Wuseless-cast")
         hpd.num_digits = static_cast<std::uint32_t>(idx);
+        SCN_GCC_POP
 
         if (!parts.exponent.empty()) {
             std::int32_t exponent{};
@@ -5533,11 +5537,14 @@ struct high_precision_decimal {
             accumulator = quotient;
         }
 
+        SCN_GCC_PUSH
+        SCN_GCC_IGNORE("-Wuseless-cast")
         num_digits += num_new_digits;
         if (num_digits > static_cast<std::uint32_t>(digits.size())) {
             num_digits = static_cast<std::uint32_t>(digits.size());
         }
         decimal_point += static_cast<std::int32_t>(num_new_digits);
+        SCN_GCC_POP
 
         trim();
     }

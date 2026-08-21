@@ -71,7 +71,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Create Build Environment
         run: |
@@ -79,7 +79,7 @@ jobs:
           choco install ccache
 
       - name: Load ccache
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: ${{ env.CCACHE_DIR }}
           key: ccache-${{ github.workflow }}-win${{ matrix.os }}-msvc${{ matrix.platform }}-std${{ matrix.std }}-${{ matrix.type }}-${{ github.sha }}
@@ -126,7 +126,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Create Build Environment
         run: |
@@ -134,7 +134,7 @@ jobs:
           choco install ccache
 
       - name: Load ccache
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: ${{ env.CCACHE_DIR }}
           key: ccache-${{ github.workflow }}-win${{ matrix.os }}-clangcl${{ matrix.platform }}-std${{ matrix.std }}-${{ matrix.type }}-${{ github.sha }}
@@ -214,10 +214,10 @@ jobs:
             python:p
 
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Load ccache
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: ${{ env.CCACHE_DIR }}
           key: ccache-${{ github.workflow }}-win2022-msys-${{ matrix.sys }}-${{ github.sha }}
@@ -258,7 +258,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Create Build Environment
         run: |
@@ -267,7 +267,7 @@ jobs:
           choco install ccache
 
       - name: Load ccache
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: ${{ env.CCACHE_DIR }}
           key: ccache-${{ github.workflow }}-win2022-msvcx64-std17-Debug-install${{ matrix.shared_libs }}-${{ github.sha }}
@@ -342,7 +342,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Create Build Environment
         run: |
@@ -350,17 +350,17 @@ jobs:
           choco install ccache
 
       - name: Load ccache
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: ${{ env.CCACHE_DIR }}
           key: ccache-${{ github.workflow }}-win2022-msvcx64-std17-Debug-no_iostreams-${{ github.sha }}
           restore-keys: |
             ccache-${{ github.workflow }}-win2022-msvcx64-std17-Debug-no_iostreams-${{ github.ref }}
             ccache-${{ github.workflow }}-win2022-msvcx64-std17-Debug-no_iostreams-${{ github.base_ref }}
-            ccache-${{ github.workflow }}-win2022-msvc$x6-std17-Debug-no_iostreams
+            ccache-${{ github.workflow }}-win2022-msvcx64-std17-Debug-no_iostreams
             ccache-${{ github.workflow }}-win2022-msvcx64-std17-Debug-${{ github.ref }}
             ccache-${{ github.workflow }}-win2022-msvcx64-std17-Debug-${{ github.base_ref }}
-            ccache-${{ github.workflow }}-win2022-msvc$x6-std17-Debug
+            ccache-${{ github.workflow }}-win2022-msvcx64-std17-Debug
 
       - name: Setup ccache
         run: |

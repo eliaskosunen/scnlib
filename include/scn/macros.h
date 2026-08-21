@@ -396,7 +396,8 @@
 #endif
 
 // Thread safety annotation for Clang's thread safety analysis
-#if SCN_CLANG && __has_attribute(no_thread_safety_analysis)
+#if SCN_CLANG && defined(__has_attribute) && \
+    __has_attribute(no_thread_safety_analysis)
 #define SCN_THREADSAFETY_NO_ANALYSIS __attribute__((no_thread_safety_analysis))
 #else
 #define SCN_THREADSAFETY_NO_ANALYSIS

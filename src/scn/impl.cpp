@@ -940,7 +940,7 @@ struct convert_custom_hex {
             if (n >= 2) {
                 const auto sticky_mask = (significand_int_type{1u} << (n - 1)) -
                                          significand_int_type{1u};
-                sticky |= ((val & sticky_mask) != 0);
+                sticky |= ((val & sticky_mask) != 0u);
             }
             auto result = val >> n;
             if (round_bit && (sticky || (result & significand_int_type{1u}))) {
