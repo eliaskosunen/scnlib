@@ -861,7 +861,8 @@ TYPED_TEST_P(FloatTestSuite, Infinity)
 
 TYPED_TEST_P(FloatTestSuite, Nan)
 {
-    if (!std::numeric_limits<typename TestFixture::float_type>::has_quiet_NaN || finite_math_only) {
+    if (!std::numeric_limits<typename TestFixture::float_type>::has_quiet_NaN ||
+        finite_math_only) {
         GTEST_SKIP() << "NaNs not supported by the float type";
     }
     if (!TestFixture::interface_type::supports_nan) {
@@ -879,9 +880,50 @@ TYPED_TEST_P(FloatTestSuite, Nan)
     EXPECT_TRUE(TestFixture::test("NAN", check));
 }
 
+template <typename T>
+T make_nan_with_payload(const char* payload);
+
+template <>
+inline float make_nan_with_payload(const char* payload)
+{
+#if SCN_HAS_BUILTIN(__builtin_nanf)
+    return __builtin_nanf(payload);
+#else
+    return std::nanf(payload);
+#endif
+}
+
+template <>
+inline double make_nan_with_payload(const char* payload)
+{
+#if SCN_HAS_BUILTIN(__builtin_nan)
+    return __builtin_nan(payload);
+#else
+    return std::nan(payload);
+#endif
+}
+
+template <>
+inline long double make_nan_with_payload(const char* payload)
+{
+#if SCN_HAS_BUILTIN(__builtin_nanl)
+    return __builtin_nanl(payload);
+#else
+    return std::nanl(payload);
+#endif
+}
+
+template <typename T>
+bool can_make_nan_with_payload()
+{
+    return !check_nan_eq(make_nan_with_payload<T>("0"),
+                         make_nan_with_payload<T>("1234"));
+}
+
 TYPED_TEST_P(FloatTestSuite, NanWithPayload)
 {
-    if (!std::numeric_limits<typename TestFixture::float_type>::has_quiet_NaN || finite_math_only) {
+    if (!std::numeric_limits<typename TestFixture::float_type>::has_quiet_NaN ||
+        finite_math_only) {
         GTEST_SKIP() << "NaNs not supported by the float type";
     }
     if (!TestFixture::interface_type::supports_nan) {
@@ -891,32 +933,32 @@ TYPED_TEST_P(FloatTestSuite, NanWithPayload)
     const auto make_check = [](const char* payload) {
         SCN_EXPECT(payload);
         return [payload](typename TestFixture::float_type parsed) {
-            if (check_nan_eq(std::nan(""), std::nan("1234"))) {
-                static bool warned = false;
-                if (!warned) {
-                    warned = true;
-                    std::cerr
-                        << "The input of std::nan is ignored in this platform. "
-                           "Contents of NaN payloads are not checked in this "
-                           "test.\n";
-                    // TODO: maybe still check them somehow, perhaps by
-                    // constructing the NaN here by hand
+            if constexpr (std::is_same_v<typename TestFixture::float_type,
+                                         float> ||
+                          std::is_same_v<typename TestFixture::float_type,
+                                         double> ||
+                          std::is_same_v<typename TestFixture::float_type,
+                                         long double>) {
+                if (!can_make_nan_with_payload<
+                        typename TestFixture::float_type>()) {
+                    static bool warned = false;
+                    if (!warned) {
+                        warned = true;
+                        std::cerr << "The input of std::nan is ignored "
+                                     "on this platform. "
+                                     "Contents of NaN payloads are not checked "
+                                     "in this test.\n";
+                        // TODO: maybe still check them somehow, perhaps by
+                        // constructing the NaN here by hand
+                    }
+
+                    return testing::AssertionResult(std::isnan(parsed));
                 }
 
-                return testing::AssertionResult(std::isnan(parsed));
-            }
-
-            if constexpr (std::is_same_v<typename TestFixture::float_type,
-                                         float>) {
-                return check_nan_eq(parsed, std::nanf(payload));
-            }
-            else if constexpr (std::is_same_v<typename TestFixture::float_type,
-                                              double>) {
-                return check_nan_eq(parsed, std::nan(payload));
-            }
-            else if constexpr (std::is_same_v<typename TestFixture::float_type,
-                                              long double>) {
-                return check_nan_eq(parsed, std::nanl(payload));
+                return check_nan_eq(
+                    parsed,
+                    make_nan_with_payload<typename TestFixture::float_type>(
+                        payload));
             }
             else {
                 // TODO: check payloads for other float types

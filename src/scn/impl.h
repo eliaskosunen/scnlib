@@ -4425,13 +4425,6 @@ private:
 };
 
 struct uint128_polyfill {
-    SCN_GCC_PUSH
-    SCN_GCC_IGNORE("-Wreorder")
-
-    SCN_CLANG_PUSH
-    SCN_CLANG_IGNORE("-Wreorder")
-    SCN_CLANG_IGNORE("-Wreorder-ctor")
-
 #if !SCN_IS_BIG_ENDIAN
     std::uint64_t low{};
     std::uint64_t high{};
@@ -4446,7 +4439,11 @@ struct uint128_polyfill {
               std::enable_if_t<std::is_integral_v<T> && std::is_unsigned_v<T> &&
                                sizeof(T) <= 8>* = nullptr>
     constexpr uint128_polyfill(T x)
+#if !SCN_IS_BIG_ENDIAN
+        : low(static_cast<std::uint64_t>(x)), high(0u)
+#else
         : high(0u), low(static_cast<std::uint64_t>(x))
+#endif
     {
     }
 
@@ -4454,8 +4451,13 @@ struct uint128_polyfill {
               std::enable_if_t<std::is_integral_v<T> && std::is_unsigned_v<T> &&
                                (sizeof(T) <= 16 && sizeof(T) > 8)>* = nullptr>
     constexpr uint128_polyfill(T x)
+#if !SCN_IS_BIG_ENDIAN
+        : low(static_cast<std::uint64_t>(x)),
+          high(static_cast<std::uint64_t>(x >> 64u))
+#else
         : high(static_cast<std::uint64_t>(x >> 64u)),
           low(static_cast<std::uint64_t>(x))
+#endif
     {
     }
 
@@ -4670,9 +4672,6 @@ struct uint128_polyfill {
     {
         return static_cast<unsigned long long>(low);
     }
-
-    SCN_CLANG_POP    // -Wreorder-ctor
-        SCN_GCC_POP  // -Wreorder
 };
 
 #if SCN_HAS_INT128
@@ -5611,10 +5610,10 @@ private:
         const auto& [delta, pow5] = left_shift_table[shift];
         for (std::size_t i = 0; i < pow5.size(); ++i) {
             if (i >= num_digits) {
-                return delta - 1;
+                return delta - 1u;
             }
             if (const auto digit = char_to_int(pow5[i]); digits[i] != digit) {
-                return digits[i] < digit ? delta - 1 : delta;
+                return digits[i] < digit ? delta - 1u : delta;
             }
         }
         return delta;

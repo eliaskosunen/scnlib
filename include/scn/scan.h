@@ -11039,10 +11039,10 @@ public:
     {
 #if SCN_HAS_CONSTEVAL
         using checker = detail::format_string_checker<CharT, Source, Args...>;
-        const auto e = detail::parse_format_string<true>(m_str, checker(s));
+        const auto e = detail::parse_format_string<true>(m_str, checker(m_str));
         SCN_UNUSED(e);
 #else
-        detail::check_format_string<Source, Args...>(s);
+        detail::check_format_string<Source, Args...>(m_str);
 #endif
     }
     SCN_CLANG_POP

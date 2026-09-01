@@ -1158,7 +1158,7 @@ struct convert_from_chars {
                 scan_error::invalid_scanned_value,
                 "std::from_chars: invalid_argument");
         }
-        if (result.ec == std::errc::result_out_of_range) {
+        if (SCN_UNLIKELY(result.ec == std::errc::result_out_of_range)) {
             // std::from_chars doesn't give us a way to distinguish between
             // different kinds of over-/underflow:
             // per the standard, `value` is unmodified.
@@ -1168,6 +1168,19 @@ struct convert_from_chars {
             return detail::unexpected_scan_error(
                 scan_error::invalid_scanned_value,
                 "std::from_chars: Unknown result_out_of_range error");
+        }
+        if (SCN_UNLIKELY(is_float_positive_infinity(value))) {
+            // We got infinity,
+            // even though the input definitely wasn't infinity.
+            // This is most likely an overflow,
+            // where the implementation didn't give us the courtesy
+            // of setting `result_out_of_range`.
+            // Fall back to make sure.
+
+            can_fallback = true;
+            return detail::unexpected_scan_error(
+                scan_error::value_positive_overflow,
+                "std::from_chars: Got infinity, but no out-of-range error");
         }
 
         return detail::make_string_view_iterator_from_pointer(source,
