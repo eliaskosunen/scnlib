@@ -11042,7 +11042,7 @@ public:
         const auto e = detail::parse_format_string<true>(m_str, checker(m_str));
         SCN_UNUSED(e);
 #else
-        detail::check_format_string<Source, Args...>(m_str);
+        detail::check_format_string<Source, Args...>(s);
 #endif
     }
     SCN_CLANG_POP

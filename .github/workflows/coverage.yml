@@ -58,6 +58,7 @@ jobs:
           sudo update-locale
           sudo locale -a
 
+          sudo apt-get update
           sudo apt-get install -yq ccache
 
           mkdir ${{ runner.workspace }}/build
