@@ -423,6 +423,50 @@ struct float_test_suite_value_set<FloatT, float_kind::bf16> {
 #endif
 
 template <typename T>
+T make_nan_with_payload(const char* payload)
+{
+    SCN_UNUSED(payload);
+    return std::numeric_limits<T>::quiet_NaN();
+}
+
+template <>
+inline float make_nan_with_payload(const char* payload)
+{
+#if SCN_HAS_BUILTIN(__builtin_nanf)
+    return __builtin_nanf(payload);
+#else
+    return std::nanf(payload);
+#endif
+}
+
+template <>
+inline double make_nan_with_payload(const char* payload)
+{
+#if SCN_HAS_BUILTIN(__builtin_nan)
+    return __builtin_nan(payload);
+#else
+    return std::nan(payload);
+#endif
+}
+
+template <>
+inline long double make_nan_with_payload(const char* payload)
+{
+#if SCN_HAS_BUILTIN(__builtin_nanl)
+    return __builtin_nanl(payload);
+#else
+    return std::nanl(payload);
+#endif
+}
+
+template <typename T>
+bool can_make_nan_with_payload()
+{
+    return !check_nan_eq(make_nan_with_payload<T>("0"),
+                         make_nan_with_payload<T>("1234"));
+}
+
+template <typename T>
 using float_test_suite_values =
     float_test_suite_value_set<T, float_kind_for<T>>;
 
@@ -464,8 +508,72 @@ protected:
     using interface_type = T;
     using values = float_test_suite_values<typename T::float_type>;
 
+    static void SetUpTestSuite()
+    {
+        base::SetUpTestSuite();
+
+        using float_type = typename base::float_type;
+        std::cerr
+            << "Float test info dump:\n"
+            << "Type: " << testing::internal::GetTypeName<float_type>() << '\n'
+            << "Char type: "
+            << testing::internal::GetTypeName<typename base::char_type>()
+            << '\n'
+            << "sizeof(FloatT): " << sizeof(float_type) << '\n'
+            << "SCN_IS_BIG_ENDIAN: " << SCN_IS_BIG_ENDIAN << '\n'
+            << "SCN_IS_FLOAT_BIG_ENDIAN: " << SCN_IS_FLOAT_BIG_ENDIAN << '\n'
+            << "finite_math_only: " << finite_math_only << '\n'
+            << "std::numeric_limits<FloatT>::is_iec559: "
+            << std::numeric_limits<float_type>::is_iec559 << '\n'
+            << "std::numeric_limits<FloatT>::has_infinity: "
+            << std::numeric_limits<float_type>::has_infinity << '\n'
+            << "std::numeric_limits<FloatT>::has_denorm: "
+            << std::numeric_limits<float_type>::has_denorm << '\n'
+            << "std::numeric_limits<FloatT>::has_denorm_loss: "
+            << std::numeric_limits<float_type>::has_denorm_loss << '\n'
+            << "std::numeric_limits<FloatT>::has_quiet_NaN: "
+            << std::numeric_limits<float_type>::has_quiet_NaN << '\n'
+            << "std::numeric_limits<FloatT>::has_signaling_NaN: "
+            << std::numeric_limits<float_type>::has_signaling_NaN << '\n'
+            << "std::numeric_limits<FloatT>::digits: "
+            << std::numeric_limits<float_type>::digits << '\n'
+            << "std::numeric_limits<FloatT>::max_exponent: "
+            << std::numeric_limits<float_type>::max_exponent << '\n'
+            << "zero: " << get_bytes_str(static_cast<float_type>(0.0)) << '\n'
+            << "negative zero: " << get_bytes_str(static_cast<float_type>(-0.0))
+            << '\n'
+            << "max: " << get_bytes_str(std::numeric_limits<float_type>::max())
+            << '\n'
+            << "smallest normal: "
+            << get_bytes_str(std::numeric_limits<float_type>::min()) << '\n'
+            << "smallest subnormal: "
+            << get_bytes_str(std::numeric_limits<float_type>::denorm_min())
+            << '\n'
+            << "infinity: "
+            << get_bytes_str(std::numeric_limits<float_type>::infinity())
+            << '\n'
+            << "quiet_NaN: "
+            << get_bytes_str(std::numeric_limits<float_type>::quiet_NaN())
+            << '\n'
+            << "nan(\"0\"): "
+            << get_bytes_str(make_nan_with_payload<float_type>("0")) << '\n'
+            << "nan(\"1234\"): "
+            << get_bytes_str(make_nan_with_payload<float_type>("1234")) << '\n'
+            << "can_make_nan_with_payload: "
+            << can_make_nan_with_payload<float_type>() << '\n'
+            << "__has_builtin(__builtin_nan): "
+            << SCN_HAS_BUILTIN(__builtin_nan) << '\n'
+            << "__has_builtin(__builtin_nanf): "
+            << SCN_HAS_BUILTIN(__builtin_nanf) << '\n'
+            << "__has_builtin(__builtin_nanl): "
+            << SCN_HAS_BUILTIN(__builtin_nanl) << '\n'
+            << "------\n";
+    }
+
     void SetUp() override
     {
+        base::SetUp();
+
         if constexpr (!T::enabled) {
             GTEST_SKIP() << "Test suite disabled for this type";
         }
@@ -878,46 +986,6 @@ TYPED_TEST_P(FloatTestSuite, Nan)
     EXPECT_TRUE(TestFixture::test("nan", check));
     EXPECT_TRUE(TestFixture::test("NaN", check));
     EXPECT_TRUE(TestFixture::test("NAN", check));
-}
-
-template <typename T>
-T make_nan_with_payload(const char* payload);
-
-template <>
-inline float make_nan_with_payload(const char* payload)
-{
-#if SCN_HAS_BUILTIN(__builtin_nanf)
-    return __builtin_nanf(payload);
-#else
-    return std::nanf(payload);
-#endif
-}
-
-template <>
-inline double make_nan_with_payload(const char* payload)
-{
-#if SCN_HAS_BUILTIN(__builtin_nan)
-    return __builtin_nan(payload);
-#else
-    return std::nan(payload);
-#endif
-}
-
-template <>
-inline long double make_nan_with_payload(const char* payload)
-{
-#if SCN_HAS_BUILTIN(__builtin_nanl)
-    return __builtin_nanl(payload);
-#else
-    return std::nanl(payload);
-#endif
-}
-
-template <typename T>
-bool can_make_nan_with_payload()
-{
-    return !check_nan_eq(make_nan_with_payload<T>("0"),
-                         make_nan_with_payload<T>("1234"));
 }
 
 TYPED_TEST_P(FloatTestSuite, NanWithPayload)

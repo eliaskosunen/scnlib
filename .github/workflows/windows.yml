@@ -60,14 +60,42 @@ jobs:
           # - 2019
           - 2022
           - 2025
-        platform: [ Win32, x64 ]
-        type: [ Debug, Release ]
+        platform: [ x64 ]
+        type: [ Debug ]
         std: [ 17 ]
+
         include:
+          # Release build on 2025 (C++17)
+          - os: 2025
+            platform: x64
+            type: Release
+            std: 17
+
+          # C++23  on 2025
+          - os: 2025
+            platform: x64
+            type: Debug
+            std: 23
+
+          # C++20 builds, on 2025 and 2022
+          - os: 2025
+            platform: x64
+            type: Debug
+            std: 20
           - os: 2022
             platform: x64
             type: Debug
             std: 20
+
+          # Win32 builds, on 2025 and 2022
+          - os: 2025
+            platform: Win32
+            type: Debug
+            std: 17
+          - os: 2022
+            platform: Win32
+            type: Debug
+            std: 17
 
     steps:
       - name: Checkout
@@ -123,6 +151,11 @@ jobs:
           - 2025
         std: [ 17, 20 ]
         platform: [ x64 ]
+
+        include:
+          - os: 2025
+            std: 23
+            platform: x64
 
     steps:
       - name: Checkout
@@ -185,6 +218,7 @@ jobs:
           - mingw32
           - mingw64
           # llvm, ucrt, libc++
+          - clang32
           - clang64
           # llvm, ucrt, libc++ on arm64
           - clangarm64

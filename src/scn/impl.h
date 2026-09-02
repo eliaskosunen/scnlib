@@ -6578,6 +6578,7 @@ private:
     scan_expected<void> read_source_for(
         ranges::subrange<Iterator, Sentinel> source)
     {
+        SCN_UNUSED(source);
         if constexpr (Traits::need_reader_state || Traits::need_definite_kind ||
                       !ranges::contiguous_range<
                           ranges::subrange<Iterator, Sentinel>> ||

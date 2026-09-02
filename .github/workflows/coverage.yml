@@ -66,7 +66,8 @@ jobs:
 
       - name: Install lcov 2.5
         run: |
-          sudo apt-get install -yq python3-sphinx python3-sphinx-rtd-theme
+          sudo apt-get install -yq python3-sphinx python3-sphinx-rtd-theme \
+            libcapture-tiny-perl libdatetime-perl libmemory-process-perl
           cd ${{ runner.temp }}
           wget https://github.com/linux-test-project/lcov/releases/download/v2.5/lcov-2.5.tar.gz
           tar -xzf lcov-2.5.tar.gz
