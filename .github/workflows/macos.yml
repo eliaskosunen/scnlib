@@ -96,6 +96,9 @@ jobs:
 
       - name: Create Build Environment
         run: |
+          # Silence warnings
+          brew untap aws
+
           mkdir ${{ runner.workspace }}/build
           brew install --overwrite ccache
 

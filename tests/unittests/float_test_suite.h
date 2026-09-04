@@ -527,10 +527,6 @@ protected:
             << std::numeric_limits<float_type>::is_iec559 << '\n'
             << "std::numeric_limits<FloatT>::has_infinity: "
             << std::numeric_limits<float_type>::has_infinity << '\n'
-            << "std::numeric_limits<FloatT>::has_denorm: "
-            << std::numeric_limits<float_type>::has_denorm << '\n'
-            << "std::numeric_limits<FloatT>::has_denorm_loss: "
-            << std::numeric_limits<float_type>::has_denorm_loss << '\n'
             << "std::numeric_limits<FloatT>::has_quiet_NaN: "
             << std::numeric_limits<float_type>::has_quiet_NaN << '\n'
             << "std::numeric_limits<FloatT>::has_signaling_NaN: "
@@ -590,7 +586,7 @@ protected:
             std::wstring wide_source{};
             std::copy(source.begin(), source.end(),
                       std::back_inserter(wide_source));
-            return interface.test(std::wstring_view{wide_source}, parsed);
+            return interface.test(std::wstring_view(wide_source), parsed);
         }
     }
 

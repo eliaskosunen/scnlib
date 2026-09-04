@@ -5707,6 +5707,7 @@ scan_expected<void> simple_decimal_conversion(T& result,
     // "Multiply by (2 ** precision) and round to get [the] mantissa"
     value.left_shift(float_traits<T>::fraction_bits);
     auto [significand, significand_rounded_up] = value.rounded_significand<T>();
+    SCN_UNUSED(significand_rounded_up);
 
     if (was_subnormal &&
         (significand >> float_traits<T>::fraction_bits) != 0u) {
@@ -6463,7 +6464,7 @@ private:
                                 detail::presentation_type::int_generic;
                             if (auto result =
                                     reader_impl_for_int<char>{}.read_specs(
-                                        std::string_view{nan_payload},
+                                        std::string_view(nan_payload),
                                         payload_specs, parsed_payload, {})) {
                                 apply_nan_payload(value, parsed_payload);
                             }
@@ -6599,6 +6600,42 @@ private:
         return {};
     }
 
+    SCN_CLANG_PUSH_IGNORE_UNDEFINED_TEMPLATE
+
+    template <typename Traits,
+              typename Source,
+              typename T,
+              std::enable_if_t<Traits::need_reader_state>* = nullptr>
+    auto call_invoke_convert_for(Source src, T& value)
+    {
+        SCN_EXPECT(m_reader);
+        return Traits::convert(src, value, m_kind, m_reader->state(),
+                               m_can_fall_back);
+    }
+
+    template <typename Traits,
+              typename Source,
+              typename T,
+              std::enable_if_t<!Traits::need_reader_state &&
+                               !Traits::need_definite_kind>* = nullptr>
+    auto call_invoke_convert_for(Source src, T& value)
+    {
+        return Traits::convert(src, value, m_kind, m_options.flags,
+                               m_can_fall_back);
+    }
+
+    template <typename Traits,
+              typename Source,
+              typename T,
+              std::enable_if_t<!Traits::need_reader_state &&
+                               Traits::need_definite_kind>* = nullptr>
+    auto call_invoke_convert_for(Source src, T& value)
+    {
+        return Traits::convert(src, value, m_kind, m_can_fall_back);
+    }
+
+    SCN_CLANG_POP_IGNORE_UNDEFINED_TEMPLATE
+
     template <typename Traits, typename Iterator, typename Sentinel, typename T>
     auto invoke_convert_for(ranges::subrange<Iterator, Sentinel> source,
                             T& value) -> scan_expected<Iterator>
@@ -6622,8 +6659,8 @@ private:
                 if constexpr (ranges::contiguous_range<decltype(source)>) {
                     if (m_reader) {
                         SCN_EXPECT(m_definite_length != 0);
-                        return std::basic_string_view<CharT>{
-                            m_reader->state().normalized_string};
+                        return std::basic_string_view<CharT>(
+                            m_reader->state().normalized_string);
                     }
                     return std::basic_string_view<CharT>(ranges::data(source),
                                                          ranges::size(source));
@@ -6631,53 +6668,33 @@ private:
                 else {
                     SCN_EXPECT(m_reader);
                     SCN_EXPECT(m_definite_length != 0);
-                    return std::basic_string_view<CharT>{
-                        m_reader->state().normalized_string};
+                    return std::basic_string_view<CharT>(
+                        m_reader->state().normalized_string);
                 }
             }
         });
 
-        auto make_return = [&](auto res) -> scan_expected<Iterator> {
-            if (!res) {
-                return unexpected(res.error());
-            }
+        auto res = call_invoke_convert_for<Traits>(src, value);
+        if (!res) {
+            return unexpected(res.error());
+        }
 
-            if (m_definite_length == 0) {
-                if constexpr (!std::is_same_v<decltype(res),
-                                              scan_expected<void>>) {
-                    if constexpr (std::is_pointer_v<decltype(src)>) {
-                        m_definite_length = ranges::distance(src, *res);
-                    }
-                    else {
-                        m_definite_length = ranges::distance(src.begin(), *res);
-                    }
+        if (m_definite_length == 0) {
+            if constexpr (!std::is_same_v<decltype(res), scan_expected<void>>) {
+                if constexpr (std::is_pointer_v<decltype(src)>) {
+                    m_definite_length = ranges::distance(src, *res);
                 }
                 else {
-                    SCN_EXPECT(false);
+                    m_definite_length = ranges::distance(src.begin(), *res);
                 }
             }
-
-            SCN_ENSURE(m_definite_length != 0);
-            return std::next(source.begin(), m_definite_length);
-        };
-
-        SCN_CLANG_PUSH_IGNORE_UNDEFINED_TEMPLATE
-
-        if constexpr (Traits::need_reader_state) {
-            SCN_EXPECT(m_reader);
-            return make_return(Traits::convert(
-                src, value, m_kind, m_reader->state(), m_can_fall_back));
-        }
-        else if constexpr (!Traits::need_definite_kind) {
-            return make_return(Traits::convert(
-                src, value, m_kind, m_options.flags, m_can_fall_back));
-        }
-        else {
-            return make_return(
-                Traits::convert(src, value, m_kind, m_can_fall_back));
+            else {
+                SCN_EXPECT(false);
+            }
         }
 
-        SCN_CLANG_POP_IGNORE_UNDEFINED_TEMPLATE
+        SCN_ENSURE(m_definite_length != 0);
+        return std::next(source.begin(), m_definite_length);
     }
 
     options<CharT> m_options{};

@@ -1355,6 +1355,11 @@ convert_fast_float_traits::convert(std::basic_string_view<CharT> source,
         return convert_fast_float{kind, options}(source, value, can_fallback);
     }
     else {
+        SCN_UNUSED(source);
+        SCN_UNUSED(value);
+        SCN_UNUSED(kind);
+        SCN_UNUSED(options);
+        SCN_UNUSED(can_fallback);
         SCN_EXPECT(false);
         SCN_UNREACHABLE;
     }
@@ -1564,6 +1569,8 @@ constexpr T store_result(Acc acc, bool is_negative)
                 static_cast<T>(acc - std::numeric_limits<T>::max()));
             SCN_MSVC_POP
         }
+    } else {
+        SCN_UNUSED(is_negative);
     }
 
     return static_cast<T>(acc);
