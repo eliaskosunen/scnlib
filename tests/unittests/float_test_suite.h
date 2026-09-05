@@ -21,6 +21,7 @@
 #include <cstring>
 #include <iomanip>
 
+#include "nan_repr.h"
 #include "test_common.h"
 
 #include <scn/scan.h>
@@ -34,20 +35,6 @@ inline constexpr bool finite_math_only = true;
 #else
 inline constexpr bool finite_math_only = false;
 #endif
-
-template <typename T>
-std::string get_bytes_str(T val)
-{
-    alignas(T) std::array<unsigned char, sizeof(T)> bytes{};
-    std::memcpy(bytes.data(), &val, sizeof(T));
-
-    std::ostringstream os;
-    for (unsigned char b : bytes) {
-        os << std::hex << std::setw(2) << std::setfill('0')
-           << static_cast<unsigned>(b) << ' ';
-    }
-    return os.str().substr(0, os.str().size() - 1);
-}
 
 template <typename T>
 SCN_NODISCARD testing::AssertionResult
@@ -77,87 +64,6 @@ check_floating_eq(T a, T b, bool allow_approx = false)
                << ", " << get_bytes_str(b) << ")";
     }
 }
-
-template <typename T>
-SCN_NODISCARD testing::AssertionResult check_nan_eq(T lhs, T rhs)
-{
-    if (!std::isnan(lhs)) {
-        return testing::AssertionFailure() << "lhs not nan";
-    }
-    if (!std::isnan(rhs)) {
-        return testing::AssertionFailure() << "rhs not nan";
-    }
-
-    if constexpr (sizeof(T) <= sizeof(std::uint64_t)) {
-        std::uint64_t lhs_bits{}, rhs_bits{};
-        std::memcpy(&lhs_bits, &lhs, sizeof(T));
-        std::memcpy(&rhs_bits, &rhs, sizeof(T));
-        if (lhs_bits != rhs_bits) {
-            return testing::AssertionFailure()
-                   << "lhs bits: " << get_bytes_str(lhs_bits)
-                   << " != rhs_bits: " << get_bytes_str(rhs_bits);
-        }
-        return testing::AssertionSuccess()
-               << "lhs bits: " << get_bytes_str(lhs_bits)
-               << " != rhs_bits: " << get_bytes_str(rhs_bits);
-    }
-    else {
-        // Discard last six bytes (assuming 80-bit long double)
-        // TODO: check better against other long double formats
-        std::array<unsigned char, sizeof(T) - 6> lhs_bits{}, rhs_bits{};
-        std::memcpy(lhs_bits.data(), &lhs, sizeof(T) - 6);
-        std::memcpy(rhs_bits.data(), &rhs, sizeof(T) - 6);
-        if (lhs_bits != rhs_bits) {
-            return testing::AssertionFailure()
-                   << "lhs bits: " << get_bytes_str(lhs_bits)
-                   << " != rhs_bits: " << get_bytes_str(rhs_bits);
-        }
-        return testing::AssertionSuccess()
-               << "lhs bits: " << get_bytes_str(lhs_bits)
-               << " == rhs_bits: " << get_bytes_str(rhs_bits);
-    }
-}
-
-enum class float_kind {
-    f16,
-    f32,
-    f64,
-    f80,    // x87 long double
-    f128,   // ieee binary128
-    bf16,   // bfloat16
-    f2x64,  // double-double
-};
-
-template <typename T, typename Enable = void>
-inline constexpr auto float_kind_for = std::monostate{};
-
-template <typename T>
-inline constexpr auto float_kind_for<T, std::enable_if_t<sizeof(T) == 4>> =
-    float_kind::f32;
-template <typename T>
-inline constexpr auto float_kind_for<T, std::enable_if_t<sizeof(T) == 8>> =
-    float_kind::f64;
-
-template <typename T>
-inline constexpr auto
-    float_kind_for<T, std::enable_if_t<std::numeric_limits<T>::digits == 64>> =
-        float_kind::f80;
-template <typename T>
-inline constexpr auto
-    float_kind_for<T, std::enable_if_t<std::numeric_limits<T>::digits == 113>> =
-        float_kind::f128;
-template <typename T>
-inline constexpr auto
-    float_kind_for<T, std::enable_if_t<std::numeric_limits<T>::digits == 11>> =
-        float_kind::f16;
-template <typename T>
-inline constexpr auto
-    float_kind_for<T, std::enable_if_t<std::numeric_limits<T>::digits == 8>> =
-        float_kind::bf16;
-template <typename T>
-inline constexpr auto
-    float_kind_for<T, std::enable_if_t<std::numeric_limits<T>::digits == 106>> =
-        float_kind::f2x64;
 
 SCN_CLANG_PUSH
 SCN_CLANG_IGNORE("-Wheader-hygiene")
@@ -423,50 +329,6 @@ struct float_test_suite_value_set<FloatT, float_kind::bf16> {
 #endif
 
 template <typename T>
-T make_nan_with_payload(const char* payload)
-{
-    SCN_UNUSED(payload);
-    return std::numeric_limits<T>::quiet_NaN();
-}
-
-template <>
-inline float make_nan_with_payload(const char* payload)
-{
-#if SCN_HAS_BUILTIN(__builtin_nanf)
-    return __builtin_nanf(payload);
-#else
-    return std::nanf(payload);
-#endif
-}
-
-template <>
-inline double make_nan_with_payload(const char* payload)
-{
-#if SCN_HAS_BUILTIN(__builtin_nan)
-    return __builtin_nan(payload);
-#else
-    return std::nan(payload);
-#endif
-}
-
-template <>
-inline long double make_nan_with_payload(const char* payload)
-{
-#if SCN_HAS_BUILTIN(__builtin_nanl)
-    return __builtin_nanl(payload);
-#else
-    return std::nanl(payload);
-#endif
-}
-
-template <typename T>
-bool can_make_nan_with_payload()
-{
-    return !check_nan_eq(make_nan_with_payload<T>("0"),
-                         make_nan_with_payload<T>("1234"));
-}
-
-template <typename T>
 using float_test_suite_values =
     float_test_suite_value_set<T, float_kind_for<T>>;
 
@@ -512,58 +374,51 @@ protected:
     {
         base::SetUpTestSuite();
 
-        using float_type = typename base::float_type;
-        std::cerr
-            << "Float test info dump:\n"
-            << "Type: " << testing::internal::GetTypeName<float_type>() << '\n'
-            << "Char type: "
-            << testing::internal::GetTypeName<typename base::char_type>()
-            << '\n'
-            << "sizeof(FloatT): " << sizeof(float_type) << '\n'
-            << "SCN_IS_BIG_ENDIAN: " << SCN_IS_BIG_ENDIAN << '\n'
-            << "SCN_IS_FLOAT_BIG_ENDIAN: " << SCN_IS_FLOAT_BIG_ENDIAN << '\n'
-            << "finite_math_only: " << finite_math_only << '\n'
-            << "std::numeric_limits<FloatT>::is_iec559: "
-            << std::numeric_limits<float_type>::is_iec559 << '\n'
-            << "std::numeric_limits<FloatT>::has_infinity: "
-            << std::numeric_limits<float_type>::has_infinity << '\n'
-            << "std::numeric_limits<FloatT>::has_quiet_NaN: "
-            << std::numeric_limits<float_type>::has_quiet_NaN << '\n'
-            << "std::numeric_limits<FloatT>::has_signaling_NaN: "
-            << std::numeric_limits<float_type>::has_signaling_NaN << '\n'
-            << "std::numeric_limits<FloatT>::digits: "
-            << std::numeric_limits<float_type>::digits << '\n'
-            << "std::numeric_limits<FloatT>::max_exponent: "
-            << std::numeric_limits<float_type>::max_exponent << '\n'
-            << "zero: " << get_bytes_str(static_cast<float_type>(0.0)) << '\n'
-            << "negative zero: " << get_bytes_str(static_cast<float_type>(-0.0))
-            << '\n'
-            << "max: " << get_bytes_str(std::numeric_limits<float_type>::max())
-            << '\n'
-            << "smallest normal: "
-            << get_bytes_str(std::numeric_limits<float_type>::min()) << '\n'
-            << "smallest subnormal: "
-            << get_bytes_str(std::numeric_limits<float_type>::denorm_min())
-            << '\n'
-            << "infinity: "
-            << get_bytes_str(std::numeric_limits<float_type>::infinity())
-            << '\n'
-            << "quiet_NaN: "
-            << get_bytes_str(std::numeric_limits<float_type>::quiet_NaN())
-            << '\n'
-            << "nan(\"0\"): "
-            << get_bytes_str(make_nan_with_payload<float_type>("0")) << '\n'
-            << "nan(\"1234\"): "
-            << get_bytes_str(make_nan_with_payload<float_type>("1234")) << '\n'
-            << "can_make_nan_with_payload: "
-            << can_make_nan_with_payload<float_type>() << '\n'
-            << "__has_builtin(__builtin_nan): "
-            << SCN_HAS_BUILTIN(__builtin_nan) << '\n'
-            << "__has_builtin(__builtin_nanf): "
-            << SCN_HAS_BUILTIN(__builtin_nanf) << '\n'
-            << "__has_builtin(__builtin_nanl): "
-            << SCN_HAS_BUILTIN(__builtin_nanl) << '\n'
-            << "------\n";
+        using type = typename base::float_type;
+        std::cerr << "Float test info dump:\n"
+                  << "Type: " << testing::internal::GetTypeName<type>() << '\n'
+                  << "Char type: "
+                  << testing::internal::GetTypeName<typename base::char_type>()
+                  << '\n'
+                  << "sizeof(FloatT): " << sizeof(type) << '\n'
+                  << "SCN_IS_BIG_ENDIAN: " << SCN_IS_BIG_ENDIAN << '\n'
+                  << "SCN_IS_FLOAT_BIG_ENDIAN: " << SCN_IS_FLOAT_BIG_ENDIAN
+                  << '\n'
+                  << "finite_math_only: " << finite_math_only << '\n'
+                  << "std::numeric_limits<FloatT>::is_iec559: "
+                  << std::numeric_limits<type>::is_iec559 << '\n'
+                  << "std::numeric_limits<FloatT>::has_infinity: "
+                  << std::numeric_limits<type>::has_infinity << '\n'
+                  << "std::numeric_limits<FloatT>::has_quiet_NaN: "
+                  << std::numeric_limits<type>::has_quiet_NaN << '\n'
+                  << "std::numeric_limits<FloatT>::has_signaling_NaN: "
+                  << std::numeric_limits<type>::has_signaling_NaN << '\n'
+                  << "std::numeric_limits<FloatT>::digits: "
+                  << std::numeric_limits<type>::digits << '\n'
+                  << "std::numeric_limits<FloatT>::max_exponent: "
+                  << std::numeric_limits<type>::max_exponent << '\n'
+                  << "zero: " << get_bytes_str(static_cast<type>(0.0)) << '\n'
+                  << "negative zero: " << get_bytes_str(static_cast<type>(-0.0))
+                  << '\n'
+                  << "max: " << get_bytes_str(std::numeric_limits<type>::max())
+                  << '\n'
+                  << "smallest normal: "
+                  << get_bytes_str(std::numeric_limits<type>::min()) << '\n'
+                  << "smallest subnormal: "
+                  << get_bytes_str(std::numeric_limits<type>::denorm_min())
+                  << '\n'
+                  << "infinity: "
+                  << get_bytes_str(std::numeric_limits<type>::infinity())
+                  << '\n'
+                  << "quiet_NaN: "
+                  << get_bytes_str(std::numeric_limits<type>::quiet_NaN())
+                  << '\n'
+                  << "nan(\"0\"): "
+                  << get_bytes_str(make_nan_with_payload<type>("0")) << '\n'
+                  << "nan(\"1234\"): "
+                  << get_bytes_str(make_nan_with_payload<type>("1234")) << '\n'
+                  << "------\n"
+                  << std::flush;
     }
 
     void SetUp() override
@@ -997,38 +852,9 @@ TYPED_TEST_P(FloatTestSuite, NanWithPayload)
     const auto make_check = [](const char* payload) {
         SCN_EXPECT(payload);
         return [payload](typename TestFixture::float_type parsed) {
-            if constexpr (std::is_same_v<typename TestFixture::float_type,
-                                         float> ||
-                          std::is_same_v<typename TestFixture::float_type,
-                                         double> ||
-                          std::is_same_v<typename TestFixture::float_type,
-                                         long double>) {
-                if (!can_make_nan_with_payload<
-                        typename TestFixture::float_type>()) {
-                    static bool warned = false;
-                    if (!warned) {
-                        warned = true;
-                        std::cerr << "The input of std::nan is ignored "
-                                     "on this platform. "
-                                     "Contents of NaN payloads are not checked "
-                                     "in this test.\n";
-                        // TODO: maybe still check them somehow, perhaps by
-                        // constructing the NaN here by hand
-                    }
-
-                    return testing::AssertionResult(std::isnan(parsed));
-                }
-
-                return check_nan_eq(
-                    parsed,
-                    make_nan_with_payload<typename TestFixture::float_type>(
-                        payload));
-            }
-            else {
-                // TODO: check payloads for other float types
-                SCN_UNUSED(payload);
-                return testing::AssertionResult(std::isnan(parsed));
-            }
+            return check_nan_eq(
+                parsed, make_nan_with_payload<typename TestFixture::float_type>(
+                            payload));
         };
     };
 
