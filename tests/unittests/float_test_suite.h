@@ -17,12 +17,17 @@
 
 #pragma once
 
+#include <cfloat>
 #include <cstring>
 #include <iomanip>
 
 #include "test_common.h"
 
 #include <scn/scan.h>
+
+#if !defined(LDBL_MANT_DIG)
+#error "LDBL_MANT_DIG not defined, even though <cfloat> is included"
+#endif
 
 #if defined(__FINITE_MATH_ONLY__) && __FINITE_MATH_ONLY__
 inline constexpr bool finite_math_only = true;
@@ -162,9 +167,6 @@ using namespace std::string_view_literals;
 
 SCN_CLANG_POP
 
-SCN_GCC_PUSH
-SCN_GCC_IGNORE("-Woverflow")
-
 #if SCN_HAS_STD_F128
 #define SCN_FLOAT_CONSTANT(x) x##F128
 #else
@@ -250,10 +252,8 @@ struct float_test_suite_value_set<FloatT, float_kind::f64> {
     static constexpr auto overflow_hex_str = "0x1p1024"sv;
 };
 
-// MSVC hard-errors with large float constants (C2177),
-// even though we don't even instantiate these templates there
-#if !SCN_MSVC
-
+#if LDBL_MANT_DIG == 64
+// long double is f80
 template <typename FloatT>
 struct float_test_suite_value_set<FloatT, float_kind::f80> {
     static constexpr auto subnormal = SCN_MAKE_FLOAT_PAIR(3e-4940, L);
@@ -284,6 +284,10 @@ struct float_test_suite_value_set<FloatT, float_kind::f80> {
     static constexpr auto overflow_str = "2.0e4932"sv;
     static constexpr auto overflow_hex_str = "0x1p16384"sv;
 };
+#endif
+
+#if SCN_HAS_STD_F128 || LDBL_MANT_DIG == 113
+// We either have std::float128_t, or long double is f128
 
 #if SCN_HAS_STD_F128
 #define SCN_MAKE_F128_PAIR(Value) SCN_MAKE_FLOAT_PAIR(Value, F128)
@@ -320,7 +324,10 @@ struct float_test_suite_value_set<FloatT, float_kind::f128> {
     static constexpr auto overflow_str = "2.0e4932"sv;
     static constexpr auto overflow_hex_str = "0x1p16384"sv;
 };
+#endif
 
+#if LDBL_MANT_DIG == 106
+// long double is f2x64
 template <typename FloatT>
 struct float_test_suite_value_set<FloatT, float_kind::f2x64> {
     static constexpr auto subnormal = SCN_MAKE_FLOAT_PAIR(5e-320, L);
@@ -350,11 +357,9 @@ struct float_test_suite_value_set<FloatT, float_kind::f2x64> {
     static constexpr auto overflow_str = "2.0e308"sv;
     static constexpr auto overflow_hex_str = "0x1p308"sv;
 };
-
-#endif  // !SCN_MSVC
+#endif
 
 #if SCN_HAS_STD_F16
-
 template <typename FloatT>
 struct float_test_suite_value_set<FloatT, float_kind::f16> {
     static constexpr auto subnormal = SCN_MAKE_FLOAT_PAIR(5e-6, F16);
@@ -382,11 +387,9 @@ struct float_test_suite_value_set<FloatT, float_kind::f16> {
     static constexpr auto overflow_str = "7.0e4"sv;
     static constexpr auto overflow_hex_str = "0x1p16"sv;
 };
-
 #endif
 
 #if SCN_HAS_STD_BF16
-
 template <typename FloatT>
 struct float_test_suite_value_set<FloatT, float_kind::bf16> {
     static constexpr auto subnormal = SCN_MAKE_FLOAT_PAIR(2e-40, BF16);
@@ -417,10 +420,51 @@ struct float_test_suite_value_set<FloatT, float_kind::bf16> {
     static constexpr auto overflow_str = "4.0e38"sv;
     static constexpr auto overflow_hex_str = "0x1p128"sv;
 };
-
 #endif
 
-SCN_GCC_POP // -Woverflow
+template <typename T>
+T make_nan_with_payload(const char* payload)
+{
+    SCN_UNUSED(payload);
+    return std::numeric_limits<T>::quiet_NaN();
+}
+
+template <>
+inline float make_nan_with_payload(const char* payload)
+{
+#if SCN_HAS_BUILTIN(__builtin_nanf)
+    return __builtin_nanf(payload);
+#else
+    return std::nanf(payload);
+#endif
+}
+
+template <>
+inline double make_nan_with_payload(const char* payload)
+{
+#if SCN_HAS_BUILTIN(__builtin_nan)
+    return __builtin_nan(payload);
+#else
+    return std::nan(payload);
+#endif
+}
+
+template <>
+inline long double make_nan_with_payload(const char* payload)
+{
+#if SCN_HAS_BUILTIN(__builtin_nanl)
+    return __builtin_nanl(payload);
+#else
+    return std::nanl(payload);
+#endif
+}
+
+template <typename T>
+bool can_make_nan_with_payload()
+{
+    return !check_nan_eq(make_nan_with_payload<T>("0"),
+                         make_nan_with_payload<T>("1234"));
+}
 
 template <typename T>
 using float_test_suite_values =
@@ -464,8 +508,68 @@ protected:
     using interface_type = T;
     using values = float_test_suite_values<typename T::float_type>;
 
+    static void SetUpTestSuite()
+    {
+        base::SetUpTestSuite();
+
+        using float_type = typename base::float_type;
+        std::cerr
+            << "Float test info dump:\n"
+            << "Type: " << testing::internal::GetTypeName<float_type>() << '\n'
+            << "Char type: "
+            << testing::internal::GetTypeName<typename base::char_type>()
+            << '\n'
+            << "sizeof(FloatT): " << sizeof(float_type) << '\n'
+            << "SCN_IS_BIG_ENDIAN: " << SCN_IS_BIG_ENDIAN << '\n'
+            << "SCN_IS_FLOAT_BIG_ENDIAN: " << SCN_IS_FLOAT_BIG_ENDIAN << '\n'
+            << "finite_math_only: " << finite_math_only << '\n'
+            << "std::numeric_limits<FloatT>::is_iec559: "
+            << std::numeric_limits<float_type>::is_iec559 << '\n'
+            << "std::numeric_limits<FloatT>::has_infinity: "
+            << std::numeric_limits<float_type>::has_infinity << '\n'
+            << "std::numeric_limits<FloatT>::has_quiet_NaN: "
+            << std::numeric_limits<float_type>::has_quiet_NaN << '\n'
+            << "std::numeric_limits<FloatT>::has_signaling_NaN: "
+            << std::numeric_limits<float_type>::has_signaling_NaN << '\n'
+            << "std::numeric_limits<FloatT>::digits: "
+            << std::numeric_limits<float_type>::digits << '\n'
+            << "std::numeric_limits<FloatT>::max_exponent: "
+            << std::numeric_limits<float_type>::max_exponent << '\n'
+            << "zero: " << get_bytes_str(static_cast<float_type>(0.0)) << '\n'
+            << "negative zero: " << get_bytes_str(static_cast<float_type>(-0.0))
+            << '\n'
+            << "max: " << get_bytes_str(std::numeric_limits<float_type>::max())
+            << '\n'
+            << "smallest normal: "
+            << get_bytes_str(std::numeric_limits<float_type>::min()) << '\n'
+            << "smallest subnormal: "
+            << get_bytes_str(std::numeric_limits<float_type>::denorm_min())
+            << '\n'
+            << "infinity: "
+            << get_bytes_str(std::numeric_limits<float_type>::infinity())
+            << '\n'
+            << "quiet_NaN: "
+            << get_bytes_str(std::numeric_limits<float_type>::quiet_NaN())
+            << '\n'
+            << "nan(\"0\"): "
+            << get_bytes_str(make_nan_with_payload<float_type>("0")) << '\n'
+            << "nan(\"1234\"): "
+            << get_bytes_str(make_nan_with_payload<float_type>("1234")) << '\n'
+            << "can_make_nan_with_payload: "
+            << can_make_nan_with_payload<float_type>() << '\n'
+            << "__has_builtin(__builtin_nan): "
+            << SCN_HAS_BUILTIN(__builtin_nan) << '\n'
+            << "__has_builtin(__builtin_nanf): "
+            << SCN_HAS_BUILTIN(__builtin_nanf) << '\n'
+            << "__has_builtin(__builtin_nanl): "
+            << SCN_HAS_BUILTIN(__builtin_nanl) << '\n'
+            << "------\n";
+    }
+
     void SetUp() override
     {
+        base::SetUp();
+
         if constexpr (!T::enabled) {
             GTEST_SKIP() << "Test suite disabled for this type";
         }
@@ -482,7 +586,7 @@ protected:
             std::wstring wide_source{};
             std::copy(source.begin(), source.end(),
                       std::back_inserter(wide_source));
-            return interface.test(std::wstring_view{wide_source}, parsed);
+            return interface.test(std::wstring_view(wide_source), parsed);
         }
     }
 
@@ -522,10 +626,17 @@ protected:
         interface_type i{};
         typename base::float_type parsed{};
 
+        const auto skipped_count_before =
+            testing::UnitTest::GetInstance()->skipped_test_count();
+
         if (auto result = run_test(i, input, parsed); !result) {
             return testing::AssertionFailure()
                    << "Failed with " << result.error().code() << " ("
                    << result.error().msg() << ")";
+        }
+        if (skipped_count_before <
+            testing::UnitTest::GetInstance()->skipped_test_count()) {
+            return testing::AssertionSuccess() << "Test skipped";
         }
 
         return std::forward<F>(check)(parsed);
@@ -787,7 +898,7 @@ TYPED_TEST_P(FloatTestSuite, TrailingZeroes)
 TYPED_TEST_P(FloatTestSuite, Hex)
 {
     if (!TestFixture::interface_type::supports_hex) {
-        GTEST_SKIP() << "Hexfloats not supported";
+        GTEST_SKIP() << "Hexfloats not supported by the reader";
     }
 
     EXPECT_TRUE(TestFixture::test_success(
@@ -814,7 +925,7 @@ TYPED_TEST_P(FloatTestSuite, Hex)
 TYPED_TEST_P(FloatTestSuite, Infinity)
 {
     if (!TestFixture::interface_type::supports_inf) {
-        GTEST_SKIP() << "Infinities not supported";
+        GTEST_SKIP() << "Infinities not supported by the reader";
     }
 
     EXPECT_TRUE(TestFixture::test_success(
@@ -854,8 +965,12 @@ TYPED_TEST_P(FloatTestSuite, Infinity)
 
 TYPED_TEST_P(FloatTestSuite, Nan)
 {
+    if (!std::numeric_limits<typename TestFixture::float_type>::has_quiet_NaN ||
+        finite_math_only) {
+        GTEST_SKIP() << "NaNs not supported by the float type";
+    }
     if (!TestFixture::interface_type::supports_nan) {
-        GTEST_SKIP() << "NaNs not supported";
+        GTEST_SKIP() << "NaNs not supported by the reader";
     }
 
     const auto check = [](typename TestFixture::float_type parsed) {
@@ -871,24 +986,43 @@ TYPED_TEST_P(FloatTestSuite, Nan)
 
 TYPED_TEST_P(FloatTestSuite, NanWithPayload)
 {
+    if (!std::numeric_limits<typename TestFixture::float_type>::has_quiet_NaN ||
+        finite_math_only) {
+        GTEST_SKIP() << "NaNs not supported by the float type";
+    }
     if (!TestFixture::interface_type::supports_nan) {
-        GTEST_SKIP() << "NaNs not supported";
+        GTEST_SKIP() << "NaNs not supported by the reader";
     }
 
     const auto make_check = [](const char* payload) {
         SCN_EXPECT(payload);
         return [payload](typename TestFixture::float_type parsed) {
             if constexpr (std::is_same_v<typename TestFixture::float_type,
-                                         float>) {
-                return check_nan_eq(parsed, std::nanf(payload));
-            }
-            else if constexpr (std::is_same_v<typename TestFixture::float_type,
-                                              double>) {
-                return check_nan_eq(parsed, std::nan(payload));
-            }
-            else if constexpr (std::is_same_v<typename TestFixture::float_type,
-                                              long double>) {
-                return check_nan_eq(parsed, std::nanl(payload));
+                                         float> ||
+                          std::is_same_v<typename TestFixture::float_type,
+                                         double> ||
+                          std::is_same_v<typename TestFixture::float_type,
+                                         long double>) {
+                if (!can_make_nan_with_payload<
+                        typename TestFixture::float_type>()) {
+                    static bool warned = false;
+                    if (!warned) {
+                        warned = true;
+                        std::cerr << "The input of std::nan is ignored "
+                                     "on this platform. "
+                                     "Contents of NaN payloads are not checked "
+                                     "in this test.\n";
+                        // TODO: maybe still check them somehow, perhaps by
+                        // constructing the NaN here by hand
+                    }
+
+                    return testing::AssertionResult(std::isnan(parsed));
+                }
+
+                return check_nan_eq(
+                    parsed,
+                    make_nan_with_payload<typename TestFixture::float_type>(
+                        payload));
             }
             else {
                 // TODO: check payloads for other float types
@@ -918,7 +1052,7 @@ TYPED_TEST_P(FloatTestSuite, Overflow)
 TYPED_TEST_P(FloatTestSuite, OverflowHex)
 {
     if (!TestFixture::interface_type::supports_hex) {
-        GTEST_SKIP() << "Hexfloats not supported";
+        GTEST_SKIP() << "Hexfloats not supported by the reader";
     }
 
     EXPECT_TRUE(
@@ -936,7 +1070,7 @@ TYPED_TEST_P(FloatTestSuite, Underflow)
 TYPED_TEST_P(FloatTestSuite, UnderflowHex)
 {
     if (!TestFixture::interface_type::supports_hex) {
-        GTEST_SKIP() << "Hexfloats not supported";
+        GTEST_SKIP() << "Hexfloats not supported by the reader";
     }
 
     EXPECT_TRUE(
@@ -953,7 +1087,7 @@ TYPED_TEST_P(FloatTestSuite, Subnormal)
 TYPED_TEST_P(FloatTestSuite, SubnormalHex)
 {
     if (!TestFixture::interface_type::supports_hex) {
-        GTEST_SKIP() << "Hexfloats not supported";
+        GTEST_SKIP() << "Hexfloats not supported by the reader";
     }
 
     ASSERT_FALSE(std::isnormal(TestFixture::values::subnormal_hex.first));
@@ -973,7 +1107,7 @@ TYPED_TEST_P(FloatTestSuite, SubnormalMax)
 TYPED_TEST_P(FloatTestSuite, SubnormalMaxHex)
 {
     if (!TestFixture::interface_type::supports_hex) {
-        GTEST_SKIP() << "Hexfloats not supported";
+        GTEST_SKIP() << "Hexfloats not supported by the reader";
     }
 
     ASSERT_EQ(
@@ -996,7 +1130,7 @@ TYPED_TEST_P(FloatTestSuite, SubnormalMin)
 TYPED_TEST_P(FloatTestSuite, SubnormalMinHex)
 {
     if (!TestFixture::interface_type::supports_hex) {
-        GTEST_SKIP() << "Hexfloats not supported";
+        GTEST_SKIP() << "Hexfloats not supported by the reader";
     }
 
     ASSERT_EQ(
@@ -1016,7 +1150,7 @@ TYPED_TEST_P(FloatTestSuite, Max)
 TYPED_TEST_P(FloatTestSuite, MaxHex)
 {
     if (!TestFixture::interface_type::supports_hex) {
-        GTEST_SKIP() << "Hexfloats not supported";
+        GTEST_SKIP() << "Hexfloats not supported by the reader";
     }
 
     ASSERT_EQ(TestFixture::values::normal_max_hex.first,
@@ -1034,7 +1168,7 @@ TYPED_TEST_P(FloatTestSuite, NormalMin)
 TYPED_TEST_P(FloatTestSuite, NormalMinHex)
 {
     if (!TestFixture::interface_type::supports_hex) {
-        GTEST_SKIP() << "Hexfloats not supported";
+        GTEST_SKIP() << "Hexfloats not supported by the reader";
     }
 
     ASSERT_EQ(TestFixture::values::normal_min_hex.first,

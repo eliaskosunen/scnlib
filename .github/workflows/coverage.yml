@@ -59,21 +59,46 @@ jobs:
           sudo locale -a
 
           sudo apt-get update
-          sudo apt-get install -yq ccache
+          sudo apt-get install -yq \
+            ccache \
+            libcrypt-dev \
+            libcapture-tiny-perl \
+            libdatetime-perl \
+            libdevel-cover-perl \
+            libdevel-stacktrace-perl \
+            libjson-xs-perl \
+            libtimedate-perl \
+            python3-sphinx \
+            python3-sphinx-rtd-theme
+          sudo perl -MCPAN -e 'install Memory::Process'
 
           mkdir ${{ runner.workspace }}/build
           mkdir ${{ runner.workspace }}/report
 
+      - name: Load lcov 2.5 from cache
+        id: lcov-cache
+        uses: actions/cache@v6
+        with:
+          path: /usr/local/bin/lcov
+          key: lcov-2.5-${{ hashFiles('/usr/local/bin/lcov') }}
+
       - name: Install lcov 2.5
+        if: ${{ steps.lcov-cache.outputs.cache-hit != 'true' }}
         run: |
-          sudo apt-get install -yq python3-sphinx python3-sphinx-rtd-theme
-          perl -MCPAN -e 'install Capture::Tiny; install DateTime; install Devel::Cover; install Devel::StackTrace; install Digest::MD5; install File::Spec; install JSON::XS; install Memory::Process; install Module::Load::Conditional; install Scalar::Util; install Time::HiRes; install TimeDate'
           cd ${{ runner.temp }}
           wget https://github.com/linux-test-project/lcov/releases/download/v2.5/lcov-2.5.tar.gz
           tar -xzf lcov-2.5.tar.gz
           cd lcov-2.5
           sudo make install LCOV_NO_DOC=1
+          whereis lcov
           lcov --version
+
+      - name: Verify lcov and gcov
+        run: |
+          whereis lcov
+          lcov --version
+          whereis gcov
+          gcov --version
 
       - name: Checkout
         uses: actions/checkout@v7

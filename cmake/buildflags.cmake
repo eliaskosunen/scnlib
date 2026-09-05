@@ -117,7 +117,6 @@ function(get_gcc_warning_flags flags)
     set(tmp
             -ftemplate-backtrace-limit=0
             -Wall -Wextra -Wpedantic
-            -pedantic-errors
             -Wconversion -Wsign-conversion
             -Wold-style-cast -Wfloat-equal
             -Wlogical-op
@@ -237,7 +236,7 @@ endfunction()
 
 function(get_werror_flags flags)
     if (SCN_CXX_FRONTEND STREQUAL "GNU")
-        set(${flags} -Werror PARENT_SCOPE)
+        set(${flags} -Werror -pedantic-errors PARENT_SCOPE)
     elseif (SCN_CXX_FRONTEND STREQUAL "MSVC")
         set(${flags} /WX PARENT_SCOPE)
     else ()

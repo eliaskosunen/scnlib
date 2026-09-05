@@ -4405,7 +4405,7 @@ public:
 /////////////////////////////////////////////////////////////////
 
 struct float_rounding_guard {
-    float_rounding_guard()
+    float_rounding_guard() noexcept
     {
         m_mode = std::fegetround();
         if (m_mode != FE_TONEAREST) {
@@ -4425,12 +4425,6 @@ private:
 };
 
 struct uint128_polyfill {
-    SCN_GCC_PUSH
-    SCN_GCC_IGNORE("-Wreorder")
-
-    SCN_CLANG_PUSH
-    SCN_CLANG_IGNORE("-Wreorder-ctor")
-
 #if !SCN_IS_BIG_ENDIAN
     std::uint64_t low{};
     std::uint64_t high{};
@@ -4445,7 +4439,11 @@ struct uint128_polyfill {
               std::enable_if_t<std::is_integral_v<T> && std::is_unsigned_v<T> &&
                                sizeof(T) <= 8>* = nullptr>
     constexpr uint128_polyfill(T x)
+#if !SCN_IS_BIG_ENDIAN
+        : low(static_cast<std::uint64_t>(x)), high(0u)
+#else
         : high(0u), low(static_cast<std::uint64_t>(x))
+#endif
     {
     }
 
@@ -4453,8 +4451,13 @@ struct uint128_polyfill {
               std::enable_if_t<std::is_integral_v<T> && std::is_unsigned_v<T> &&
                                (sizeof(T) <= 16 && sizeof(T) > 8)>* = nullptr>
     constexpr uint128_polyfill(T x)
+#if !SCN_IS_BIG_ENDIAN
+        : low(static_cast<std::uint64_t>(x)),
+          high(static_cast<std::uint64_t>(x >> 64u))
+#else
         : high(static_cast<std::uint64_t>(x >> 64u)),
           low(static_cast<std::uint64_t>(x))
+#endif
     {
     }
 
@@ -4661,9 +4664,14 @@ struct uint128_polyfill {
     {
         return static_cast<unsigned>(low);
     }
-
-    SCN_CLANG_POP    // -Wreorder-ctor
-        SCN_GCC_POP  // -Wreorder
+    constexpr explicit operator unsigned long() const
+    {
+        return static_cast<unsigned long>(low);
+    }
+    constexpr explicit operator unsigned long long() const
+    {
+        return static_cast<unsigned long long>(low);
+    }
 };
 
 #if SCN_HAS_INT128
@@ -4705,6 +4713,8 @@ struct float_traits_impl_f32 {
         {
             significand = s;
         }
+
+        void clear_padding() {}
     };
 
     static constexpr unsigned nan_payload_bits = 22;
@@ -4728,6 +4738,8 @@ struct float_traits_impl_f32 {
             SCN_EXPECT(exponent == (1u << exponent_bits) - 1u);
             payload = p;
         }
+
+        void clear_padding() {}
     };
 };
 
@@ -4768,6 +4780,8 @@ struct float_traits_impl_f64 {
             significand0 = static_cast<unsigned>(s >> 32);
             significand1 = static_cast<unsigned>(s);
         }
+
+        void clear_padding() {}
     };
 
     static constexpr unsigned nan_payload_bits = 51;
@@ -4800,6 +4814,8 @@ struct float_traits_impl_f64 {
             payload0 = static_cast<unsigned>(p >> 32);
             payload1 = static_cast<unsigned>(p);
         }
+
+        void clear_padding() {}
     };
 };
 
@@ -4819,6 +4835,7 @@ struct float_traits_impl_f80 {
         unsigned one : 1;
         unsigned exponent : 15;
         unsigned sign : 1;
+        unsigned padding : 16;
 #elif !SCN_IS_BIG_ENDIAN && SCN_IS_FLOAT_BIG_ENDIAN
         unsigned exponent : 11;
         unsigned sign : 1;
@@ -4842,9 +4859,14 @@ struct float_traits_impl_f80 {
 
         void apply_significand(significand_int_type s)
         {
-            significand0 = static_cast<unsigned>(s >> 32);
+            significand0 = static_cast<unsigned>(s >> 32u);
             significand1 = static_cast<unsigned>(s);
             one = exponent != 0;
+        }
+
+        void clear_padding()
+        {
+            padding = 0;
         }
     };
 
@@ -4858,6 +4880,7 @@ struct float_traits_impl_f80 {
         unsigned one : 1;
         unsigned exponent : 15;
         unsigned sign : 1;
+        unsigned padding : 16;
 #elif !SCN_IS_BIG_ENDIAN && SCN_IS_FLOAT_BIG_ENDIAN
         unsigned exponent : 15;
         unsigned sign : 1;
@@ -4886,8 +4909,13 @@ struct float_traits_impl_f80 {
             SCN_EXPECT(quiet_nan == 1);
             SCN_EXPECT(exponent == (1u << exponent_bits) - 1u);
             one = 1;
-            payload0 = static_cast<unsigned>(p >> 32);
+            payload0 = static_cast<unsigned>(p >> 32u);
             payload1 = static_cast<unsigned>(p);
+        }
+
+        void clear_padding()
+        {
+            padding = 0;
         }
     };
 };
@@ -4937,6 +4965,8 @@ struct float_traits_impl_f128 {
             significand2 = static_cast<unsigned>(s >> 32u);
             significand3 = static_cast<unsigned>(s);
         }
+
+        void clear_padding() {}
     };
 
     static constexpr unsigned nan_payload_bits = 111;
@@ -4977,6 +5007,8 @@ struct float_traits_impl_f128 {
             payload2 = static_cast<unsigned>(p >> 32u);
             payload3 = static_cast<unsigned>(p);
         }
+
+        void clear_padding() {}
     };
 };
 
@@ -5007,19 +5039,32 @@ struct float_traits_impl_doubledouble {
                 static_cast<base::significand_int_type>(s >> 64u));
             low.apply_significand(static_cast<base::significand_int_type>(s));
         }
+
+        void clear_padding()
+        {
+            high.clear_padding();
+            low.clear_padding();
+        }
     };
 
-    static constexpr unsigned nan_payload_bits = base::nan_payload_bits * 2;
+    static constexpr unsigned nan_payload_bits = base::nan_payload_bits;
 
     struct nan_repr {
         base::nan_repr high;
-        base::nan_repr low;
+        base::value_repr low;
 
         void apply_payload(significand_int_type p)
         {
-            high.apply_payload(
-                static_cast<base::significand_int_type>(p >> 64u));
-            low.apply_payload(static_cast<base::significand_int_type>(p));
+            high.apply_payload(static_cast<base::significand_int_type>(p));
+
+            low.apply_significand(0);
+            low.exponent = 0;
+        }
+
+        void clear_padding()
+        {
+            high.clear_padding();
+            low.clear_padding();
         }
     };
 };
@@ -5053,6 +5098,8 @@ struct float_traits_impl_f16 {
         {
             significand = s;
         }
+
+        void clear_padding() {}
     };
 
     static constexpr unsigned nan_payload_bits = 9;
@@ -5076,6 +5123,8 @@ struct float_traits_impl_f16 {
             SCN_EXPECT(exponent == (1u << exponent_bits) - 1u);
             payload = p;
         }
+
+        void clear_padding() {}
     };
 };
 
@@ -5108,6 +5157,8 @@ struct float_traits_impl_bf16 {
         {
             significand = s;
         }
+
+        void clear_padding() {}
     };
 
     static constexpr unsigned nan_payload_bits = 6;
@@ -5131,6 +5182,8 @@ struct float_traits_impl_bf16 {
             SCN_EXPECT(exponent == (1u << exponent_bits) - 1u);
             payload = p;
         }
+
+        void clear_padding() {}
     };
 };
 
@@ -5333,7 +5386,11 @@ struct high_precision_decimal {
             }
             idx++;
         }
+
+        SCN_GCC_PUSH
+        SCN_GCC_IGNORE("-Wuseless-cast")
         hpd.num_digits = static_cast<std::uint32_t>(idx);
+        SCN_GCC_POP
 
         if (!parts.exponent.empty()) {
             std::int32_t exponent{};
@@ -5479,11 +5536,14 @@ struct high_precision_decimal {
             accumulator = quotient;
         }
 
+        SCN_GCC_PUSH
+        SCN_GCC_IGNORE("-Wuseless-cast")
         num_digits += num_new_digits;
         if (num_digits > static_cast<std::uint32_t>(digits.size())) {
             num_digits = static_cast<std::uint32_t>(digits.size());
         }
         decimal_point += static_cast<std::int32_t>(num_new_digits);
+        SCN_GCC_POP
 
         trim();
     }
@@ -5550,10 +5610,10 @@ private:
         const auto& [delta, pow5] = left_shift_table[shift];
         for (std::size_t i = 0; i < pow5.size(); ++i) {
             if (i >= num_digits) {
-                return delta - 1;
+                return delta - 1u;
             }
             if (const auto digit = char_to_int(pow5[i]); digits[i] != digit) {
-                return digits[i] < digit ? delta - 1 : delta;
+                return digits[i] < digit ? delta - 1u : delta;
             }
         }
         return delta;
@@ -5647,6 +5707,7 @@ scan_expected<void> simple_decimal_conversion(T& result,
     // "Multiply by (2 ** precision) and round to get [the] mantissa"
     value.left_shift(float_traits<T>::fraction_bits);
     auto [significand, significand_rounded_up] = value.rounded_significand<T>();
+    SCN_UNUSED(significand_rounded_up);
 
     if (was_subnormal &&
         (significand >> float_traits<T>::fraction_bits) != 0u) {
@@ -6307,6 +6368,7 @@ struct basic_convert_float {
                 m_options.group_separator = numpunct.thousands_sep();
             }
 #else
+            SCN_UNUSED(loc);
             m_options.group_separator.emplace(CharT{','});
             m_options.grouping = "\3";
 #endif
@@ -6402,7 +6464,7 @@ private:
                                 detail::presentation_type::int_generic;
                             if (auto result =
                                     reader_impl_for_int<char>{}.read_specs(
-                                        std::string_view{nan_payload},
+                                        std::string_view(nan_payload),
                                         payload_specs, parsed_payload, {})) {
                                 apply_nan_payload(value, parsed_payload);
                             }
@@ -6517,6 +6579,7 @@ private:
     scan_expected<void> read_source_for(
         ranges::subrange<Iterator, Sentinel> source)
     {
+        SCN_UNUSED(source);
         if constexpr (Traits::need_reader_state || Traits::need_definite_kind ||
                       !ranges::contiguous_range<
                           ranges::subrange<Iterator, Sentinel>> ||
@@ -6536,6 +6599,42 @@ private:
 
         return {};
     }
+
+    SCN_CLANG_PUSH_IGNORE_UNDEFINED_TEMPLATE
+
+    template <typename Traits,
+              typename Source,
+              typename T,
+              std::enable_if_t<Traits::need_reader_state>* = nullptr>
+    auto call_invoke_convert_for(Source src, T& value)
+    {
+        SCN_EXPECT(m_reader);
+        return Traits::convert(src, value, m_kind, m_reader->state(),
+                               m_can_fall_back);
+    }
+
+    template <typename Traits,
+              typename Source,
+              typename T,
+              std::enable_if_t<!Traits::need_reader_state &&
+                               !Traits::need_definite_kind>* = nullptr>
+    auto call_invoke_convert_for(Source src, T& value)
+    {
+        return Traits::convert(src, value, m_kind, m_options.flags,
+                               m_can_fall_back);
+    }
+
+    template <typename Traits,
+              typename Source,
+              typename T,
+              std::enable_if_t<!Traits::need_reader_state &&
+                               Traits::need_definite_kind>* = nullptr>
+    auto call_invoke_convert_for(Source src, T& value)
+    {
+        return Traits::convert(src, value, m_kind, m_can_fall_back);
+    }
+
+    SCN_CLANG_POP_IGNORE_UNDEFINED_TEMPLATE
 
     template <typename Traits, typename Iterator, typename Sentinel, typename T>
     auto invoke_convert_for(ranges::subrange<Iterator, Sentinel> source,
@@ -6560,8 +6659,8 @@ private:
                 if constexpr (ranges::contiguous_range<decltype(source)>) {
                     if (m_reader) {
                         SCN_EXPECT(m_definite_length != 0);
-                        return std::basic_string_view<CharT>{
-                            m_reader->state().normalized_string};
+                        return std::basic_string_view<CharT>(
+                            m_reader->state().normalized_string);
                     }
                     return std::basic_string_view<CharT>(ranges::data(source),
                                                          ranges::size(source));
@@ -6569,53 +6668,33 @@ private:
                 else {
                     SCN_EXPECT(m_reader);
                     SCN_EXPECT(m_definite_length != 0);
-                    return std::basic_string_view<CharT>{
-                        m_reader->state().normalized_string};
+                    return std::basic_string_view<CharT>(
+                        m_reader->state().normalized_string);
                 }
             }
         });
 
-        auto make_return = [&](auto res) -> scan_expected<Iterator> {
-            if (!res) {
-                return unexpected(res.error());
-            }
+        auto res = call_invoke_convert_for<Traits>(src, value);
+        if (!res) {
+            return unexpected(res.error());
+        }
 
-            if (m_definite_length == 0) {
-                if constexpr (!std::is_same_v<decltype(res),
-                                              scan_expected<void>>) {
-                    if constexpr (std::is_pointer_v<decltype(src)>) {
-                        m_definite_length = ranges::distance(src, *res);
-                    }
-                    else {
-                        m_definite_length = ranges::distance(src.begin(), *res);
-                    }
+        if (m_definite_length == 0) {
+            if constexpr (!std::is_same_v<decltype(res), scan_expected<void>>) {
+                if constexpr (std::is_pointer_v<decltype(src)>) {
+                    m_definite_length = ranges::distance(src, *res);
                 }
                 else {
-                    SCN_EXPECT(false);
+                    m_definite_length = ranges::distance(src.begin(), *res);
                 }
             }
-
-            SCN_ENSURE(m_definite_length != 0);
-            return std::next(source.begin(), m_definite_length);
-        };
-
-        SCN_CLANG_PUSH_IGNORE_UNDEFINED_TEMPLATE
-
-        if constexpr (Traits::need_reader_state) {
-            SCN_EXPECT(m_reader);
-            return make_return(Traits::convert(
-                src, value, m_kind, m_reader->state(), m_can_fall_back));
-        }
-        else if constexpr (!Traits::need_definite_kind) {
-            return make_return(Traits::convert(
-                src, value, m_kind, m_options.flags, m_can_fall_back));
-        }
-        else {
-            return make_return(
-                Traits::convert(src, value, m_kind, m_can_fall_back));
+            else {
+                SCN_EXPECT(false);
+            }
         }
 
-        SCN_CLANG_POP_IGNORE_UNDEFINED_TEMPLATE
+        SCN_ENSURE(m_definite_length != 0);
+        return std::next(source.begin(), m_definite_length);
     }
 
     options<CharT> m_options{};

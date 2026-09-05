@@ -34,17 +34,17 @@ TEST_F(HighPrecisionDecimalTest, RightShiftBy3)
     hpd.right_shift(3);
     EXPECT_EQ(hpd.num_digits, 10);
     EXPECT_EQ(hpd.decimal_point, -1);
-    EXPECT_THAT(
-        std::vector(hpd.digits.begin(), hpd.digits.begin() + hpd.num_digits),
-        testing::ElementsAre(3, 7, 4, 7, 4, 0, 5, 7, 2, 5));
+    EXPECT_THAT(std::vector<std::uint32_t>(hpd.digits.begin(),
+                                           hpd.digits.begin() + hpd.num_digits),
+                testing::ElementsAre(3, 7, 4, 7, 4, 0, 5, 7, 2, 5));
     EXPECT_THAT(hpd.rounded_significand<double>(), FieldsAre(0, false));
 
     hpd.left_shift(3);
     EXPECT_EQ(hpd.num_digits, 9);
     EXPECT_EQ(hpd.decimal_point, 0);
-    EXPECT_THAT(
-        std::vector(hpd.digits.begin(), hpd.digits.begin() + hpd.num_digits),
-        testing::ElementsAre(2, 9, 9, 7, 9, 2, 4, 5, 8));
+    EXPECT_THAT(std::vector<std::uint32_t>(hpd.digits.begin(),
+                                           hpd.digits.begin() + hpd.num_digits),
+                testing::ElementsAre(2, 9, 9, 7, 9, 2, 4, 5, 8));
     EXPECT_THAT(hpd.rounded_significand<double>(), FieldsAre(0, false));
 }
 
@@ -59,18 +59,18 @@ TEST_F(HighPrecisionDecimalTest, RightShiftBy29)
     hpd.right_shift(29);
     EXPECT_EQ(hpd.num_digits, 28);
     EXPECT_EQ(hpd.decimal_point, -9);
-    EXPECT_THAT(
-        std::vector(hpd.digits.begin(), hpd.digits.begin() + hpd.num_digits),
-        testing::ElementsAre(5, 5, 8, 4, 0, 6, 9, 6, 7, 6, 6, 9, 7, 2, 5, 4, 1,
-                             8, 0, 9, 0, 8, 2, 0, 3, 1, 2, 5));
+    EXPECT_THAT(std::vector<std::uint32_t>(hpd.digits.begin(),
+                                           hpd.digits.begin() + hpd.num_digits),
+                testing::ElementsAre(5, 5, 8, 4, 0, 6, 9, 6, 7, 6, 6, 9, 7, 2,
+                                     5, 4, 1, 8, 0, 9, 0, 8, 2, 0, 3, 1, 2, 5));
     EXPECT_THAT(hpd.rounded_significand<double>(), FieldsAre(0, false));
 
     hpd.left_shift(29);
     EXPECT_EQ(hpd.num_digits, 9);
     EXPECT_EQ(hpd.decimal_point, 0);
-    EXPECT_THAT(
-        std::vector(hpd.digits.begin(), hpd.digits.begin() + hpd.num_digits),
-        testing::ElementsAre(2, 9, 9, 7, 9, 2, 4, 5, 8));
+    EXPECT_THAT(std::vector<std::uint32_t>(hpd.digits.begin(),
+                                           hpd.digits.begin() + hpd.num_digits),
+                testing::ElementsAre(2, 9, 9, 7, 9, 2, 4, 5, 8));
     EXPECT_THAT(hpd.rounded_significand<double>(), FieldsAre(0, false));
 }
 
@@ -85,17 +85,17 @@ TEST_F(HighPrecisionDecimalTest, LeftShiftBy1)
     hpd.left_shift(1);
     EXPECT_EQ(hpd.num_digits, 3);
     EXPECT_EQ(hpd.decimal_point, 1);
-    EXPECT_THAT(
-        std::vector(hpd.digits.begin(), hpd.digits.begin() + hpd.num_digits),
-        testing::ElementsAre(2, 4, 6));
+    EXPECT_THAT(std::vector<std::uint32_t>(hpd.digits.begin(),
+                                           hpd.digits.begin() + hpd.num_digits),
+                testing::ElementsAre(2, 4, 6));
     EXPECT_THAT(hpd.rounded_significand<double>(), FieldsAre(2, false));
 
     hpd.right_shift(1);
     EXPECT_EQ(hpd.num_digits, 3);
     EXPECT_EQ(hpd.decimal_point, 1);
-    EXPECT_THAT(
-        std::vector(hpd.digits.begin(), hpd.digits.begin() + hpd.num_digits),
-        testing::ElementsAre(1, 2, 3));
+    EXPECT_THAT(std::vector<std::uint32_t>(hpd.digits.begin(),
+                                           hpd.digits.begin() + hpd.num_digits),
+                testing::ElementsAre(1, 2, 3));
     EXPECT_THAT(hpd.rounded_significand<double>(), FieldsAre(1, false));
 }
 
@@ -111,18 +111,18 @@ TEST_F(HighPrecisionDecimalTest, LeftShiftBy3)
     hpd.left_shift(3);
     EXPECT_EQ(hpd.num_digits, 9);
     EXPECT_EQ(hpd.decimal_point, 11);
-    EXPECT_THAT(
-        std::vector(hpd.digits.begin(), hpd.digits.begin() + hpd.num_digits),
-        testing::ElementsAre(2, 9, 9, 7, 9, 2, 4, 5, 8));
+    EXPECT_THAT(std::vector<std::uint32_t>(hpd.digits.begin(),
+                                           hpd.digits.begin() + hpd.num_digits),
+                testing::ElementsAre(2, 9, 9, 7, 9, 2, 4, 5, 8));
     EXPECT_THAT(hpd.rounded_significand<double>(),
                 FieldsAre(29979245800ull, false));
 
     hpd.right_shift(3);
     EXPECT_EQ(hpd.num_digits, 10);
     EXPECT_EQ(hpd.decimal_point, 10);
-    EXPECT_THAT(
-        std::vector(hpd.digits.begin(), hpd.digits.begin() + hpd.num_digits),
-        testing::ElementsAre(3, 7, 4, 7, 4, 0, 5, 7, 2, 5));
+    EXPECT_THAT(std::vector<std::uint32_t>(hpd.digits.begin(),
+                                           hpd.digits.begin() + hpd.num_digits),
+                testing::ElementsAre(3, 7, 4, 7, 4, 0, 5, 7, 2, 5));
     EXPECT_THAT(hpd.rounded_significand<double>(),
                 FieldsAre(3747405725ull, false));
 }
@@ -138,17 +138,17 @@ TEST_F(HighPrecisionDecimalTest, Pi_F32)
     hpd.right_shift(1);
     EXPECT_EQ(hpd.num_digits, 3);
     EXPECT_EQ(hpd.decimal_point, 1);
-    EXPECT_THAT(
-        std::vector(hpd.digits.begin(), hpd.digits.begin() + hpd.num_digits),
-        testing::ElementsAre(1, 5, 7));
+    EXPECT_THAT(std::vector<std::uint32_t>(hpd.digits.begin(),
+                                           hpd.digits.begin() + hpd.num_digits),
+                testing::ElementsAre(1, 5, 7));
     EXPECT_THAT(hpd.rounded_significand<float>(), FieldsAre(2, true));
 
     hpd.left_shift(23);
     EXPECT_EQ(hpd.num_digits, 10);
     EXPECT_EQ(hpd.decimal_point, 8);
-    EXPECT_THAT(
-        std::vector(hpd.digits.begin(), hpd.digits.begin() + hpd.num_digits),
-        testing::ElementsAre(1, 3, 1, 7, 0, 1, 1, 4, 5, 6));
+    EXPECT_THAT(std::vector<std::uint32_t>(hpd.digits.begin(),
+                                           hpd.digits.begin() + hpd.num_digits),
+                testing::ElementsAre(1, 3, 1, 7, 0, 1, 1, 4, 5, 6));
     EXPECT_THAT(hpd.rounded_significand<float>(), FieldsAre(13170115u, true));
 }
 
@@ -163,41 +163,41 @@ TEST_F(HighPrecisionDecimalTest, PlanckConstant)
     hpd.left_shift(60);
     EXPECT_EQ(hpd.num_digits, 26);
     EXPECT_EQ(hpd.decimal_point, -15);
-    EXPECT_THAT(
-        std::vector(hpd.digits.begin(), hpd.digits.begin() + hpd.num_digits),
-        testing::ElementsAre(7, 6, 3, 9, 3, 3, 8, 7, 6, 6, 9, 6, 8, 5, 1, 6, 2,
-                             3, 3, 2, 9, 1, 3, 6, 6, 4));
+    EXPECT_THAT(std::vector<std::uint32_t>(hpd.digits.begin(),
+                                           hpd.digits.begin() + hpd.num_digits),
+                testing::ElementsAre(7, 6, 3, 9, 3, 3, 8, 7, 6, 6, 9, 6, 8, 5,
+                                     1, 6, 2, 3, 3, 2, 9, 1, 3, 6, 6, 4));
     EXPECT_THAT(hpd.rounded_significand<double>(), FieldsAre(0, false));
 
     hpd.left_shift(49);
     EXPECT_EQ(hpd.num_digits, 41);
     EXPECT_EQ(hpd.decimal_point, 0);
-    EXPECT_THAT(
-        std::vector(hpd.digits.begin(), hpd.digits.begin() + hpd.num_digits),
-        testing::ElementsAre(4, 3, 0, 0, 5, 6, 5, 4, 0, 3, 0, 3, 4, 5, 4, 9, 2,
-                             6, 0, 6, 0, 0, 1, 5, 1, 2, 6, 1, 4, 6, 6, 2, 3, 1,
-                             3, 6, 0, 7, 1, 6, 8));
+    EXPECT_THAT(std::vector<std::uint32_t>(hpd.digits.begin(),
+                                           hpd.digits.begin() + hpd.num_digits),
+                testing::ElementsAre(4, 3, 0, 0, 5, 6, 5, 4, 0, 3, 0, 3, 4, 5,
+                                     4, 9, 2, 6, 0, 6, 0, 0, 1, 5, 1, 2, 6, 1,
+                                     4, 6, 6, 2, 3, 1, 3, 6, 0, 7, 1, 6, 8));
     EXPECT_THAT(hpd.rounded_significand<double>(), FieldsAre(0, false));
 
     hpd.left_shift(1);
     EXPECT_EQ(hpd.num_digits, 41);
     EXPECT_EQ(hpd.decimal_point, 0);
-    EXPECT_THAT(
-        std::vector(hpd.digits.begin(), hpd.digits.begin() + hpd.num_digits),
-        testing::ElementsAre(8, 6, 0, 1, 1, 3, 0, 8, 0, 6, 0, 6, 9, 0, 9, 8, 5,
-                             2, 1, 2, 0, 0, 3, 0, 2, 5, 2, 2, 9, 3, 2, 4, 6, 2,
-                             7, 2, 1, 4, 3, 3, 6));
+    EXPECT_THAT(std::vector<std::uint32_t>(hpd.digits.begin(),
+                                           hpd.digits.begin() + hpd.num_digits),
+                testing::ElementsAre(8, 6, 0, 1, 1, 3, 0, 8, 0, 6, 0, 6, 9, 0,
+                                     9, 8, 5, 2, 1, 2, 0, 0, 3, 0, 2, 5, 2, 2,
+                                     9, 3, 2, 4, 6, 2, 7, 2, 1, 4, 3, 3, 6));
     EXPECT_THAT(hpd.rounded_significand<double>(), FieldsAre(1, true));
 
     hpd.left_shift(53);
     EXPECT_EQ(hpd.num_digits, 57);
     EXPECT_EQ(hpd.decimal_point, 16);
-    EXPECT_THAT(
-        std::vector(hpd.digits.begin(), hpd.digits.begin() + hpd.num_digits),
-        testing::ElementsAre(7, 7, 4, 7, 2, 0, 9, 8, 9, 8, 6, 3, 5, 5, 3, 7, 1,
-                             9, 9, 0, 8, 5, 8, 6, 2, 1, 5, 2, 0, 5, 5, 2, 8, 5,
-                             0, 6, 8, 3, 9, 5, 2, 3, 0, 3, 1, 4, 7, 4, 1, 4, 9,
-                             2, 6, 1, 3, 1, 2));
+    EXPECT_THAT(std::vector<std::uint32_t>(hpd.digits.begin(),
+                                           hpd.digits.begin() + hpd.num_digits),
+                testing::ElementsAre(
+                    7, 7, 4, 7, 2, 0, 9, 8, 9, 8, 6, 3, 5, 5, 3, 7, 1, 9, 9, 0,
+                    8, 5, 8, 6, 2, 1, 5, 2, 0, 5, 5, 2, 8, 5, 0, 6, 8, 3, 9, 5,
+                    2, 3, 0, 3, 1, 4, 7, 4, 1, 4, 9, 2, 6, 1, 3, 1, 2));
     EXPECT_THAT(hpd.rounded_significand<double>(),
                 FieldsAre(7747209898635537ull, false));
 }
@@ -213,12 +213,12 @@ TEST_F(HighPrecisionDecimalTest, PlanckConstant_ShiftAllAtOnce)
     hpd.left_shift(110 + 53);
     EXPECT_EQ(hpd.num_digits, 57);
     EXPECT_EQ(hpd.decimal_point, 16);
-    EXPECT_THAT(
-        std::vector(hpd.digits.begin(), hpd.digits.begin() + hpd.num_digits),
-        testing::ElementsAre(7, 7, 4, 7, 2, 0, 9, 8, 9, 8, 6, 3, 5, 5, 3, 7, 1,
-                             9, 9, 0, 8, 5, 8, 6, 2, 1, 5, 2, 0, 5, 5, 2, 8, 5,
-                             0, 6, 8, 3, 9, 5, 2, 3, 0, 3, 1, 4, 7, 4, 1, 4, 9,
-                             2, 6, 1, 3, 1, 2));
+    EXPECT_THAT(std::vector<std::uint32_t>(hpd.digits.begin(),
+                                           hpd.digits.begin() + hpd.num_digits),
+                testing::ElementsAre(
+                    7, 7, 4, 7, 2, 0, 9, 8, 9, 8, 6, 3, 5, 5, 3, 7, 1, 9, 9, 0,
+                    8, 5, 8, 6, 2, 1, 5, 2, 0, 5, 5, 2, 8, 5, 0, 6, 8, 3, 9, 5,
+                    2, 3, 0, 3, 1, 4, 7, 4, 1, 4, 9, 2, 6, 1, 3, 1, 2));
     EXPECT_THAT(hpd.rounded_significand<double>(),
                 FieldsAre(7747209898635537ull, false));
 }
