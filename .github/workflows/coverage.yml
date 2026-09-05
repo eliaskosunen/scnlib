@@ -39,13 +39,13 @@ env:
   CCACHE_SLOPPINESS: "pch_defines,time_macros"
   CCACHE_UNIFY: true
   DEBIAN_FRONTEND: noninteractive
-  CXX: g++-14
+  CXX: g++-15
   CMAKE_C_COMPILER_LAUNCHER: ccache
   CMAKE_CXX_COMPILER_LAUNCHER: ccache
 
 jobs:
   codecov:
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
 
     steps:
       - name: Setup CMake and Ninja
@@ -58,16 +58,28 @@ jobs:
           sudo update-locale
           sudo locale -a
 
-          sudo apt-get install -yq lcov ccache
+          sudo apt-get update
+          sudo apt-get install -yq ccache
 
           mkdir ${{ runner.workspace }}/build
           mkdir ${{ runner.workspace }}/report
 
+      - name: Install lcov 2.5
+        run: |
+          sudo apt-get install -yq python3-sphinx python3-sphinx-rtd-theme
+          perl -MCPAN -e 'install Capture::Tiny; install DateTime; install Devel::Cover; install Devel::StackTrace; install Digest::MD5; install File::Spec; install JSON::XS; install Memory::Process; install Module::Load::Conditional; install Scalar::Util; install Time::HiRes; install TimeDate'
+          cd ${{ runner.temp }}
+          wget https://github.com/linux-test-project/lcov/releases/download/v2.5/lcov-2.5.tar.gz
+          tar -xzf lcov-2.5.tar.gz
+          cd lcov-2.5
+          sudo make install LCOV_NO_DOC=1
+          lcov --version
+
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Load ccache
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: ${{ env.CCACHE_DIR }}
           key: ccache-coverage-${{ github.sha }}

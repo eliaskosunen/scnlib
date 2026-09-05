@@ -83,10 +83,10 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Load ccache
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: ${{ env.CCACHE_DIR }}
           key: ccache-arch-${{ matrix.distro }}-${{ matrix.arch }}-${{ matrix.base_image_tag }}-${{ github.sha }}
@@ -162,7 +162,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Create Build Environment
         run: |
@@ -170,7 +170,7 @@ jobs:
           choco install ccache
 
       - name: Load ccache
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: ${{ env.CCACHE_DIR }}
           key: ccache-Windows-win2022-msvc${{ matrix.arch }}-std17-${{ github.sha }}
@@ -221,7 +221,7 @@ jobs:
           mkdir ${{ runner.workspace }}/build
 
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Run CMake
         working-directory: ${{ runner.workspace }}/build
@@ -258,7 +258,7 @@ jobs:
           cmake -E make_directory ${{ runner.workspace }}/build
 
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Run CMake
         working-directory: ${{ runner.workspace }}/build
