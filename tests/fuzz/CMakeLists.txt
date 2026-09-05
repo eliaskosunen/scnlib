@@ -23,6 +23,7 @@ endfunction()
 
 add_fuzzer(int)
 add_fuzzer(float)
+add_fuzzer(float_roundtrip)
 add_fuzzer(string)
 add_fuzzer(format)
 add_fuzzer(chrono)

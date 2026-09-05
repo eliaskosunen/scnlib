@@ -5684,8 +5684,8 @@ scan_expected<void> simple_decimal_conversion(T& result,
     }
 
     auto biased_exponent = exp2 + exp_bias;
-    // constexpr auto max_biased_exponent =
-    //     (1 << float_traits<T>::exponent_bits) - 1;
+    constexpr auto max_biased_exponent =
+        (1 << float_traits<T>::exponent_bits) - 1;
     bool was_subnormal = false;
 
     if (biased_exponent <= 0) {
@@ -5715,19 +5715,19 @@ scan_expected<void> simple_decimal_conversion(T& result,
         ++biased_exponent;
     }
 
-    // Check that the mantissa fits (rounding may have added an extra bit).
-    // If it doesn't, shift down by one.
-    // if (significand_rounded_up &&
-    //    (significand == 0u || count_trailing_zeroes(significand) ==
-    //                              float_traits<T>::fraction_bits)) {
-    //    significand >>= 1u;
-    //    ++biased_exponent;
-    //    if (biased_exponent >= max_biased_exponent) {
-    //        return detail::unexpected_scan_error(
-    //            scan_error::value_positive_overflow,
-    //            "Parsed float exponent too large");
-    //    }
-    //}
+    // Check that the mantissa fits in fraction_bits.
+    // Rounding may have pushed the significand to exactly
+    // 2^(fraction_bits+1), which overflows the normal range.
+    // If so, shift down by one and bump the exponent.
+    if ((significand >> float_traits<T>::fraction_bits) > 1u) {
+        significand >>= 1u;
+        ++biased_exponent;
+        if (biased_exponent >= max_biased_exponent) {
+            return detail::unexpected_scan_error(
+                scan_error::value_positive_overflow,
+                "Parsed float exponent too large");
+        }
+    }
 
     if (significand == 0u && biased_exponent == 0 && value.decimal_point < 0) {
         // Value rounded to zero, but the input was non-zero
