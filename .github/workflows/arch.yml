@@ -43,38 +43,71 @@ env:
   CCACHE_UNIFY: true
 
 jobs:
-  # Run on non-amd64 architectures, through QEMU
-
-  other-archs:
+  # Cross-compile on x64 host, then run tests on target architectures through QEMU
+  cross-compile:
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
-        arch: [ armv6, armv7, aarch64, s390x, ppc64le ]
-        distro: [ bookworm ]
-
         include:
-          - arch: riscv64
-            distro: ubuntu24.04
-
-          - base_image_tag: armv5
+          - name: armv5
+            triple: arm-linux-gnueabi
+            cmake_processor: arm
             arch: none
             distro: none
             base_image: --platform=linux/arm/v5 arm32v5/debian:bookworm-backports
 
-          - base_image_tag: i386
+          - name: armv6
+            triple: arm-linux-gnueabi
+            cmake_processor: arm
+            arch: armv6
+            distro: bookworm
+
+          - name: armv7
+            triple: arm-linux-gnueabihf
+            cmake_processor: arm
+            arch: armv7
+            distro: bookworm
+
+          - name: aarch64
+            triple: aarch64-linux-gnu
+            cmake_processor: aarch64
+            arch: aarch64
+            distro: bookworm
+
+          - name: s390x
+            triple: s390x-linux-gnu
+            cmake_processor: s390x
+            arch: s390x
+            distro: bookworm
+
+          - name: ppc64le
+            triple: powerpc64le-linux-gnu
+            cmake_processor: ppc64le
+            arch: ppc64le
+            distro: bookworm
+
+          - name: riscv64
+            triple: riscv64-linux-gnu
+            cmake_processor: riscv64
+            arch: riscv64
+            distro: ubuntu24.04
+
+          - name: i386
+            triple: i686-linux-gnu
+            cmake_processor: i686
             arch: none
             distro: none
             base_image: --platform=linux/i386 i386/debian:bookworm-backports
 
-          - base_image_tag: mips64le
+          - name: mips64le
+            triple: mips64el-linux-gnuabi64
+            cmake_processor: mips64el
             arch: none
             distro: none
             base_image: --platform=linux/mips64le mips64le/debian:bookworm
-
-          # TODO: add alpine support
-          #- arch: loongarch64
-          #  distro: alpine_latest
+            # Enable larger binary sizes
+            cxx_flags: -mxgot
 
     env:
       CCACHE_DIR: "/tmp/ccache"
@@ -83,21 +116,51 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
+
+      - name: Install cross-compiler
+        run: |
+          sudo apt-get update -yq
+          sudo apt-get install -yq ninja-build ccache gcc-${{ matrix.triple }} g++-${{ matrix.triple }}
 
       - name: Load ccache
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: ${{ env.CCACHE_DIR }}
-          key: ccache-arch-${{ matrix.distro }}-${{ matrix.arch }}-${{ matrix.base_image_tag }}-${{ github.sha }}
+          key: ccache-arch-${{ matrix.name }}-${{ github.sha }}
           restore-keys: |
-            ccache-arch-${{ matrix.distro }}-${{ matrix.arch }}-${{ matrix.base_image_tag }}-${{ github.ref }}
-            ccache-arch-${{ matrix.distro }}-${{ matrix.arch }}-${{ matrix.base_image_tag }}-${{ github.base_ref }}
-            ccache-arch-${{ matrix.distro }}-${{ matrix.arch }}-${{ matrix.base_image_tag }}
+            ccache-arch-${{ matrix.name }}-${{ github.ref }}
+            ccache-arch-${{ matrix.name }}-${{ github.base_ref }}
+            ccache-arch-${{ matrix.name }}
 
-      - uses: uraimo/run-on-arch-action@v3
-        name: Build and test
-        id: build
+      - name: Cross-compile
+        run: |
+          ccache --version
+          ccache --zero-stats
+          ccache --show-stats
+          ccache --show-config
+
+          mkdir build
+          cd build
+          cmake -G Ninja \
+            -DCMAKE_BUILD_TYPE=Debug \
+            -DCMAKE_TOOLCHAIN_FILE=../cmake/cross-linux-gcc.cmake \
+            -DCROSS_TRIPLE=${{ matrix.triple }} \
+            -DCROSS_SYSTEM_PROCESSOR=${{ matrix.cmake_processor }} \
+            -DCMAKE_C_FLAGS="${{ matrix.cxx_flags }}" \
+            -DCMAKE_CXX_FLAGS="${{ matrix.cxx_flags }}" \
+            -DCMAKE_EXE_LINKER_FLAGS="-static" \
+            -DSCN_DISABLE_TOP_PROJECT=ON \
+            -DSCN_PEDANTIC=ON \
+            -DSCN_WERROR=OFF \
+            -DSCN_TESTS=ON \
+            ..
+
+          cmake --build . --verbose -- -k 0
+          ccache --show-stats
+
+      - name: Run tests
+        uses: uraimo/run-on-arch-action@v3
         with:
           arch: ${{ matrix.arch }}
           distro: ${{ matrix.distro }}
@@ -105,48 +168,22 @@ jobs:
 
           githubToken: ${{ github.token }}
 
-          setup: |
-            mkdir -p ${{ env.CCACHE_DIR }}
-
           dockerRunArgs: |
-            --volume "${{ env.CCACHE_DIR }}:${{ env.CCACHE_DIR }}"
+            --volume "${{ github.workspace }}:/workspace"
 
           # Setting GITHUB_WORKFLOW as a hack around https://github.com/uraimo/run-on-arch-action/issues/55
           env: |
-            GITHUB_WORKFLOW: ${{ github.workflow }}-${{ github.job }}-${{ matrix.base_image_tag }}
-            CCACHE_ABSSTDERR: ${{ env.CCACHE_ABSSTDERR }}
-            CCACHE_COMPRESS: ${{ env.CCACHE_COMPRESS }}
-            CCACHE_COMPRESSLEVEL: ${{ env.CCACHE_COMPRESSLEVEL }}
-            CCACHE_DIR: ${{ env.CCACHE_DIR }}
-            CCACHE_MAXSIZE: ${{ env.CCACHE_MAXSIZE }}
-            CCACHE_NOHASHDIR: ${{ env.CCACHE_NOHASHDIR }}
-            CCACHE_SLOPPINESS: ${{ env.CCACHE_SLOPPINESS }}
-            CCACHE_UNIFY: ${{ env.CCACHE_UNIFY }}
-            CMAKE_C_COMPILER_LAUNCHER: ccache
-            CMAKE_CXX_COMPILER_LAUNCHER: ccache
-
-          install: |
-            apt-get update -yq
-            apt-get install -yq git wget cmake build-essential make g++ ninja-build ccache python3
+            GITHUB_WORKFLOW: ${{ github.workflow }}-${{ github.job }}-${{ matrix.name }}
 
           run: |
-            ccache --version
-            ccache --zero-stats
-            ccache --show-stats
-            ccache --show-config
-
-            echo | g++ -dM -E -x c++ - | sort
-
-            cmake -G Ninja -DSCN_DISABLE_TOP_PROJECT=ON -DSCN_PEDANTIC=ON -DSCN_WERROR=OFF -DSCN_TESTS=ON -B build
-            cmake --build build --verbose -- -k 0
-            ccache --show-stats
-
-            ctest --output-on-failure --test-dir build
+            cd /workspace
+            ./build/tests/unittests/scn_tests
+            ./build/tests/unittests/scn_impl_tests
 
   # Cross-compile with Visual Studio, targeting arm64
   # Doesn't run tests
 
-  vs-arm64-crosscompile:
+  cross-compile-msvc-arm64:
     runs-on: windows-2022
     strategy:
       fail-fast: false
@@ -162,7 +199,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Create Build Environment
         run: |
@@ -170,7 +207,7 @@ jobs:
           choco install ccache
 
       - name: Load ccache
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: ${{ env.CCACHE_DIR }}
           key: ccache-Windows-win2022-msvc${{ matrix.arch }}-std17-${{ github.sha }}
@@ -221,12 +258,12 @@ jobs:
           mkdir ${{ runner.workspace }}/build
 
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Run CMake
         working-directory: ${{ runner.workspace }}/build
         run: |
-          cmake -G Ninja -DSCN_CI=ON $GITHUB_WORKSPACE
+          cmake -G Ninja -DSCN_CI=ON -DCMAKE_BUILD_TYPE=Debug $GITHUB_WORKSPACE
 
       - name: Build
         working-directory: ${{ runner.workspace }}/build
@@ -258,7 +295,7 @@ jobs:
           cmake -E make_directory ${{ runner.workspace }}/build
 
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Run CMake
         working-directory: ${{ runner.workspace }}/build

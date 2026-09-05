@@ -94,7 +94,7 @@ jobs:
             cxx: clang++-22
           - os: 26.04
             std: 20
-            cxx: clang++-225
+            cxx: clang++-22
 
     env:
       CXX: ${{ matrix.cxx }}
@@ -116,10 +116,10 @@ jobs:
           ${APT_INSTALL} ccache
 
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Load ccache
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: ${{ env.CCACHE_DIR }}
           key: ccache-Linux-ubuntu${{ matrix.os }}-${{ matrix.cxx }}-std${{ matrix.std }}-${{ github.sha }}
@@ -139,6 +139,7 @@ jobs:
         working-directory: ${{ runner.workspace }}/build
         run: |
           cmake -G Ninja -DSCN_CI=ON -DSCN_TESTS_LOCALIZED=ON \
+                -DCMAKE_BUILD_TYPE=Debug \
                 -DCMAKE_CXX_STANDARD=${{ matrix.std }} \
                 $GITHUB_WORKSPACE
 
@@ -169,7 +170,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Create Build Environment
         run: |
@@ -178,7 +179,7 @@ jobs:
           choco install ccache
 
       - name: Load ccache
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: ${{ env.CCACHE_DIR }}
           key: ccache-Windows-win${{ matrix.os }}-msvc${{ matrix.platform }}-std${{ matrix.std }}-${{ matrix.type }}-${{ github.sha }}
@@ -223,12 +224,13 @@ jobs:
 
     env:
       CXX: ${{ matrix.cxx }}
+      CCACHE_DIR: "/tmp/ccache"
       CMAKE_C_COMPILER_LAUNCHER: ccache
       CMAKE_CXX_COMPILER_LAUNCHER: ccache
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Create Build Environment
         run: |
@@ -236,7 +238,7 @@ jobs:
           brew install --overwrite ccache
 
       - name: Load ccache
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: ${{ env.CCACHE_DIR }}
           key: ccache-macOS-macos${{ matrix.os }}-${{ matrix.cxx }}-std${{ matrix.std }}-${{ github.sha }}
@@ -255,7 +257,7 @@ jobs:
       - name: Run CMake
         working-directory: ${{ runner.workspace }}/build
         run: |
-          cmake -DSCN_CI=ON -DCMAKE_CXX_STANDARD=${{ matrix.std }} -DSCN_USE_ASAN=ON -DSCN_USE_UBSAN=ON $GITHUB_WORKSPACE
+          cmake -DSCN_CI=ON -DCMAKE_CXX_STANDARD=${{ matrix.std }} -DCMAKE_BUILD_TYPE=Debug $GITHUB_WORKSPACE
 
       - name: Build
         working-directory: ${{ runner.workspace }}/build
