@@ -1176,6 +1176,20 @@ TYPED_TEST_P(FloatTestSuite, NormalMinHex)
     EXPECT_TRUE(TestFixture::test_success(TestFixture::values::normal_min_hex));
 }
 
+TYPED_TEST_P(FloatTestSuite, FoundWithFuzzing)
+{
+    if constexpr (std::numeric_limits<
+                      typename TestFixture::float_type>::min_exponent10 > -36) {
+        GTEST_SKIP() << "Value out of range for this float type";
+    }
+    else {
+        EXPECT_TRUE(TestFixture::test_success(
+            {static_cast<typename TestFixture::float_type>(
+                 SCN_FLOAT_CONSTANT(1.504632769e-36)),
+             "1.504632769e-36"}));
+    }
+}
+
 REGISTER_TYPED_TEST_SUITE_P(FloatTestSuite,
                             Zero,
                             ZeroWithZeroExponent,
@@ -1210,7 +1224,8 @@ REGISTER_TYPED_TEST_SUITE_P(FloatTestSuite,
                             Max,
                             MaxHex,
                             NormalMin,
-                            NormalMinHex);
+                            NormalMinHex,
+                            FoundWithFuzzing);
 
 template <template <typename, typename> class T>
 using float_test_suite_types = ::testing::Types<T<char, float>,
