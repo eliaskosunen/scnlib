@@ -56,6 +56,7 @@ make_scn_test(scn_tests
         string_test.cpp
         string_view_test.cpp
         unicode_test.cpp
+        xchar_test.cpp
 )
 add_test(NAME scn_tests COMMAND scn_tests)
 
@@ -67,6 +68,7 @@ make_scn_test(scn_impl_tests
         impl_tests/file_test.cpp
         impl_tests/find_fast_test.cpp
         impl_tests/function_ref_test.cpp
+        impl_tests/ranges_util_test.cpp
         impl_tests/read_algorithms_test.cpp
         impl_tests/text_width_test.cpp
         impl_tests/transcode_test.cpp

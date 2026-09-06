@@ -451,6 +451,103 @@ TEST(IntegerTest, HexNoPrefixFollowedByNonDigit_Hex)
     EXPECT_EQ(result->value(), 0xf);
 }
 
+TEST(IntegerTest, OverflowPositive)
+{
+    auto result = scn::scan<std::int32_t>("99999999999999999999", "{}");
+    ASSERT_FALSE(result);
+    EXPECT_EQ(result.error().code(), scn::scan_error::value_positive_overflow);
+}
+
+TEST(IntegerTest, OverflowNegative)
+{
+    auto result = scn::scan<std::int32_t>("-99999999999999999999", "{}");
+    ASSERT_FALSE(result);
+    EXPECT_EQ(result.error().code(), scn::scan_error::value_negative_overflow);
+}
+
+TEST(IntegerTest, UnsignedNegative)
+{
+    auto result = scn::scan<unsigned>("-42", "{}");
+    ASSERT_FALSE(result);
+}
+
+TEST(IntegerTest, BinaryFormat)
+{
+    auto [result, val] = do_test<int>("0b1010", "{:b}");
+    EXPECT_TRUE(result);
+    EXPECT_EQ(val, 10);
+}
+
+TEST(IntegerTest, OctalFormat)
+{
+    auto [result, val] = do_test<int>("0o77", "{:o}");
+    EXPECT_TRUE(result);
+    EXPECT_EQ(val, 63);
+}
+
+TEST(IntegerTest, HexadecimalFormat)
+{
+    auto [result, val] = do_test<int>("0xFF", "{:x}");
+    EXPECT_TRUE(result);
+    EXPECT_EQ(val, 255);
+}
+
+TEST(IntegerTest, AutoDetectHex)
+{
+    auto [result, val] = do_test<int>("0x10", "{:i}");
+    EXPECT_TRUE(result);
+    EXPECT_EQ(val, 16);
+}
+
+TEST(IntegerTest, AutoDetectBinary)
+{
+    auto [result, val] = do_test<int>("0b10", "{:i}");
+    EXPECT_TRUE(result);
+    EXPECT_EQ(val, 2);
+}
+
+TEST(IntegerTest, AutoDetectOctal)
+{
+    auto [result, val] = do_test<int>("010", "{:i}");
+    EXPECT_TRUE(result);
+    EXPECT_EQ(val, 8);
+}
+
+TEST(IntegerTest, ShortInt)
+{
+    auto [result, val] = do_test<std::int16_t>("12345", "{}");
+    EXPECT_TRUE(result);
+    EXPECT_EQ(val, 12345);
+}
+
+TEST(IntegerTest, LongLongInt)
+{
+    auto [result, val] = do_test<std::int64_t>("9876543210", "{}");
+    EXPECT_TRUE(result);
+    EXPECT_EQ(val, 9876543210LL);
+}
+
+TEST(IntegerTest, Int8Max)
+{
+    auto [result, val] = do_test<std::int8_t>("127", "{}");
+    EXPECT_TRUE(result);
+    EXPECT_EQ(val, 127);
+}
+
+TEST(IntegerTest, Int8Min)
+{
+    auto [result, val] = do_test<std::int8_t>("-128", "{}");
+    EXPECT_TRUE(result);
+    EXPECT_EQ(val, -128);
+}
+
+TEST(IntegerTest, UInt64Max)
+{
+    auto [result, val] = do_test<std::uint64_t>("18446744073709551615", "{}");
+    EXPECT_TRUE(result);
+    EXPECT_EQ(val, 18446744073709551615ULL);
+}
+
 TEST(IntegerTest, Fuzz_RepeatedString)
 {
     std::string_view input = "0\n0";
