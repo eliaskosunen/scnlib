@@ -51,4 +51,38 @@ TEST(IstreamScannerTest, OtherValues)
     EXPECT_EQ(c.i, 789);
 }
 
+TEST(IstreamScannerTest, EmptyInput)
+{
+    auto result = scn::scan<has_istream_operator>("", "{}");
+    ASSERT_FALSE(result);
+}
+
+TEST(IstreamScannerTest, InvalidInput)
+{
+    auto result = scn::scan<has_istream_operator>("notanumber", "{}");
+    ASSERT_FALSE(result);
+}
+
+TEST(IstreamScannerTest, WithLiteral)
+{
+    auto result = scn::scan<has_istream_operator>("value=42", "value={}");
+    ASSERT_TRUE(result);
+    EXPECT_EQ(result->value().i, 42);
+}
+
+TEST(IstreamScannerTest, NegativeValue)
+{
+    auto result = scn::scan<has_istream_operator>("-123", "{}");
+    ASSERT_TRUE(result);
+    EXPECT_EQ(result->value().i, -123);
+}
+
+TEST(IstreamScannerTest, WithTrailingContent)
+{
+    auto result = scn::scan<has_istream_operator>("42 extra", "{}");
+    ASSERT_TRUE(result);
+    EXPECT_EQ(result->value().i, 42);
+    EXPECT_STREQ(result->begin(), " extra");
+}
+
 #endif

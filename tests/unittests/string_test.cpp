@@ -155,11 +155,6 @@ TEST(StringTest, WonkyInput)
     auto result = scn::scan<std::string>(input, "{:.64c}");
     ASSERT_FALSE(result);
     EXPECT_EQ(result.error().code(), scn::scan_error::invalid_scanned_value);
-#if 0
-    ASSERT_TRUE(result);
-    EXPECT_TRUE(result->range().empty());
-    EXPECT_EQ(result->value(), input);
-#endif
 }
 
 TEST(StringTest, WonkyInputAndFormatWithTranscoding)
@@ -180,14 +175,6 @@ TEST(StringTest, WonkyInput2)
     auto result = scn::scan<std::string_view>(input, "{}");
     ASSERT_FALSE(result);
     EXPECT_EQ(result.error().code(), scn::scan_error::invalid_scanned_value);
-#if 0
-    ASSERT_TRUE(result);
-    EXPECT_EQ(result->value(), "\303");
-
-    result = scn::scan<std::string_view>(result->range(), "{}");
-    ASSERT_TRUE(result);
-    EXPECT_EQ(result->value(), input.substr(2));
-#endif
 }
 
 TEST(StringTest, WonkyInput3)
@@ -201,10 +188,6 @@ TEST(StringTest, WonkyInput3)
     auto result = scn::scan<std::string>(input, "{}");
     ASSERT_FALSE(result);
     EXPECT_EQ(result.error().code(), scn::scan_error::invalid_scanned_value);
-#if 0
-    ASSERT_TRUE(result);
-    EXPECT_TRUE(result->range().empty());
-#endif
 }
 
 TEST(StringTest, RecoveryFromInvalidEncoding)
@@ -213,9 +196,52 @@ TEST(StringTest, RecoveryFromInvalidEncoding)
     auto result = scn::scan<std::string>(source, "{}");
     ASSERT_FALSE(result);
     EXPECT_EQ(result.error().code(), scn::scan_error::invalid_scanned_value);
-#if 0
+}
+
+TEST(StringTest, EmptyString)
+{
+    auto result = scn::scan<std::string>("", "{}");
+    ASSERT_FALSE(result);
+    EXPECT_EQ(result.error().code(), scn::scan_error::end_of_input);
+}
+
+TEST(StringTest, StringWithWidth)
+{
+    auto result = scn::scan<std::string>("hello world", "{:5}");
     ASSERT_TRUE(result);
-    EXPECT_EQ(result->value(), "a\xc3");
-    EXPECT_EQ(result->begin(), source.end() - 1);
-#endif
+    EXPECT_EQ(result->value(), "hello");
+    EXPECT_STREQ(result->begin(), " world");
+}
+
+TEST(StringTest, MultipleStrings)
+{
+    auto result = scn::scan<std::string, std::string, std::string>("a b c", "{} {} {}");
+    ASSERT_TRUE(result);
+    auto [a, b, c] = result->values();
+    EXPECT_EQ(a, "a");
+    EXPECT_EQ(b, "b");
+    EXPECT_EQ(c, "c");
+}
+
+TEST(StringTest, StringWithWhitespace)
+{
+    auto result = scn::scan<std::string>("   leading", "{}");
+    ASSERT_TRUE(result);
+    EXPECT_EQ(result->value(), "leading");
+}
+
+TEST(StringTest, UnicodeString)
+{
+    auto result = scn::scan<std::string>("你好世界 next", "{}");
+    ASSERT_TRUE(result);
+    EXPECT_EQ(result->value(), "你好世界");
+}
+
+TEST(StringTest, StringThenInt)
+{
+    auto result = scn::scan<std::string, int>("hello 42", "{} {}");
+    ASSERT_TRUE(result);
+    auto [str, num] = result->values();
+    EXPECT_EQ(str, "hello");
+    EXPECT_EQ(num, 42);
 }

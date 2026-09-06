@@ -104,3 +104,34 @@ TEST(ScanBufferTest, Deque2)
               "b");
     EXPECT_EQ(collect(scn::ranges::subrange{cached_it, it}), "bc");
 }
+
+TEST(ScanBufferTest, EmptyStringView)
+{
+    auto buf = scn::detail::make_string_scan_buffer(""sv);
+    EXPECT_TRUE(buf.is_contiguous());
+    EXPECT_EQ(buf.chars_available(), 0);
+    EXPECT_EQ(buf.get().begin(), buf.get().end());
+}
+
+TEST(ScanBufferTest, LargeStringView)
+{
+    std::string large(1000, 'x');
+    auto buf = scn::detail::make_string_scan_buffer(std::string_view{large});
+    EXPECT_TRUE(buf.is_contiguous());
+    EXPECT_EQ(buf.chars_available(), 1000);
+}
+
+TEST(ScanBufferTest, StringViewIteration)
+{
+    auto buf = scn::detail::make_string_scan_buffer("test"sv);
+    auto it = buf.get().begin();
+    EXPECT_EQ(*it, 't');
+    ++it;
+    EXPECT_EQ(*it, 'e');
+    ++it;
+    EXPECT_EQ(*it, 's');
+    ++it;
+    EXPECT_EQ(*it, 't');
+    ++it;
+    EXPECT_EQ(it, buf.get().end());
+}
