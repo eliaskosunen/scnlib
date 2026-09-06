@@ -259,3 +259,181 @@ TEST(ScanTest, Pointer)
     EXPECT_EQ(reinterpret_cast<uintptr_t>(a), 0xdeadbeef);
     EXPECT_EQ(reinterpret_cast<uintptr_t>(b), 0xABBAABBA);
 }
+
+TEST(ScanTest, ScanValueWithDefaultSuccess)
+{
+    auto result = scn::scan_value<int>("789", 123);
+    ASSERT_TRUE(result);
+    EXPECT_EQ(result->value(), 789);
+}
+
+TEST(ScanTest, ScanValueWithDefaultFailure)
+{
+    auto result = scn::scan_value<int>("notanumber", 999);
+    ASSERT_FALSE(result);
+}
+
+TEST(ScanTest, DiscardFloat)
+{
+    auto result = scn::scan<double, scn::discard<double>, double>("1.5 2.5 3.5",
+                                                                  "{} {} {}");
+    ASSERT_TRUE(result);
+    auto [a, _, b] = result->values();
+    EXPECT_DOUBLE_EQ(a, 1.5);
+    EXPECT_DOUBLE_EQ(b, 3.5);
+}
+
+TEST(ScanTest, DiscardString)
+{
+    auto result =
+        scn::scan<std::string, scn::discard<std::string>, std::string>(
+            "hello world bye", "{} {} {}");
+    ASSERT_TRUE(result);
+    auto [a, _, b] = result->values();
+    EXPECT_EQ(a, "hello");
+    EXPECT_EQ(b, "bye");
+}
+
+TEST(ScanTest, DiscardChar)
+{
+    auto result = scn::scan<char, scn::discard<char>, char>("abc", "{}{}{}");
+    ASSERT_TRUE(result);
+    auto [a, _, b] = result->values();
+    EXPECT_EQ(a, 'a');
+    EXPECT_EQ(b, 'c');
+}
+
+TEST(ScanTest, EmptySource)
+{
+    auto result = scn::scan<int>("", "{}");
+    ASSERT_FALSE(result);
+    EXPECT_EQ(result.error().code(), scn::scan_error::end_of_input);
+}
+
+TEST(ScanTest, MixedTypes)
+{
+    auto result = scn::scan<int, double, std::string, char>("42 3.14 hello w",
+                                                            "{} {} {} {}");
+    ASSERT_TRUE(result);
+    auto [i, d, s, c] = result->values();
+    EXPECT_EQ(i, 42);
+    EXPECT_DOUBLE_EQ(d, 3.14);
+    EXPECT_EQ(s, "hello");
+    EXPECT_EQ(c, 'w');
+}
+
+TEST(ScanTest, LongSequence)
+{
+    auto result =
+        scn::scan<int, int, int, int, int>("1 2 3 4 5", "{} {} {} {} {}");
+    ASSERT_TRUE(result);
+    auto [a, b, c, d, e] = result->values();
+    EXPECT_EQ(a, 1);
+    EXPECT_EQ(b, 2);
+    EXPECT_EQ(c, 3);
+    EXPECT_EQ(d, 4);
+    EXPECT_EQ(e, 5);
+}
+
+TEST(ScanTest, WithLiterals)
+{
+    auto result = scn::scan<int, int>("value=42,next=99", "value={},next={}");
+    ASSERT_TRUE(result);
+    auto [a, b] = result->values();
+    EXPECT_EQ(a, 42);
+    EXPECT_EQ(b, 99);
+}
+
+TEST(ScanTest, TrailingContent)
+{
+    auto result = scn::scan<int>("42 extra stuff", "{}");
+    ASSERT_TRUE(result);
+    EXPECT_EQ(result->value(), 42);
+    EXPECT_STREQ(result->begin(), " extra stuff");
+}
+
+TEST(ScanTest, ConsecutiveScans)
+{
+    std::string_view source = "10 20 30";
+    auto r1 = scn::scan<int>(source, "{}");
+    ASSERT_TRUE(r1);
+    EXPECT_EQ(r1->value(), 10);
+
+    auto r2 = scn::scan<int>(r1->range(), "{}");
+    ASSERT_TRUE(r2);
+    EXPECT_EQ(r2->value(), 20);
+
+    auto r3 = scn::scan<int>(r2->range(), "{}");
+    ASSERT_TRUE(r3);
+    EXPECT_EQ(r3->value(), 30);
+}
+
+TEST(ScanTest, FloatAndInt)
+{
+    auto result = scn::scan<float, int>("2.5 100", "{} {}");
+    ASSERT_TRUE(result);
+    auto [f, i] = result->values();
+    EXPECT_FLOAT_EQ(f, 2.5f);
+    EXPECT_EQ(i, 100);
+}
+
+TEST(ScanTest, NegativeNumbers)
+{
+    auto result = scn::scan<int, double>("-123 -45.67", "{} {}");
+    ASSERT_TRUE(result);
+    auto [i, d] = result->values();
+    EXPECT_EQ(i, -123);
+    EXPECT_DOUBLE_EQ(d, -45.67);
+}
+
+TEST(ScanTest, UnsignedAndSigned)
+{
+    auto result = scn::scan<unsigned, int>("100 -50", "{} {}");
+    ASSERT_TRUE(result);
+    auto [u, s] = result->values();
+    EXPECT_EQ(u, 100u);
+    EXPECT_EQ(s, -50);
+}
+
+TEST(ScanTest, LongDouble)
+{
+    auto result = scn::scan<long double>("123.456789", "{}");
+    ASSERT_TRUE(result);
+    EXPECT_THAT(result->value(),
+                testing::DistanceFrom(123.456789L, testing::Lt(0.000001L)));
+}
+
+TEST(ScanTest, ShortString)
+{
+    auto result = scn::scan<std::string>("x", "{}");
+    ASSERT_TRUE(result);
+    EXPECT_EQ(result->value(), "x");
+}
+
+TEST(ScanTest, ThreeInts)
+{
+    auto result = scn::scan<int, int, int>("1 2 3", "{} {} {}");
+    ASSERT_TRUE(result);
+    auto [a, b, c] = result->values();
+    EXPECT_EQ(a, 1);
+    EXPECT_EQ(b, 2);
+    EXPECT_EQ(c, 3);
+}
+
+TEST(ScanTest, BoolThenInt)
+{
+    auto result = scn::scan<bool, int>("true 42", "{} {}");
+    ASSERT_TRUE(result);
+    auto [b, i] = result->values();
+    EXPECT_TRUE(b);
+    EXPECT_EQ(i, 42);
+}
+
+TEST(ScanTest, CharThenString)
+{
+    auto result = scn::scan<char, std::string>("a hello", "{} {}");
+    ASSERT_TRUE(result);
+    auto [c, s] = result->values();
+    EXPECT_EQ(c, 'a');
+    EXPECT_EQ(s, "hello");
+}

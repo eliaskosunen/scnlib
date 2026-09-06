@@ -185,3 +185,33 @@ TEST(ResultTest, TuplePassthroughWithImplicitTypes)
     EXPECT_EQ(value, 42);
     EXPECT_TRUE(result->range().empty());
 }
+
+TEST(ResultTest, HasValueCheck)
+{
+    auto success = scn::scan<int>("42", "{}");
+    ASSERT_TRUE(success);
+    EXPECT_TRUE(success.has_value());
+
+    auto failure = scn::scan<int>("not a number", "{}");
+    ASSERT_FALSE(failure);
+    EXPECT_FALSE(failure.has_value());
+}
+
+TEST(ResultTest, ErrorAccess)
+{
+    auto failure = scn::scan<int>("not a number", "{}");
+    ASSERT_FALSE(failure);
+    EXPECT_EQ(failure.error().code(), scn::scan_error::invalid_scanned_value);
+}
+
+TEST(ResultTest, MultipleResultsChained)
+{
+    auto source = std::string_view{"42 99"};
+    auto result1 = scn::scan<int>(source, "{}");
+    ASSERT_TRUE(result1);
+    EXPECT_EQ(result1->value(), 42);
+
+    auto result2 = scn::scan<int>(result1->range(), "{}");
+    ASSERT_TRUE(result2);
+    EXPECT_EQ(result2->value(), 99);
+}
