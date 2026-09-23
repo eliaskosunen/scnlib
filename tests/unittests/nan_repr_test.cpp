@@ -52,7 +52,7 @@ TYPED_TEST_SUITE(NanReprTest, TypeList);
 TYPED_TEST(NanReprTest, MakeWithPayload)
 {
     auto nan_val = make_nan_with_payload<TypeParam>("32");
-    EXPECT_TRUE(std::isnan(nan_val));
+    EXPECT_TRUE(classify_float(nan_val).is_nan());
 
     nan_repr<float_kind_for<TypeParam>> repr(nan_val);
     EXPECT_EQ(repr.payload.lo, 32u);
@@ -99,7 +99,7 @@ TYPED_TEST(NanReprTest, ToFloatRoundTrip)
     repr1.payload.lo = 48;
 
     TypeParam nan_val = repr1.template to_float<TypeParam>();
-    EXPECT_TRUE(std::isnan(nan_val));
+    EXPECT_TRUE(classify_float(nan_val).is_nan());
 
     nan_repr<float_kind_for<TypeParam>> repr2(nan_val);
 
@@ -110,7 +110,7 @@ TYPED_TEST(NanReprTest, ToFloatRoundTrip)
 TEST(NanReprF128Test, PayloadRoundTrip)
 {
     const auto nan_val = make_nan_with_payload<std::float128_t>("1111");
-    EXPECT_TRUE(std::isnan(nan_val));
+    EXPECT_TRUE(classify_float(nan_val).is_nan());
 
     nan_repr<float_kind_for<std::float128_t>> repr(nan_val);
     EXPECT_EQ(repr.payload.lo, 1111u);
@@ -124,7 +124,7 @@ TEST(NanReprF128Test, LargePayload)
     repr1.payload.hi = 0x123456ULL;
 
     const auto nan_val = repr1.to_float<std::float128_t>();
-    EXPECT_TRUE(std::isnan(nan_val));
+    EXPECT_TRUE(classify_float(nan_val).is_nan());
     nan_repr<float_kind_for<std::float128_t>> repr2(nan_val);
 
     EXPECT_EQ(repr2.payload, repr1.payload);

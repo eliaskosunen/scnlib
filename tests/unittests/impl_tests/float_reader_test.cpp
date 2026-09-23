@@ -31,10 +31,10 @@ struct float_reader_interface {
     static constexpr bool enabled = true;
     static constexpr bool supports_nan =
         std::numeric_limits<FloatT>::is_iec559 &&
-        std::numeric_limits<FloatT>::has_quiet_NaN && !finite_math_only;
+        std::numeric_limits<FloatT>::has_quiet_NaN;
     static constexpr bool supports_inf =
         std::numeric_limits<FloatT>::is_iec559 &&
-        std::numeric_limits<FloatT>::has_infinity && !finite_math_only;
+        std::numeric_limits<FloatT>::has_infinity;
     static constexpr bool supports_hex = true;
 
     static scn::scan_expected<void> test(std::basic_string_view<CharT> source,

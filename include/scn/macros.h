@@ -923,6 +923,13 @@
 
 #endif
 
+// Detect legacy (pre-IEEE 754-2008) NaN encoding, used by MIPS without NaN2008.
+#if (defined(__mips__) || defined(__mips)) && !defined(__mips_nan2008)
+#define SCN_HAS_LEGACY_NAN_ENCODING 1
+#else
+#define SCN_HAS_LEGACY_NAN_ENCODING 0
+#endif
+
 // Detect standard extended float types
 #if defined(__STDCPP_FLOAT16_T__) && __STDCPP_FLOAT16_T__
 #define SCN_HAS_STD_F16 1

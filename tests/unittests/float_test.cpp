@@ -15,6 +15,7 @@
 // This file is a part of scnlib:
 //     https://github.com/eliaskosunen/scnlib
 
+#include "nan_repr.h"
 #include "wrapped_gtest.h"
 
 #include <scn/scan.h>
@@ -99,28 +100,28 @@ TEST(FloatTest, Infinity)
 {
     auto result = scn::scan<double>("inf", "{}");
     ASSERT_TRUE(result);
-    EXPECT_TRUE(std::isinf(result->value()));
-    EXPECT_GT(result->value(), 0);
+    EXPECT_TRUE(classify_float(result->value()).is_inf());
+    EXPECT_FALSE(classify_float(result->value()).signbit());
 
     result = scn::scan<double>("-infinity", "{}");
     ASSERT_TRUE(result);
-    EXPECT_TRUE(std::isinf(result->value()));
-    EXPECT_LT(result->value(), 0);
+    EXPECT_TRUE(classify_float(result->value()).is_inf());
+    EXPECT_TRUE(classify_float(result->value()).signbit());
 
     result = scn::scan<double>("+INF", "{}");
     ASSERT_TRUE(result);
-    EXPECT_TRUE(std::isinf(result->value()));
+    EXPECT_TRUE(classify_float(result->value()).is_inf());
 }
 
 TEST(FloatTest, NaN)
 {
     auto result = scn::scan<double>("nan", "{}");
     ASSERT_TRUE(result);
-    EXPECT_TRUE(std::isnan(result->value()));
+    EXPECT_TRUE(classify_float(result->value()).is_nan());
 
     result = scn::scan<double>("NaN", "{}");
     ASSERT_TRUE(result);
-    EXPECT_TRUE(std::isnan(result->value()));
+    EXPECT_TRUE(classify_float(result->value()).is_nan());
 }
 
 TEST(FloatTest, PositiveZero)
@@ -128,15 +129,15 @@ TEST(FloatTest, PositiveZero)
     auto result = scn::scan<double>("0.0", "{}");
     ASSERT_TRUE(result);
     EXPECT_EQ(result->value(), 0.0);
-    EXPECT_FALSE(std::signbit(result->value()));
+    EXPECT_FALSE(classify_float(result->value()).signbit());
 }
 
 TEST(FloatTest, NegativeZero)
 {
     auto result = scn::scan<double>("-0.0", "{}");
     ASSERT_TRUE(result);
-    EXPECT_EQ(result->value(), 0.0);
-    EXPECT_TRUE(std::signbit(result->value()));
+    EXPECT_TRUE(classify_float(result->value()).is_zero());
+    EXPECT_TRUE(classify_float(result->value()).signbit());
 }
 
 TEST(FloatTest, VeryLargeNumber)
@@ -158,8 +159,8 @@ TEST(FloatTest, SubnormalNumber)
 {
     auto result = scn::scan<double>("1e-320", "{}");
     ASSERT_TRUE(result);
-    EXPECT_GT(result->value(), 0.0);
-    EXPECT_LT(result->value(), 1e-300);
+    EXPECT_TRUE(classify_float(result->value()).is_subnormal());
+    EXPECT_FALSE(classify_float(result->value()).signbit());
 }
 
 TEST(FloatTest, LeadingZeros)

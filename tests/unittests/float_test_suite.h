@@ -40,6 +40,19 @@ template <typename T>
 SCN_NODISCARD testing::AssertionResult
 check_floating_eq(T a, T b, bool allow_approx = false)
 {
+    // Compare infinities by their bits:
+    // comparisons with infinities aren't reliable with -ffinite-math-only
+    if (classify_float(a).is_inf() || classify_float(b).is_inf()) {
+        const auto ca = classify_float(a);
+        const auto cb = classify_float(b);
+        if (ca.is_inf() && cb.is_inf() && ca.signbit() == cb.signbit()) {
+            return testing::AssertionSuccess();
+        }
+        return testing::AssertionFailure()
+               << "Floats not equal (infinity): bytes " << get_bytes_str(a)
+               << " and " << get_bytes_str(b);
+    }
+
     SCN_GCC_COMPAT_PUSH
     SCN_GCC_COMPAT_IGNORE("-Wfloat-equal")
     if (a == b) {
@@ -261,7 +274,7 @@ struct float_test_suite_value_set<FloatT, float_kind::f2x64> {
     static constexpr auto underflow_hex_str = "0x1p-1200"sv;
 
     static constexpr auto overflow_str = "2.0e308"sv;
-    static constexpr auto overflow_hex_str = "0x1p308"sv;
+    static constexpr auto overflow_hex_str = "0x1p1024"sv;
 };
 #endif
 
@@ -347,7 +360,7 @@ protected:
     {
         SCN_EXPECT(!input.second.empty() && input.second.front() != '-' &&
                    input.second.front() != '+');
-        SCN_EXPECT(!std::signbit(input.first));
+        SCN_EXPECT(!classify_float(input.first).signbit());
         return {std::copysign(input.first, static_cast<float_type>(-1.0)),
                 "-" + std::string{input.second}};
     }
@@ -820,8 +833,7 @@ TYPED_TEST_P(FloatTestSuite, Infinity)
 
 TYPED_TEST_P(FloatTestSuite, Nan)
 {
-    if (!std::numeric_limits<typename TestFixture::float_type>::has_quiet_NaN ||
-        finite_math_only) {
+    if (!std::numeric_limits<typename TestFixture::float_type>::has_quiet_NaN) {
         GTEST_SKIP() << "NaNs not supported by the float type";
     }
     if (!TestFixture::interface_type::supports_nan) {
@@ -841,17 +853,27 @@ TYPED_TEST_P(FloatTestSuite, Nan)
 
 TYPED_TEST_P(FloatTestSuite, NanWithPayload)
 {
-    if (!std::numeric_limits<typename TestFixture::float_type>::has_quiet_NaN ||
-        finite_math_only) {
+    if (!std::numeric_limits<typename TestFixture::float_type>::has_quiet_NaN) {
         GTEST_SKIP() << "NaNs not supported by the float type";
     }
     if (!TestFixture::interface_type::supports_nan) {
         GTEST_SKIP() << "NaNs not supported by the reader";
     }
 
-    const auto make_check = [](const char* payload) {
+    const auto check_quiet = [](typename TestFixture::float_type parsed) {
+        if (!classify_float(parsed).is_quiet_nan()) {
+            return testing::AssertionFailure()
+                   << "not a quiet NaN (bytes: " << get_bytes_str(parsed)
+                   << ")";
+        }
+        return testing::AssertionSuccess();
+    };
+    const auto make_check = [&](const char* payload) {
         SCN_EXPECT(payload);
-        return [payload](typename TestFixture::float_type parsed) {
+        return [payload, check_quiet](typename TestFixture::float_type parsed) {
+            if (auto r = check_quiet(parsed); !r) {
+                return r;
+            }
             return check_nan_eq(
                 parsed, make_nan_with_payload<typename TestFixture::float_type>(
                             payload));
@@ -866,6 +888,15 @@ TYPED_TEST_P(FloatTestSuite, NanWithPayload)
 
     EXPECT_TRUE(TestFixture::test("nan(Foo_Bar)", make_check("Foo_Bar")));
     EXPECT_TRUE(TestFixture::test("nan(Foo_Bar)", make_check("")));
+
+    // Payloads wide enough to reach the quiet/signaling bit (or overflow)
+    // must still produce a quiet NaN
+    EXPECT_TRUE(TestFixture::test("nan(0x200)", check_quiet));
+    EXPECT_TRUE(TestFixture::test("nan(0x400000)", check_quiet));
+    EXPECT_TRUE(TestFixture::test("nan(0x8000000000000)", check_quiet));
+    EXPECT_TRUE(TestFixture::test("nan(0xFFFFFFFFFFFFFFFF)", check_quiet));
+    EXPECT_TRUE(TestFixture::test(
+        "nan(0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF)", check_quiet));
 }
 
 TYPED_TEST_P(FloatTestSuite, Overflow)
@@ -906,7 +937,8 @@ TYPED_TEST_P(FloatTestSuite, UnderflowHex)
 
 TYPED_TEST_P(FloatTestSuite, Subnormal)
 {
-    ASSERT_FALSE(std::isnormal(TestFixture::values::subnormal.first));
+    ASSERT_TRUE(
+        classify_float(TestFixture::values::subnormal.first).is_subnormal());
     EXPECT_TRUE(TestFixture::test_success(TestFixture::values::subnormal));
 }
 
@@ -916,17 +948,39 @@ TYPED_TEST_P(FloatTestSuite, SubnormalHex)
         GTEST_SKIP() << "Hexfloats not supported by the reader";
     }
 
-    ASSERT_FALSE(std::isnormal(TestFixture::values::subnormal_hex.first));
+    ASSERT_TRUE(classify_float(TestFixture::values::subnormal_hex.first)
+                    .is_subnormal());
     EXPECT_TRUE(TestFixture::test_success(TestFixture::values::subnormal_hex));
 }
 
+// libstdc++ before 13.4 and 14.3 (GCC PR117321) guards the 16-bit float
+// std::nextafter overloads with if (__is_constant_evaluated()), which isn't
+// folded at -O0, leaving calls to nonexistent nextafterf16 and
+// __builtin_nextafterf16b, leading to linker errors. However, on GCC,
+// we can instead evaluate these at compile time.
+template <typename T>
+inline constexpr bool evaluate_nextafter_at_compile_time =
+    SCN_GCC && (float_kind_for<T> == float_kind::f16 ||
+                float_kind_for<T> == float_kind::bf16);
+
 TYPED_TEST_P(FloatTestSuite, SubnormalMax)
 {
-    ASSERT_EQ(
-        std::nextafter(
+    if constexpr (evaluate_nextafter_at_compile_time<
+                      typename TestFixture::float_type>) {
+        constexpr auto next = std::nextafter(
             TestFixture::values::subnormal_max.first,
-            std::numeric_limits<typename TestFixture::float_type>::infinity()),
-        std::numeric_limits<typename TestFixture::float_type>::min());
+            std::numeric_limits<typename TestFixture::float_type>::infinity());
+        ASSERT_EQ(next,
+                  std::numeric_limits<typename TestFixture::float_type>::min());
+    }
+    else {
+        ASSERT_EQ(
+            std::nextafter(TestFixture::values::subnormal_max.first,
+                           std::numeric_limits<
+                               typename TestFixture::float_type>::infinity()),
+            std::numeric_limits<typename TestFixture::float_type>::min());
+    }
+
     EXPECT_TRUE(TestFixture::test_success(TestFixture::values::subnormal_max));
 }
 
@@ -936,11 +990,21 @@ TYPED_TEST_P(FloatTestSuite, SubnormalMaxHex)
         GTEST_SKIP() << "Hexfloats not supported by the reader";
     }
 
-    ASSERT_EQ(
-        std::nextafter(
+    if constexpr (evaluate_nextafter_at_compile_time<
+                      typename TestFixture::float_type>) {
+        constexpr auto next = std::nextafter(
             TestFixture::values::subnormal_max_hex.first,
-            std::numeric_limits<typename TestFixture::float_type>::infinity()),
-        std::numeric_limits<typename TestFixture::float_type>::min());
+            std::numeric_limits<typename TestFixture::float_type>::infinity());
+        ASSERT_EQ(next,
+                  std::numeric_limits<typename TestFixture::float_type>::min());
+    }
+    else {
+        ASSERT_EQ(
+            std::nextafter(TestFixture::values::subnormal_max_hex.first,
+                           std::numeric_limits<
+                               typename TestFixture::float_type>::infinity()),
+            std::numeric_limits<typename TestFixture::float_type>::min());
+    }
     EXPECT_TRUE(
         TestFixture::test_success(TestFixture::values::subnormal_max_hex));
 }
