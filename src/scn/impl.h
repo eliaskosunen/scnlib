@@ -4536,7 +4536,7 @@ struct uint128_polyfill {
                                                 const uint128_polyfill& b)
     {
         uint128_polyfill result;
-        result.high = a.high - b.high - (a.low - b.low < a.low);
+        result.high = a.high - b.high - (a.low < b.low);
         result.low = a.low - b.low;
         return result;
     }
@@ -4684,6 +4684,10 @@ using uint128_always_t = uint128;
 using uint128_always_t = uint128_polyfill;
 #endif
 
+// Value of the quiet bit (the msb of the fraction) in a quiet NaN
+inline constexpr unsigned nan_quiet_bit_value =
+    SCN_HAS_LEGACY_NAN_ENCODING ? 0u : 1u;
+
 SCN_GCC_PUSH
 SCN_GCC_IGNORE("-Wconversion")
 
@@ -4696,6 +4700,8 @@ struct float_traits_impl_f32 {
     static constexpr unsigned exponent_bits = 8;
     static constexpr unsigned significand_bits = 23;
     static constexpr unsigned fraction_bits = significand_bits;
+    static constexpr int exponent_bias = (1 << (exponent_bits - 1)) - 1;
+    static constexpr int max_biased_exponent = (1 << exponent_bits) - 1;
 
     struct value_repr {
 #if !SCN_IS_BIG_ENDIAN
@@ -4736,11 +4742,17 @@ struct float_traits_impl_f32 {
         unsigned payload : 22;
 #endif
 
-        void apply_payload(significand_int_type p)
+        // Returns false, if the resulting value would not be a NaN.
+        // Possible only with the legacy NaN encoding, where a NaN
+        // with a zero payload can't be quiet.
+        bool apply_payload(significand_int_type p)
         {
-            SCN_EXPECT(quiet_nan == 1);
             SCN_EXPECT(exponent == (1u << exponent_bits) - 1u);
             payload = p;
+            // Always produce a quiet NaN,
+            // regardless of the bits of the original value
+            quiet_nan = nan_quiet_bit_value;
+            return quiet_nan != 0 || payload != 0;
         }
 
         void clear_padding() {}
@@ -4755,6 +4767,8 @@ struct float_traits_impl_f64 {
     static constexpr unsigned exponent_bits = 11;
     static constexpr unsigned significand_bits = 52;
     static constexpr unsigned fraction_bits = significand_bits;
+    static constexpr int exponent_bias = (1 << (exponent_bits - 1)) - 1;
+    static constexpr int max_biased_exponent = (1 << exponent_bits) - 1;
 
     struct value_repr {
 #if !SCN_IS_BIG_ENDIAN && !SCN_IS_FLOAT_BIG_ENDIAN
@@ -4811,12 +4825,13 @@ struct float_traits_impl_f64 {
         unsigned payload1 : 32;
 #endif
 
-        void apply_payload(significand_int_type p)
+        bool apply_payload(significand_int_type p)
         {
-            SCN_EXPECT(quiet_nan == 1);
             SCN_EXPECT(exponent == (1u << exponent_bits) - 1u);
             payload0 = static_cast<unsigned>(p >> 32);
             payload1 = static_cast<unsigned>(p);
+            quiet_nan = nan_quiet_bit_value;
+            return quiet_nan != 0 || payload0 != 0 || payload1 != 0;
         }
 
         void clear_padding() {}
@@ -4831,6 +4846,8 @@ struct float_traits_impl_f80 {
     static constexpr unsigned exponent_bits = 15;
     static constexpr unsigned significand_bits = 64;
     static constexpr unsigned fraction_bits = significand_bits - 1;
+    static constexpr int exponent_bias = (1 << (exponent_bits - 1)) - 1;
+    static constexpr int max_biased_exponent = (1 << exponent_bits) - 1;
 
     struct value_repr {
 #if !SCN_IS_BIG_ENDIAN && !SCN_IS_FLOAT_BIG_ENDIAN
@@ -4908,13 +4925,14 @@ struct float_traits_impl_f80 {
             exponent = static_cast<unsigned>(e);
         }
 
-        void apply_payload(significand_int_type p)
+        bool apply_payload(significand_int_type p)
         {
-            SCN_EXPECT(quiet_nan == 1);
             SCN_EXPECT(exponent == (1u << exponent_bits) - 1u);
             one = 1;
             payload0 = static_cast<unsigned>(p >> 32u);
             payload1 = static_cast<unsigned>(p);
+            quiet_nan = nan_quiet_bit_value;
+            return quiet_nan != 0 || payload0 != 0 || payload1 != 0;
         }
 
         void clear_padding()
@@ -4932,6 +4950,8 @@ struct float_traits_impl_f128 {
     static constexpr unsigned exponent_bits = 15;
     static constexpr unsigned significand_bits = 112;
     static constexpr unsigned fraction_bits = significand_bits;
+    static constexpr int exponent_bias = (1 << (exponent_bits - 1)) - 1;
+    static constexpr int max_biased_exponent = (1 << exponent_bits) - 1;
 
     struct value_repr {
 #if !SCN_IS_BIG_ENDIAN && !SCN_IS_FLOAT_BIG_ENDIAN
@@ -5002,14 +5022,16 @@ struct float_traits_impl_f128 {
         unsigned payload3 : 32;
 #endif
 
-        void apply_payload(significand_int_type p)
+        bool apply_payload(significand_int_type p)
         {
-            SCN_EXPECT(quiet_nan == 1);
             SCN_EXPECT(exponent == (1u << exponent_bits) - 1u);
             payload0 = static_cast<unsigned>(p >> 96u);
             payload1 = static_cast<unsigned>(p >> 64u);
             payload2 = static_cast<unsigned>(p >> 32u);
             payload3 = static_cast<unsigned>(p);
+            quiet_nan = nan_quiet_bit_value;
+            return quiet_nan != 0 || payload0 != 0 || payload1 != 0 ||
+                   payload2 != 0 || payload3 != 0;
         }
 
         void clear_padding() {}
@@ -5023,31 +5045,147 @@ struct float_traits_impl_doubledouble {
 
     using base = float_traits_impl_f64<double>;
 
-    static constexpr unsigned exponent_bits = base::exponent_bits * 1;
-    static constexpr unsigned significand_bits = base::significand_bits * 2;
-    static constexpr unsigned fraction_bits = base::fraction_bits * 2;
+    // For conversion purposes, a double-double is modeled as a
+    // pseudo-IEEE format with a 106-bit significand (105 fraction bits),
+    // and the exponent range of a double.
+    //
+    // The smallest normal value is 2^-969:
+    // below that, the low double of a 106-bit value would be subnormal,
+    // and precision gets lost. The granularity of the "subnormal" range is
+    // 2^-1074, the same as with a double.
+    // Values overflow at 2^1024, again, the same as with a double.
+    //
+    // A (biased exponent, 106-bit significand) pair is converted
+    // to an actual double-double value with `make_parts`.
+    static constexpr unsigned exponent_bits = base::exponent_bits;
+    static constexpr unsigned significand_bits = 106;
+    static constexpr unsigned fraction_bits = significand_bits - 1;
+    static constexpr int exponent_bias =
+        -(-1074 + static_cast<int>(fraction_bits)) + 1;
+    static constexpr int max_biased_exponent = 1024 + exponent_bias;
 
+    struct parts {
+        double high;
+        double low;
+        bool overflow;
+    };
+
+    // Build the high and low doubles of a double-double,
+    // from a biased exponent and a significand
+    // (with or without the implicit leading bit).
+    // A biased exponent of 0 denotes a subnormal value,
+    // and `max_biased_exponent` infinity.
+    static parts make_parts(int biased_exponent,
+                            significand_int_type significand)
+    {
+        SCN_EXPECT(biased_exponent >= 0);
+        SCN_EXPECT(biased_exponent <= max_biased_exponent);
+
+        if (biased_exponent == max_biased_exponent) {
+            SCN_EXPECT(significand == significand_int_type{0u});
+            return {std::numeric_limits<double>::infinity(), 0.0, false};
+        }
+
+        constexpr int total_bits =
+            static_cast<int>(sizeof(significand_int_type) * 8);
+        constexpr int high_bits = std::numeric_limits<double>::digits;
+
+        // Make the leading bit explicit:
+        // value = significand * 2^exponent, exactly
+        if (biased_exponent > 0) {
+            significand |= significand_int_type{1u} << fraction_bits;
+        }
+        const int exponent = std::max(biased_exponent, 1) - exponent_bias -
+                             static_cast<int>(fraction_bits);
+
+        if (significand == significand_int_type{0u}) {
+            return {0.0, 0.0, false};
+        }
+
+        // Split the (up to) 106-bit significand into two doubles,
+        // so that high = round_to_nearest_even(value),
+        // and low = value - high, exactly.
+        //
+        // The high double gets the top (up to) 53 bits of the significand,
+        // and the low double the remaining `shift` bits (at most 53).
+        // If the remaining bits are more than half of an ulp of the high
+        // part, high gets rounded up, and the low part becomes negative.
+        const int bit_width = total_bits - count_leading_zeroes(significand);
+        const int shift = std::max(bit_width - high_bits, 0);
+
+        auto high = static_cast<std::uint64_t>(significand >>
+                                               static_cast<unsigned>(shift));
+        auto low = std::int64_t{0};
+        if (shift > 0) {
+            const auto low_mask =
+                (significand_int_type{1u} << static_cast<unsigned>(shift)) -
+                significand_int_type{1u};
+            const auto low_bits =
+                static_cast<std::uint64_t>(significand & low_mask);
+            const auto half = std::uint64_t{1} << (shift - 1);
+
+            low = static_cast<std::int64_t>(low_bits);
+            if (low_bits > half || (low_bits == half && (high & 1u) != 0)) {
+                ++high;
+                low -= std::int64_t{1} << shift;
+            }
+        }
+
+        // Rounding the high part up can carry it to 2^53,
+        // and possibly overflow the exponent range of double.
+        const int high_width =
+            64 - count_leading_zeroes(high);  // 53 or 54 for normal values
+        if (exponent + shift + high_width - 1 >= 1024) {
+            return {std::numeric_limits<double>::infinity(), 0.0, true};
+        }
+
+        // Both high and low have at most 53 significant bits,
+        // and exponent >= -1074, so these are exact:
+        // no rounding happens, not even in the subnormal range of double.
+        return {std::ldexp(static_cast<double>(high), exponent + shift),
+                std::ldexp(static_cast<double>(low), exponent), false};
+    }
+
+    // The high double is stored first, regardless of endianness
     struct value_repr {
         base::value_repr high;
         base::value_repr low;
 
         void apply_exponent(int e)
         {
-            high.apply_exponent(e);
-            low.apply_exponent(e);
+            set_parts(make_parts(e, significand_int_type{0u}));
         }
 
         void apply_significand(significand_int_type s)
         {
-            high.apply_significand(
-                static_cast<base::significand_int_type>(s >> 64u));
-            low.apply_significand(static_cast<base::significand_int_type>(s));
+            set_parts(make_parts(get_biased_exponent(), s));
         }
 
         void clear_padding()
         {
             high.clear_padding();
             low.clear_padding();
+        }
+
+    private:
+        int get_biased_exponent() const
+        {
+            constexpr unsigned max_exponent_field =
+                (1u << base::exponent_bits) - 1u;
+            if (high.exponent == 0) {
+                return 0;
+            }
+            if (high.exponent == max_exponent_field) {
+                return max_biased_exponent;
+            }
+            return static_cast<int>(high.exponent) - base::exponent_bias +
+                   exponent_bias;
+        }
+
+        void set_parts(const parts& p)
+        {
+            std::memcpy(&high, &p.high, sizeof(double));
+            std::memcpy(&low, &p.low, sizeof(double));
         }
     };
 
@@ -5057,12 +5195,16 @@ struct float_traits_impl_doubledouble {
         base::nan_repr high;
         base::value_repr low;
 
-        void apply_payload(significand_int_type p)
+        bool apply_payload(significand_int_type p)
         {
-            high.apply_payload(static_cast<base::significand_int_type>(p));
+            if (!high.apply_payload(
+                    static_cast<base::significand_int_type>(p))) {
+                return false;
+            }
 
             low.apply_significand(0);
             low.exponent = 0;
+            return true;
         }
 
         void clear_padding()
@@ -5081,16 +5223,18 @@ struct float_traits_impl_f16 {
     static constexpr unsigned exponent_bits = 5;
     static constexpr unsigned significand_bits = 10;
     static constexpr unsigned fraction_bits = significand_bits;
+    static constexpr int exponent_bias = (1 << (exponent_bits - 1)) - 1;
+    static constexpr int max_biased_exponent = (1 << exponent_bits) - 1;
 
     struct value_repr {
 #if !SCN_IS_BIG_ENDIAN
-        unsigned significand : 10;
-        unsigned exponent : 5;
-        unsigned sign : 1;
+        std::uint16_t significand : 10;
+        std::uint16_t exponent : 5;
+        std::uint16_t sign : 1;
 #else
-        unsigned sign : 1;
-        unsigned exponent : 5;
-        unsigned significand : 10;
+        std::uint16_t sign : 1;
+        std::uint16_t exponent : 5;
+        std::uint16_t significand : 10;
 #endif
 
         void apply_exponent(int e)
@@ -5110,22 +5254,23 @@ struct float_traits_impl_f16 {
 
     struct nan_repr {
 #if !SCN_IS_BIG_ENDIAN
-        unsigned payload : 9;
-        unsigned quiet_nan : 1;
-        unsigned exponent : 5;
-        unsigned sign : 1;
+        std::uint16_t payload : 9;
+        std::uint16_t quiet_nan : 1;
+        std::uint16_t exponent : 5;
+        std::uint16_t sign : 1;
 #else
-        unsigned sign : 1;
-        unsigned exponent : 5;
-        unsigned quiet_nan : 1;
-        unsigned payload : 9;
+        std::uint16_t sign : 1;
+        std::uint16_t exponent : 5;
+        std::uint16_t quiet_nan : 1;
+        std::uint16_t payload : 9;
 #endif
 
-        void apply_payload(significand_int_type p)
+        bool apply_payload(significand_int_type p)
         {
-            SCN_EXPECT(quiet_nan == 1);
             SCN_EXPECT(exponent == (1u << exponent_bits) - 1u);
             payload = p;
+            quiet_nan = nan_quiet_bit_value;
+            return quiet_nan != 0 || payload != 0;
         }
 
         void clear_padding() {}
@@ -5140,16 +5285,18 @@ struct float_traits_impl_bf16 {
     static constexpr unsigned exponent_bits = 8;
     static constexpr unsigned significand_bits = 7;
     static constexpr unsigned fraction_bits = significand_bits;
+    static constexpr int exponent_bias = (1 << (exponent_bits - 1)) - 1;
+    static constexpr int max_biased_exponent = (1 << exponent_bits) - 1;
 
     struct value_repr {
 #if !SCN_IS_BIG_ENDIAN
-        unsigned significand : 7;
-        unsigned exponent : 8;
-        unsigned sign : 1;
+        std::uint16_t significand : 7;
+        std::uint16_t exponent : 8;
+        std::uint16_t sign : 1;
 #else
-        unsigned sign : 1;
-        unsigned exponent : 8;
-        unsigned significand : 7;
+        std::uint16_t sign : 1;
+        std::uint16_t exponent : 8;
+        std::uint16_t significand : 7;
 #endif
 
         void apply_exponent(int e)
@@ -5169,22 +5316,23 @@ struct float_traits_impl_bf16 {
 
     struct nan_repr {
 #if !SCN_IS_BIG_ENDIAN
-        unsigned payload : 6;
-        unsigned quiet_nan : 1;
-        unsigned exponent : 8;
-        unsigned sign : 1;
+        std::uint16_t payload : 6;
+        std::uint16_t quiet_nan : 1;
+        std::uint16_t exponent : 8;
+        std::uint16_t sign : 1;
 #else
-        unsigned sign : 1;
-        unsigned exponent : 8;
-        unsigned quiet_nan : 1;
-        unsigned payload : 6;
+        std::uint16_t sign : 1;
+        std::uint16_t exponent : 8;
+        std::uint16_t quiet_nan : 1;
+        std::uint16_t payload : 6;
 #endif
 
-        void apply_payload(significand_int_type p)
+        bool apply_payload(significand_int_type p)
         {
-            SCN_EXPECT(quiet_nan == 1);
             SCN_EXPECT(exponent == (1u << exponent_bits) - 1u);
             payload = p;
+            quiet_nan = nan_quiet_bit_value;
+            return quiet_nan != 0 || payload != 0;
         }
 
         void clear_padding() {}
@@ -5624,6 +5772,45 @@ private:
     }
 };
 
+template <typename T>
+scan_expected<void> compute_float_value(
+    T& result,
+    int biased_exponent,
+    typename float_traits<T>::significand_int_type significand)
+{
+    using traits = float_traits<T>;
+    SCN_EXPECT(biased_exponent >= 0);
+    SCN_EXPECT(biased_exponent < traits::max_biased_exponent);
+
+    if constexpr (!std::is_base_of_v<float_traits_impl_doubledouble<T>,
+                                     traits>) {
+        static_assert(sizeof(typename traits::value_repr) <= sizeof(T),
+                      "value_repr must not be larger than the float type");
+
+        typename traits::value_repr repr{};
+        repr.apply_exponent(biased_exponent);
+        repr.apply_significand(significand);
+        std::memcpy(&result, &repr, sizeof(repr));
+        return {};
+    }
+    else {
+        // Special case: double-double
+        const auto parts = traits::make_parts(biased_exponent, significand);
+        if (parts.overflow) {
+            // Rounding the high part up overflowed
+            return detail::unexpected_scan_error(
+                scan_error::value_positive_overflow,
+                "Parsed float exponent too large");
+        }
+
+        // The high double is stored first, regardless of endianness
+        const double doubles[2] = {parts.high, parts.low};
+        static_assert(sizeof(doubles) == sizeof(T));
+        std::memcpy(&result, doubles, sizeof(T));
+        return {};
+    }
+}
+
 constexpr std::array<std::uint8_t, 19> powers_of_two = {
     0, 3, 6, 9, 13, 16, 19, 23, 26, 29, 33, 36, 39, 43, 46, 49, 53, 56, 59};
 
@@ -5638,8 +5825,9 @@ scan_expected<void> simple_decimal_conversion(T& result,
         return {};
     }
 
-    constexpr std::int32_t exp_bias =
-        (1 << (float_traits<T>::exponent_bits - 1)) - 1;
+    constexpr std::int32_t exp_bias = float_traits<T>::exponent_bias;
+    constexpr std::int32_t max_biased_exponent =
+        float_traits<T>::max_biased_exponent;
     std::int32_t exp2{};
 
     // Scale by powers of two (i.e., shift left or right),
@@ -5679,7 +5867,7 @@ scan_expected<void> simple_decimal_conversion(T& result,
     value.left_shift(1);
     exp2 -= 1;
 
-    constexpr auto max_exponent = exp_bias + 1;
+    constexpr auto max_exponent = max_biased_exponent - exp_bias;
     if (exp2 >= max_exponent) {
         // "If the exponent was too large then the parsed [value] is infinite"
         return detail::unexpected_scan_error(
@@ -5688,8 +5876,6 @@ scan_expected<void> simple_decimal_conversion(T& result,
     }
 
     auto biased_exponent = exp2 + exp_bias;
-    constexpr auto max_biased_exponent =
-        (1 << float_traits<T>::exponent_bits) - 1;
     bool was_subnormal = false;
 
     if (biased_exponent <= 0) {
@@ -5742,14 +5928,8 @@ scan_expected<void> simple_decimal_conversion(T& result,
     }
 
     // Build resulting value
-    using repr_type = typename float_traits<T>::value_repr;
-    repr_type repr{};
     SCN_ENSURE(biased_exponent >= 0);
-    repr.apply_exponent(biased_exponent);
-    repr.apply_significand(significand);
-
-    std::memcpy(&result, &repr, sizeof(repr_type));
-    return {};
+    return compute_float_value(result, biased_exponent, significand);
 }
 
 /////////////////////////////////////////////////////////////////
@@ -6317,7 +6497,10 @@ void apply_nan_payload(F& value,
 
     typename traits::nan_repr repr{};
     std::memcpy(&repr, &value, sizeof(repr));
-    repr.apply_payload(payload);
+    if (!repr.apply_payload(payload)) {
+        // Keep the original (default quiet) NaN, like glibc does
+        return;
+    }
     std::memcpy(&value, &repr, sizeof(repr));
 }
 

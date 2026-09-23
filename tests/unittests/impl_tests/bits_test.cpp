@@ -82,3 +82,24 @@ TEST(BitsTest, Log2)
     EXPECT_EQ(scn::impl::log2_pow2_fast(4), 2);
     EXPECT_EQ(scn::impl::log2_pow2_fast(8), 3);
 }
+
+TEST(BitsTest, Uint128PolyfillAddSub)
+{
+    using u128 = scn::impl::uint128_polyfill;
+    const auto make = [](std::uint64_t high, std::uint64_t low) {
+        return (u128{high} << 64u) | u128{low};
+    };
+    constexpr auto max64 = std::numeric_limits<std::uint64_t>::max();
+
+    EXPECT_EQ(make(1, 5) - make(0, 1), make(1, 4));
+    EXPECT_EQ(u128{5u} - u128{5u}, u128{0u});
+
+    EXPECT_EQ(make(1, 0) - make(0, 1), make(0, max64));
+    EXPECT_EQ(make(3, 1) - make(1, 2), make(1, max64));
+    EXPECT_EQ((u128{1u} << 105u) - u128{1u}, make((1ull << 41u) - 1u, max64));
+
+    EXPECT_EQ(make(1, 4) + make(0, 1), make(1, 5));
+
+    EXPECT_EQ(make(0, max64) + make(0, 1), make(1, 0));
+    EXPECT_EQ(make(1, max64) + make(1, 2), make(3, 1));
+}

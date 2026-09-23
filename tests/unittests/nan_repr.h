@@ -114,6 +114,7 @@ struct nan_format<float_kind::f16> {
     static constexpr uint_type frac_mask = 0x03FF;
     static constexpr uint_type sign_mask = 0x8000;
     static constexpr uint_type payload_mask = 0x01FF;
+    static constexpr uint_type quiet_mask = 0x0200;
 };
 template <>
 struct nan_format<float_kind::bf16> {
@@ -122,6 +123,7 @@ struct nan_format<float_kind::bf16> {
     static constexpr uint_type frac_mask = 0x007F;
     static constexpr uint_type sign_mask = 0x8000;
     static constexpr uint_type payload_mask = 0x003F;
+    static constexpr uint_type quiet_mask = 0x0040;
 };
 template <>
 struct nan_format<float_kind::f32> {
@@ -130,6 +132,7 @@ struct nan_format<float_kind::f32> {
     static constexpr uint_type frac_mask = 0x007FFFFF;
     static constexpr uint_type sign_mask = 0x80000000;
     static constexpr uint_type payload_mask = 0x003FFFFF;
+    static constexpr uint_type quiet_mask = 0x00400000;
 };
 template <>
 struct nan_format<float_kind::f64> {
@@ -138,6 +141,7 @@ struct nan_format<float_kind::f64> {
     static constexpr uint_type frac_mask = 0x000FFFFFFFFFFFFFULL;
     static constexpr uint_type sign_mask = 0x8000000000000000ULL;
     static constexpr uint_type payload_mask = 0x0007FFFFFFFFFFFFULL;
+    static constexpr uint_type quiet_mask = 0x0008000000000000ULL;
 };
 
 template <>
@@ -147,6 +151,7 @@ struct nan_format<float_kind::f80> {
     static constexpr std::uint64_t frac_mask = 0x7FFFFFFFFFFFFFFFULL;
     static constexpr std::uint64_t one_bit = 0x8000000000000000ULL;
     static constexpr std::uint64_t payload_mask = 0x3FFFFFFFFFFFFFFFULL;
+    static constexpr std::uint64_t quiet_mask = 0x4000000000000000ULL;
 };
 
 template <>
@@ -155,6 +160,7 @@ struct nan_format<float_kind::f128> {
     static constexpr std::uint64_t frac_hi_mask = 0x0000FFFFFFFFFFFFULL;
     static constexpr std::uint64_t sign_mask = 0x8000000000000000ULL;
     static constexpr std::uint64_t payload_hi_mask = 0x00007FFFFFFFFFFFULL;
+    static constexpr std::uint64_t quiet_hi_mask = 0x0000800000000000ULL;
 };
 
 }  // namespace nan_detail
@@ -457,40 +463,160 @@ T nan_repr<float_kind::f2x64>::to_float() const
     return result;
 }
 
-template <typename T>
-T make_nan_with_payload(const char* payload_str)
-{
-    std::uint64_t parsed_payload = 0;
-    if (payload_str && *payload_str) {
-        auto result =
-            scn::scan<std::uint64_t>(std::string_view(payload_str), "{:i}");
-        if (result) {
-            parsed_payload = result->value();
+// Float kind detection that works even with -ffast-math
+
+struct float_classification {
+    bool sign{};
+    bool exponent_all_ones{};
+    bool exponent_zero{};
+    bool fraction_zero{};
+    bool fraction_msb{};  // quiet/signaling bit, if a NaN
+
+    template <typename T>
+    static float_classification classify(T value)
+    {
+        constexpr auto kind = float_kind_for<T>;
+
+        if constexpr (kind == float_kind::f16 || kind == float_kind::f32 ||
+                      kind == float_kind::f64 || kind == float_kind::bf16) {
+            using format_type = nan_detail::nan_format<kind>;
+            using uint_type = typename format_type::uint_type;
+
+            uint_type bits{};
+            std::memcpy(&bits, &value, sizeof(bits));
+            if constexpr (sizeof(uint_type) == 8) {
+                bits = static_cast<uint_type>(
+                    nan_detail::maybe_swap_float_words(bits));
+            }
+
+            return {(bits & format_type::sign_mask) != 0,
+                    (bits & format_type::exp_mask) == format_type::exp_mask,
+                    (bits & format_type::exp_mask) == 0,
+                    (bits & format_type::frac_mask) == 0,
+                    (bits & format_type::quiet_mask) != 0};
+        }
+        else if constexpr (kind == float_kind::f80) {
+            using format_type = nan_detail::nan_format<kind>;
+            const auto f = nan_detail::read_f80(value);
+            const auto exp = f.sign_exp & format_type::exp_mask;
+
+            // The explicit integer bit isn't a part of the fraction
+            return {(f.sign_exp & format_type::sign_mask) != 0,
+                    exp == format_type::exp_mask, exp == 0,
+                    (f.significand & format_type::frac_mask) == 0,
+                    (f.significand & format_type::quiet_mask) != 0};
+        }
+        else if constexpr (kind == float_kind::f128) {
+            using format_type = nan_detail::nan_format<kind>;
+            const auto h = nan_detail::read_f128(value);
+            const auto exp = h.high & format_type::exp_mask;
+
+            return {(h.high & format_type::sign_mask) != 0,
+                    exp == format_type::exp_mask, exp == 0,
+                    (h.high & format_type::frac_hi_mask) == 0 && h.low == 0,
+                    (h.high & format_type::quiet_hi_mask) != 0};
+        }
+        else if constexpr (kind == float_kind::f2x64) {
+            // The class of a double-double is the class of its high double
+            double high{};
+            std::memcpy(&high, &value, sizeof(double));
+            return classify(high);
+        }
+        else {
+            static_assert(scn::detail::dependent_false<T>::value,
+                          "Unsupported float type");
         }
     }
 
+    [[nodiscard]]
+    bool is_nan() const
+    {
+        return exponent_all_ones && !fraction_zero;
+    }
+
+    [[nodiscard]]
+    bool is_quiet_nan() const
+    {
+        return is_nan() && fraction_msb == !SCN_HAS_LEGACY_NAN_ENCODING;
+    }
+
+    [[nodiscard]]
+    bool is_inf() const
+    {
+        return exponent_all_ones && fraction_zero;
+    }
+
+    [[nodiscard]]
+    bool is_zero() const
+    {
+        return exponent_zero && fraction_zero;
+    }
+
+    [[nodiscard]]
+    bool is_subnormal() const
+    {
+        return exponent_zero && !fraction_zero;
+    }
+
+    [[nodiscard]]
+    bool is_normal() const
+    {
+        return !exponent_zero && !exponent_all_ones;
+    }
+
+    [[nodiscard]]
+    bool signbit() const
+    {
+        return sign;
+    }
+};
+
+template <typename T>
+float_classification classify_float(T value)
+{
+    return float_classification::classify(value);
+}
+
+template <typename T>
+T make_nan_with_payload(const char* payload_str)
+{
+    if (!payload_str || !*payload_str) {
+        return std::numeric_limits<T>::quiet_NaN();
+    }
+    auto result =
+        scn::scan<std::uint64_t>(std::string_view(payload_str), "{:i}");
+    if (!result) {
+        return std::numeric_limits<T>::quiet_NaN();
+    }
+
     nan_repr<float_kind_for<T>> repr(std::numeric_limits<T>::quiet_NaN());
-    repr.payload.lo = parsed_payload;
-    return repr.template to_float<T>();
+    repr.payload = payload_type{result->value(), 0};
+    const auto value = repr.template to_float<T>();
+
+    if (!classify_float(value).is_nan()) {
+        return std::numeric_limits<T>::quiet_NaN();
+    }
+    return value;
 }
 
 template <typename T>
 SCN_NODISCARD testing::AssertionResult check_nan_eq(T lhs, T rhs)
 {
-    if (!std::isnan(lhs)) {
+    if (!classify_float(lhs).is_nan()) {
         return testing::AssertionFailure()
                << "lhs not nan (bytes: " << get_bytes_str(lhs) << ")";
     }
-    if (!std::isnan(rhs)) {
+    if (!classify_float(rhs).is_nan()) {
         return testing::AssertionFailure()
                << "rhs not nan (bytes: " << get_bytes_str(rhs) << ")";
     }
 
-    if (std::signbit(lhs) != std::signbit(rhs)) {
+    if (classify_float(lhs).signbit() != classify_float(rhs).signbit()) {
         return testing::AssertionFailure()
                << "NaN signs differ: lhs "
-               << (std::signbit(lhs) ? "negative" : "positive") << ", rhs "
-               << (std::signbit(rhs) ? "negative" : "positive")
+               << (classify_float(lhs).signbit() ? "negative" : "positive")
+               << ", rhs "
+               << (classify_float(rhs).signbit() ? "negative" : "positive")
                << " (lhs bytes: " << get_bytes_str(lhs)
                << ", rhs bytes: " << get_bytes_str(rhs) << ")";
     }

@@ -478,7 +478,7 @@ SCN_NODISCARD bool is_float_positive_infinity(T value)
         using repr = typename float_traits<T>::value_repr;
 
         repr expected{};
-        expected.apply_exponent((1u << float_traits<T>::exponent_bits) - 1u);
+        expected.apply_exponent(float_traits<T>::max_biased_exponent);
         expected.apply_significand(0u);
 
         repr received{};
@@ -502,7 +502,7 @@ SCN_NODISCARD bool is_float_negative_infinity(T value)
         using repr = typename float_traits<T>::value_repr;
 
         repr expected{};
-        expected.apply_exponent((1u << float_traits<T>::exponent_bits) - 1u);
+        expected.apply_exponent(float_traits<T>::max_biased_exponent);
         expected.apply_significand(0);
         expected.sign = 1;
 
@@ -914,11 +914,10 @@ struct convert_custom_hex {
         const auto N = total_bits -
                        static_cast<unsigned>(count_leading_zeroes(significand));
 
-        static constexpr int exp_bias =
-            (1 << (float_traits<T>::exponent_bits - 1)) - 1;
+        static constexpr int exp_bias = float_traits<T>::exponent_bias;
         static constexpr int fraction_bits = float_traits<T>::fraction_bits;
         static constexpr int max_biased_exp =
-            (1 << float_traits<T>::exponent_bits) - 1;
+            float_traits<T>::max_biased_exponent;
 
         auto biased_exp = static_cast<int>(N) - 1 + exp2 + exp_bias;
 
@@ -1008,13 +1007,8 @@ struct convert_custom_hex {
             }
         }
 
-        typename float_traits<T>::value_repr repr{};
         SCN_ENSURE(biased_exp >= 0);
-        repr.apply_exponent(biased_exp);
-        repr.apply_significand(significand);
-        std::memcpy(&value, &repr, sizeof(repr));
-
-        return {};
+        return compute_float_value(value, biased_exp, significand);
     }
 
 private:
@@ -1569,7 +1563,8 @@ constexpr T store_result(Acc acc, bool is_negative)
                 static_cast<T>(acc - std::numeric_limits<T>::max()));
             SCN_MSVC_POP
         }
-    } else {
+    }
+    else {
         SCN_UNUSED(is_negative);
     }
 
