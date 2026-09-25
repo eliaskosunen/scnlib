@@ -17,7 +17,7 @@
 
 #include <scn/istream.h>
 
-#include "wrapped_gtest.h"
+#include "test_common.h"
 
 #if !SCN_DISABLE_IOSTREAM
 
@@ -36,7 +36,7 @@ struct scn::scanner<has_istream_operator, CharT>
 TEST(IstreamScannerTest, HasIstreamOperator)
 {
     auto result = scn::scan<has_istream_operator>("42", "{}");
-    ASSERT_TRUE(result);
+    ASSERT_THAT(result, Succeeded());
     const auto& [val] = result->values();
     EXPECT_EQ(val.i, 42);
 }
@@ -44,7 +44,7 @@ TEST(IstreamScannerTest, OtherValues)
 {
     auto result = scn::scan<has_istream_operator, has_istream_operator,
                             has_istream_operator>("123 456 789", "{} {} {}");
-    ASSERT_TRUE(result);
+    ASSERT_THAT(result, Succeeded());
     const auto& [a, b, c] = result->values();
     EXPECT_EQ(a.i, 123);
     EXPECT_EQ(b.i, 456);
@@ -54,33 +54,33 @@ TEST(IstreamScannerTest, OtherValues)
 TEST(IstreamScannerTest, EmptyInput)
 {
     auto result = scn::scan<has_istream_operator>("", "{}");
-    ASSERT_FALSE(result);
+    ASSERT_THAT(result, Failed());
 }
 
 TEST(IstreamScannerTest, InvalidInput)
 {
     auto result = scn::scan<has_istream_operator>("notanumber", "{}");
-    ASSERT_FALSE(result);
+    ASSERT_THAT(result, Failed());
 }
 
 TEST(IstreamScannerTest, WithLiteral)
 {
     auto result = scn::scan<has_istream_operator>("value=42", "value={}");
-    ASSERT_TRUE(result);
+    ASSERT_THAT(result, Succeeded());
     EXPECT_EQ(result->value().i, 42);
 }
 
 TEST(IstreamScannerTest, NegativeValue)
 {
     auto result = scn::scan<has_istream_operator>("-123", "{}");
-    ASSERT_TRUE(result);
+    ASSERT_THAT(result, Succeeded());
     EXPECT_EQ(result->value().i, -123);
 }
 
 TEST(IstreamScannerTest, WithTrailingContent)
 {
     auto result = scn::scan<has_istream_operator>("42 extra", "{}");
-    ASSERT_TRUE(result);
+    ASSERT_THAT(result, Succeeded());
     EXPECT_EQ(result->value().i, 42);
     EXPECT_STREQ(result->begin(), " extra");
 }

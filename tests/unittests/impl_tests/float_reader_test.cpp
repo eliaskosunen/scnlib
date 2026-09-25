@@ -122,7 +122,7 @@ TYPED_TEST_P(FloatValueReaderTest, PresentationScientificValueScientific)
     auto res = this->read_specs(this->make_format_specs_with_presentation(
         scn::detail::presentation_type::float_scientific));
 
-    ASSERT_TRUE(res);
+    ASSERT_THAT(res, Succeeded());
     EXPECT_EQ(res.value(), this->source_as_view().end());
     EXPECT_TRUE(this->check_value(SCN_FLOAT_CONSTANT(12.3e2)));
 }
@@ -132,8 +132,7 @@ TYPED_TEST_P(FloatValueReaderTest, PresentationScientificValueFixed)
     auto res = this->read_specs(this->make_format_specs_with_presentation(
         scn::detail::presentation_type::float_scientific));
 
-    ASSERT_FALSE(res);
-    EXPECT_EQ(res.error().code(), scn::scan_error::invalid_scanned_value);
+    ASSERT_THAT(res, FailedWith(scn::scan_error::invalid_scanned_value));
 }
 TYPED_TEST_P(FloatValueReaderTest, PresentationScientificValueHexWithPrefix)
 {
@@ -141,8 +140,7 @@ TYPED_TEST_P(FloatValueReaderTest, PresentationScientificValueHexWithPrefix)
     auto res = this->read_specs(this->make_format_specs_with_presentation(
         scn::detail::presentation_type::float_scientific));
 
-    ASSERT_FALSE(res);
-    EXPECT_EQ(res.error().code(), scn::scan_error::invalid_scanned_value);
+    ASSERT_THAT(res, FailedWith(scn::scan_error::invalid_scanned_value));
 }
 TYPED_TEST_P(FloatValueReaderTest, PresentationScientificValueHexWithoutPrefix)
 {
@@ -150,8 +148,7 @@ TYPED_TEST_P(FloatValueReaderTest, PresentationScientificValueHexWithoutPrefix)
     auto res = this->read_specs(this->make_format_specs_with_presentation(
         scn::detail::presentation_type::float_scientific));
 
-    ASSERT_FALSE(res);
-    EXPECT_EQ(res.error().code(), scn::scan_error::invalid_scanned_value);
+    ASSERT_THAT(res, FailedWith(scn::scan_error::invalid_scanned_value));
 }
 
 TYPED_TEST_P(FloatValueReaderTest, PresentationFixedValueScientific)
@@ -160,7 +157,7 @@ TYPED_TEST_P(FloatValueReaderTest, PresentationFixedValueScientific)
     auto res = this->read_specs(this->make_format_specs_with_presentation(
         scn::detail::presentation_type::float_fixed));
 
-    ASSERT_TRUE(res);
+    ASSERT_THAT(res, Succeeded());
     EXPECT_EQ(res.value(), this->source_as_view().begin() + 4);
     EXPECT_NE(res.value(), this->source_as_view().end());
     EXPECT_TRUE(this->check_value(SCN_FLOAT_CONSTANT(12.3)));
@@ -171,7 +168,7 @@ TYPED_TEST_P(FloatValueReaderTest, PresentationFixedValueFixed)
     auto res = this->read_specs(this->make_format_specs_with_presentation(
         scn::detail::presentation_type::float_fixed));
 
-    ASSERT_TRUE(res);
+    ASSERT_THAT(res, Succeeded());
     EXPECT_EQ(res.value(), this->source_as_view().end());
     EXPECT_TRUE(this->check_value(SCN_FLOAT_CONSTANT(12.3)));
 }
@@ -181,7 +178,7 @@ TYPED_TEST_P(FloatValueReaderTest, PresentationFixedValueHexWithPrefix)
     auto res = this->read_specs(this->make_format_specs_with_presentation(
         scn::detail::presentation_type::float_fixed));
 
-    ASSERT_TRUE(res);
+    ASSERT_THAT(res, Succeeded());
     EXPECT_EQ(res.value(), this->source_as_view().begin() + 1);
     EXPECT_NE(res.value(), this->source_as_view().end());
     EXPECT_TRUE(this->check_value(SCN_FLOAT_CONSTANT(0.0)));
@@ -192,7 +189,7 @@ TYPED_TEST_P(FloatValueReaderTest, PresentationFixedValueHexWithoutPrefix)
     auto res = this->read_specs(this->make_format_specs_with_presentation(
         scn::detail::presentation_type::float_fixed));
 
-    ASSERT_TRUE(res);
+    ASSERT_THAT(res, Succeeded());
     EXPECT_EQ(res.value(), this->source_as_view().begin() + 2);
     EXPECT_NE(res.value(), this->source_as_view().end());
     EXPECT_TRUE(this->check_value(SCN_FLOAT_CONSTANT(1.0)));
@@ -217,7 +214,7 @@ TYPED_TEST_P(FloatValueReaderTest, PresentationHexValueScientific)
     auto res = this->read_specs(this->make_format_specs_with_presentation(
         scn::detail::presentation_type::float_hex));
 
-    ASSERT_TRUE(res);
+    ASSERT_THAT(res, Succeeded());
     EXPECT_EQ(res.value(), this->source_as_view().end());
     EXPECT_TRUE(this->check_value(
         get_hexfloat_interpreted_as_decimal<typename TestFixture::float_type>(
@@ -229,7 +226,7 @@ TYPED_TEST_P(FloatValueReaderTest, PresentationHexValueFixed)
     auto res = this->read_specs(this->make_format_specs_with_presentation(
         scn::detail::presentation_type::float_hex));
 
-    ASSERT_TRUE(res);
+    ASSERT_THAT(res, Succeeded());
     EXPECT_EQ(res.value(), this->source_as_view().end());
     EXPECT_TRUE(this->check_value(
         get_hexfloat_interpreted_as_decimal<typename TestFixture::float_type>(
@@ -241,7 +238,7 @@ TYPED_TEST_P(FloatValueReaderTest, PresentationHexValueHexWithPrefix)
     auto res = this->read_specs(this->make_format_specs_with_presentation(
         scn::detail::presentation_type::float_hex));
 
-    ASSERT_TRUE(res);
+    ASSERT_THAT(res, Succeeded());
     EXPECT_EQ(res.value(), this->source_as_view().end());
     EXPECT_TRUE(this->check_value(SCN_FLOAT_CONSTANT(0x1.fp3)));
 }
@@ -251,7 +248,7 @@ TYPED_TEST_P(FloatValueReaderTest, PresentationHexValueHexWithoutPrefix)
     auto res = this->read_specs(this->make_format_specs_with_presentation(
         scn::detail::presentation_type::float_hex));
 
-    ASSERT_TRUE(res);
+    ASSERT_THAT(res, Succeeded());
     EXPECT_EQ(res.value(), this->source_as_view().end());
     EXPECT_TRUE(this->check_value(SCN_FLOAT_CONSTANT(0x1.fp3)));
 }
@@ -300,7 +297,7 @@ TYPED_TEST_P(FloatValueReaderTest, ThousandsSeparators)
     auto state = thsep_test_state<typename TestFixture::char_type>{"\3"};
     auto res = this->read_specs_with_locale(state.specs, state.locref);
 
-    ASSERT_TRUE(res);
+    ASSERT_THAT(res, Succeeded());
     EXPECT_EQ(res.value(), this->source_as_view().end());
     EXPECT_TRUE(this->check_value(SCN_FLOAT_CONSTANT(1234.56789)));
 }
@@ -315,7 +312,7 @@ TYPED_TEST_P(FloatValueReaderTest, ThousandsSeparatorsWithInvalidGrouping)
     auto state = thsep_test_state<typename TestFixture::char_type>{"\3"};
     auto res = this->read_specs_with_locale(state.specs, state.locref);
 
-    ASSERT_TRUE(res);
+    ASSERT_THAT(res, Succeeded());
     EXPECT_EQ(res.value(), this->source_as_view().end());
     EXPECT_TRUE(this->check_value(SCN_FLOAT_CONSTANT(1234.56789)));
 }
@@ -334,7 +331,7 @@ TYPED_TEST_P(FloatValueReaderTest, ExoticThousandsSeparators)
     auto state = thsep_test_state<typename TestFixture::char_type>{"\1\2"};
     auto res = this->read_specs_with_locale(state.specs, state.locref);
 
-    ASSERT_TRUE(res);
+    ASSERT_THAT(res, Succeeded());
     EXPECT_EQ(res.value(), this->source_as_view().end());
     EXPECT_TRUE(this->check_value(SCN_FLOAT_CONSTANT(123456.789)));
 }
@@ -349,7 +346,7 @@ TYPED_TEST_P(FloatValueReaderTest, ExoticThousandsSeparatorsWithInvalidGrouping)
     auto state = thsep_test_state<typename TestFixture::char_type>{"\1\2"};
     auto res = this->read_specs_with_locale(state.specs, state.locref);
 
-    ASSERT_TRUE(res);
+    ASSERT_THAT(res, Succeeded());
     EXPECT_EQ(res.value(), this->source_as_view().end());
     EXPECT_TRUE(this->check_value(SCN_FLOAT_CONSTANT(1234.56789)));
 }
@@ -387,7 +384,7 @@ TYPED_TEST_P(FloatValueReaderTest, LocalizedDecimalSeparator)
     auto state = decimal_comma_test_state<typename TestFixture::char_type>{};
     auto res = this->read_specs_with_locale({}, state.locref);
 
-    ASSERT_TRUE(res);
+    ASSERT_THAT(res, Succeeded());
     EXPECT_EQ(res.value(), this->source_as_view().end());
     EXPECT_TRUE(this->check_value(SCN_FLOAT_CONSTANT(3.14)));
 }

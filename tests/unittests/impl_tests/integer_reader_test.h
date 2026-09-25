@@ -326,7 +326,8 @@ protected:
     {
         if (!result) {
             return testing::AssertionFailure()
-                   << "Result not good: code " << result.error().code();
+                   << "Result not good: "
+                   << testing::PrintToString(result.error());
         }
         SCN_EXPECT(this->widened_source.has_value());
         if (scn::detail::to_address(result.value()) !=
@@ -364,12 +365,14 @@ protected:
     {
         if (result) {
             return testing::AssertionFailure()
-                   << "Result good, expected failure";
+                   << "Result good, expected failure: "
+                   << testing::PrintToString(result);
         }
         if (result.error().code() != c) {
             return testing::AssertionFailure()
                    << "Result failed with wrong error code: "
-                   << result.error().code() << ", expected " << c;
+                   << testing::PrintToString(result.error())
+                   << ", expected code " << c;
         }
         if (val != 0) {
             return testing::AssertionFailure()
@@ -387,12 +390,14 @@ protected:
     {
         if (result) {
             return testing::AssertionFailure()
-                   << "Result good, expected failure";
+                   << "Result good, expected failure: "
+                   << testing::PrintToString(result);
         }
         if (result.error().code() != c) {
             return testing::AssertionFailure()
                    << "Result failed with wrong error code: "
-                   << result.error().code() << ", expected " << c;
+                   << testing::PrintToString(result.error())
+                   << ", expected code " << c;
         }
         if (val != expected_value) {
             return testing::AssertionFailure()
@@ -563,7 +568,7 @@ TYPED_TEST_P(IntValueReaderTest, OctAltDefault)
     const auto [result, val] = this->simple_specs_test(
         src, this->make_format_specs_with_presentation_and_base(
                  scn::detail::presentation_type::none));
-    EXPECT_TRUE(result);
+    EXPECT_THAT(result, Succeeded());
     EXPECT_EQ(val, 0);
 }
 TYPED_TEST_P(IntValueReaderTest, OctAltDetected)
@@ -581,7 +586,7 @@ TYPED_TEST_P(IntValueReaderTest, OctFollowedByDec)
     const auto [result, val] = this->simple_specs_test(
         src, this->make_format_specs_with_presentation_and_base(
                  scn::detail::presentation_type::int_octal));
-    ASSERT_TRUE(result);
+    ASSERT_THAT(result, Succeeded());
     EXPECT_NE(scn::detail::to_address(result.value()),
               scn::detail::to_address(this->widened_source->end()));
     EXPECT_EQ(val, 0);
@@ -601,7 +606,7 @@ TYPED_TEST_P(IntValueReaderTest, OctFollowedByDecDetected)
     const auto [result, val] = this->simple_specs_test(
         src, this->make_format_specs_with_presentation_and_base(
                  scn::detail::presentation_type::int_generic));
-    ASSERT_TRUE(result);
+    ASSERT_THAT(result, Succeeded());
     EXPECT_NE(scn::detail::to_address(result.value()),
               scn::detail::to_address(this->widened_source->end()));
     EXPECT_EQ(val, 0);
@@ -695,7 +700,7 @@ TYPED_TEST_P(IntValueReaderTest, SeventeenDigits)
 TYPED_TEST_P(IntValueReaderTest, StartsAsDecimalNumber)
 {
     auto [result, val] = this->simple_test("123abc");
-    ASSERT_TRUE(result);
+    ASSERT_THAT(result, Succeeded());
     EXPECT_EQ(val, 123);
     EXPECT_EQ(scn::detail::to_address(*result),
               scn::detail::to_address(this->widened_source->begin() + 3));
@@ -710,21 +715,21 @@ TYPED_TEST_P(IntValueReaderTest, Nonsense)
 TYPED_TEST_P(IntValueReaderTest, NonsenseStartingWithZero)
 {
     auto [result, val] = this->simple_test("0helloworld");
-    ASSERT_TRUE(result);
+    ASSERT_THAT(result, Succeeded());
     EXPECT_EQ(val, 0);
     EXPECT_EQ(**result, 'h');
 }
 TYPED_TEST_P(IntValueReaderTest, NonsenseStartingWithHexPrefix)
 {
     auto [result, val] = this->simple_test("0xhelloworld");
-    ASSERT_TRUE(result);
+    ASSERT_THAT(result, Succeeded());
     EXPECT_EQ(val, 0);
     EXPECT_EQ(**result, 'x');
 }
 TYPED_TEST_P(IntValueReaderTest, HexFollowedByNonsenseWithDefault)
 {
     auto [result, val] = this->simple_test("0xehelloworld");
-    ASSERT_TRUE(result);
+    ASSERT_THAT(result, Succeeded());
     EXPECT_EQ(val, 0);
     EXPECT_EQ(**result, 'x');
 }
@@ -745,7 +750,7 @@ TYPED_TEST_P(IntValueReaderTest, OnlyMinusSign)
 TYPED_TEST_P(IntValueReaderTest, OnlyHexPrefix)
 {
     auto [result, val] = this->simple_test("0x");
-    ASSERT_TRUE(result);
+    ASSERT_THAT(result, Succeeded());
     EXPECT_EQ(val, 0);
     EXPECT_EQ(scn::detail::to_address(*result),
               scn::detail::to_address(this->widened_source->begin() + 1));
@@ -753,7 +758,7 @@ TYPED_TEST_P(IntValueReaderTest, OnlyHexPrefix)
 TYPED_TEST_P(IntValueReaderTest, OnlyLongOctPrefix)
 {
     auto [result, val] = this->simple_test("0o");
-    ASSERT_TRUE(result);
+    ASSERT_THAT(result, Succeeded());
     EXPECT_EQ(val, 0);
     EXPECT_EQ(scn::detail::to_address(*result),
               scn::detail::to_address(this->widened_source->begin() + 1));
@@ -761,7 +766,7 @@ TYPED_TEST_P(IntValueReaderTest, OnlyLongOctPrefix)
 TYPED_TEST_P(IntValueReaderTest, OnlyBinPrefix)
 {
     auto [result, val] = this->simple_test("0b");
-    ASSERT_TRUE(result);
+    ASSERT_THAT(result, Succeeded());
     EXPECT_EQ(val, 0);
     EXPECT_EQ(scn::detail::to_address(*result),
               scn::detail::to_address(this->widened_source->begin() + 1));
@@ -776,7 +781,7 @@ TYPED_TEST_P(IntValueReaderTest, InputWithNullBytes)
     EXPECT_EQ(std::strlen(src.data()), 1);
 
     auto [result, val] = this->simple_test(std::move(src));
-    ASSERT_TRUE(result);
+    ASSERT_THAT(result, Succeeded());
     EXPECT_EQ(val, 1);
     EXPECT_EQ(scn::detail::to_address(*result),
               scn::detail::to_address(this->widened_source->begin() + 1));

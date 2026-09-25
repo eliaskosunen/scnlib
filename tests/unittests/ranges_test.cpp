@@ -15,7 +15,7 @@
 // This file is a part of scnlib:
 //     https://github.com/eliaskosunen/scnlib
 
-#include "wrapped_gtest.h"
+#include "test_common.h"
 
 #include <map>
 #include <set>
@@ -30,7 +30,7 @@ TEST(RangesTest, VectorSequence)
                   scn::range_format::sequence);
 
     auto result = scn::scan<std::vector<int>>("[123, 456]", "{}");
-    ASSERT_TRUE(result);
+    ASSERT_THAT(result, Succeeded());
     EXPECT_THAT(result->value(), testing::ElementsAre(123, 456));
 }
 
@@ -40,7 +40,7 @@ TEST(RangesTest, Set)
                   scn::range_format::set);
 
     auto result = scn::scan<std::set<int>>("{123, 456}", "{}");
-    ASSERT_TRUE(result);
+    ASSERT_THAT(result, Succeeded());
     EXPECT_THAT(result->value(), testing::ElementsAre(123, 456));
 }
 
@@ -50,7 +50,7 @@ TEST(RangesTest, Map)
                   scn::range_format::map);
 
     auto result = scn::scan<std::map<int, int>>("{12: 34, 56: 78}", "{}");
-    ASSERT_TRUE(result);
+    ASSERT_THAT(result, Succeeded());
     EXPECT_THAT(result->value(),
                 testing::ElementsAre(std::pair{12, 34}, std::pair{56, 78}));
 }
@@ -58,81 +58,81 @@ TEST(RangesTest, Map)
 TEST(RangesTest, VectorEmpty)
 {
     auto result = scn::scan<std::vector<int>>("[]", "{}");
-    ASSERT_TRUE(result);
-    EXPECT_TRUE(result->value().empty());
+    ASSERT_THAT(result, Succeeded());
+    EXPECT_THAT(result->value(), ::testing::IsEmpty());
 }
 
 TEST(RangesTest, VectorSingleElement)
 {
     auto result = scn::scan<std::vector<int>>("[42]", "{}");
-    ASSERT_TRUE(result);
+    ASSERT_THAT(result, Succeeded());
     EXPECT_THAT(result->value(), testing::ElementsAre(42));
 }
 
 TEST(RangesTest, SetEmpty)
 {
     auto result = scn::scan<std::set<int>>("{}", "{}");
-    ASSERT_TRUE(result);
-    EXPECT_TRUE(result->value().empty());
+    ASSERT_THAT(result, Succeeded());
+    EXPECT_THAT(result->value(), ::testing::IsEmpty());
 }
 
 TEST(RangesTest, SetSingleElement)
 {
     auto result = scn::scan<std::set<int>>("{999}", "{}");
-    ASSERT_TRUE(result);
+    ASSERT_THAT(result, Succeeded());
     EXPECT_THAT(result->value(), testing::ElementsAre(999));
 }
 
 TEST(RangesTest, MapEmpty)
 {
     auto result = scn::scan<std::map<int, int>>("{}", "{}");
-    ASSERT_TRUE(result);
-    EXPECT_TRUE(result->value().empty());
+    ASSERT_THAT(result, Succeeded());
+    EXPECT_THAT(result->value(), ::testing::IsEmpty());
 }
 
 TEST(RangesTest, MapSingleElement)
 {
     auto result = scn::scan<std::map<int, int>>("{10: 20}", "{}");
-    ASSERT_TRUE(result);
+    ASSERT_THAT(result, Succeeded());
     EXPECT_THAT(result->value(), testing::ElementsAre(std::pair{10, 20}));
 }
 
 TEST(RangesTest, VectorMalformedMissingCloseBracket)
 {
     auto result = scn::scan<std::vector<int>>("[123, 456", "{}");
-    ASSERT_FALSE(result);
+    ASSERT_THAT(result, Failed());
 }
 
 TEST(RangesTest, SetMalformedMissingCloseBrace)
 {
     auto result = scn::scan<std::set<int>>("{123, 456", "{}");
-    ASSERT_FALSE(result);
+    ASSERT_THAT(result, Failed());
 }
 
 TEST(RangesTest, MapMalformedMissingColon)
 {
     auto result = scn::scan<std::map<int, int>>("{12 34}", "{}");
-    ASSERT_FALSE(result);
+    ASSERT_THAT(result, Failed());
 }
 
 TEST(RangesTest, VectorManyElements)
 {
     auto result = scn::scan<std::vector<int>>("[1, 2, 3, 4, 5]", "{}");
-    ASSERT_TRUE(result);
+    ASSERT_THAT(result, Succeeded());
     EXPECT_THAT(result->value(), testing::ElementsAre(1, 2, 3, 4, 5));
 }
 
 TEST(RangesTest, VectorNegativeNumbers)
 {
     auto result = scn::scan<std::vector<int>>("[-1, -2, -3]", "{}");
-    ASSERT_TRUE(result);
+    ASSERT_THAT(result, Succeeded());
     EXPECT_THAT(result->value(), testing::ElementsAre(-1, -2, -3));
 }
 
 TEST(RangesTest, VectorDoubles)
 {
     auto result = scn::scan<std::vector<double>>("[1.5, 2.5, 3.5]", "{}");
-    ASSERT_TRUE(result);
+    ASSERT_THAT(result, Succeeded());
     EXPECT_EQ(result->value().size(), 3);
     EXPECT_NEAR(result->value()[0], 1.5, 0.001);
     EXPECT_NEAR(result->value()[1], 2.5, 0.001);
@@ -142,21 +142,21 @@ TEST(RangesTest, VectorDoubles)
 TEST(RangesTest, VectorWithExtraWhitespace)
 {
     auto result = scn::scan<std::vector<int>>("[  1  ,  2  ,  3  ]", "{}");
-    ASSERT_TRUE(result);
+    ASSERT_THAT(result, Succeeded());
     EXPECT_THAT(result->value(), testing::ElementsAre(1, 2, 3));
 }
 
 TEST(RangesTest, SetDuplicates)
 {
     auto result = scn::scan<std::set<int>>("{1, 2, 2, 3}", "{}");
-    ASSERT_TRUE(result);
+    ASSERT_THAT(result, Succeeded());
     EXPECT_THAT(result->value(), testing::ElementsAre(1, 2, 3));
 }
 
 TEST(RangesTest, MapMultipleEntries)
 {
     auto result = scn::scan<std::map<int, int>>("{1: 10, 2: 20, 3: 30}", "{}");
-    ASSERT_TRUE(result);
+    ASSERT_THAT(result, Succeeded());
     EXPECT_EQ(result->value().size(), 3);
     EXPECT_EQ(result->value()[1], 10);
     EXPECT_EQ(result->value()[2], 20);
@@ -166,17 +166,17 @@ TEST(RangesTest, MapMultipleEntries)
 TEST(RangesTest, VectorMalformedNoOpenBracket)
 {
     auto result = scn::scan<std::vector<int>>("123, 456]", "{}");
-    ASSERT_FALSE(result);
+    ASSERT_THAT(result, Failed());
 }
 
 TEST(RangesTest, SetMalformedNoOpenBrace)
 {
     auto result = scn::scan<std::set<int>>("123, 456}", "{}");
-    ASSERT_FALSE(result);
+    ASSERT_THAT(result, Failed());
 }
 
 TEST(RangesTest, VectorInvalidElementType)
 {
     auto result = scn::scan<std::vector<int>>("[abc, def]", "{}");
-    ASSERT_FALSE(result);
+    ASSERT_THAT(result, Failed());
 }

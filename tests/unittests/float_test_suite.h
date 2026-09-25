@@ -478,7 +478,7 @@ protected:
         else if (result.error().code() != expected) {
             return testing::AssertionFailure()
                    << "Failed with wrong code, expected: " << expected
-                   << " got " << result.error().code();
+                   << " got " << testing::PrintToString(result.error());
         }
 
         return testing::AssertionSuccess();

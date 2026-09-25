@@ -15,7 +15,7 @@
 // This file is a part of scnlib:
 //     https://github.com/eliaskosunen/scnlib
 
-#include "../wrapped_gtest.h"
+#include "../test_common.h"
 
 #include <scn/impl.h>
 
@@ -61,41 +61,41 @@ TEST(ReadExactlyNCodeUnitsTest, ReadAllContiguous)
 {
     auto src = "foo"sv;
     auto it = scn::impl::read_exactly_n_code_units(src, 3);
-    ASSERT_TRUE(it);
+    ASSERT_THAT(it, Succeeded());
     EXPECT_EQ(*it, src.end());
 }
 TEST(ReadExactlyNCodeUnitsTest, ReadAllNonContiguous)
 {
     auto src = make_non_contiguous_buffer_range("foo");
     auto it = scn::impl::read_exactly_n_code_units(src, 3);
-    ASSERT_TRUE(it);
+    ASSERT_THAT(it, Succeeded());
     EXPECT_EQ(*it, src.end());
 }
 TEST(ReadExactlyNCodeUnitsTest, ReadLessContiguous)
 {
     auto src = "foo"sv;
     auto it = scn::impl::read_exactly_n_code_units(src, 2);
-    ASSERT_TRUE(it);
+    ASSERT_THAT(it, Succeeded());
     EXPECT_EQ(*it, src.begin() + 2);
 }
 TEST(ReadExactlyNCodeUnitsTest, ReadLessNonContiguous)
 {
     auto src = make_non_contiguous_buffer_range("foo");
     auto it = scn::impl::read_exactly_n_code_units(src, 2);
-    ASSERT_TRUE(it);
+    ASSERT_THAT(it, Succeeded());
     EXPECT_EQ(*it, scn::ranges::next(src.begin(), 2));
 }
 TEST(ReadExactlyNCodeUnitsTest, ReadMoreContiguous)
 {
     auto src = "foo"sv;
     auto it = scn::impl::read_exactly_n_code_units(src, 4);
-    ASSERT_FALSE(it);
+    ASSERT_THAT(it, Failed());
 }
 TEST(ReadExactlyNCodeUnitsTest, ReadMoreNonContiguous)
 {
     auto src = make_non_contiguous_buffer_range("foo");
     auto it = scn::impl::read_exactly_n_code_units(src, 4);
-    ASSERT_FALSE(it);
+    ASSERT_THAT(it, Failed());
 }
 
 // read_code_point(_into)
@@ -135,41 +135,41 @@ TEST(ReadExactlyNCodePointsTest, ReadAllContiguous)
 {
     auto src = "aäö"sv;
     auto it = scn::impl::read_exactly_n_code_points(src, 3);
-    ASSERT_TRUE(it);
+    ASSERT_THAT(it, Succeeded());
     EXPECT_EQ(*it, src.end());
 }
 TEST(ReadExactlyNCodePointsTest, ReadAllNonContiguous)
 {
     auto src = make_non_contiguous_buffer_range("aäö");
     auto it = scn::impl::read_exactly_n_code_points(src, 3);
-    ASSERT_TRUE(it);
+    ASSERT_THAT(it, Succeeded());
     EXPECT_EQ(*it, src.end());
 }
 TEST(ReadExactlyNCodePointsTest, ReadLessContiguous)
 {
     auto src = "aäö"sv;
     auto it = scn::impl::read_exactly_n_code_points(src, 2);
-    ASSERT_TRUE(it);
+    ASSERT_THAT(it, Succeeded());
     EXPECT_EQ(*it, src.begin() + 3);
 }
 TEST(ReadExactlyNCodePointsTest, ReadLessNonContiguous)
 {
     auto src = make_non_contiguous_buffer_range("aäö");
     auto it = scn::impl::read_exactly_n_code_points(src, 2);
-    ASSERT_TRUE(it);
+    ASSERT_THAT(it, Succeeded());
     EXPECT_EQ(*it, scn::ranges::next(src.begin(), 3));
 }
 TEST(ReadExactlyNCodePointsTest, ReadMoreContiguous)
 {
     auto src = "aäö"sv;
     auto it = scn::impl::read_exactly_n_code_points(src, 4);
-    ASSERT_FALSE(it);
+    ASSERT_THAT(it, Failed());
 }
 TEST(ReadExactlyNCodePointsTest, ReadMoreNonContiguous)
 {
     auto src = make_non_contiguous_buffer_range("aäö");
     auto it = scn::impl::read_exactly_n_code_points(src, 4);
-    ASSERT_FALSE(it);
+    ASSERT_THAT(it, Failed());
 }
 
 // read_until_code_unit
@@ -270,14 +270,14 @@ TEST(ReadUntil1CodeUnit, ReadAll)
 {
     auto src = "abc"sv;
     auto it = scn::impl::read_until1_code_unit(src, is_literal_space);
-    ASSERT_TRUE(it);
+    ASSERT_THAT(it, Succeeded());
     EXPECT_EQ(*it, src.end());
 }
 TEST(ReadUntil1CodeUnit, ReadOne)
 {
     auto src = "a b"sv;
     auto it = scn::impl::read_until1_code_unit(src, is_literal_space);
-    ASSERT_TRUE(it);
+    ASSERT_THAT(it, Succeeded());
     EXPECT_EQ(*it, src.begin() + 1);
     EXPECT_EQ(**it, ' ');
 }
@@ -285,7 +285,7 @@ TEST(ReadUntil1CodeUnit, ReadNone)
 {
     auto src = " ab"sv;
     auto it = scn::impl::read_until1_code_unit(src, is_literal_space);
-    ASSERT_FALSE(it);
+    ASSERT_THAT(it, Failed());
 }
 
 // read_while1_code_unit
@@ -294,14 +294,14 @@ TEST(ReadWhile1CodeUnit, ReadAll)
 {
     auto src = "abc"sv;
     auto it = scn::impl::read_while1_code_unit(src, is_not_literal_space);
-    ASSERT_TRUE(it);
+    ASSERT_THAT(it, Succeeded());
     EXPECT_EQ(*it, src.end());
 }
 TEST(ReadWhile1CodeUnit, ReadOne)
 {
     auto src = "a b"sv;
     auto it = scn::impl::read_while1_code_unit(src, is_not_literal_space);
-    ASSERT_TRUE(it);
+    ASSERT_THAT(it, Succeeded());
     EXPECT_EQ(*it, src.begin() + 1);
     EXPECT_EQ(**it, ' ');
 }
@@ -309,7 +309,7 @@ TEST(ReadWhile1CodeUnit, ReadNone)
 {
     auto src = " ab"sv;
     auto it = scn::impl::read_while1_code_unit(src, is_not_literal_space);
-    ASSERT_FALSE(it);
+    ASSERT_THAT(it, Failed());
 }
 
 // read_until_code_point
@@ -362,7 +362,7 @@ TEST(ReadMatchingCodeUnit, MatchContiguous)
 {
     auto src = "abc"sv;
     auto it = scn::impl::read_matching_code_unit(src, 'a');
-    ASSERT_TRUE(it);
+    ASSERT_THAT(it, Succeeded());
     EXPECT_EQ(*it, src.begin() + 1);
     EXPECT_EQ(**it, 'b');
 }
@@ -370,7 +370,7 @@ TEST(ReadMatchingCodeUnit, MatchNonContiguous)
 {
     auto src = make_non_contiguous_buffer_range("abc");
     auto it = scn::impl::read_matching_code_unit(src, 'a');
-    ASSERT_TRUE(it);
+    ASSERT_THAT(it, Succeeded());
     EXPECT_EQ(*it, scn::ranges::next(src.begin(), 1));
     EXPECT_EQ(**it, 'b');
 }
@@ -378,13 +378,13 @@ TEST(ReadMatchingCodeUnit, NoMatchContiguous)
 {
     auto src = "abc"sv;
     auto it = scn::impl::read_matching_code_unit(src, 'b');
-    ASSERT_FALSE(it);
+    ASSERT_THAT(it, Failed());
 }
 TEST(ReadMatchingCodeUnit, NoMatchNonContiguous)
 {
     auto src = make_non_contiguous_buffer_range("abc");
     auto it = scn::impl::read_matching_code_unit(src, 'b');
-    ASSERT_FALSE(it);
+    ASSERT_THAT(it, Failed());
 }
 
 TEST(ReadWhileClassicSpace, SingleMatchContiguous)
