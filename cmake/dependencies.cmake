@@ -107,7 +107,7 @@ if (SCN_BENCHMARKS)
         FetchContent_Declare(
                 google-benchmark
                 GIT_REPOSITORY https://github.com/google/benchmark.git
-                GIT_TAG v1.9.4
+                GIT_TAG v1.9.5
                 GIT_SHALLOW TRUE
         )
         list(APPEND SCN_DEPENDENCIES_TO_MAKE_AVAILABLE "google-benchmark")

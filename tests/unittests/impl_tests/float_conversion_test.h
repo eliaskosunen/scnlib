@@ -20,15 +20,29 @@
 
 #include <scn/impl.h>
 
+template <typename Traits, bool Enabled>
+struct supports_hex_helper;
+
+template <typename Traits>
+struct supports_hex_helper<Traits, true> {
+    static constexpr bool value = Traits::support_hexfloat;
+};
+
+template <typename Traits>
+struct supports_hex_helper<Traits, false> {
+    static constexpr bool value = false;
+};
+
 template <bool Localized, typename Traits, typename CharT, typename FloatT>
 struct float_conversion_interface_base {
     using char_type = CharT;
     using float_type = FloatT;
 
     static constexpr bool enabled = Traits::template enabled<CharT, FloatT>;
-    static constexpr bool supports_nan = true;
-    static constexpr bool supports_inf = true;
-    static constexpr bool supports_hex = Traits::support_hexfloat;
+    static constexpr bool supports_nan = enabled;
+    static constexpr bool supports_inf = enabled;
+    static constexpr bool supports_hex =
+        supports_hex_helper<Traits, enabled>::value;
 
     static scn::scan_expected<void> test(std::basic_string_view<CharT> source,
                                          FloatT& parsed)

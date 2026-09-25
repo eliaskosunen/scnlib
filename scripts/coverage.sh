@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 
+set -euxo pipefail
+
 # Clean up
 rm -rf ./coverage-*.info ./coverage-html
 lcov --zerocounters --directory .
@@ -20,7 +22,7 @@ lcov --add-tracefile coverage-base.info --add-tracefile coverage-test.info --out
 
 # Filter lcov data
 lcov --remove coverage-total.info \
-  '/usr/*' '*/tests/*' '*/examples/*' '*/benchmark/*' '*/src/scn/impl/external/*' '*/include/scn/util/expected_impl.h' '*/_deps/*' \
+  '/usr/*' '*/tests/*' '*/examples/*' '*/benchmark/*' '*/_deps/*' \
   --output-file coverage-filtered.info --ignore-errors inconsistent
 
 # Display summary

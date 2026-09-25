@@ -25,6 +25,8 @@
 
 namespace {
 
+using namespace std::string_view_literals;
+
 std::optional<std::locale> make_locale(const std::string& name)
 {
     try {
@@ -71,9 +73,12 @@ TEST(LocalizedChronoTest, Date)
     EXPECT_EQ(result->value().tm_year, 2020 - 1900);
     EXPECT_EQ(result->value().tm_mon, 10 - 1);
     EXPECT_EQ(result->value().tm_mday, 17);
+}
 
 #if !SCN_STDLIB_LIBCPP
-    result = scn::scan<std::tm>(fi_locale, "17.10.2020", "{:L%x}");
+TEST(LocalizedChronoTest, DateLocalized)
+{
+    auto result = scn::scan<std::tm>(fi_locale, "17.10.2020", "{:L%x}");
     ASSERT_TRUE(result);
     EXPECT_EQ(result->value().tm_year, 2020 - 1900);
     EXPECT_EQ(result->value().tm_mon, 10 - 1);
@@ -84,8 +89,8 @@ TEST(LocalizedChronoTest, Date)
     EXPECT_EQ(result->value().tm_year, 2020 - 1900);
     EXPECT_EQ(result->value().tm_mon, 10 - 1);
     EXPECT_EQ(result->value().tm_mday, 17);
-#endif
 }
+#endif
 
 TEST(LocalizedChronoTest, Time)
 {
@@ -101,16 +106,13 @@ TEST(LocalizedChronoTest, Time)
     EXPECT_EQ(result->value().tm_hour, 4);
     EXPECT_EQ(result->value().tm_min, 41);
     EXPECT_EQ(result->value().tm_sec, 13);
+}
 
-    constexpr auto& source =
-#if SCN_STDLIB_LIBCPP
-        "04:41:13"
-#else
-        "04.41.13"
-#endif
-        ;
+TEST(LocalizedChronoTest, TimeLocalized)
+{
+    constexpr auto source = SCN_STDLIB_LIBCPP ? "04:41:13"sv : "04.41.13"sv;
 
-    result = scn::scan<std::tm>(fi_locale, source, "{:L%X}");
+    auto result = scn::scan<std::tm>(fi_locale, source, "{:L%X}");
     ASSERT_TRUE(result);
     EXPECT_EQ(result->value().tm_hour, 4);
     EXPECT_EQ(result->value().tm_min, 41);
@@ -123,10 +125,10 @@ TEST(LocalizedChronoTest, Time)
     EXPECT_EQ(result->value().tm_sec, 13);
 }
 
+// libstdc++ supports %r starting from v12
+#if SCN_STDLIB_LIBCPP || SCN_STDLIB_GLIBCXX >= 12
 TEST(LocalizedChronoTest, Time12Hour)
 {
-    // libstdc++ supports %r starting from v12
-#if SCN_STDLIB_LIBCPP || SCN_STDLIB_GLIBCXX >= 12
     auto result =
         scn::scan<std::tm>(std::locale::classic(), "04:41:13 PM", "{:L%r}");
     ASSERT_TRUE(result);
@@ -137,11 +139,14 @@ TEST(LocalizedChronoTest, Time12Hour)
     result = scn::scan<std::tm>(std::locale::classic(), "04:41:13 PM",
                                 scn::runtime_format("{:L%Er}"));
     EXPECT_FALSE(result);
+}
 #endif
 
-    // %r doesn't have a definition in fi_FI.UTF-8 in Linux
+// %r doesn't have a definition in fi_FI.UTF-8 in Linux
 #if SCN_APPLE
-    result = scn::scan<std::tm>(fi_locale, "04:41:13 pm", "{:L%r}");
+TEST(LocalizedChronoTest, Time12HourLocalized)
+{
+    auto result = scn::scan<std::tm>(fi_locale, "04:41:13 pm", "{:L%r}");
     ASSERT_TRUE(result);
     EXPECT_EQ(result->value().tm_hour, 16);
     EXPECT_EQ(result->value().tm_min, 41);
@@ -150,8 +155,8 @@ TEST(LocalizedChronoTest, Time12Hour)
     result = scn::scan<std::tm>(fi_locale, "04:41:13 pm",
                                 scn::runtime_format("{:L%Er}"));
     EXPECT_FALSE(result);
-#endif
 }
+#endif
 
 TEST(LocalizedChronoTest, MonthName)
 {
@@ -163,17 +168,20 @@ TEST(LocalizedChronoTest, MonthName)
     result = scn::scan<std::tm>(std::locale::classic(), "February",
                                 scn::runtime_format("{:L%Ob}"));
     EXPECT_FALSE(result);
+}
 
 #if !SCN_STDLIB_LIBCPP
-    result = scn::scan<std::tm>(fi_locale, "helmikuu", "{:L%b}");
+TEST(LocalizedChronoTest, MonthNameLocalized)
+{
+    auto result = scn::scan<std::tm>(fi_locale, "helmikuu", "{:L%b}");
     ASSERT_TRUE(result);
     EXPECT_EQ(result->value().tm_mon, 1);
 
     result = scn::scan<std::tm>(fi_locale, "helmikuu",
                                 scn::runtime_format("{:L%Ob}"));
     EXPECT_FALSE(result);
-#endif
 }
+#endif
 
 TEST(LocalizedChronoTest, MonthDec)
 {
@@ -181,23 +189,24 @@ TEST(LocalizedChronoTest, MonthDec)
     ASSERT_TRUE(result);
     EXPECT_EQ(result->value().tm_mon, 1);
 
-// libstdc++ pre-v12 requires two digits for %Om
-#if !SCN_STDLIB_LIBCPP && SCN_STDLIB_GLIBCXX >= 12
-    result = scn::scan<std::tm>(std::locale::classic(), "2", "{:L%Om}");
-    ASSERT_TRUE(result);
-    EXPECT_EQ(result->value().tm_mon, 1);
-#endif
-
     result = scn::scan<std::tm>(fi_locale, "2", "{:L%m}");
     ASSERT_TRUE(result);
     EXPECT_EQ(result->value().tm_mon, 1);
+}
 
+// libstdc++ pre-v12 requires two digits for %Om
 #if !SCN_STDLIB_LIBCPP && SCN_STDLIB_GLIBCXX >= 12
+TEST(LocalizedChronoTest, MonthDecModified)
+{
+    auto result = scn::scan<std::tm>(std::locale::classic(), "2", "{:L%Om}");
+    ASSERT_TRUE(result);
+    EXPECT_EQ(result->value().tm_mon, 1);
+
     result = scn::scan<std::tm>(fi_locale, "2", "{:L%Om}");
     ASSERT_TRUE(result);
     EXPECT_EQ(result->value().tm_mon, 1);
-#endif
 }
+#endif
 
 TEST(LocalizedChronoTest, WeekdayName)
 {
@@ -209,17 +218,20 @@ TEST(LocalizedChronoTest, WeekdayName)
     result = scn::scan<std::tm>(std::locale::classic(), "Monday",
                                 scn::runtime_format("{:L%Oa}"));
     EXPECT_FALSE(result);
+}
 
 #if !SCN_STDLIB_LIBCPP
-    result = scn::scan<std::tm>(fi_locale, "maanantai", "{:L%a}");
+TEST(LocalizedChronoTest, WeekdayNameLocalized)
+{
+    auto result = scn::scan<std::tm>(fi_locale, "maanantai", "{:L%a}");
     ASSERT_TRUE(result);
     EXPECT_EQ(result->value().tm_wday, 1);
 
     result = scn::scan<std::tm>(fi_locale, "maanantai",
                                 scn::runtime_format("{:L%Oa}"));
     EXPECT_FALSE(result);
-#endif
 }
+#endif
 
 TEST(LocalizedChronoTest, WeekdayDec)
 {
@@ -227,23 +239,24 @@ TEST(LocalizedChronoTest, WeekdayDec)
     ASSERT_TRUE(result);
     EXPECT_EQ(result->value().tm_wday, 1);
 
-// libstdc++ pre-v12 requires two digits for %Ow
-#if !SCN_STDLIB_LIBCPP && SCN_STDLIB_GLIBCXX >= 12
-    result = scn::scan<std::tm>(std::locale::classic(), "1", "{:L%Ow}");
-    ASSERT_TRUE(result);
-    EXPECT_EQ(result->value().tm_wday, 1);
-#endif
-
     result = scn::scan<std::tm>(fi_locale, "1", "{:L%w}");
     ASSERT_TRUE(result);
     EXPECT_EQ(result->value().tm_wday, 1);
+}
 
+// libstdc++ pre-v12 requires two digits for %Ow
 #if !SCN_STDLIB_LIBCPP && SCN_STDLIB_GLIBCXX >= 12
+TEST(LocalizedChronoTest, WeekdayDecModified)
+{
+    auto result = scn::scan<std::tm>(std::locale::classic(), "1", "{:L%Ow}");
+    ASSERT_TRUE(result);
+    EXPECT_EQ(result->value().tm_wday, 1);
+
     result = scn::scan<std::tm>(fi_locale, "1", "{:L%Ow}");
     ASSERT_TRUE(result);
     EXPECT_EQ(result->value().tm_wday, 1);
-#endif
 }
+#endif
 
 TEST(LocalizedChronoTest, MonthDayDec)
 {
@@ -251,23 +264,24 @@ TEST(LocalizedChronoTest, MonthDayDec)
     ASSERT_TRUE(result);
     EXPECT_EQ(result->value().tm_mday, 1);
 
-// libstdc++ pre-v12 requires two digits for %Od
-#if !SCN_STDLIB_LIBCPP && SCN_STDLIB_GLIBCXX >= 12
-    result = scn::scan<std::tm>(std::locale::classic(), "1", "{:L%Od}");
-    ASSERT_TRUE(result);
-    EXPECT_EQ(result->value().tm_mday, 1);
-#endif
-
     result = scn::scan<std::tm>(fi_locale, "1", "{:L%d}");
     ASSERT_TRUE(result);
     EXPECT_EQ(result->value().tm_mday, 1);
+}
 
+// libstdc++ pre-v12 requires two digits for %Od
 #if !SCN_STDLIB_LIBCPP && SCN_STDLIB_GLIBCXX >= 12
+TEST(LocalizedChronoTest, MonthDayDecModified)
+{
+    auto result = scn::scan<std::tm>(std::locale::classic(), "1", "{:L%Od}");
+    ASSERT_TRUE(result);
+    EXPECT_EQ(result->value().tm_mday, 1);
+
     result = scn::scan<std::tm>(fi_locale, "1", "{:L%Od}");
     ASSERT_TRUE(result);
     EXPECT_EQ(result->value().tm_mday, 1);
-#endif
 }
+#endif
 
 #if !SCN_STDLIB_GLIBCXX
 // "%c" doesn't work in libstdc++
