@@ -15,7 +15,7 @@
 // This file is a part of scnlib:
 //     https://github.com/eliaskosunen/scnlib
 
-#include "../wrapped_gtest.h"
+#include "../test_common.h"
 
 #include <scn/scan.h>
 
@@ -62,14 +62,14 @@ TEST(LocalizedChronoTest, Date)
 {
     auto result =
         scn::scan<std::tm>(std::locale::classic(), "10/17/2020", "{:L%x}");
-    ASSERT_TRUE(result);
+    ASSERT_THAT(result, Succeeded());
     EXPECT_EQ(result->value().tm_year, 2020 - 1900);
     EXPECT_EQ(result->value().tm_mon, 10 - 1);
     EXPECT_EQ(result->value().tm_mday, 17);
 
     result =
         scn::scan<std::tm>(std::locale::classic(), "10/17/2020", "{:L%Ex}");
-    ASSERT_TRUE(result);
+    ASSERT_THAT(result, Succeeded());
     EXPECT_EQ(result->value().tm_year, 2020 - 1900);
     EXPECT_EQ(result->value().tm_mon, 10 - 1);
     EXPECT_EQ(result->value().tm_mday, 17);
@@ -79,13 +79,13 @@ TEST(LocalizedChronoTest, Date)
 TEST(LocalizedChronoTest, DateLocalized)
 {
     auto result = scn::scan<std::tm>(fi_locale, "17.10.2020", "{:L%x}");
-    ASSERT_TRUE(result);
+    ASSERT_THAT(result, Succeeded());
     EXPECT_EQ(result->value().tm_year, 2020 - 1900);
     EXPECT_EQ(result->value().tm_mon, 10 - 1);
     EXPECT_EQ(result->value().tm_mday, 17);
 
     result = scn::scan<std::tm>(fi_locale, "17.10.2020", "{:L%Ex}");
-    ASSERT_TRUE(result);
+    ASSERT_THAT(result, Succeeded());
     EXPECT_EQ(result->value().tm_year, 2020 - 1900);
     EXPECT_EQ(result->value().tm_mon, 10 - 1);
     EXPECT_EQ(result->value().tm_mday, 17);
@@ -96,13 +96,13 @@ TEST(LocalizedChronoTest, Time)
 {
     auto result =
         scn::scan<std::tm>(std::locale::classic(), "04:41:13", "{:L%X}");
-    ASSERT_TRUE(result);
+    ASSERT_THAT(result, Succeeded());
     EXPECT_EQ(result->value().tm_hour, 4);
     EXPECT_EQ(result->value().tm_min, 41);
     EXPECT_EQ(result->value().tm_sec, 13);
 
     result = scn::scan<std::tm>(std::locale::classic(), "04:41:13", "{:L%EX}");
-    ASSERT_TRUE(result);
+    ASSERT_THAT(result, Succeeded());
     EXPECT_EQ(result->value().tm_hour, 4);
     EXPECT_EQ(result->value().tm_min, 41);
     EXPECT_EQ(result->value().tm_sec, 13);
@@ -113,13 +113,13 @@ TEST(LocalizedChronoTest, TimeLocalized)
     constexpr auto source = SCN_STDLIB_LIBCPP ? "04:41:13"sv : "04.41.13"sv;
 
     auto result = scn::scan<std::tm>(fi_locale, source, "{:L%X}");
-    ASSERT_TRUE(result);
+    ASSERT_THAT(result, Succeeded());
     EXPECT_EQ(result->value().tm_hour, 4);
     EXPECT_EQ(result->value().tm_min, 41);
     EXPECT_EQ(result->value().tm_sec, 13);
 
     result = scn::scan<std::tm>(fi_locale, source, "{:L%EX}");
-    ASSERT_TRUE(result);
+    ASSERT_THAT(result, Succeeded());
     EXPECT_EQ(result->value().tm_hour, 4);
     EXPECT_EQ(result->value().tm_min, 41);
     EXPECT_EQ(result->value().tm_sec, 13);
@@ -131,14 +131,14 @@ TEST(LocalizedChronoTest, Time12Hour)
 {
     auto result =
         scn::scan<std::tm>(std::locale::classic(), "04:41:13 PM", "{:L%r}");
-    ASSERT_TRUE(result);
+    ASSERT_THAT(result, Succeeded());
     EXPECT_EQ(result->value().tm_hour, 16);
     EXPECT_EQ(result->value().tm_min, 41);
     EXPECT_EQ(result->value().tm_sec, 13);
 
     result = scn::scan<std::tm>(std::locale::classic(), "04:41:13 PM",
                                 scn::runtime_format("{:L%Er}"));
-    EXPECT_FALSE(result);
+    EXPECT_THAT(result, Failed());
 }
 #endif
 
@@ -147,14 +147,14 @@ TEST(LocalizedChronoTest, Time12Hour)
 TEST(LocalizedChronoTest, Time12HourLocalized)
 {
     auto result = scn::scan<std::tm>(fi_locale, "04:41:13 pm", "{:L%r}");
-    ASSERT_TRUE(result);
+    ASSERT_THAT(result, Succeeded());
     EXPECT_EQ(result->value().tm_hour, 16);
     EXPECT_EQ(result->value().tm_min, 41);
     EXPECT_EQ(result->value().tm_sec, 13);
 
     result = scn::scan<std::tm>(fi_locale, "04:41:13 pm",
                                 scn::runtime_format("{:L%Er}"));
-    EXPECT_FALSE(result);
+    EXPECT_THAT(result, Failed());
 }
 #endif
 
@@ -162,35 +162,35 @@ TEST(LocalizedChronoTest, MonthName)
 {
     auto result =
         scn::scan<std::tm>(std::locale::classic(), "February", "{:L%b}");
-    ASSERT_TRUE(result);
+    ASSERT_THAT(result, Succeeded());
     EXPECT_EQ(result->value().tm_mon, 1);
 
     result = scn::scan<std::tm>(std::locale::classic(), "February",
                                 scn::runtime_format("{:L%Ob}"));
-    EXPECT_FALSE(result);
+    EXPECT_THAT(result, Failed());
 }
 
 #if !SCN_STDLIB_LIBCPP
 TEST(LocalizedChronoTest, MonthNameLocalized)
 {
     auto result = scn::scan<std::tm>(fi_locale, "helmikuu", "{:L%b}");
-    ASSERT_TRUE(result);
+    ASSERT_THAT(result, Succeeded());
     EXPECT_EQ(result->value().tm_mon, 1);
 
     result = scn::scan<std::tm>(fi_locale, "helmikuu",
                                 scn::runtime_format("{:L%Ob}"));
-    EXPECT_FALSE(result);
+    EXPECT_THAT(result, Failed());
 }
 #endif
 
 TEST(LocalizedChronoTest, MonthDec)
 {
     auto result = scn::scan<std::tm>(std::locale::classic(), "2", "{:L%m}");
-    ASSERT_TRUE(result);
+    ASSERT_THAT(result, Succeeded());
     EXPECT_EQ(result->value().tm_mon, 1);
 
     result = scn::scan<std::tm>(fi_locale, "2", "{:L%m}");
-    ASSERT_TRUE(result);
+    ASSERT_THAT(result, Succeeded());
     EXPECT_EQ(result->value().tm_mon, 1);
 }
 
@@ -199,11 +199,11 @@ TEST(LocalizedChronoTest, MonthDec)
 TEST(LocalizedChronoTest, MonthDecModified)
 {
     auto result = scn::scan<std::tm>(std::locale::classic(), "2", "{:L%Om}");
-    ASSERT_TRUE(result);
+    ASSERT_THAT(result, Succeeded());
     EXPECT_EQ(result->value().tm_mon, 1);
 
     result = scn::scan<std::tm>(fi_locale, "2", "{:L%Om}");
-    ASSERT_TRUE(result);
+    ASSERT_THAT(result, Succeeded());
     EXPECT_EQ(result->value().tm_mon, 1);
 }
 #endif
@@ -212,35 +212,35 @@ TEST(LocalizedChronoTest, WeekdayName)
 {
     auto result =
         scn::scan<std::tm>(std::locale::classic(), "Monday", "{:L%a}");
-    ASSERT_TRUE(result);
+    ASSERT_THAT(result, Succeeded());
     EXPECT_EQ(result->value().tm_wday, 1);
 
     result = scn::scan<std::tm>(std::locale::classic(), "Monday",
                                 scn::runtime_format("{:L%Oa}"));
-    EXPECT_FALSE(result);
+    EXPECT_THAT(result, Failed());
 }
 
 #if !SCN_STDLIB_LIBCPP
 TEST(LocalizedChronoTest, WeekdayNameLocalized)
 {
     auto result = scn::scan<std::tm>(fi_locale, "maanantai", "{:L%a}");
-    ASSERT_TRUE(result);
+    ASSERT_THAT(result, Succeeded());
     EXPECT_EQ(result->value().tm_wday, 1);
 
     result = scn::scan<std::tm>(fi_locale, "maanantai",
                                 scn::runtime_format("{:L%Oa}"));
-    EXPECT_FALSE(result);
+    EXPECT_THAT(result, Failed());
 }
 #endif
 
 TEST(LocalizedChronoTest, WeekdayDec)
 {
     auto result = scn::scan<std::tm>(std::locale::classic(), "1", "{:L%w}");
-    ASSERT_TRUE(result);
+    ASSERT_THAT(result, Succeeded());
     EXPECT_EQ(result->value().tm_wday, 1);
 
     result = scn::scan<std::tm>(fi_locale, "1", "{:L%w}");
-    ASSERT_TRUE(result);
+    ASSERT_THAT(result, Succeeded());
     EXPECT_EQ(result->value().tm_wday, 1);
 }
 
@@ -249,11 +249,11 @@ TEST(LocalizedChronoTest, WeekdayDec)
 TEST(LocalizedChronoTest, WeekdayDecModified)
 {
     auto result = scn::scan<std::tm>(std::locale::classic(), "1", "{:L%Ow}");
-    ASSERT_TRUE(result);
+    ASSERT_THAT(result, Succeeded());
     EXPECT_EQ(result->value().tm_wday, 1);
 
     result = scn::scan<std::tm>(fi_locale, "1", "{:L%Ow}");
-    ASSERT_TRUE(result);
+    ASSERT_THAT(result, Succeeded());
     EXPECT_EQ(result->value().tm_wday, 1);
 }
 #endif
@@ -261,11 +261,11 @@ TEST(LocalizedChronoTest, WeekdayDecModified)
 TEST(LocalizedChronoTest, MonthDayDec)
 {
     auto result = scn::scan<std::tm>(std::locale::classic(), "1", "{:L%d}");
-    ASSERT_TRUE(result);
+    ASSERT_THAT(result, Succeeded());
     EXPECT_EQ(result->value().tm_mday, 1);
 
     result = scn::scan<std::tm>(fi_locale, "1", "{:L%d}");
-    ASSERT_TRUE(result);
+    ASSERT_THAT(result, Succeeded());
     EXPECT_EQ(result->value().tm_mday, 1);
 }
 
@@ -274,11 +274,11 @@ TEST(LocalizedChronoTest, MonthDayDec)
 TEST(LocalizedChronoTest, MonthDayDecModified)
 {
     auto result = scn::scan<std::tm>(std::locale::classic(), "1", "{:L%Od}");
-    ASSERT_TRUE(result);
+    ASSERT_THAT(result, Succeeded());
     EXPECT_EQ(result->value().tm_mday, 1);
 
     result = scn::scan<std::tm>(fi_locale, "1", "{:L%Od}");
-    ASSERT_TRUE(result);
+    ASSERT_THAT(result, Succeeded());
     EXPECT_EQ(result->value().tm_mday, 1);
 }
 #endif
@@ -289,7 +289,7 @@ TEST(LocalizedChronoTest, Datetime)
 {
     auto result = scn::scan<std::tm>(std::locale::classic(),
                                      "Sun Oct 17 04:41:13 2020", "{:L%c}");
-    ASSERT_TRUE(result);
+    ASSERT_THAT(result, Succeeded());
     EXPECT_EQ(result->value().tm_year, 2020 - 1900);
     EXPECT_EQ(result->value().tm_mon, 10 - 1);
     EXPECT_EQ(result->value().tm_mday, 17);
@@ -300,7 +300,7 @@ TEST(LocalizedChronoTest, Datetime)
 
     result = scn::scan<std::tm>(std::locale::classic(),
                                 "Sun Oct 17 04:41:13 2020", "{:L%Ec}");
-    ASSERT_TRUE(result);
+    ASSERT_THAT(result, Succeeded());
     EXPECT_EQ(result->value().tm_year, 2020 - 1900);
     EXPECT_EQ(result->value().tm_mon, 10 - 1);
     EXPECT_EQ(result->value().tm_mday, 17);
@@ -313,7 +313,7 @@ TEST(LocalizedChronoTest, Datetime)
 #if 0
     result = scn::scan<std::tm>(fi_locale, "sunnuntai 17 lokakuu 04:41:13 2020",
                                 "{:L%c}");
-    ASSERT_TRUE(result);
+    ASSERT_THAT(result, Succeeded());
     EXPECT_EQ(result->value().tm_year, 2020 - 1900);
     EXPECT_EQ(result->value().tm_mon, 10 - 1);
     EXPECT_EQ(result->value().tm_mday, 17);
@@ -324,7 +324,7 @@ TEST(LocalizedChronoTest, Datetime)
 
     result = scn::scan<std::tm>(fi_locale, "sunnuntai 17 lokakuu 04:41:13 2020",
                                 "{:L%Ec}");
-    ASSERT_TRUE(result);
+    ASSERT_THAT(result, Succeeded());
     EXPECT_EQ(result->value().tm_year, 2020 - 1900);
     EXPECT_EQ(result->value().tm_mon, 10 - 1);
     EXPECT_EQ(result->value().tm_mday, 17);

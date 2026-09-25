@@ -15,7 +15,7 @@
 // This file is a part of scnlib:
 //     https://github.com/eliaskosunen/scnlib
 
-#include "wrapped_gtest.h"
+#include "test_common.h"
 
 #include <scn/scan.h>
 
@@ -44,15 +44,15 @@ using scan_result_helper = scn::scan_expected<scn::scan_result<
 TEST(SourceTest, Simple)
 {
     auto r = scn::scan<int>("123", "{}");
-    ASSERT_TRUE(r);
-    EXPECT_TRUE(r->range().empty());
+    ASSERT_THAT(r, Succeeded());
+    EXPECT_THAT(r->range(), IsEmptyRange());
     EXPECT_EQ(std::get<0>(r->values()), 123);
 }
 TEST(SourceTest, TwoArgs)
 {
     auto r = scn::scan<int, double>("123 3.14", "{} {}");
-    ASSERT_TRUE(r);
-    EXPECT_TRUE(r->range().empty());
+    ASSERT_THAT(r, Succeeded());
+    EXPECT_THAT(r->range(), IsEmptyRange());
     auto [i, d] = r->values();
     EXPECT_EQ(i, 123);
     EXPECT_DOUBLE_EQ(d, 3.14);
@@ -63,8 +63,8 @@ TEST(SourceTest, SourceIsStringLiteral)
     auto result = scn::scan<int, double>("123 3.14", "{} {}");
     static_assert(std::is_same_v<decltype(result),
                                  scan_result_helper<const char*, int, double>>);
-    ASSERT_TRUE(result);
-    EXPECT_TRUE(result->range().empty());
+    ASSERT_THAT(result, Succeeded());
+    EXPECT_THAT(result->range(), IsEmptyRange());
     auto [i, d] = result->values();
     EXPECT_EQ(i, 123);
     EXPECT_DOUBLE_EQ(d, 3.14);
@@ -76,8 +76,8 @@ TEST(SourceTest, SourceIsStringView)
     static_assert(std::is_same_v<
                   decltype(result),
                   scan_result_helper<std::string_view::iterator, int, double>>);
-    ASSERT_TRUE(result);
-    EXPECT_TRUE(result->range().empty());
+    ASSERT_THAT(result, Succeeded());
+    EXPECT_THAT(result->range(), IsEmptyRange());
     auto [i, d] = result->values();
     EXPECT_EQ(i, 123);
     EXPECT_DOUBLE_EQ(d, 3.14);
@@ -90,8 +90,8 @@ TEST(SourceTest, SourceIsStringLvalue)
     static_assert(
         std::is_same_v<decltype(result),
                        scan_result_helper<std::string::iterator, int, double>>);
-    ASSERT_TRUE(result);
-    EXPECT_TRUE(result->range().empty());
+    ASSERT_THAT(result, Succeeded());
+    EXPECT_THAT(result->range(), IsEmptyRange());
     auto [i, d] = result->values();
     EXPECT_EQ(i, 123);
     EXPECT_DOUBLE_EQ(d, 3.14);
@@ -112,8 +112,8 @@ TEST(SourceTest, SourceIsRandomAccessRange)
     static_assert(std::is_same_v<
                   decltype(result),
                   scan_result_helper<std::deque<char>::iterator, int, double>>);
-    ASSERT_TRUE(result);
-    EXPECT_TRUE(result->range().empty());
+    ASSERT_THAT(result, Succeeded());
+    EXPECT_THAT(result->range(), IsEmptyRange());
     auto [i, d] = result->values();
     EXPECT_EQ(i, 123);
     EXPECT_DOUBLE_EQ(d, 3.14);
@@ -134,7 +134,7 @@ TEST(SourceTest, SourceIsInputRange)
             scn::detail::borrowed_tail_subrange_t<decltype(input)&>>,
         int>>;
     static_assert(std::is_same_v<decltype(result), expected_result>);
-    ASSERT_TRUE(result);
+    ASSERT_THAT(result, Succeeded());
     EXPECT_EQ(result->value(), 123);
 
     auto result2 = scn::scan<double>(result->range(), "{}");
@@ -146,7 +146,7 @@ TEST(SourceTest, SourceIsInputRange)
     static_assert(std::is_same_v<decltype(result2), expected_result2>);
     static_assert(std::is_same_v<expected_result::value_type::source_type,
                                  expected_result2::value_type::source_type>);
-    ASSERT_TRUE(result2);
+    ASSERT_THAT(result2, Succeeded());
     EXPECT_DOUBLE_EQ(result2->value(), 3.14);
 }
 
@@ -159,7 +159,7 @@ TEST(SourceTest, SourceIsInputRangeRvalue)
     static_assert(
         std::is_same_v<decltype(result),
                        scan_result_helper<scn::ranges::dangling, int, double>>);
-    ASSERT_TRUE(result);
+    ASSERT_THAT(result, Succeeded());
     auto [i, d] = result->values();
     EXPECT_EQ(i, 123);
     EXPECT_DOUBLE_EQ(d, 3.14);

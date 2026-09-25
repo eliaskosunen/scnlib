@@ -15,7 +15,7 @@
 // This file is a part of scnlib:
 //     https://github.com/eliaskosunen/scnlib
 
-#include "wrapped_gtest.h"
+#include "test_common.h"
 
 #include <scn/scan.h>
 
@@ -172,7 +172,7 @@ TEST(IntegerTest, LongInput)
 {
     std::string_view input = get_long_input();
     auto result = scn::scan<int>(input, "{}");
-    ASSERT_TRUE(result);
+    ASSERT_THAT(result, Succeeded());
     EXPECT_NE(result->begin(), input.end());
     EXPECT_EQ(std::get<0>(result->values()), 1452555457);
 }
@@ -182,7 +182,7 @@ TEST(IntegerTest, WonkyInputWithThsep)
 {
     std::string_view input = "-0x,)27614,)24t14741";
     auto result = scn::scan<int>(input, "{:L}");
-    ASSERT_TRUE(result);
+    ASSERT_THAT(result, Succeeded());
     EXPECT_EQ(result->begin(), input.begin() + 2);
     EXPECT_EQ(result->value(), 0);
 }
@@ -190,7 +190,7 @@ TEST(IntegerTest, WonkyInputWithThsep2)
 {
     std::string_view input = "-0b,28";
     auto result = scn::scan<int>(input, "{:L}");
-    ASSERT_TRUE(result);
+    ASSERT_THAT(result, Succeeded());
     EXPECT_EQ(result->begin(), input.begin() + 2);
     EXPECT_EQ(result->value(), 0);
 }
@@ -200,7 +200,7 @@ TEST(IntegerTest, BinaryFollowedByDec_Default)
 {
     std::string_view input = "0b12";
     auto result = scn::scan<int>(input, "{}");
-    ASSERT_TRUE(result);
+    ASSERT_THAT(result, Succeeded());
     EXPECT_EQ(result->begin(), input.begin() + 1);
     EXPECT_EQ(result->value(), 0);
 }
@@ -208,7 +208,7 @@ TEST(IntegerTest, BinaryFollowedByDec_Decimal)
 {
     std::string_view input = "0b12";
     auto result = scn::scan<int>(input, "{:d}");
-    ASSERT_TRUE(result);
+    ASSERT_THAT(result, Succeeded());
     EXPECT_EQ(result->begin(), input.begin() + 1);
     EXPECT_EQ(result->value(), 0);
 }
@@ -216,7 +216,7 @@ TEST(IntegerTest, BinaryFollowedByDec_Generic)
 {
     std::string_view input = "0b12";
     auto result = scn::scan<int>(input, "{:i}");
-    ASSERT_TRUE(result);
+    ASSERT_THAT(result, Succeeded());
     EXPECT_EQ(result->begin(), input.end() - 1);
     EXPECT_EQ(result->value(), 1);
 }
@@ -224,7 +224,7 @@ TEST(IntegerTest, BinaryFollowedByDec_Binary)
 {
     std::string_view input = "0b12";
     auto result = scn::scan<int>(input, "{:b}");
-    ASSERT_TRUE(result);
+    ASSERT_THAT(result, Succeeded());
     EXPECT_EQ(result->begin(), input.end() - 1);
     EXPECT_EQ(result->value(), 1);
 }
@@ -233,7 +233,7 @@ TEST(IntegerTest, BinaryNoPrefixFollowedByDec_Default)
 {
     std::string_view input = "12";
     auto result = scn::scan<int>(input, "{}");
-    ASSERT_TRUE(result);
+    ASSERT_THAT(result, Succeeded());
     EXPECT_EQ(result->begin(), input.end());
     EXPECT_EQ(result->value(), 12);
 }
@@ -241,7 +241,7 @@ TEST(IntegerTest, BinaryNoPrefixFollowedByDec_Decimal)
 {
     std::string_view input = "12";
     auto result = scn::scan<int>(input, "{:d}");
-    ASSERT_TRUE(result);
+    ASSERT_THAT(result, Succeeded());
     EXPECT_EQ(result->begin(), input.end());
     EXPECT_EQ(result->value(), 12);
 }
@@ -249,7 +249,7 @@ TEST(IntegerTest, BinaryNoPrefixFollowedByDec_Generic)
 {
     std::string_view input = "12";
     auto result = scn::scan<int>(input, "{:i}");
-    ASSERT_TRUE(result);
+    ASSERT_THAT(result, Succeeded());
     EXPECT_EQ(result->begin(), input.end());
     EXPECT_EQ(result->value(), 12);
 }
@@ -257,7 +257,7 @@ TEST(IntegerTest, BinaryNoPrefixFollowedByDec_Binary)
 {
     std::string_view input = "12";
     auto result = scn::scan<int>(input, "{:b}");
-    ASSERT_TRUE(result);
+    ASSERT_THAT(result, Succeeded());
     EXPECT_EQ(result->begin(), input.end() - 1);
     EXPECT_EQ(result->value(), 1);
 }
@@ -266,7 +266,7 @@ TEST(IntegerTest, OctalFollowedByDec_Default)
 {
     std::string_view input = "078";
     auto result = scn::scan<int>(input, "{}");
-    ASSERT_TRUE(result);
+    ASSERT_THAT(result, Succeeded());
     EXPECT_EQ(result->begin(), input.end());
     EXPECT_EQ(result->value(), 78);
 }
@@ -274,7 +274,7 @@ TEST(IntegerTest, OctalFollowedByDec_Decimal)
 {
     std::string_view input = "078";
     auto result = scn::scan<int>(input, "{:d}");
-    ASSERT_TRUE(result);
+    ASSERT_THAT(result, Succeeded());
     EXPECT_EQ(result->begin(), input.end());
     EXPECT_EQ(result->value(), 78);
 }
@@ -282,7 +282,7 @@ TEST(IntegerTest, OctalFollowedByDec_Generic)
 {
     std::string_view input = "078";
     auto result = scn::scan<int>(input, "{:i}");
-    ASSERT_TRUE(result);
+    ASSERT_THAT(result, Succeeded());
     EXPECT_EQ(result->begin(), input.end() - 1);
     EXPECT_EQ(result->value(), 7);
 }
@@ -290,7 +290,7 @@ TEST(IntegerTest, OctalFollowedByDec_Octal)
 {
     std::string_view input = "078";
     auto result = scn::scan<int>(input, "{:o}");
-    ASSERT_TRUE(result);
+    ASSERT_THAT(result, Succeeded());
     EXPECT_EQ(result->begin(), input.end() - 1);
     EXPECT_EQ(result->value(), 7);
 }
@@ -299,7 +299,7 @@ TEST(IntegerTest, OctalNoPrefixFollowedByDec_Default)
 {
     std::string_view input = "78";
     auto result = scn::scan<int>(input, "{}");
-    ASSERT_TRUE(result);
+    ASSERT_THAT(result, Succeeded());
     EXPECT_EQ(result->begin(), input.end());
     EXPECT_EQ(result->value(), 78);
 }
@@ -307,7 +307,7 @@ TEST(IntegerTest, OctalNoPrefixFollowedByDec_Decimal)
 {
     std::string_view input = "78";
     auto result = scn::scan<int>(input, "{:d}");
-    ASSERT_TRUE(result);
+    ASSERT_THAT(result, Succeeded());
     EXPECT_EQ(result->begin(), input.end());
     EXPECT_EQ(result->value(), 78);
 }
@@ -315,7 +315,7 @@ TEST(IntegerTest, OctalNoPrefixFollowedByDec_Generic)
 {
     std::string_view input = "78";
     auto result = scn::scan<int>(input, "{:i}");
-    ASSERT_TRUE(result);
+    ASSERT_THAT(result, Succeeded());
     EXPECT_EQ(result->begin(), input.end());
     EXPECT_EQ(result->value(), 78);
 }
@@ -323,7 +323,7 @@ TEST(IntegerTest, OctalNoPrefixFollowedByDec_Octal)
 {
     std::string_view input = "78";
     auto result = scn::scan<int>(input, "{:o}");
-    ASSERT_TRUE(result);
+    ASSERT_THAT(result, Succeeded());
     EXPECT_EQ(result->begin(), input.end() - 1);
     EXPECT_EQ(result->value(), 7);
 }
@@ -332,7 +332,7 @@ TEST(IntegerTest, OctalLongPrefixFollowedByDec_Default)
 {
     std::string_view input = "0o78";
     auto result = scn::scan<int>(input, "{}");
-    ASSERT_TRUE(result);
+    ASSERT_THAT(result, Succeeded());
     EXPECT_EQ(result->begin(), input.begin() + 1);
     EXPECT_EQ(result->value(), 0);
 }
@@ -340,7 +340,7 @@ TEST(IntegerTest, OctalLongPrefixFollowedByDec_Decimal)
 {
     std::string_view input = "0o78";
     auto result = scn::scan<int>(input, "{:d}");
-    ASSERT_TRUE(result);
+    ASSERT_THAT(result, Succeeded());
     EXPECT_EQ(result->begin(), input.begin() + 1);
     EXPECT_EQ(result->value(), 0);
 }
@@ -348,7 +348,7 @@ TEST(IntegerTest, OctalLongPrefixFollowedByDec_Generic)
 {
     std::string_view input = "0o78";
     auto result = scn::scan<int>(input, "{:i}");
-    ASSERT_TRUE(result);
+    ASSERT_THAT(result, Succeeded());
     EXPECT_EQ(result->begin(), input.end() - 1);
     EXPECT_EQ(result->value(), 7);
 }
@@ -356,7 +356,7 @@ TEST(IntegerTest, OctalLongPrefixFollowedByDec_Octal)
 {
     std::string_view input = "0o78";
     auto result = scn::scan<int>(input, "{:o}");
-    ASSERT_TRUE(result);
+    ASSERT_THAT(result, Succeeded());
     EXPECT_EQ(result->begin(), input.end() - 1);
     EXPECT_EQ(result->value(), 7);
 }
@@ -365,7 +365,7 @@ TEST(IntegerTest, HexFollowedByNonDigit_Default)
 {
     std::string_view input = "0xfg";
     auto result = scn::scan<int>(input, "{}");
-    ASSERT_TRUE(result);
+    ASSERT_THAT(result, Succeeded());
     EXPECT_EQ(result->begin(), input.begin() + 1);
     EXPECT_EQ(result->value(), 0);
 }
@@ -373,7 +373,7 @@ TEST(IntegerTest, HexFollowedByNonDigit_Decimal)
 {
     std::string_view input = "0xfg";
     auto result = scn::scan<int>(input, "{:d}");
-    ASSERT_TRUE(result);
+    ASSERT_THAT(result, Succeeded());
     EXPECT_EQ(result->begin(), input.begin() + 1);
     EXPECT_EQ(result->value(), 0);
 }
@@ -381,7 +381,7 @@ TEST(IntegerTest, HexFollowedByNonDigit_Generic)
 {
     std::string_view input = "0xfg";
     auto result = scn::scan<int>(input, "{:i}");
-    ASSERT_TRUE(result);
+    ASSERT_THAT(result, Succeeded());
     EXPECT_EQ(result->begin(), input.end() - 1);
     EXPECT_EQ(result->value(), 0xf);
 }
@@ -389,7 +389,7 @@ TEST(IntegerTest, HexFollowedByNonDigit_Hex)
 {
     std::string_view input = "0xfg";
     auto result = scn::scan<int>(input, "{:x}");
-    ASSERT_TRUE(result);
+    ASSERT_THAT(result, Succeeded());
     EXPECT_EQ(result->begin(), input.end() - 1);
     EXPECT_EQ(result->value(), 0xf);
 }
@@ -399,7 +399,7 @@ TEST(IntegerTest, Int128_Zero)
 {
     std::string_view input = "0";
     auto result = scn::scan<scn::int128>(input, "{}");
-    ASSERT_TRUE(result);
+    ASSERT_THAT(result, Succeeded());
     EXPECT_EQ(result->begin(), input.end());
     EXPECT_EQ(result->value(), 0);
 }
@@ -409,7 +409,7 @@ TEST(IntegerTest, Int128_Large)
     ASSERT_LT(input.size(), std::numeric_limits<scn::int128>::digits10);
     ASSERT_GT(input.size(), std::numeric_limits<std::int64_t>::digits10);
     auto result = scn::scan<scn::int128>(input, "{}");
-    ASSERT_TRUE(result);
+    ASSERT_THAT(result, Succeeded());
     EXPECT_EQ(result->begin(), input.end());
     EXPECT_NE(result->value(), 0);
     EXPECT_NE(result->value(), std::numeric_limits<std::int64_t>::max());
@@ -418,7 +418,7 @@ TEST(IntegerTest, UInt128)
 {
     std::string_view input = "123456789";
     auto result = scn::scan<scn::uint128>(input, "{}");
-    ASSERT_TRUE(result);
+    ASSERT_THAT(result, Succeeded());
     EXPECT_EQ(result->begin(), input.end());
     EXPECT_EQ(result->value(), 123456789);
 }
@@ -428,25 +428,25 @@ TEST(IntegerTest, HexNoPrefixFollowedByNonDigit_Default)
 {
     std::string_view input = "fg";
     auto result = scn::scan<int>(input, "{}");
-    ASSERT_FALSE(result);
+    ASSERT_THAT(result, Failed());
 }
 TEST(IntegerTest, HexNoPrefixFollowedByNonDigit_Decimal)
 {
     std::string_view input = "fg";
     auto result = scn::scan<int>(input, "{:d}");
-    ASSERT_FALSE(result);
+    ASSERT_THAT(result, Failed());
 }
 TEST(IntegerTest, HexNoPrefixFollowedByNonDigit_Generic)
 {
     std::string_view input = "fg";
     auto result = scn::scan<int>(input, "{:i}");
-    ASSERT_FALSE(result);
+    ASSERT_THAT(result, Failed());
 }
 TEST(IntegerTest, HexNoPrefixFollowedByNonDigit_Hex)
 {
     std::string_view input = "fg";
     auto result = scn::scan<int>(input, "{:x}");
-    ASSERT_TRUE(result);
+    ASSERT_THAT(result, Succeeded());
     EXPECT_EQ(result->begin(), input.end() - 1);
     EXPECT_EQ(result->value(), 0xf);
 }
@@ -454,21 +454,19 @@ TEST(IntegerTest, HexNoPrefixFollowedByNonDigit_Hex)
 TEST(IntegerTest, OverflowPositive)
 {
     auto result = scn::scan<std::int32_t>("99999999999999999999", "{}");
-    ASSERT_FALSE(result);
-    EXPECT_EQ(result.error().code(), scn::scan_error::value_positive_overflow);
+    ASSERT_THAT(result, FailedWith(scn::scan_error::value_positive_overflow));
 }
 
 TEST(IntegerTest, OverflowNegative)
 {
     auto result = scn::scan<std::int32_t>("-99999999999999999999", "{}");
-    ASSERT_FALSE(result);
-    EXPECT_EQ(result.error().code(), scn::scan_error::value_negative_overflow);
+    ASSERT_THAT(result, FailedWith(scn::scan_error::value_negative_overflow));
 }
 
 TEST(IntegerTest, UnsignedNegative)
 {
     auto result = scn::scan<unsigned>("-42", "{}");
-    ASSERT_FALSE(result);
+    ASSERT_THAT(result, Failed());
 }
 
 TEST(IntegerTest, BinaryFormat)
@@ -555,7 +553,7 @@ TEST(IntegerTest, Fuzz_RepeatedString)
     auto it = input.begin();
     auto result =
         scn::scan<signed char>(scn::ranges::subrange{it, input.end()}, "{:i}");
-    ASSERT_TRUE(result);
+    ASSERT_THAT(result, Succeeded());
     EXPECT_EQ(result->value(), 0);
     ASSERT_NE(result->begin(), input.end());
     EXPECT_EQ(*result->begin(), '\n');
@@ -563,14 +561,14 @@ TEST(IntegerTest, Fuzz_RepeatedString)
 
     result =
         scn::scan<signed char>(scn::ranges::subrange{it, input.end()}, "{:i}");
-    ASSERT_TRUE(result);
+    ASSERT_THAT(result, Succeeded());
     EXPECT_EQ(result->value(), 0);
-    EXPECT_TRUE(result->range().empty());
+    EXPECT_THAT(result->range(), IsEmptyRange());
     it = result->begin();
 
     result =
         scn::scan<signed char>(scn::ranges::subrange{it, input.end()}, "{:i}");
-    EXPECT_FALSE(result);
+    EXPECT_THAT(result, Failed());
 }
 TEST(IntegerTest, Fuzz_RepeatedDeque)
 {
@@ -579,7 +577,7 @@ TEST(IntegerTest, Fuzz_RepeatedDeque)
     auto it = input.begin();
     auto result =
         scn::scan<signed char>(scn::ranges::subrange{it, input.end()}, "{:i}");
-    ASSERT_TRUE(result);
+    ASSERT_THAT(result, Succeeded());
     EXPECT_EQ(result->value(), 0);
     ASSERT_NE(result->begin(), input.end());
     EXPECT_EQ(*result->begin(), '\n');
@@ -587,14 +585,14 @@ TEST(IntegerTest, Fuzz_RepeatedDeque)
 
     result =
         scn::scan<signed char>(scn::ranges::subrange{it, input.end()}, "{:i}");
-    ASSERT_TRUE(result);
+    ASSERT_THAT(result, Succeeded());
     EXPECT_EQ(result->value(), 0);
-    EXPECT_TRUE(result->range().empty());
+    EXPECT_THAT(result->range(), IsEmptyRange());
     it = result->begin();
 
     result =
         scn::scan<signed char>(scn::ranges::subrange{it, input.end()}, "{:i}");
-    EXPECT_FALSE(result);
+    EXPECT_THAT(result, Failed());
 }
 
 TEST(IntegerTest, Fuzz_RepeatedString2)
@@ -604,14 +602,14 @@ TEST(IntegerTest, Fuzz_RepeatedString2)
     auto it = input.begin();
     auto result =
         scn::scan<signed char>(scn::ranges::subrange{it, input.end()}, "{:i}");
-    ASSERT_TRUE(result);
+    ASSERT_THAT(result, Succeeded());
     EXPECT_EQ(result->value(), 0);
     EXPECT_EQ(result->begin(), input.end());
     it = result->begin();
 
     result =
         scn::scan<signed char>(scn::ranges::subrange{it, input.end()}, "{:i}");
-    EXPECT_FALSE(result);
+    EXPECT_THAT(result, Failed());
 }
 TEST(IntegerTest, Fuzz_RepeatedDeque2)
 {
@@ -620,53 +618,53 @@ TEST(IntegerTest, Fuzz_RepeatedDeque2)
     auto it = input.begin();
     auto result =
         scn::scan<signed char>(scn::ranges::subrange{it, input.end()}, "{:i}");
-    ASSERT_TRUE(result);
+    ASSERT_THAT(result, Succeeded());
     EXPECT_EQ(result->value(), 0);
     EXPECT_EQ(result->begin(), input.end());
     it = result->begin();
 
     result =
         scn::scan<signed char>(scn::ranges::subrange{it, input.end()}, "{:i}");
-    EXPECT_FALSE(result);
+    EXPECT_THAT(result, Failed());
 }
 
 TEST(ScanIntTest, Simple)
 {
     std::string_view input = "42";
     auto result = scn::scan_int<int>(input);
-    ASSERT_TRUE(result);
-    EXPECT_TRUE(result->range().empty());
+    ASSERT_THAT(result, Succeeded());
+    EXPECT_THAT(result->range(), IsEmptyRange());
     EXPECT_EQ(result->value(), 42);
 }
 TEST(ScanIntTest, Negative)
 {
     std::string_view input = "-42";
     auto result = scn::scan_int<int>(input);
-    ASSERT_TRUE(result);
-    EXPECT_TRUE(result->range().empty());
+    ASSERT_THAT(result, Succeeded());
+    EXPECT_THAT(result->range(), IsEmptyRange());
     EXPECT_EQ(result->value(), -42);
 }
 TEST(ScanIntTest, Positive)
 {
     std::string_view input = "+42";
     auto result = scn::scan_int<int>(input);
-    ASSERT_TRUE(result);
-    EXPECT_TRUE(result->range().empty());
+    ASSERT_THAT(result, Succeeded());
+    EXPECT_THAT(result->range(), IsEmptyRange());
     EXPECT_EQ(result->value(), 42);
 }
 TEST(ScanIntTest, LeadingWhitespace)
 {
     std::string_view input = "   42";
     auto result = scn::scan_int<int>(input);
-    ASSERT_TRUE(result);
-    EXPECT_TRUE(result->range().empty());
+    ASSERT_THAT(result, Succeeded());
+    EXPECT_THAT(result->range(), IsEmptyRange());
     EXPECT_EQ(result->value(), 42);
 }
 TEST(ScanIntTest, TrailingWhitespace)
 {
     std::string_view input = "42   ";
     auto result = scn::scan_int<int>(input);
-    ASSERT_TRUE(result);
+    ASSERT_THAT(result, Succeeded());
     EXPECT_EQ(std::string_view(result->range().data(), result->range().size()),
               "   ");
     EXPECT_EQ(result->value(), 42);
@@ -675,14 +673,12 @@ TEST(ScanIntTest, RangeError)
 {
     std::string_view input = "999999999999999999999999999999999999";
     auto result = scn::scan_int<int>(input);
-    ASSERT_FALSE(result);
-    EXPECT_EQ(result.error().code(), scn::scan_error::value_positive_overflow);
+    ASSERT_THAT(result, FailedWith(scn::scan_error::value_positive_overflow));
 }
 TEST(ScanIntTest, Empty)
 {
     auto result = scn::scan_int<int>("");
-    ASSERT_FALSE(result);
-    EXPECT_EQ(result.error().code(), scn::scan_error::end_of_input);
+    ASSERT_THAT(result, FailedWith(scn::scan_error::end_of_input));
 }
 
 #if !SCN_IS_BIG_ENDIAN

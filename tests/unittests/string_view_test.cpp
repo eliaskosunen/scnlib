@@ -18,19 +18,19 @@
 #include <scn/scan.h>
 #include <scn/xchar.h>
 
-#include "wrapped_gtest.h"
+#include "test_common.h"
 
 TEST(StringViewTest, DefaultNarrowStringViewFromNarrowSource)
 {
     auto result = scn::scan<std::string_view>("abc def", "{}");
-    ASSERT_TRUE(result);
+    ASSERT_THAT(result, Succeeded());
     EXPECT_STREQ(result->begin(), " def");
     EXPECT_EQ(result->value(), "abc");
 }
 TEST(StringViewTest, DefaultWideStringViewFromWideSource)
 {
     auto result = scn::scan<std::wstring_view>(L"abc def", L"{}");
-    ASSERT_TRUE(result);
+    ASSERT_THAT(result, Succeeded());
     EXPECT_STREQ(result->begin(), L" def");
     EXPECT_EQ(result->value(), L"abc");
 }
@@ -38,14 +38,14 @@ TEST(StringViewTest, DefaultWideStringViewFromWideSource)
 TEST(StringViewTest, StringPresentationNarrowStringViewFromNarrowSource)
 {
     auto result = scn::scan<std::string_view>("abc def", "{:s}");
-    EXPECT_TRUE(result);
+    EXPECT_THAT(result, Succeeded());
     EXPECT_STREQ(result->begin(), " def");
     EXPECT_EQ(result->value(), "abc");
 }
 TEST(StringViewTest, StringPresentationWideStringViewFromWideSource)
 {
     auto result = scn::scan<std::wstring_view>(L"abc def", L"{:s}");
-    ASSERT_TRUE(result);
+    ASSERT_THAT(result, Succeeded());
     EXPECT_STREQ(result->begin(), L" def");
     EXPECT_EQ(result->value(), L"abc");
 }
@@ -54,21 +54,20 @@ TEST(StringViewTest, CharacterPresentationWithNoWidthCausesError)
 {
     auto result =
         scn::scan<std::string_view>("abc def", scn::runtime_format("{:c}"));
-    ASSERT_FALSE(result);
-    EXPECT_EQ(result.error().code(), scn::scan_error::invalid_format_string);
+    ASSERT_THAT(result, FailedWith(scn::scan_error::invalid_format_string));
 }
 
 TEST(StringViewTest, CharacterPresentationNarrowStringViewFromNarrowSource)
 {
     auto result = scn::scan<std::string_view>("abc def", "{:.4c}");
-    ASSERT_TRUE(result);
+    ASSERT_THAT(result, Succeeded());
     EXPECT_STREQ(result->begin(), "def");
     EXPECT_EQ(result->value(), "abc ");
 }
 TEST(StringViewTest, CharacterPresentationWideStringViewFromWideSource)
 {
     auto result = scn::scan<std::wstring_view>(L"abc def", L"{:.4c}");
-    ASSERT_TRUE(result);
+    ASSERT_THAT(result, Succeeded());
     EXPECT_STREQ(result->begin(), L"def");
     EXPECT_EQ(result->value(), L"abc ");
 }
@@ -76,14 +75,14 @@ TEST(StringViewTest, CharacterPresentationWideStringViewFromWideSource)
 TEST(StringViewTest, CharacterSetPresentationNarrowStringViewFromNarrowSource)
 {
     auto result = scn::scan<std::string_view>("abc def", "{:[a-z]}");
-    ASSERT_TRUE(result);
+    ASSERT_THAT(result, Succeeded());
     EXPECT_STREQ(result->begin(), " def");
     EXPECT_EQ(result->value(), "abc");
 }
 TEST(StringViewTest, CharacterSetPresentationWideStringViewFromWideSource)
 {
     auto result = scn::scan<std::wstring_view>(L"abc def", L"{:[a-z]}");
-    ASSERT_TRUE(result);
+    ASSERT_THAT(result, Succeeded());
     EXPECT_STREQ(result->begin(), L" def");
     EXPECT_EQ(result->value(), L"abc");
 }
@@ -92,11 +91,10 @@ TEST(StringViewTest, InvalidUtf8)
 {
     auto source = std::string_view{"\x82\xf5"};
     auto result = scn::scan<std::string_view>(source, "{:.64c}");
-    ASSERT_FALSE(result);
-    EXPECT_EQ(result.error().code(), scn::scan_error::invalid_scanned_value);
+    ASSERT_THAT(result, FailedWith(scn::scan_error::invalid_scanned_value));
 #if 0
-    ASSERT_TRUE(result);
-    EXPECT_TRUE(result->range().empty());
+    ASSERT_THAT(result, Succeeded());
+    EXPECT_THAT(result->range(), IsEmptyRange());
     EXPECT_EQ(result->value(), source);
 #endif
 }
@@ -122,11 +120,10 @@ TEST(StringViewTest, WonkyInput2)
     auto input = std::string_view{source, sizeof(source)};
 
     auto result = scn::scan<std::string_view>(input, "{:.64c}");
-    ASSERT_FALSE(result);
-    EXPECT_EQ(result.error().code(), scn::scan_error::invalid_scanned_value);
+    ASSERT_THAT(result, FailedWith(scn::scan_error::invalid_scanned_value));
 #if 0
-    ASSERT_TRUE(result);
-    EXPECT_TRUE(result->range().empty());
+    ASSERT_THAT(result, Succeeded());
+    EXPECT_THAT(result->range(), IsEmptyRange());
     EXPECT_EQ(result->value(), input);
 #endif
 }

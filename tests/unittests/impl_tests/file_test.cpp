@@ -17,7 +17,7 @@
 
 #include <scn/impl.h>
 
-#include "../wrapped_gtest.h"
+#include "../test_common.h"
 
 #include <numeric>
 
@@ -364,7 +364,7 @@ TEST(FileTest, Simple)
     mock_file_buffer buffer{file};
     auto range = buffer.get();
     auto result = scn::scan<int, int>(range, "{} {}");
-    ASSERT_TRUE(result);
+    ASSERT_THAT(result, Succeeded());
     auto [a, b] = result->values();
     EXPECT_EQ(a, 123);
     EXPECT_EQ(b, 456);
@@ -376,7 +376,7 @@ TEST(FileTest, CustomType)
     mock_file_buffer buffer{file};
     auto range = buffer.get();
     auto result = scn::scan<custom_type>(range, "{}");
-    ASSERT_TRUE(result);
+    ASSERT_THAT(result, Succeeded());
     EXPECT_THAT(result->value(), FieldsAre(123, 456));
 }
 
@@ -384,7 +384,7 @@ TEST(FileTest, NonReadableFile)
 {
     scn::scan_file file{stderr};
     auto result = scn::scan<int>(file, "{}");
-    ASSERT_FALSE(result);
+    ASSERT_THAT(result, Failed());
 }
 
 TEST(FileTest, Prelude)
@@ -406,7 +406,7 @@ TEST(FileTest, Prelude)
     scn::scan_file file{handle.handle};
     scn::detail::scan_file_access::get_prelude(file) = "123 456\n";
     auto result = scn::scan<int>(file, "{}");
-    ASSERT_TRUE(result);
+    ASSERT_THAT(result, Succeeded());
     EXPECT_EQ(result->value(), 123);
 }
 
@@ -478,7 +478,7 @@ TYPED_TEST(FileTestP, OneChar)
 {
     auto& range = this->get("abc\ndef");
     auto result = scn::scan<char>(range, "{}");
-    ASSERT_TRUE(result);
+    ASSERT_THAT(result, Succeeded());
     EXPECT_EQ(result->value(), 'a');
     EXPECT_EQ(this->get_reached(), "a");
     EXPECT_EQ(this->get_remainder(*result), "bc\ndef");
@@ -488,7 +488,7 @@ TYPED_TEST(FileTestP, OneInteger)
 {
     auto& range = this->get("123\n");
     auto result = scn::scan<int>(range, "{}");
-    ASSERT_TRUE(result);
+    ASSERT_THAT(result, Succeeded());
     EXPECT_EQ(result->value(), 123);
     EXPECT_EQ(this->get_reached(), "123\n");
     EXPECT_EQ(this->get_remainder(*result), "\n");
@@ -498,7 +498,7 @@ TYPED_TEST(FileTestP, TwoIntegers)
 {
     auto& range = this->get("123\n456");
     auto result = scn::scan<int, int>(range, "{} {}");
-    ASSERT_TRUE(result);
+    ASSERT_THAT(result, Succeeded());
     auto [a, b] = result->values();
     EXPECT_EQ(a, 123);
     EXPECT_EQ(b, 456);
@@ -510,7 +510,7 @@ TYPED_TEST(FileTestP, ThreeIntegers)
 {
     auto& range = this->get("123 456\n789");
     auto result = scn::scan<int, int, int>(range, "{} {} {}");
-    ASSERT_TRUE(result);
+    ASSERT_THAT(result, Succeeded());
     auto [a, b, c] = result->values();
     EXPECT_EQ(a, 123);
     EXPECT_EQ(b, 456);
@@ -523,7 +523,7 @@ TYPED_TEST(FileTestP, LeftoverString)
 {
     auto& range = this->get("abc\ndef");
     auto result = scn::scan<std::string>(range, "{}");
-    ASSERT_TRUE(result);
+    ASSERT_THAT(result, Succeeded());
     EXPECT_EQ(result->value(), "abc");
     EXPECT_EQ(this->get_reached(), "abc\n");
     EXPECT_EQ(this->get_remainder(*result), "\ndef");
@@ -533,7 +533,7 @@ TYPED_TEST(FileTestP, PutbackAll1)
 {
     auto& range = this->get("abc");
     auto result = scn::scan<int>(range, "{}");
-    ASSERT_FALSE(result);
+    ASSERT_THAT(result, Failed());
     EXPECT_EQ(this->get_reached(), "a");
 }
 
@@ -541,7 +541,7 @@ TYPED_TEST(FileTestP, PutbackAll2)
 {
     auto& range = this->get("123 abc");
     auto result = scn::scan<int, int>(range, "{} {}");
-    ASSERT_FALSE(result);
+    ASSERT_THAT(result, Failed());
     EXPECT_EQ(this->get_reached(), "123 a");
 }
 
@@ -549,7 +549,7 @@ TYPED_TEST(FileTestP, CustomType)
 {
     auto& range = this->get("123 456");
     auto result = scn::scan<custom_type>(range, "{}");
-    ASSERT_TRUE(result);
+    ASSERT_THAT(result, Succeeded());
     EXPECT_THAT(result->value(), FieldsAre(123, 456));
     EXPECT_EQ(this->get_reached(), "123 456");
     EXPECT_EQ(result->begin(), result->end());
@@ -559,7 +559,7 @@ TYPED_TEST(FileTestP, CustomTypeFail1)
 {
     auto& range = this->get("123 abc");
     auto result = scn::scan<custom_type>(range, "{}");
-    ASSERT_FALSE(result);
+    ASSERT_THAT(result, Failed());
     EXPECT_EQ(this->get_reached(), "123 a");
 }
 
@@ -567,7 +567,7 @@ TYPED_TEST(FileTestP, CustomTypeFail2)
 {
     auto& range = this->get("abc def");
     auto result = scn::scan<custom_type>(range, "{}");
-    ASSERT_FALSE(result);
+    ASSERT_THAT(result, Failed());
     EXPECT_EQ(this->get_reached(), "a");
 }
 
@@ -577,7 +577,7 @@ TYPED_TEST(FileTestP, PutbackFail1)
     this->m_file->fail_all_putbacks = true;
 
     auto result = scn::scan<int>(range, "{}");
-    ASSERT_TRUE(result);
+    ASSERT_THAT(result, Succeeded());
     EXPECT_EQ(result->value(), 123);
     EXPECT_EQ(this->get_reached(), "123");
     EXPECT_EQ(this->m_buffer->prelude(), "");
@@ -590,7 +590,7 @@ TYPED_TEST(FileTestP, PutbackFail2)
     this->m_file->fail_all_putbacks = true;
 
     auto result = scn::scan<int, int>(range, "{} {}");
-    ASSERT_TRUE(result);
+    ASSERT_THAT(result, Succeeded());
     EXPECT_THAT(result->values(), FieldsAre(123, 456));
     EXPECT_EQ(this->get_reached(), "123\n456");
     EXPECT_EQ(this->m_buffer->prelude(), "");
@@ -603,7 +603,7 @@ TYPED_TEST(FileTestP, PutbackFailWithError1)
     this->m_file->fail_all_putbacks = true;
 
     auto result = scn::scan<int>(range, "{}");
-    ASSERT_FALSE(result);
+    ASSERT_THAT(result, Failed());
     EXPECT_EQ(this->get_reached(), "a");
     EXPECT_EQ(this->m_buffer->prelude(), "a");
 }
@@ -614,7 +614,7 @@ TYPED_TEST(FileTestP, PutbackFailWithError2)
     this->m_file->fail_all_putbacks = true;
 
     auto result = scn::scan<int, int>(range, "{} {}");
-    ASSERT_FALSE(result);
+    ASSERT_THAT(result, Failed());
     EXPECT_EQ(this->get_reached(), "123\na");
     EXPECT_EQ(this->m_buffer->prelude(), "123\na");
 }
@@ -625,7 +625,7 @@ TYPED_TEST(FileTestP, PutbackFailWithCustomType)
     this->m_file->fail_all_putbacks = true;
 
     auto result = scn::scan<custom_type>(range, "{}");
-    ASSERT_TRUE(result);
+    ASSERT_THAT(result, Succeeded());
     EXPECT_THAT(result->value(), FieldsAre(123, 456));
     EXPECT_EQ(this->get_reached(), "123 456");
     EXPECT_EQ(this->m_buffer->prelude(), "");
@@ -638,7 +638,7 @@ TYPED_TEST(FileTestP, PutbackFailWithCustomTypeFail1)
     this->m_file->fail_all_putbacks = true;
 
     auto result = scn::scan<custom_type>(range, "{}");
-    ASSERT_FALSE(result);
+    ASSERT_THAT(result, Failed());
     EXPECT_EQ(this->get_reached(), "123 a");
     EXPECT_EQ(this->m_buffer->prelude(), "123 a");
 }
@@ -649,7 +649,7 @@ TYPED_TEST(FileTestP, PutbackFailWithCustomTypeFail2)
     this->m_file->fail_all_putbacks = true;
 
     auto result = scn::scan<custom_type>(range, "{}");
-    ASSERT_FALSE(result);
+    ASSERT_THAT(result, Failed());
     EXPECT_EQ(this->get_reached(), "a");
     EXPECT_EQ(this->m_buffer->prelude(), "a");
 }

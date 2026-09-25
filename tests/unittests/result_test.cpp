@@ -161,57 +161,56 @@ TEST(ResultTestReal, ForwardListRvalue)
 TEST(ResultTest, Destructuring)
 {
     auto result = scn::scan<int>("42", "{}");
-    ASSERT_TRUE(result);
+    ASSERT_THAT(result, Succeeded());
     std::tuple<int> values{};
     values = result->values();
     EXPECT_EQ(std::get<0>(values), 42);
-    EXPECT_TRUE(result->range().empty());
+    EXPECT_THAT(result->range(), IsEmptyRange());
 }
 TEST(ResultTest, TuplePassthrough)
 {
     std::tuple<int> values;
     auto result = scn::scan<int>("42", "{}", std::move(values));
-    ASSERT_TRUE(result);
+    ASSERT_THAT(result, Succeeded());
     auto [value] = result->values();
     EXPECT_EQ(value, 42);
-    EXPECT_TRUE(result->range().empty());
+    EXPECT_THAT(result->range(), IsEmptyRange());
 }
 TEST(ResultTest, TuplePassthroughWithImplicitTypes)
 {
     std::tuple<int> values;
     auto result = scn::scan("42", "{}", std::move(values));
-    ASSERT_TRUE(result);
+    ASSERT_THAT(result, Succeeded());
     auto [value] = result->values();
     EXPECT_EQ(value, 42);
-    EXPECT_TRUE(result->range().empty());
+    EXPECT_THAT(result->range(), IsEmptyRange());
 }
 
 TEST(ResultTest, HasValueCheck)
 {
     auto success = scn::scan<int>("42", "{}");
-    ASSERT_TRUE(success);
+    ASSERT_THAT(success, Succeeded());
     EXPECT_TRUE(success.has_value());
 
     auto failure = scn::scan<int>("not a number", "{}");
-    ASSERT_FALSE(failure);
+    ASSERT_THAT(failure, Failed());
     EXPECT_FALSE(failure.has_value());
 }
 
 TEST(ResultTest, ErrorAccess)
 {
     auto failure = scn::scan<int>("not a number", "{}");
-    ASSERT_FALSE(failure);
-    EXPECT_EQ(failure.error().code(), scn::scan_error::invalid_scanned_value);
+    ASSERT_THAT(failure, FailedWith(scn::scan_error::invalid_scanned_value));
 }
 
 TEST(ResultTest, MultipleResultsChained)
 {
     auto source = std::string_view{"42 99"};
     auto result1 = scn::scan<int>(source, "{}");
-    ASSERT_TRUE(result1);
+    ASSERT_THAT(result1, Succeeded());
     EXPECT_EQ(result1->value(), 42);
 
     auto result2 = scn::scan<int>(result1->range(), "{}");
-    ASSERT_TRUE(result2);
+    ASSERT_THAT(result2, Succeeded());
     EXPECT_EQ(result2->value(), 99);
 }

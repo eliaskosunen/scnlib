@@ -29,7 +29,7 @@ TEST(StringReaderTranscodeTest, StringViewWithSameCharacterType)
     std::string dst;
 
     auto e = scn::impl::transcode_if_necessary(src, dst);
-    ASSERT_TRUE(e);
+    ASSERT_THAT(e, Succeeded());
     EXPECT_EQ(dst, "foo");
     EXPECT_EQ(src.view(), "foo");
 }
@@ -39,7 +39,7 @@ TEST(StringReaderTranscodeTest, StringViewWithDifferentCharacterType)
     std::wstring dst;
 
     auto e = scn::impl::transcode_if_necessary(src, dst);
-    ASSERT_TRUE(e);
+    ASSERT_THAT(e, Succeeded());
     EXPECT_EQ(dst, L"foo");
     EXPECT_EQ(src.view(), "foo");
 }
@@ -50,7 +50,7 @@ TEST(StringReaderTranscodeTest, LvalueContiguousRangeWithSameCharacterType)
     std::string dst;
 
     auto e = scn::impl::transcode_if_necessary(src, dst);
-    ASSERT_TRUE(e);
+    ASSERT_THAT(e, Succeeded());
     EXPECT_EQ(dst, "foo");
     EXPECT_EQ(src.view(), "foo");
 }
@@ -60,7 +60,7 @@ TEST(StringReaderTranscodeTest, LvalueContiguousRangeWithDifferentCharacterType)
     std::wstring dst;
 
     auto e = scn::impl::transcode_if_necessary(src, dst);
-    ASSERT_TRUE(e);
+    ASSERT_THAT(e, Succeeded());
     EXPECT_EQ(dst, L"foo");
     EXPECT_EQ(src.view(), "foo");
 }
@@ -71,7 +71,7 @@ TEST(StringReaderTranscodeTest, RvalueContiguousRangeWithSameCharacterType)
     std::string dst;
 
     auto e = scn::impl::transcode_if_necessary(SCN_MOVE(src), dst);
-    ASSERT_TRUE(e);
+    ASSERT_THAT(e, Succeeded());
     EXPECT_EQ(dst, "foo");
 }
 TEST(StringReaderTranscodeTest, RvalueContiguousRangeWithDifferentCharacterType)
@@ -80,7 +80,7 @@ TEST(StringReaderTranscodeTest, RvalueContiguousRangeWithDifferentCharacterType)
     std::wstring dst;
 
     auto e = scn::impl::transcode_if_necessary(SCN_MOVE(src), dst);
-    ASSERT_TRUE(e);
+    ASSERT_THAT(e, Succeeded());
     EXPECT_EQ(dst, L"foo");
 }
 
@@ -222,7 +222,7 @@ TYPED_TEST(StringWordReaderTest, All)
     auto src = this->set_source("foo"sv);
     auto [ret, val] = this->read();
 
-    ASSERT_TRUE(ret);
+    ASSERT_THAT(ret, Succeeded());
     EXPECT_EQ(*ret, src.end());
     EXPECT_TRUE(this->check_value(val, "foo"sv));
 }
@@ -232,7 +232,7 @@ TYPED_TEST(StringWordReaderTest, Word)
     auto src = this->set_source("foo bar"sv);
     auto [ret, val] = this->read();
 
-    ASSERT_TRUE(ret);
+    ASSERT_THAT(ret, Succeeded());
     EXPECT_EQ(*ret, src.begin() + 3);
     EXPECT_TRUE(this->check_value(val, "foo"sv));
 }
@@ -243,7 +243,7 @@ TEST(StringCharacterReaderTest, NonTakeWidthInput)
     std::string val{};
     auto ret = scn::impl::character_reader_impl<char>{}.read(src, val);
 
-    ASSERT_FALSE(ret);
+    ASSERT_THAT(ret, Failed());
 }
 
 TEST(StringCharacterReaderTest, StringWithSameWidth)
@@ -252,7 +252,7 @@ TEST(StringCharacterReaderTest, StringWithSameWidth)
     std::string val{};
     auto ret = scn::impl::character_reader_impl<char>{}.read(src, val);
 
-    ASSERT_TRUE(ret);
+    ASSERT_THAT(ret, Succeeded());
     EXPECT_EQ(val, "foo");
 }
 TEST(StringCharacterReaderTest, StringViewWithSameWidth)
@@ -261,7 +261,7 @@ TEST(StringCharacterReaderTest, StringViewWithSameWidth)
     std::string_view val{};
     auto ret = scn::impl::character_reader_impl<char>{}.read(src, val);
 
-    ASSERT_TRUE(ret);
+    ASSERT_THAT(ret, Succeeded());
     EXPECT_EQ(val, "foo");
 }
 
@@ -271,7 +271,7 @@ TEST(StringCharacterReaderTest, StringWithMoreWidth)
     std::string val{};
     auto ret = scn::impl::character_reader_impl<char>{}.read(src, val);
 
-    ASSERT_TRUE(ret);
+    ASSERT_THAT(ret, Succeeded());
     EXPECT_EQ(val, "foo");
 }
 TEST(StringCharacterReaderTest, StringViewWithMoreWidth)
@@ -280,7 +280,7 @@ TEST(StringCharacterReaderTest, StringViewWithMoreWidth)
     std::string_view val{};
     auto ret = scn::impl::character_reader_impl<char>{}.read(src, val);
 
-    ASSERT_TRUE(ret);
+    ASSERT_THAT(ret, Succeeded());
     EXPECT_EQ(val, "foo");
 }
 
@@ -290,7 +290,7 @@ TEST(StringCharacterReaderTest, StringWithLessWidth)
     std::string val{};
     auto ret = scn::impl::character_reader_impl<char>{}.read(src, val);
 
-    ASSERT_TRUE(ret);
+    ASSERT_THAT(ret, Succeeded());
     EXPECT_EQ(val, "foo");
 }
 TEST(StringCharacterReaderTest, StringViewWithLessWidth)
@@ -299,7 +299,7 @@ TEST(StringCharacterReaderTest, StringViewWithLessWidth)
     std::string_view val{};
     auto ret = scn::impl::character_reader_impl<char>{}.read(src, val);
 
-    ASSERT_TRUE(ret);
+    ASSERT_THAT(ret, Succeeded());
     EXPECT_EQ(val, "foo");
 }
 
@@ -386,7 +386,7 @@ TYPED_TEST(StringCharacterSetReaderTest, MatchEmpty)
     auto src = this->set_source(""sv);
     auto [ret, val] = this->read(this->make_specs_from_set("[a-z]"));
 
-    ASSERT_TRUE(ret);
+    ASSERT_THAT(ret, Succeeded());
     EXPECT_EQ(*ret, src.begin());
     EXPECT_TRUE(this->check_value(val, ""));
 }
@@ -396,7 +396,7 @@ TYPED_TEST(StringCharacterSetReaderTest, LiteralAbc)
     auto src = this->set_source("abc123"sv);
     auto [ret, val] = this->read(this->make_specs_from_set("[abc]"));
 
-    ASSERT_TRUE(ret);
+    ASSERT_THAT(ret, Succeeded());
     EXPECT_EQ(*ret, src.begin() + 3);
     EXPECT_TRUE(this->check_value(val, "abc"));
 }
@@ -405,7 +405,7 @@ TYPED_TEST(StringCharacterSetReaderTest, LiteralAToC)
     auto src = this->set_source("abc123"sv);
     auto [ret, val] = this->read(this->make_specs_from_set("[a-c]"));
 
-    ASSERT_TRUE(ret);
+    ASSERT_THAT(ret, Succeeded());
     EXPECT_EQ(*ret, src.begin() + 3);
     EXPECT_TRUE(this->check_value(val, "abc"));
 }
@@ -415,7 +415,7 @@ TYPED_TEST(StringCharacterSetReaderTest, LiteralAWithDiaeresis)
     auto src = this->set_source("äa"sv);
     auto [ret, val] = this->read(this->make_specs_from_set("[ä]"));
 
-    ASSERT_TRUE(ret);
+    ASSERT_THAT(ret, Succeeded());
     EXPECT_NE(*ret, src.end());
     EXPECT_TRUE(this->check_value(val, "ä"));
 }
@@ -424,7 +424,7 @@ TYPED_TEST(StringCharacterSetReaderTest, MultipleLiteralNonAsciiCharacters)
     auto src = this->set_source("öäa"sv);
     auto [ret, val] = this->read(this->make_specs_from_set("[äö]"));
 
-    ASSERT_TRUE(ret);
+    ASSERT_THAT(ret, Succeeded());
     EXPECT_NE(*ret, src.end());
     EXPECT_TRUE(this->check_value(val, "öä"));
 }

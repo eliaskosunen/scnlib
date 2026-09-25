@@ -58,7 +58,7 @@ TYPED_TEST(BoolReaderTest, DefaultTextualTrue)
     bool val{};
     auto ret = this->read_default(src, val);
 
-    ASSERT_TRUE(ret);
+    ASSERT_THAT(ret, Succeeded());
     EXPECT_EQ(*ret, src.begin() + 4);
     EXPECT_TRUE(val);
 }
@@ -68,7 +68,7 @@ TYPED_TEST(BoolReaderTest, DefaultTextualFalse)
     bool val{};
     auto ret = this->read_default(src, val);
 
-    ASSERT_TRUE(ret);
+    ASSERT_THAT(ret, Succeeded());
     EXPECT_EQ(*ret, src.begin() + 5);
     EXPECT_FALSE(val);
 }
@@ -78,7 +78,7 @@ TYPED_TEST(BoolReaderTest, DefaultTextualNonsense)
     bool val{};
     auto ret = this->read_default(src, val);
 
-    ASSERT_FALSE(ret);
+    ASSERT_THAT(ret, Failed());
 }
 
 TYPED_TEST(BoolReaderTest, DefaultNumericTrue)
@@ -87,7 +87,7 @@ TYPED_TEST(BoolReaderTest, DefaultNumericTrue)
     bool val{};
     auto ret = this->read_default(src, val);
 
-    ASSERT_TRUE(ret);
+    ASSERT_THAT(ret, Succeeded());
     EXPECT_EQ(*ret, src.begin() + 1);
     EXPECT_TRUE(val);
 }
@@ -97,7 +97,7 @@ TYPED_TEST(BoolReaderTest, DefaultNumericFalse)
     bool val{};
     auto ret = this->read_default(src, val);
 
-    ASSERT_TRUE(ret);
+    ASSERT_THAT(ret, Succeeded());
     EXPECT_EQ(*ret, src.begin() + 1);
     EXPECT_FALSE(val);
 }
@@ -107,7 +107,7 @@ TYPED_TEST(BoolReaderTest, DefaultNumericFalsePrefix)
     bool val{};
     auto ret = this->read_default(src, val);
 
-    ASSERT_TRUE(ret);
+    ASSERT_THAT(ret, Succeeded());
     EXPECT_EQ(*ret, src.begin() + 1);
     EXPECT_FALSE(val);
 }
@@ -117,5 +117,5 @@ TYPED_TEST(BoolReaderTest, DefaultNumericNonsense)
     bool val{};
     auto ret = this->read_default(src, val);
 
-    ASSERT_FALSE(ret);
+    ASSERT_THAT(ret, Failed());
 }

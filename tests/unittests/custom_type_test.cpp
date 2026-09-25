@@ -15,7 +15,7 @@
 // This file is a part of scnlib:
 //     https://github.com/eliaskosunen/scnlib
 
-#include "wrapped_gtest.h"
+#include "test_common.h"
 
 #include <scn/scan.h>
 
@@ -49,7 +49,7 @@ struct scn::scanner<char_wrapper, char> {
 TEST(CustomTypeTest, CharWrapperWithDefaultFormatString)
 {
     auto result = scn::scan<char_wrapper>("c", "{}");
-    ASSERT_TRUE(result);
+    ASSERT_THAT(result, Succeeded());
     EXPECT_EQ(*result->begin(), '\0');
     EXPECT_EQ(result->value().value, 'c');
 }
@@ -58,7 +58,7 @@ TEST(CustomTypeTest, CharWrapperWithDefaultFormatStringFromNonContiguousSource)
 {
     auto src = std::deque<char>{'c'};
     auto result = scn::scan<char_wrapper>(src, "{}");
-    ASSERT_TRUE(result);
+    ASSERT_THAT(result, Succeeded());
     EXPECT_EQ(result->begin(), src.end());
     EXPECT_EQ(result->value().value, 'c');
 }
@@ -66,7 +66,7 @@ TEST(CustomTypeTest, CharWrapperWithDefaultFormatStringFromNonContiguousSource)
 TEST(CustomTypeTest, CharWrapperWithCustomFormatString)
 {
     auto result = scn::scan<char_wrapper>("c", scn::runtime_format("{:c}"));
-    ASSERT_FALSE(result);
+    ASSERT_THAT(result, Failed());
 }
 
 // Simple wrapper over an `int`, inherits all its scanning properties
@@ -87,7 +87,7 @@ struct scn::scanner<integer_wrapper, char> : scn::scanner<int, char> {
 TEST(CustomTypeTest, IntegerWrapperWithDefaultFormatString)
 {
     auto result = scn::scan<integer_wrapper>("123", "{}");
-    ASSERT_TRUE(result);
+    ASSERT_THAT(result, Succeeded());
     EXPECT_EQ(*result->begin(), '\0');
 
     const auto val = result->value().value;
@@ -99,7 +99,7 @@ TEST(CustomTypeTest,
 {
     auto src = std::deque<char>{'1', '2', '3'};
     auto result = scn::scan<integer_wrapper>(src, "{}");
-    ASSERT_TRUE(result);
+    ASSERT_THAT(result, Succeeded());
     EXPECT_EQ(result->begin(), src.end());
 
     const auto val = result->value().value;
@@ -109,7 +109,7 @@ TEST(CustomTypeTest,
 TEST(CustomTypeTest, IntegerWrapperWithCustomFormatString)
 {
     auto result = scn::scan<integer_wrapper>("123", "{:x}");
-    ASSERT_TRUE(result);
+    ASSERT_THAT(result, Succeeded());
     EXPECT_EQ(*result->begin(), '\0');
 
     const auto val = result->value().value;
@@ -121,7 +121,7 @@ TEST(CustomTypeTest,
 {
     auto src = std::deque<char>{'1', '2', '3'};
     auto result = scn::scan<integer_wrapper>(src, "{:x}");
-    ASSERT_TRUE(result);
+    ASSERT_THAT(result, Succeeded());
     EXPECT_EQ(result->begin(), src.end());
 
     const auto val = result->value().value;
@@ -206,15 +206,14 @@ private:
 TEST(CustomTypeTest, VariantWrapperWithDefaultFormatString)
 {
     auto result = scn::scan<variant_wrapper>("123", "{}");
-    ASSERT_FALSE(result);
-    EXPECT_EQ(result.error().code(), scn::scan_error::invalid_format_string);
+    ASSERT_THAT(result, FailedWith(scn::scan_error::invalid_format_string));
 }
 #endif
 
 TEST(CustomTypeTest, VariantWrapperWithIntegerFormat)
 {
     auto result = scn::scan<variant_wrapper>("123", "{:i}");
-    ASSERT_TRUE(result);
+    ASSERT_THAT(result, Succeeded());
     EXPECT_EQ(*result->begin(), '\0');
 
     const auto& val = result->value().value;
@@ -225,7 +224,7 @@ TEST(CustomTypeTest, VariantWrapperWithIntegerFormat)
 TEST(CustomTypeTest, VariantWrapperWithCharFormat)
 {
     auto result = scn::scan<variant_wrapper>("123", "{:c}");
-    ASSERT_TRUE(result);
+    ASSERT_THAT(result, Succeeded());
     EXPECT_STREQ(result->begin(), "23");
 
     const auto& val = result->value().value;
@@ -236,7 +235,7 @@ TEST(CustomTypeTest, VariantWrapperWithCharFormat)
 TEST(CustomTypeTest, VariantWrapperWithDoubleFormat)
 {
     auto result = scn::scan<variant_wrapper>("123", "{:f}");
-    ASSERT_TRUE(result);
+    ASSERT_THAT(result, Succeeded());
     EXPECT_EQ(*result->begin(), '\0');
 
     const auto& val = result->value().value;
@@ -247,7 +246,7 @@ TEST(CustomTypeTest, VariantWrapperWithDoubleFormat)
 TEST(CustomTypeTest, VariantWrapperWithStringFormat)
 {
     auto result = scn::scan<variant_wrapper>("123", "{:s}");
-    ASSERT_TRUE(result);
+    ASSERT_THAT(result, Succeeded());
     EXPECT_EQ(*result->begin(), '\0');
 
     const auto& val = result->value().value;
@@ -259,17 +258,17 @@ TEST(CustomTypeTest, VariantWrapperInvalidFormat)
 {
     auto result =
         scn::scan<variant_wrapper>("123", scn::runtime_format("{:d}"));
-    ASSERT_FALSE(result);
+    ASSERT_THAT(result, Failed());
 
     result = scn::scan<variant_wrapper>("123", scn::runtime_format("{}"));
-    ASSERT_FALSE(result);
+    ASSERT_THAT(result, Failed());
 }
 
 TEST(CustomTypeTest, VariantWrapperFromNonContiguousSource)
 {
     auto src = std::deque<char>{'1', '2', '3'};
     auto result = scn::scan<variant_wrapper>(src, "{:i}");
-    ASSERT_TRUE(result);
+    ASSERT_THAT(result, Succeeded());
     EXPECT_EQ(result->begin(), src.end());
 
     const auto& val = result->value().value;
@@ -304,7 +303,7 @@ struct scn::scanner<type_without_default_constructor> : scn::scanner<int> {
 TEST(CustomTypeTest, TypeWithoutDefaultConstructor)
 {
     auto result = scn::scan<type_without_default_constructor>("123", "{}");
-    ASSERT_TRUE(result);
+    ASSERT_THAT(result, Succeeded());
     EXPECT_EQ(result->value().val, 123);
 }
 #endif
@@ -341,7 +340,7 @@ struct scn::scanner<non_copyable_type> : scn::scanner<int> {
 TEST(CustomTypeTest, NonCopyableType)
 {
     auto result = scn::scan<non_copyable_type>("123", "{}");
-    ASSERT_TRUE(result);
+    ASSERT_THAT(result, Succeeded());
     EXPECT_EQ(result->value().val, 123);
 }
 
@@ -349,7 +348,7 @@ TEST(CustomTypeTest, NonCopyableTypeFromNonContiguousSource)
 {
     auto result =
         scn::scan<non_copyable_type>(std::deque<char>{'1', '2', '3'}, "{}");
-    ASSERT_TRUE(result);
+    ASSERT_THAT(result, Succeeded());
     EXPECT_EQ(result->value().val, 123);
 }
 
@@ -386,7 +385,7 @@ struct scn::scanner<non_movable_type> : scn::scanner<int> {
 TEST(CustomTypeTest, NonMovableType)
 {
     auto result = scn::scan<non_movable_type>("123", "{}");
-    ASSERT_TRUE(result);
+    ASSERT_THAT(result, Succeeded());
     EXPECT_EQ(result->value().val, 123);
 }
 #endif

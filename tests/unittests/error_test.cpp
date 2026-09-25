@@ -15,7 +15,7 @@
 // This file is a part of scnlib:
 //     https://github.com/eliaskosunen/scnlib
 
-#include "wrapped_gtest.h"
+#include "test_common.h"
 
 #include <scn/scan.h>
 
@@ -44,9 +44,9 @@ TEST(ErrorTest, ExpectedVoid)
         scn::scan_expected<void>{scn::detail::unexpected_scan_error(
             scn::scan_error::invalid_scanned_value, "")};
 
-    EXPECT_TRUE(good);
-    EXPECT_FALSE(eof_error);
-    EXPECT_FALSE(invalid_scanned_value_error);
+    EXPECT_THAT(good, Succeeded());
+    EXPECT_THAT(eof_error, Failed());
+    EXPECT_THAT(invalid_scanned_value_error, Failed());
 
     EXPECT_EQ(eof_error.error().code(), scn::scan_error::end_of_input);
     EXPECT_EQ(invalid_scanned_value_error.error().code(),
