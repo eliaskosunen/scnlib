@@ -5448,9 +5448,6 @@ public:
         /// (between 0 and the smallest subnormal float)
         value_negative_underflow,
 
-        /// Scanning of values of this type isn't supported
-        type_not_supported,
-
         /// Source type used can't be used to scan this value
         /// (i.e., string_view from a non-contiguous and non-borrowed source)
         insufficient_source,
@@ -5494,7 +5491,6 @@ public:
             case invalid_literal:
             case invalid_fill:
             case length_too_short:
-            case type_not_supported:
             case insufficient_source:
                 return std::errc::invalid_argument;
             case invalid_source_state:
@@ -8106,7 +8102,7 @@ public:
     /// Advance the beginning of the format string to `it`
     constexpr void advance_to(iterator it)
     {
-        m_format.remove_prefix(static_cast<std::size_t>(it - begin()));
+        m_format.remove_prefix(static_cast<std::size_t>(std::distance(begin(), it)));
     }
 
     constexpr size_t next_arg_id()
@@ -11039,7 +11035,7 @@ public:
     {
 #if SCN_HAS_CONSTEVAL
         using checker = detail::format_string_checker<CharT, Source, Args...>;
-        const auto e = detail::parse_format_string<true>(m_str, checker(s));
+        const auto e = detail::parse_format_string<true>(m_str, checker(m_str));
         SCN_UNUSED(e);
 #else
         detail::check_format_string<Source, Args...>(s);
@@ -11790,8 +11786,8 @@ using vscan_result = scan_expected<detail::scan_result_value_type<Source>>;
 
 namespace detail {
 
-SCN_PUBLIC void stdin_acquire();
-SCN_PUBLIC void stdin_release();
+SCN_PUBLIC void stdin_acquire() SCN_THREADSAFETY_NO_ANALYSIS;
+SCN_PUBLIC void stdin_release() SCN_THREADSAFETY_NO_ANALYSIS;
 
 SCN_PUBLIC scan_buffer& make_scan_buffer(stdin_tag_t,
                                          make_scan_buffer_tag) noexcept;

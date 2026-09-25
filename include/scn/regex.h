@@ -324,7 +324,7 @@ public:
 
         iterator() = default;
 
-        iterator(const basic_regex_matches& parent, std::size_t index)
+        iterator(const basic_regex_matches& parent, std::size_t index) noexcept
             : m_parent(&parent), m_index(index)
         {
         }
@@ -424,12 +424,12 @@ public:
         std::size_t m_index{0};
     };
 
-    SCN_NODISCARD iterator begin() const
+    SCN_NODISCARD iterator begin() const noexcept
     {
         return iterator{*this, 0};
     }
 
-    SCN_NODISCARD iterator end() const
+    SCN_NODISCARD iterator end() const noexcept
     {
         return iterator{*this, size()};
     }

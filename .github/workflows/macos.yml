@@ -126,10 +126,11 @@ jobs:
           ccache --show-stats
           ccache --show-config
 
+      # Using RelWithDebInfo with g++ on macOS to work around a GCC bug
       - name: Run CMake
         working-directory: ${{ runner.workspace }}/build
         run: |
-          cmake -DSCN_CI=ON -DCMAKE_CXX_STANDARD=${{ matrix.std }} -DCMAKE_BUILD_TYPE=Debug $GITHUB_WORKSPACE
+          cmake -DSCN_CI=ON -DCMAKE_CXX_STANDARD=${{ matrix.std }} -DCMAKE_BUILD_TYPE=${{ startsWith(matrix.cxx, 'g++') && 'RelWithDebInfo' || 'Debug' }} $GITHUB_WORKSPACE
 
       - name: Build
         working-directory: ${{ runner.workspace }}/build

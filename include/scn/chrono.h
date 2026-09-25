@@ -255,14 +255,14 @@ private:
 
 namespace detail {
 template <typename T>
-using has_tm_gmtoff_predicate = decltype(T::tm_gmtoff);
+using tm_gmtoff = decltype(T::tm_gmtoff);
 
 template <typename T>
 void assign_gmtoff(T& tm, std::chrono::seconds val)
 {
     static_assert(std::is_same_v<T, std::tm>);
-    if constexpr (mp_valid<has_tm_gmtoff_predicate, T>::value) {
-        tm.tm_gmtoff = val.count();
+    if constexpr (mp_valid<tm_gmtoff, T>::value) {
+        tm.tm_gmtoff = static_cast<tm_gmtoff<T>>(val.count());
     }
     else {
         SCN_UNUSED(tm);
@@ -323,8 +323,7 @@ struct datetime_components {
         t.tm_wday = static_cast<int>(wday.value_or(Sunday).c_encoding());
         t.tm_yday = static_cast<int>(yday.value_or(0));
         t.tm_isdst = -1;
-        if constexpr (detail::mp_valid<detail::has_tm_gmtoff_predicate,
-                                       std::tm>::value) {
+        if constexpr (detail::mp_valid<detail::tm_gmtoff, std::tm>::value) {
             detail::assign_gmtoff(
                 t, std::chrono::duration_cast<std::chrono::seconds>(
                        tz_offset.value_or(std::chrono::minutes{0})));
@@ -917,7 +916,7 @@ template <>
 struct always_supports_field<std::tm, field_tags::subsec> : std::false_type {};
 template <>
 struct always_supports_field<std::tm, field_tags::tzoff>
-    : mp_valid<has_tm_gmtoff_predicate, std::tm> {};
+    : mp_valid<tm_gmtoff, std::tm> {};
 template <>
 struct always_supports_field<std::tm, field_tags::tzname> : std::false_type {};
 
