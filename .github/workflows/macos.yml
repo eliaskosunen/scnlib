@@ -126,6 +126,72 @@ jobs:
           ccache --show-stats
           ccache --show-config
 
+      # TEMPORARY: standalone reproducer for wide string literals getting
+      # corrupted across translation units with g++ at -O0 on macOS.
+      # Checks the literal contents at runtime, at several optimization levels,
+      # and dumps which sections GCC places the literals in.
+      - name: Wide string literal reproducer
+        if: ${{ startsWith(matrix.cxx, 'g++') }}
+        continue-on-error: true
+        run: |
+          mkdir -p ${{ runner.temp }}/wlit && cd ${{ runner.temp }}/wlit
+          cat > a.cpp <<'EOF'
+          const wchar_t* a_fmt() { return L"{}"; }
+          const wchar_t* a_str() { return L"abc def"; }
+          EOF
+          cat > b.cpp <<'EOF'
+          const wchar_t* b_fmt() { return L"{}"; }
+          const wchar_t* b_str() { return L"foobar"; }
+          EOF
+          cat > main.cpp <<'EOF'
+          #include <cstdio>
+          #include <cstring>
+          const wchar_t* a_fmt();
+          const wchar_t* a_str();
+          const wchar_t* b_fmt();
+          const wchar_t* b_str();
+          static int check(const char* name, const wchar_t* got, const char* expected)
+          {
+              // Compare against the narrow string, widened at runtime
+              std::size_t n = std::strlen(expected);
+              bool ok = true;
+              for (std::size_t i = 0; i <= n; ++i) {
+                  if (got[i] != static_cast<wchar_t>(static_cast<unsigned char>(expected[i]))) {
+                      ok = false;
+                  }
+              }
+              std::printf("%-6s %p %s:", name, static_cast<const void*>(got), ok ? "OK      " : "MISMATCH");
+              for (std::size_t i = 0; i <= n; ++i) {
+                  std::printf(" %08x", static_cast<unsigned>(got[i]));
+              }
+              std::printf("\n");
+              return ok ? 0 : 1;
+          }
+          int main()
+          {
+              int failures = 0;
+              failures += check("a_fmt", a_fmt(), "{}");
+              failures += check("a_str", a_str(), "abc def");
+              failures += check("b_fmt", b_fmt(), "{}");
+              failures += check("b_str", b_str(), "foobar");
+              return failures;
+          }
+          EOF
+          set +e
+          for opt in "-O0" "-O0 -fmerge-constants" "-O2"; do
+            echo "::group::$CXX $opt"
+            $CXX $opt -c a.cpp -o a.o && $CXX $opt -c b.cpp -o b.o && $CXX $opt -c main.cpp -o main.o
+            $CXX $opt main.o a.o b.o -o repro && ./repro
+            echo "exit code: $?"
+            echo "--- sections of b.o:"
+            otool -lv b.o | grep -A1 sectname
+            echo "--- assembly of b.cpp:"
+            $CXX $opt -S b.cpp -o - | grep -vE '^\s*\.(cfi|loc|file)'
+            echo "::endgroup::"
+          done
+          $CXX --version
+          ld -v 2>&1 | head -1
+
       - name: Run CMake
         working-directory: ${{ runner.workspace }}/build
         run: |
