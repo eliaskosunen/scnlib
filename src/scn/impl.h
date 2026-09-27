@@ -4513,13 +4513,13 @@ struct uint128_polyfill {
     constexpr friend bool operator<=(const uint128_polyfill& a,
                                      const uint128_polyfill& b)
     {
-        return !(b > a);
+        return !(b < a);
     }
 
     constexpr friend bool operator>=(const uint128_polyfill& a,
                                      const uint128_polyfill& b)
     {
-        return !(b < a);
+        return !(a < b);
     }
 
     constexpr explicit operator bool() const
@@ -4787,8 +4787,18 @@ struct float_traits_impl_f80 {
     static constexpr unsigned exponent_bits = 15;
     static constexpr unsigned significand_bits = 64;
     static constexpr unsigned fraction_bits = significand_bits - 1;
-    static constexpr int exponent_bias = (1 << (exponent_bits - 1)) - 1;
-    static constexpr int max_biased_exponent = (1 << exponent_bits) - 1;
+
+    // On x87, a biased exponent of 0 (subnormals) has the same scale as 1.
+    // On m68k, it's one binade lower: numbers with an exponent of 0 and
+    // the integer bit set are normal, and subnormals reach one binade lower.
+    // m68k is modeled as if it had x87 semantics, with a bias larger by one:
+    // `apply_exponent` subtracts that one back out.
+    static constexpr bool has_m68k_exponent =
+        std::numeric_limits<F>::min_exponent == -16382;
+    static constexpr int exponent_bias =
+        (1 << (exponent_bits - 1)) - (has_m68k_exponent ? 0 : 1);
+    static constexpr int max_biased_exponent =
+        (1 << exponent_bits) - (has_m68k_exponent ? 0 : 1);
 
     struct value_repr {
 #if !SCN_IS_BIG_ENDIAN && !SCN_IS_FLOAT_BIG_ENDIAN
@@ -4799,16 +4809,16 @@ struct float_traits_impl_f80 {
         unsigned sign : 1;
         unsigned padding : 16;
 #elif !SCN_IS_BIG_ENDIAN && SCN_IS_FLOAT_BIG_ENDIAN
-        unsigned exponent : 11;
+        unsigned exponent : 15;
         unsigned sign : 1;
         unsigned padding : 16;
         unsigned significand0 : 31;
         unsigned one : 1;
         unsigned significand1 : 32;
 #else
-        unsigned padding : 16;
         unsigned sign : 1;
         unsigned exponent : 15;
+        unsigned padding : 16;
         unsigned one : 1;
         unsigned significand0 : 31;
         unsigned significand1 : 32;
@@ -4816,6 +4826,10 @@ struct float_traits_impl_f80 {
 
         void apply_exponent(int e)
         {
+            one = e != 0;
+            if constexpr (has_m68k_exponent) {
+                e = std::max(e - 1, 0);
+            }
             exponent = static_cast<unsigned>(e);
         }
 
@@ -4823,7 +4837,6 @@ struct float_traits_impl_f80 {
         {
             significand0 = static_cast<unsigned>(s >> 32u);
             significand1 = static_cast<unsigned>(s);
-            one = exponent != 0;
         }
 
         void clear_padding()
@@ -5109,10 +5122,8 @@ struct float_traits_impl_bf16 {
     };
 };
 
-struct float_traits_impl_none_base {};
-
 template <typename...>
-struct float_traits_impl_none : float_traits_impl_none_base {};
+struct float_traits_impl_none {};
 
 template <typename F>
 struct float_traits;
@@ -5123,25 +5134,31 @@ struct float_traits<float> : float_traits_impl_f32<float> {};
 template <>
 struct float_traits<double> : float_traits_impl_f64<double> {};
 
+template <int Digits, int MaxExponent>
+inline constexpr bool long_double_has_format =
+    std::numeric_limits<long double>::radix == 2 &&
+    std::numeric_limits<long double>::digits == Digits &&
+    std::numeric_limits<long double>::max_exponent == MaxExponent;
+
 template <>
 struct float_traits<long double>
     : detail::mp_cond<
           // long double is equivalent to a double,
           // true on (non-mingw) Windows, Arm32, and Apple Arm64
-          detail::mp_bool<sizeof(double) == sizeof(long double)>,
+          detail::mp_bool<long_double_has_format<53, 1024>>,
           detail::mp_defer<float_traits_impl_f64, long double>,
-          // x87 long double, on non-Windows x86
-          detail::mp_bool<std::numeric_limits<long double>::digits == 64>,
+          // x87 long double, on non-Windows x86 (and m68k)
+          detail::mp_bool<long_double_has_format<64, 16384>>,
           detail::mp_defer<float_traits_impl_f80, long double>,
           // binary128 long double,
           // true on non-Apple non-Windows Arm64
-          detail::mp_bool<std::numeric_limits<long double>::digits == 113>,
+          detail::mp_bool<long_double_has_format<113, 16384>>,
           detail::mp_defer<float_traits_impl_f128, long double>,
           // double-double (two regular doubles next to each other),
           // true on PowerPC
-          detail::mp_bool<std::numeric_limits<long double>::digits == 106>,
+          detail::mp_bool<long_double_has_format<106, 1024>>,
           detail::mp_defer<float_traits_impl_doubledouble, long double>,
-          // Exotic long double, no payload setting support
+          // Exotic long double, no custom conversion support
           std::true_type,
           detail::mp_defer<float_traits_impl_none>>::type {};
 
@@ -5172,11 +5189,8 @@ struct float_traits<std::bfloat16_t> : float_traits_impl_bf16<std::bfloat16_t> {
 };
 #endif
 
-SCN_GCC_POP  // -Wconversion
-
-    namespace
-{
-}
+// -Wconversion
+SCN_GCC_POP
 
 template <typename CharT>
 struct float_parts {
@@ -6141,7 +6155,8 @@ public:
 
 // Custom implementation using Simple Decimal Conversion for decimal values,
 // and another algorithm for hexfloats.
-// Used as a fallback for all CharT, and all IEEE FloatT
+// Used as a fallback for all CharT, and all FloatT with a known binary format
+// (see float_traits).
 
 struct convert_custom_traits {
     static constexpr bool need_definite_kind = true;
@@ -6150,7 +6165,8 @@ struct convert_custom_traits {
     static constexpr bool support_hexfloat = true;
 
     template <typename CharT, typename T>
-    static constexpr bool enabled = std::numeric_limits<T>::is_iec559;
+    static constexpr bool enabled =
+        !std::is_base_of_v<float_traits_impl_none<>, float_traits<T>>;
 
     template <typename CharT, typename T>
     static scan_expected<void> convert(
@@ -6229,6 +6245,19 @@ struct convert_from_chars_traits {
 // Used if the float type is supported by the library
 // (i.e., float, double, or an extended type, not long double)
 
+#if !SCN_DISABLE_FAST_FLOAT
+// With -ffast-math, GCC converts float to bfloat16 by truncating instead of
+// rounding. fast_float does bfloat16 arithmetic, which goes through float, so
+// its results could be off by one ulp.
+template <typename T>
+inline constexpr bool fast_float_rounds_correctly =
+#if defined(__FAST_MATH__) && SCN_HAS_STD_BF16
+    !std::is_same_v<T, std::bfloat16_t>;
+#else
+    true;
+#endif
+#endif
+
 struct convert_fast_float_traits {
 #if !SCN_DISABLE_FAST_FLOAT
     static constexpr bool need_definite_kind = false;
@@ -6239,7 +6268,8 @@ struct convert_fast_float_traits {
     template <typename CharT, typename T>
     static constexpr bool enabled =
         fast_float::is_supported_char_type<CharT>() &&
-        fast_float::is_supported_float_type<T>();
+        fast_float::is_supported_float_type<T>() &&
+        fast_float_rounds_correctly<T>;
 
     template <typename CharT, typename T>
     static scan_expected<typename std::basic_string_view<CharT>::iterator>

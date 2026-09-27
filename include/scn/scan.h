@@ -11679,7 +11679,7 @@ constexpr decltype(auto) visit_impl(Visitor&& vis, basic_scan_arg<Ctx>& arg)
             return vis(monostate_val);
 #endif
         case detail::arg_type::float128_type:
-#if SCN_HAS_STD_F64
+#if SCN_HAS_STD_F128
             SCN_VISIT(std::float128_t);
 #else
             return vis(monostate_val);
