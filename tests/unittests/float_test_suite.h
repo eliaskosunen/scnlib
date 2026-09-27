@@ -178,6 +178,18 @@ struct float_test_suite_value_set<FloatT, float_kind::f80> {
     static constexpr auto subnormal = SCN_MAKE_FLOAT_PAIR(3e-4940, L);
     static constexpr auto subnormal_hex = SCN_MAKE_FLOAT_PAIR(0x1.2p-16400, L);
 
+#if LDBL_MIN_EXP == -16382
+    // m68k extended precision: reaches one binade lower than x87
+    static constexpr auto subnormal_max =
+        SCN_MAKE_FLOAT_PAIR(1.68105157155604675294907893206675255e-4932, L);
+    static constexpr auto subnormal_max_hex =
+        SCN_MAKE_FLOAT_PAIR(0x7.fffffffffffffffp-16386, L);
+
+    static constexpr auto subnormal_min =
+        SCN_MAKE_FLOAT_PAIR(1.82259976594123730126420296680970991e-4951, L);
+    static constexpr auto subnormal_min_hex =
+        SCN_MAKE_FLOAT_PAIR(0x1p-16446, L);
+#else
     static constexpr auto subnormal_max =
         SCN_MAKE_FLOAT_PAIR(3.3621031431120935058981578641335051e-4932, L);
     static constexpr auto subnormal_max_hex =
@@ -187,15 +199,22 @@ struct float_test_suite_value_set<FloatT, float_kind::f80> {
         SCN_MAKE_FLOAT_PAIR(3.64519953188247460252840593361941982e-4951, L);
     static constexpr auto subnormal_min_hex =
         SCN_MAKE_FLOAT_PAIR(0x1p-16445, L);
+#endif
 
     static constexpr auto normal_max =
         SCN_MAKE_FLOAT_PAIR(1.18973149535723176502126385303097021e+4932, L);
     static constexpr auto normal_max_hex =
         SCN_MAKE_FLOAT_PAIR(0xf.fffffffffffffffp+16380, L);
 
+#if LDBL_MIN_EXP == -16382
+    static constexpr auto normal_min =
+        SCN_MAKE_FLOAT_PAIR(1.68105157155604675313133890866087630e-4932, L);
+    static constexpr auto normal_min_hex = SCN_MAKE_FLOAT_PAIR(0x1p-16383, L);
+#else
     static constexpr auto normal_min =
         SCN_MAKE_FLOAT_PAIR(3.36210314311209350626267781732175260e-4932, L);
     static constexpr auto normal_min_hex = SCN_MAKE_FLOAT_PAIR(0x1p-16382, L);
+#endif
 
     static constexpr auto underflow_str = "4.0e-5500"sv;
     static constexpr auto underflow_hex_str = "0x1p-18000"sv;

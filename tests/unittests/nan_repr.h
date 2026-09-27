@@ -285,7 +285,8 @@ f80_fields read_f80(T value)
 
     f80_fields f{};
 #if SCN_IS_BIG_ENDIAN
-    std::memcpy(&f.sign_exp, bytes.data() + sizeof(T) - 10, 2);
+    // m68k: sign and exponent first, then padding, then the significand
+    std::memcpy(&f.sign_exp, bytes.data(), 2);
     std::memcpy(&f.significand, bytes.data() + sizeof(T) - 8, 8);
 #else
     std::memcpy(&f.significand, bytes.data(), 8);
@@ -305,7 +306,7 @@ T write_f80(T base, f80_fields f)
     std::memcpy(bytes.data(), &base, sizeof(T));
 
 #if SCN_IS_BIG_ENDIAN
-    std::memcpy(bytes.data() + sizeof(T) - 10, &f.sign_exp, 2);
+    std::memcpy(bytes.data(), &f.sign_exp, 2);
     std::memcpy(bytes.data() + sizeof(T) - 8, &f.significand, 8);
 #else
 #if SCN_IS_FLOAT_BIG_ENDIAN

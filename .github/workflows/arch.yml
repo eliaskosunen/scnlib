@@ -45,69 +45,51 @@ env:
 jobs:
   # Cross-compile on x64 host, then run tests on target architectures through QEMU
   cross-compile:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     strategy:
       fail-fast: false
       matrix:
-        include:
-          - name: armv5
-            triple: arm-linux-gnueabi
-            cmake_processor: arm
-            arch: none
-            distro: none
-            base_image: --platform=linux/arm/v5 arm32v5/debian:bookworm-backports
-
-          - name: armv6
-            triple: arm-linux-gnueabi
-            cmake_processor: arm
-            arch: armv6
-            distro: bookworm
-
-          - name: armv7
-            triple: arm-linux-gnueabihf
-            cmake_processor: arm
-            arch: armv7
-            distro: bookworm
-
-          - name: aarch64
-            triple: aarch64-linux-gnu
-            cmake_processor: aarch64
-            arch: aarch64
-            distro: bookworm
-
-          - name: s390x
-            triple: s390x-linux-gnu
-            cmake_processor: s390x
-            arch: s390x
-            distro: bookworm
-
-          - name: ppc64le
-            triple: powerpc64le-linux-gnu
-            cmake_processor: ppc64le
-            arch: ppc64le
-            distro: bookworm
-
-          - name: riscv64
-            triple: riscv64-linux-gnu
-            cmake_processor: riscv64
-            arch: riscv64
-            distro: ubuntu24.04
-
-          - name: i386
-            triple: i686-linux-gnu
-            cmake_processor: i686
-            arch: none
-            distro: none
-            base_image: --platform=linux/i386 i386/debian:bookworm-backports
-
-          - name: mips64le
-            triple: mips64el-linux-gnuabi64
-            cmake_processor: mips64el
-            arch: none
-            distro: none
-            base_image: --platform=linux/mips64le mips64le/debian:bookworm
-            # Enable larger binary sizes
-            cxx_flags: -mxgot
+        # All targets supported by cross-compile-action
+        target:
+          - i686
+          - armv5
+          - armv6
+          - armv7
+          - aarch64
+          - alpha
+          - hppa
+          - loongarch64
+          - m68k
+          - mips
+          - mipsel
+          - mips64
+          - mips64el
+          - mips32r6
+          - mips32r6el
+          - mips64r6
+          - mips64r6el
+          - powerpc
+          - ppc64
+          - ppc64le
+          - riscv64
+          - s390x
+          - sh4
+          - sparc64
+        exclude:
+          # Obsolete, and has nothing that other targets don't already cover:
+          # little-endian, 64-bit, binary128 long double
+          - target: alpha
+          # Obsolete, and has nothing that other targets don't already cover:
+          # little-endian, 32-bit, long double == double
+          - target: sh4
+          # Legacy NaN encoding is covered by mips (32-bit big-endian)
+          # and mips64el (64-bit little-endian)
+          - target: mipsel
+          - target: mips64
+          # IEEE 754-2008 NaN encoding on MIPS is covered by mips64r6el
+          - target: mips32r6
+          - target: mips32r6el
+          - target: mips64r6
 
     env:
       CCACHE_DIR: "/tmp/ccache"
@@ -118,67 +100,48 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v7
 
-      - name: Install cross-compiler
+      - name: Install build tools
         run: |
           sudo apt-get update -yq
-          sudo apt-get install -yq ninja-build ccache gcc-${{ matrix.triple }} g++-${{ matrix.triple }}
+          sudo apt-get install -yq ninja-build ccache
+
+      - name: Set up cross-compilation environment
+        uses: eliaskosunen/cross-compile-action@master
+        with:
+          target: ${{ matrix.target }}
 
       - name: Load ccache
         uses: actions/cache@v6
         with:
           path: ${{ env.CCACHE_DIR }}
-          key: ccache-arch-${{ matrix.name }}-${{ github.sha }}
+          key: ccache-arch-${{ matrix.target }}-${{ github.sha }}
           restore-keys: |
-            ccache-arch-${{ matrix.name }}-${{ github.ref }}
-            ccache-arch-${{ matrix.name }}-${{ github.base_ref }}
-            ccache-arch-${{ matrix.name }}
+            ccache-arch-${{ matrix.target }}-${{ github.ref }}
+            ccache-arch-${{ matrix.target }}-${{ github.base_ref }}
+            ccache-arch-${{ matrix.target }}
 
-      - name: Cross-compile
+      - name: Set up ccache
         run: |
           ccache --version
           ccache --zero-stats
           ccache --show-stats
           ccache --show-config
 
+      - name: Cross-compile
+        run: |
           mkdir build
           cd build
           cmake -G Ninja \
             -DCMAKE_BUILD_TYPE=Debug \
-            -DCMAKE_TOOLCHAIN_FILE=../cmake/cross-linux-gcc.cmake \
-            -DCROSS_TRIPLE=${{ matrix.triple }} \
-            -DCROSS_SYSTEM_PROCESSOR=${{ matrix.cmake_processor }} \
-            -DCMAKE_C_FLAGS="${{ matrix.cxx_flags }}" \
-            -DCMAKE_CXX_FLAGS="${{ matrix.cxx_flags }}" \
-            -DCMAKE_EXE_LINKER_FLAGS="-static" \
-            -DSCN_DISABLE_TOP_PROJECT=ON \
-            -DSCN_PEDANTIC=ON \
             -DSCN_WERROR=OFF \
-            -DSCN_TESTS=ON \
             ..
-
           cmake --build . --verbose -- -k 0
-          ccache --show-stats
+
+      - name: Show ccache stats
+        run: ccache --show-stats
 
       - name: Run tests
-        uses: uraimo/run-on-arch-action@v3
-        with:
-          arch: ${{ matrix.arch }}
-          distro: ${{ matrix.distro }}
-          base_image: ${{ matrix.base_image }}
-
-          githubToken: ${{ github.token }}
-
-          dockerRunArgs: |
-            --volume "${{ github.workspace }}:/workspace"
-
-          # Setting GITHUB_WORKFLOW as a hack around https://github.com/uraimo/run-on-arch-action/issues/55
-          env: |
-            GITHUB_WORKFLOW: ${{ github.workflow }}-${{ github.job }}-${{ matrix.name }}
-
-          run: |
-            cd /workspace
-            ./build/tests/unittests/scn_tests
-            ./build/tests/unittests/scn_impl_tests
+        run: ctest --test-dir build --output-on-failure -R '^scn_(impl_)?tests$'
 
   # Cross-compile with Visual Studio, targeting arm64
   # Doesn't run tests

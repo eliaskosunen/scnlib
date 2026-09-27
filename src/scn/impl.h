@@ -4502,13 +4502,13 @@ struct uint128_polyfill {
     constexpr friend bool operator<=(const uint128_polyfill& a,
                                      const uint128_polyfill& b)
     {
-        return !(b > a);
+        return !(b < a);
     }
 
     constexpr friend bool operator>=(const uint128_polyfill& a,
                                      const uint128_polyfill& b)
     {
-        return !(b < a);
+        return !(a < b);
     }
 
     constexpr explicit operator bool() const
@@ -4846,8 +4846,18 @@ struct float_traits_impl_f80 {
     static constexpr unsigned exponent_bits = 15;
     static constexpr unsigned significand_bits = 64;
     static constexpr unsigned fraction_bits = significand_bits - 1;
-    static constexpr int exponent_bias = (1 << (exponent_bits - 1)) - 1;
-    static constexpr int max_biased_exponent = (1 << exponent_bits) - 1;
+
+    // On x87, a biased exponent of 0 (subnormals) has the same scale as 1.
+    // On m68k, it's one binade lower: numbers with an exponent of 0 and
+    // the integer bit set are normal, and subnormals reach one binade lower.
+    // m68k is modeled as if it had x87 semantics, with a bias larger by one:
+    // `apply_exponent` subtracts that one back out.
+    static constexpr bool has_m68k_exponent =
+        std::numeric_limits<F>::min_exponent == -16382;
+    static constexpr int exponent_bias =
+        (1 << (exponent_bits - 1)) - (has_m68k_exponent ? 0 : 1);
+    static constexpr int max_biased_exponent =
+        (1 << exponent_bits) - (has_m68k_exponent ? 0 : 1);
 
     struct value_repr {
 #if !SCN_IS_BIG_ENDIAN && !SCN_IS_FLOAT_BIG_ENDIAN
@@ -4865,9 +4875,10 @@ struct float_traits_impl_f80 {
         unsigned one : 1;
         unsigned significand1 : 32;
 #else
-        unsigned padding : 16;
+        // m68k: the padding is between the exponent and the significand
         unsigned sign : 1;
         unsigned exponent : 15;
+        unsigned padding : 16;
         unsigned one : 1;
         unsigned significand0 : 31;
         unsigned significand1 : 32;
@@ -4875,6 +4886,10 @@ struct float_traits_impl_f80 {
 
         void apply_exponent(int e)
         {
+            one = e != 0;
+            if constexpr (has_m68k_exponent) {
+                e = std::max(e - 1, 0);
+            }
             exponent = static_cast<unsigned>(e);
         }
 
@@ -4882,7 +4897,6 @@ struct float_traits_impl_f80 {
         {
             significand0 = static_cast<unsigned>(s >> 32u);
             significand1 = static_cast<unsigned>(s);
-            one = exponent != 0;
         }
 
         void clear_padding()
@@ -4911,9 +4925,9 @@ struct float_traits_impl_f80 {
         unsigned one : 1;
         unsigned payload1 : 32;
 #else
-        unsigned padding : 16;
         unsigned sign : 1;
         unsigned exponent : 15;
+        unsigned padding : 16;
         unsigned one : 1;
         unsigned quiet_nan : 1;
         unsigned payload0 : 30;
