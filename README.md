@@ -154,8 +154,7 @@ int main() {
 * Supports, and requires Unicode (input is UTF-8, UTF-16, or UTF-32)
 * Highly portable
     * Tested on multiple platforms, see CI
-    * Works on multiple architectures, tested on x86, x86-64, arm, aarch64,
-      riscv64, ppc64le, and riscv64
+    * Works on multiple architectures, see Compiler support below
 
 ## Installing
 
@@ -196,7 +195,8 @@ Including the following environments:
 * AppleClang and gcc on macOS 14 and 15
 * clang-cl with VS 2019 and 2022
 * MinGW and MSys2
-* GCC on armv5, armv6, armv7, aarch64, riscv64, s390x, ppc64le, and mips64le
+* GCC on i686, armv5, armv6, armv7, aarch64, hppa, loongarch64, m68k,
+  mips, mips64el, mips64r6el, powerpc, ppc64, ppc64le, riscv64, s390x, and sparc64
 * Visual Studio 2022, cross-compiling to arm64
 
 ## Benchmarks
