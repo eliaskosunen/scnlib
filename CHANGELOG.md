@@ -47,8 +47,10 @@ scn::scan<...>(strm, ...);
  * Regex support is disabled with `SCN_USE_EXCEPTIONS=OFF`, unless `SCN_REGEX_BACKEND` is `re2`,
    since `std::regex` and Boost.Regex report errors only by throwing
  * Textual boolean representations are now case-insensitive, so both `true` and `True` (and so on) are accepted.
- * IEEE 754 floating-point values are now parsed with a custom built-in implementation
-   when fast_float and `std::from_chars` can't be used, instead of falling back on `std::strtod`.
+ * Floating-point values that can't be parsed with fast_float or `std::from_chars` (like `long double`, or hexfloats without `std::from_chars`)
+   are now parsed with a custom built-in implementation, instead of `std::strtod`.
+   This covers every type with a known binary format: the regular IEEE 754 types (binary16/32/64/128),
+   bfloat16, and x87, m68k, and double-double `long double`.
  * The configuration macros are now in a separate header, `<scn/macros.h>`
  * When scnlib is the top-level CMake project (and `SCN_DISABLE_TOP_PROJECT` is `OFF`), symbols are hidden by default
    (`CMAKE_CXX_VISIBILITY_PRESET` and `CMAKE_VISIBILITY_INLINES_HIDDEN`)

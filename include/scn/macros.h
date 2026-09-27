@@ -444,31 +444,24 @@
 // Detect architecture
 #if defined(__x86_64__) || defined(_M_AMD64)
 #define SCN_X86_64 1
-#define SCN_32BIT  0
 
 #elif defined(__i386__) || defined(_M_IX86)
 #define SCN_X86_32 1
-#define SCN_32BIT  1
 
 #elif defined(__aarch64__) || defined(_M_ARM64)
 #define SCN_ARM64 1
-#define SCN_32BIT 0
 
 #elif defined(__arm__) || defined(_M_ARM)
 #define SCN_ARM32 1
-#define SCN_32BIT 1
 
 #elif defined(__PPC64__) || defined(_M_PPC64)
 #define SCN_PPC64 1
-#define SCN_32BIT 0
 
 #elif defined(__PPC__) || defined(_M_PPC)
 #define SCN_PPC32 1
-#define SCN_32BIT 1
 
 #elif defined(__s390__)
-#define SCN_S390  1
-#define SCN_32BIT 1
+#define SCN_S390 1
 
 #endif  // defined __x86_64__ || defined _M_AMD64
 
@@ -492,10 +485,6 @@
 #endif
 #ifndef SCN_S390
 #define SCN_S390 0
-#endif
-
-#ifndef SCN_32BIT
-#define SCN_32BIT 0
 #endif
 
 #if SCN_X86_64 || SCN_X86_32
@@ -971,10 +960,8 @@
 // Detect int128
 #if !SCN_DISABLE_TYPE_INT128 || !SCN_DISABLE_TYPE_UINT128
 
-#if (SCN_GCC || SCN_CLANG) && !SCN_32BIT && \
+#if (SCN_GCC || SCN_CLANG) && defined(__SIZEOF_INT128__) && \
     !SCN_STDLIB_MS_STL  // opts out of clang-cl
-// __int128 is a builtin type defined on gcc and clang,
-// as long as we have a 64-bit architecture.
 #define SCN_HAS_INT128 1
 #endif
 

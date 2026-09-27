@@ -103,3 +103,32 @@ TEST(BitsTest, Uint128PolyfillAddSub)
     EXPECT_EQ(make(0, max64) + make(0, 1), make(1, 0));
     EXPECT_EQ(make(1, max64) + make(1, 2), make(3, 1));
 }
+
+TEST(BitsTest, Uint128PolyfillComparison)
+{
+    using u128 = scn::impl::uint128_polyfill;
+    const auto make = [](std::uint64_t high, std::uint64_t low) {
+        return (u128{high} << 64u) | u128{low};
+    };
+
+    const auto small = make(0, 5);
+    const auto large = make(1, 0);
+
+    EXPECT_TRUE(small < large);
+    EXPECT_TRUE(small <= large);
+    EXPECT_FALSE(small > large);
+    EXPECT_FALSE(small >= large);
+
+    EXPECT_FALSE(large < small);
+    EXPECT_FALSE(large <= small);
+    EXPECT_TRUE(large > small);
+    EXPECT_TRUE(large >= small);
+
+    EXPECT_FALSE(small < small);
+    EXPECT_TRUE(small <= small);
+    EXPECT_FALSE(small > small);
+    EXPECT_TRUE(small >= small);
+
+    EXPECT_TRUE(make(1, 4) < make(1, 5));
+    EXPECT_TRUE(make(1, 5) >= make(1, 4));
+}
