@@ -355,15 +355,27 @@ std::optional<Duration> time_since_unix_epoch(const datetime_components& dt)
         return std::nullopt;
     }
 
-    auto tm = dt.to_tm();
+    // Unix time uses UTC, whereas mktime interprets its input in the local
+    // timezone. Count Gregorian calendar days directly, also in C++17 builds.
+    const auto leap_days_before = [](std::int64_t y) {
+        --y;
+        // Floor division also accounts for year zero and negative years.
+        return (y - (y < 0 ? 3 : 0)) / 4 - (y - (y < 0 ? 99 : 0)) / 100 +
+               (y - (y < 0 ? 399 : 0)) / 400;
+    };
+    constexpr int month_days[] = {0,   31,  59,  90,  120, 151,
+                                  181, 212, 243, 273, 304, 334};
+    const std::int64_t y = dt.year.value_or(1900);
+    const auto m = static_cast<unsigned>(dt.mon.value_or(January));
+    const bool leap = y % 4 == 0 && (y % 100 != 0 || y % 400 == 0);
+    const auto days = 365 * (y - 1970) + leap_days_before(y) -
+                      leap_days_before(1970) + month_days[m - 1] +
+                      (m > 2 && leap ? 1 : 0) + dt.mday.value_or(0) - 1;
     // TODO: overflow checks
-#if SCN_MSVC && defined(SCN_MODULE)
-    // Workaround for https://github.com/llvm/llvm-project/issues/64812
-    // (can't use <ctime> std:: functions in modules)
-    auto time = std::chrono::seconds{::mktime(&tm)};
-#else
-    auto time = std::chrono::seconds{std::mktime(&tm)};
-#endif
+    const auto time = std::chrono::seconds{days * 86400} +
+                      std::chrono::hours{dt.hour.value_or(0)} +
+                      std::chrono::minutes{dt.min.value_or(0)} +
+                      std::chrono::seconds{dt.sec.value_or(0)};
     if constexpr (Duration::period::type::den > std::intmax_t{1}) {
         // Duration more precise than seconds (seconds is std::ratio<1, 1>)
         if (dt.subsec) {
