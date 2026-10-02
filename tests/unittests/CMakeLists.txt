@@ -58,6 +58,11 @@ make_scn_test(scn_tests
 )
 add_test(NAME scn_tests COMMAND scn_tests)
 
+# System-clock scanning must not interpret the input in the host timezone.
+add_test(NAME scn_chrono_non_utc_test
+        COMMAND scn_tests --gtest_filter=ChronoScanTest.ChronoTimePoint*)
+set_tests_properties(scn_chrono_non_utc_test PROPERTIES ENVIRONMENT "TZ=EST5EDT")
+
 make_scn_test(scn_impl_tests
         main.cpp
 

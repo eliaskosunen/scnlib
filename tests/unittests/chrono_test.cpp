@@ -303,19 +303,62 @@ TEST(ChronoScanTest, ChronoTimePoint)
     auto val = std::chrono::duration_cast<std::chrono::seconds>(
         result->value().time_since_epoch());
 
-    std::tm expected_tm{};
-    expected_tm.tm_sec = 10;
-    expected_tm.tm_min = 11;
-    expected_tm.tm_hour = 23;
-    expected_tm.tm_mday = 10;
-    expected_tm.tm_mon = 8;
-    expected_tm.tm_year = 2024 - 1900;
-    expected_tm.tm_wday = 0;
-    expected_tm.tm_yday = 0;
-    expected_tm.tm_isdst = -1;
-    auto expected_val = std::chrono::seconds{std::mktime(&expected_tm)};
+    EXPECT_EQ(val, std::chrono::seconds{1726009870});
+}
 
-    EXPECT_EQ(val, expected_val);
+TEST(ChronoScanTest, ChronoTimePointUnixEpoch)
+{
+    using time_point = std::chrono::time_point<std::chrono::system_clock,
+                                               std::chrono::seconds>;
+    const struct {
+        const char* input;
+        std::int64_t seconds;
+    } cases[] = {
+        {"1970-01-01T00:00:00", 0},
+        {"1969-12-31T23:59:59", -1},
+        {"2025-02-05T16:00:01", 1738771201},
+        {"2025-03-09T02:30:00", 1741487400},
+        {"2025-11-02T01:30:00", 1762047000},
+        {"2024-02-29T12:34:56", 1709210096},
+        {"2000-03-01T00:00:00", 951868800},
+        {"1900-03-01T00:00:00", -2203891200},
+    };
+    for (const auto& test : cases) {
+        SCOPED_TRACE(test.input);
+        auto result = scn::scan<time_point>(std::string_view{test.input},
+                                            "{:%Y-%m-%dT%H:%M:%S}");
+        ASSERT_TRUE(result);
+        EXPECT_EQ(result->value().time_since_epoch().count(), test.seconds);
+    }
+}
+
+TEST(ChronoScanTest, ChronoTimePointSubsecond)
+{
+    using time_point = std::chrono::time_point<std::chrono::system_clock,
+                                               std::chrono::milliseconds>;
+    auto result = scn::scan<time_point>("2025-02-05T16:00:01.125",
+                                        "{:%Y-%m-%dT%H:%M:%.S}");
+    ASSERT_TRUE(result);
+    EXPECT_EQ(result->value().time_since_epoch().count(), 1738771201125);
+}
+
+TEST(ChronoScanTest, ChronoTimePointInvalidFields)
+{
+    using time_point = std::chrono::time_point<std::chrono::system_clock,
+                                               std::chrono::seconds>;
+    for (const auto input : {"2025-13-01", "2025-02-00", "2025-02-32"}) {
+        auto result =
+            scn::scan<time_point>(std::string_view{input}, "{:%Y-%m-%d}");
+        ASSERT_FALSE(result);
+        EXPECT_EQ(result.error().code(),
+                  scn::scan_error::invalid_scanned_value);
+    }
+
+    // Explicit offsets are not supported for system-clock scanning yet.
+    auto result = scn::scan<time_point>("2025-02-05T16:00:01+02:00",
+                                        "{:%Y-%m-%dT%H:%M:%S%z}");
+    ASSERT_FALSE(result);
+    EXPECT_EQ(result.error().code(), scn::scan_error::invalid_scanned_value);
 }
 
 TEST(ChronoScanTest, Fuzz1)
