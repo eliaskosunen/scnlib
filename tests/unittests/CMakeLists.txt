@@ -121,8 +121,8 @@ if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
 endif ()
 
 if (SCN_MODULES)
-    add_executable(scn_module_tests module_test.cpp)
-    target_link_libraries(scn_module_tests PRIVATE scn_module INTERFACE scn_sanitizers)
+    add_executable(scn_module_tests module_test.cpp module_test_layout.cpp)
+    target_link_libraries(scn_module_tests PRIVATE scn_module scn_sanitizers)
 
     target_uses_extensions(scn_module use_stdext)
     set_target_properties(

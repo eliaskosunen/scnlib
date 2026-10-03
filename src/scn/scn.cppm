@@ -44,8 +44,17 @@ SCN_BEGIN_NAMESPACE
 
 // scan.h
 
+using scn::bad_expected_access;
 using scn::expected;
+using scn::monostate;
+using scn::unexpect;
+using scn::unexpect_t;
 using scn::unexpected;
+
+#if SCN_HAS_INT128
+using scn::int128;
+using scn::uint128;
+#endif
 
 namespace ranges {
 using scn::ranges::begin;
@@ -60,6 +69,7 @@ using scn::ranges::contiguous_range;
 using scn::ranges::copyable;
 using scn::ranges::dangling;
 using scn::ranges::data;
+using scn::ranges::default_sentinel;
 using scn::ranges::default_sentinel_t;
 using scn::ranges::disable_sized_range;
 using scn::ranges::disable_sized_sentinel;
@@ -109,17 +119,24 @@ using scn::ranges::totally_ordered_with;
 using scn::ranges::view_interface;
 using scn::ranges::weakly_incrementable;
 using scn::ranges::writable;
+
+#if !SCN_DISABLE_IOSTREAM
+using scn::ranges::basic_istreambuf_view;
+using scn::ranges::istreambuf_view;
+using scn::ranges::wistreambuf_view;
+namespace views {
+using scn::ranges::views::istreambuf;
+}  // namespace views
+#endif
 }  // namespace ranges
 
+// Not part of the public API.
+// `scn::scan` finds these overloads by ADL from templates in the
+// global module fragment, and MSVC's ADL in importers only sees exported
+// declarations, so e.g. scanning from a `std::istream` would fail otherwise.
 namespace detail {
-using scn::detail::is_scannable_source;
 using scn::detail::make_scan_buffer;
-using scn::detail::make_scan_buffer_tag;
-using scn::detail::priority_tag;
-
-namespace _make_scan_buffer {
-using scn::detail::_make_scan_buffer::impl;
-}
+using scn::detail::make_vscan_result;
 }  // namespace detail
 
 using scn::scan_error;
@@ -146,20 +163,31 @@ using scn::scan_file;
 
 using scn::scan_result;
 
+using scn::source_tag;
+using scn::source_tag_type;
 using scn::stdin_tag;
+using scn::stdin_tag_t;
 
 using scn::basic_scan_format_string;
 using scn::runtime_format;
 
 using scn::basic_scan_context;
+using scn::scan_args;
+using scn::scan_context;
+using scn::scan_format_string;
+using scn::scan_parse_context;
+using scn::wscan_args;
+using scn::wscan_context;
+using scn::wscan_format_string;
+using scn::wscan_parse_context;
 
 using scn::discard;
 using scn::scanner;
 
+using scn::vinput;
 using scn::vscan;
 using scn::vscan_result;
 using scn::vscan_value;
-using scn::vinput;
 
 using scn::fill_scan_result;
 using scn::input;
@@ -218,6 +246,18 @@ using scn::range_scanner;
 
 using scn::basic_regex_match;
 using scn::basic_regex_matches;
+using scn::regex_match;
+using scn::regex_matches;
+using scn::wregex_match;
+using scn::wregex_matches;
+
+// istream.h
+
+#if !SCN_DISABLE_IOSTREAM
+using scn::basic_istream_scanner;
+using scn::istream_scanner;
+using scn::wistream_scanner;
+#endif
 
 SCN_END_NAMESPACE
 }  // namespace scn
