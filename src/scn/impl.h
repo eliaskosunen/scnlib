@@ -6873,9 +6873,13 @@ constexpr auto make_regex_flags(detail::regex_flags flags)
     if ((flags & detail::regex_flags::multiline) == detail::regex_flags::none) {
         result |= boost::regex_constants::no_mod_m;
     }
+    // Without `no_mod_s`, `.` matches newlines by default
     if ((flags & detail::regex_flags::singleline) !=
         detail::regex_flags::none) {
         result |= boost::regex_constants::mod_s;
+    }
+    else {
+        result |= boost::regex_constants::no_mod_s;
     }
     if ((flags & detail::regex_flags::nocase) != detail::regex_flags::none) {
         result |= boost::regex_constants::icase;
@@ -6948,7 +6952,7 @@ inline auto make_regex_flags(detail::regex_flags flags)
     RE2::Options opt{RE2::Quiet};
     std::string_view stringflags{};
 
-    if ((flags & detail::regex_flags::multiline) == detail::regex_flags::none) {
+    if ((flags & detail::regex_flags::multiline) != detail::regex_flags::none) {
         stringflags = "(?m)";
     }
     if ((flags & detail::regex_flags::singleline) !=
@@ -7142,6 +7146,7 @@ auto read_regex_matches_impl(std::basic_string_view<CharT> pattern,
         }
         submatches[i - 1].pos = static_cast<std::size_t>(matches.position(i));
         submatches[i - 1].len = static_cast<std::size_t>(matches.length(i));
+        submatches[i - 1].matched = true;
     }
 
     value =
@@ -7220,6 +7225,7 @@ auto read_regex_matches_impl(std::basic_string_view<CharT> pattern,
             matches.position(static_cast<unsigned>(i)));
         submatches[i - 1].len =
             static_cast<std::size_t>(matches.length(static_cast<int>(i)));
+        submatches[i - 1].matched = true;
     }
 #else
     auto u32_full_match = matches[0].str();
@@ -7257,6 +7263,7 @@ auto read_regex_matches_impl(std::basic_string_view<CharT> pattern,
             static_cast<std::size_t>(std::distance(src_beg, beg));
         submatches[i - 1].len =
             static_cast<std::size_t>(std::distance(beg, end));
+        submatches[i - 1].matched = true;
     }
 #endif
     for (auto& name : names) {
@@ -7304,47 +7311,16 @@ auto read_regex_matches_impl(std::basic_string_view<CharT> pattern,
 
     const auto max_matches_n =
         static_cast<std::size_t>(re.NumberOfCapturingGroups());
-    std::optional<std::string_view>* matches{};
-    re2::RE2::Arg* match_args{};
-    re2::RE2::Arg** match_argptrs{};
-
-    const auto round_up = [](std::size_t n, std::size_t multiple) {
-        return (n + multiple - 1) & ~(multiple - 1);
-    };
-    const auto memory_needed_for = [&](auto* ptr) {
-        using T = std::remove_pointer_t<decltype(ptr)>;
-        return round_up(sizeof(T), alignof(T));
-    };
-    const auto memory_needed =
-        round_up(memory_needed_for(matches) * max_matches_n,
-                 alignof(std::max_align_t)) +
-        round_up(memory_needed_for(match_args) * max_matches_n,
-                 alignof(std::max_align_t)) +
-        (memory_needed_for(match_argptrs) * max_matches_n);
-    auto memory =
-        std::unique_ptr<unsigned char[]>(new unsigned char[memory_needed]);
-
-    {
-        auto* ptr = memory.get();
-        matches = static_cast<std::optional<std::string_view>*>(
-            SCN_ASSUME_ALIGNED(ptr, alignof(std::optional<std::string_view>)));
-        ptr += round_up(memory_needed_for(matches) * max_matches_n,
-                        alignof(std::max_align_t));
-        match_args = static_cast<re2::RE2::Arg*>(
-            SCN_ASSUME_ALIGNED(ptr, alignof(re2::RE2::Arg)));
-        ptr += round_up(memory_needed_for(match_args) * max_matches_n,
-                        alignof(std::max_align_t));
-        match_argptrs = static_cast<re2::RE2::Arg**>(
-            SCN_ASSUME_ALIGNED(ptr, alignof(re2::RE2::Arg*)));
-
-        for (std::size_t i = 0; i < max_matches_n; ++i) {
-            auto* match = ::new (&matches[i]) std::optional<std::string_view>{};
-            auto* arg = ::new (&match_args[i]) re2::RE2::Arg{match};
-            ::new (&match_argptrs[i]) re2::RE2::Arg* {arg};
-        }
+    std::vector<std::optional<std::string_view>> matches(max_matches_n);
+    std::vector<re2::RE2::Arg> match_args{};
+    std::vector<re2::RE2::Arg*> match_argptrs{};
+    match_args.reserve(max_matches_n);
+    match_argptrs.reserve(max_matches_n);
+    for (auto& match : matches) {
+        match_argptrs.push_back(&match_args.emplace_back(&match));
     }
 
-    bool found = re2::RE2::ConsumeN(&new_input, re, match_argptrs,
+    bool found = re2::RE2::ConsumeN(&new_input, re, match_argptrs.data(),
                                     static_cast<int>(max_matches_n));
     if (!found) {
         return detail::unexpected_scan_error(scan_error::invalid_scanned_value,
@@ -7359,16 +7335,7 @@ auto read_regex_matches_impl(std::basic_string_view<CharT> pattern,
     std::vector<typename basic_regex_matches<CharT>::submatch> submatches{
         max_matches_n};
     for (std::size_t i = 0; i < max_matches_n; ++i) {
-        auto match = matches[i];
-        {
-            using argptr_t = re2::RE2::Arg*;
-            match_argptrs[i].~argptr_t();
-            using arg_t = re2::RE2::Arg;
-            match_args[i].~arg_t();
-            using match_t = std::optional<std::string_view>;
-            matches[i].~match_t();
-        }
-
+        const auto& match = matches[i];
         if (!match) {
             continue;
         }
@@ -7376,6 +7343,7 @@ auto read_regex_matches_impl(std::basic_string_view<CharT> pattern,
         submatches[i].pos = static_cast<std::size_t>(
             std::distance(contiguous_input.data(), match->data()));
         submatches[i].len = match->size();
+        submatches[i].matched = true;
 
         if (auto it = re.CapturingGroupNames().find(static_cast<int>(i + 1));
             it != re.CapturingGroupNames().end()) {

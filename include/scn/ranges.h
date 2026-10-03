@@ -524,6 +524,11 @@ struct range_format_kind
           detail::default_range_format_kind<T>,
           std::integral_constant<range_format, range_format::disabled>> {};
 
+// basic_regex_matches is a range, but has its own scanner
+template <typename CharT>
+struct range_format_kind<basic_regex_matches<CharT>, CharT>
+    : std::integral_constant<range_format, range_format::disabled> {};
+
 template <typename Range, typename CharT>
 struct scanner<Range,
                CharT,
