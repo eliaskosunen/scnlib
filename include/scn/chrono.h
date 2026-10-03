@@ -24,7 +24,9 @@ import std;
 #include <time.h>
 #else
 #include <chrono>
+#include <cmath>
 #include <ctime>
+#include <ratio>
 #endif
 
 #if !SCN_DISABLE_CHRONO
@@ -265,10 +267,8 @@ void assign_gmtoff(T& tm, std::chrono::seconds val)
         tm.tm_gmtoff = static_cast<tm_gmtoff<T>>(val.count());
     }
     else {
-        SCN_UNUSED(tm);
-        SCN_UNUSED(val);
-        SCN_EXPECT(false);
-        SCN_UNREACHABLE;
+        static_assert(dependent_false<T>::value,
+                      "std::tm has no tm_gmtoff: check before calling");
     }
 }
 }  // namespace detail
@@ -344,37 +344,179 @@ enum class numeric_system {
     alternative_o,  // 'O'
 };
 
+// Whether `%S` also reads a fractional part, like `std::chrono::parse` does
+// when the scanned type is more precise than seconds
+enum class seconds_format {
+    integer,
+    fractional,
+};
+
+// Days since 1970-01-01 in the proleptic Gregorian calendar, see
+// http://howardhinnant.github.io/date_algorithms.html#days_from_civil
+constexpr std::int64_t days_from_civil(std::int64_t y, unsigned m, unsigned d)
+{
+    y -= m <= 2 ? 1 : 0;
+    const std::int64_t era = (y >= 0 ? y : y - 399) / 400;
+    const auto year_of_era = static_cast<unsigned>(y - era * 400);
+    const unsigned day_of_year =
+        (153 * (m > 2 ? m - 3 : m + 9) + 2) / 5 + d - 1;
+    const unsigned day_of_era =
+        year_of_era * 365 + year_of_era / 4 - year_of_era / 100 + day_of_year;
+    return era * 146097 + static_cast<std::int64_t>(day_of_era) - 719468;
+}
+
+// Whether day `d` exists in month `m` (in [1, 12]) of year `y`.
+// Without a year, February 29th is valid, like in `std::chrono::month_day`.
+constexpr bool is_valid_day_of_month(std::optional<int> y,
+                                     unsigned m,
+                                     unsigned d)
+{
+    constexpr unsigned char days_in_month[] = {31, 29, 31, 30, 31, 30,
+                                               31, 31, 30, 31, 30, 31};
+    if (m == 2 && d == 29 && y) {
+        return (*y % 4 == 0 && *y % 100 != 0) || *y % 400 == 0;
+    }
+    return d <= days_in_month[m - 1];
+}
+
+// Day of the week (Sunday is 0) of the day `days` days after 1970-01-01
+constexpr unsigned weekday_from_days(std::int64_t days)
+{
+    // 1970-01-01 was a Thursday
+    return static_cast<unsigned>((days % 7 + 11) % 7);
+}
+
+// Whether the scanned weekday, if any, agrees with the scanned date.
+// Only checked if the whole date was scanned.
+inline bool is_weekday_consistent(const datetime_components& dt)
+{
+    if (!dt.wday || !dt.year || !dt.mon || !dt.mday) {
+        return true;
+    }
+    const auto days = days_from_civil(*dt.year, static_cast<unsigned>(*dt.mon),
+                                      static_cast<unsigned>(*dt.mday));
+    return dt.wday->c_encoding() == weekday_from_days(days);
+}
+
+// `sec` seconds and `ns` nanoseconds (non-negative) as a `Duration`,
+// rounded down.
+// Unlike `std::chrono::floor`, fails instead of overflowing,
+// e.g. with `nanoseconds` beyond the year 2262.
 template <typename Duration>
-std::optional<Duration> time_since_unix_epoch(const datetime_components& dt)
+scan_expected<Duration> floor_to_duration(std::int64_t sec, std::int64_t ns)
+{
+    using limits = std::numeric_limits<std::int64_t>;
+    using ticks_per_second =
+        std::ratio_divide<std::ratio<1>, typename Duration::period>;
+    // At most `std::nano::den`, since `Duration` is at most as precise as
+    // nanoseconds
+    constexpr std::int64_t num = ticks_per_second::num;
+    constexpr std::int64_t den = ticks_per_second::den;
+    constexpr std::int64_t ns_per_sec = std::nano::den;
+    // Keeps `fraction_ticks` below from overflowing
+    static_assert(den <=
+                  (limits::max() - ns_per_sec * ns_per_sec) / ns_per_sec);
+
+    const auto overflow = [](bool negative) {
+        return unexpected_scan_error(negative
+                                         ? scan_error::value_negative_overflow
+                                         : scan_error::value_positive_overflow,
+                                     "time_point out of range");
+    };
+
+    sec += ns / ns_per_sec;
+    ns %= ns_per_sec;
+    if (sec > limits::max() / num) {
+        return overflow(false);
+    }
+    if (sec < limits::min() / num) {
+        // `limits::min() / num` is rounded toward zero, so the second below
+        // it can still contain representable instants, e.g.
+        // `nanoseconds::min()`. `sec * num` would overflow, so count
+        // from the next second, and subtract the rest of this one.
+        if (sec + 1 != limits::min() / num) {
+            return overflow(true);
+        }
+        ++sec;
+        ns -= ns_per_sec;
+    }
+
+    // ticks = floor((sec + ns / ns_per_sec) * num / den),
+    // with the division done in two parts, so that nothing overflows.
+    // `ns` is negative only after the adjustment above.
+    const auto scaled_sec = sec * num;
+    auto ticks = scaled_sec / den;
+    auto remainder = scaled_sec % den;
+    if (remainder < 0) {
+        --ticks;
+        remainder += den;
+    }
+    const auto fraction_numerator = remainder * ns_per_sec + ns * num;
+    auto fraction_ticks = fraction_numerator / (den * ns_per_sec);
+    if (fraction_numerator % (den * ns_per_sec) < 0) {
+        --fraction_ticks;
+    }
+    if (fraction_ticks >= 0) {
+        if (ticks > limits::max() - fraction_ticks) {
+            return overflow(false);
+        }
+    }
+    else if (ticks < limits::min() - fraction_ticks) {
+        return overflow(true);
+    }
+    ticks += fraction_ticks;
+
+    using rep = typename Duration::rep;
+    if constexpr (std::is_unsigned_v<rep>) {
+        if (ticks < 0) {
+            return overflow(true);
+        }
+    }
+    else if constexpr (sizeof(rep) < sizeof(std::int64_t)) {
+        if (ticks <
+            static_cast<std::int64_t>(std::numeric_limits<rep>::min())) {
+            return overflow(true);
+        }
+    }
+    if constexpr (sizeof(rep) < sizeof(std::int64_t)) {
+        if (ticks >
+            static_cast<std::int64_t>(std::numeric_limits<rep>::max())) {
+            return overflow(false);
+        }
+    }
+    return Duration{static_cast<rep>(ticks)};
+}
+
+// The fields of `dt` are in UTC, offset by `tz_offset`, if it's set.
+// Unset fields default to 1970-01-01 00:00:00.
+template <typename Duration>
+scan_expected<Duration> time_since_unix_epoch(const datetime_components& dt)
 {
     static_assert(std::is_integral_v<typename Duration::rep>);
     static_assert(Duration::period::type::den <= std::nano::den);
 
-    if (dt.tz_offset || dt.tz_name || dt.wday || dt.yday) {
-        return std::nullopt;
+    // Rejected by the format string checker
+    SCN_EXPECT(!dt.tz_name && !dt.yday);
+
+    const auto days = days_from_civil(
+        dt.year.value_or(1970), static_cast<unsigned>(dt.mon.value_or(January)),
+        static_cast<unsigned>(dt.mday.value_or(1)));
+    auto time =
+        std::chrono::seconds{days * 86400 + dt.hour.value_or(0) * 3600 +
+                             dt.min.value_or(0) * 60 + dt.sec.value_or(0)};
+    if (dt.tz_offset) {
+        time -= *dt.tz_offset;
     }
 
-    auto tm = dt.to_tm();
-    // TODO: overflow checks
-#if SCN_MSVC && defined(SCN_MODULE)
-    // Workaround for https://github.com/llvm/llvm-project/issues/64812
-    // (can't use <ctime> std:: functions in modules)
-    auto time = std::chrono::seconds{::mktime(&tm)};
-#else
-    auto time = std::chrono::seconds{std::mktime(&tm)};
-#endif
-    if constexpr (Duration::period::type::den > std::intmax_t{1}) {
-        // Duration more precise than seconds (seconds is std::ratio<1, 1>)
-        if (dt.subsec) {
-            auto subsec_in_ns =
-                std::chrono::nanoseconds{static_cast<std::int64_t>(
-                    *dt.subsec * static_cast<double>(std::nano::den))};
-            return std::chrono::duration_cast<Duration>(time + subsec_in_ns);
-        }
+    // A fraction doesn't affect the result if `Duration` is seconds or larger
+    std::int64_t subsec_in_ns = 0;
+    if (dt.subsec) {
+        // Rounded, because truncating would turn e.g. 0.000065 into
+        // 64999 ns, and then into 64 us
+        subsec_in_ns =
+            std::llround(*dt.subsec * static_cast<double>(std::nano::den));
     }
-    // Duration is seconds or larger, or subsec is not set
-    // -> ignore subsec
-    return std::chrono::duration_cast<Duration>(time);
+    return floor_to_duration<Duration>(time.count(), subsec_in_ns);
 }
 
 template <typename CharT, typename Handler>
@@ -440,8 +582,8 @@ constexpr const CharT* parse_chrono_format_specs(const CharT* begin,
                     handler.on_text(begin, cp_start_p);
                     handler.on_whitespace();
                     begin = p;
-                    continue;
                 }
+                continue;
             }
             ++p;
             continue;
@@ -685,10 +827,18 @@ constexpr const CharT* parse_chrono_format_specs(const CharT* begin,
                         handler.on_dec0_week_of_year(
                             numeric_system::alternative_o);
                         break;
+                    case CharT{'V'}:
+                        handler.on_iso_week_of_year(
+                            numeric_system::alternative_o);
+                        break;
                     case CharT{'w'}:
                         handler.on_dec0_weekday(numeric_system::alternative_o);
                         break;
                     case CharT{'W'}:
+                        handler.on_dec1_week_of_year(
+                            numeric_system::alternative_o);
+                        break;
+                    case CharT{'u'}:
                         handler.on_dec1_weekday(numeric_system::alternative_o);
                         break;
                     case CharT{'y'}:
@@ -834,20 +984,18 @@ struct setter_state {
                 {scan_error::invalid_format_string,
                  "tzoff (%z) can't be used together with tzname (%Z)"});
         }
-        if ((wday_set || mday_set || yday_set) &&
-            !(wday_set ^ mday_set ^ yday_set)) {
+        if (mday_set && yday_set) {
             return handler.set_error(
                 {scan_error::invalid_format_string,
-                 "Only up to one of wday (%a/%u/%w), mday "
-                 "(%d/%e), and yday (%j) can be set at once"});
+                 "mday (%d/%e) and yday (%j) can't be used together"});
         }
     }
 
     template <typename Hour>
     constexpr void handle_am_pm(Hour& hour)
     {
-        assert(hour12_set);
-        assert(hour <= 12);
+        SCN_EXPECT(hour12_set);
+        SCN_EXPECT(hour <= 12);
         if (is_pm) {
             // PM
             if (hour == 12) {
@@ -872,7 +1020,7 @@ struct setter_state {
     template <typename Year>
     constexpr void handle_short_year_and_century(Year& year, Year offset)
     {
-        assert(!full_year_set);
+        SCN_EXPECT(!full_year_set);
         if (short_year_set && century_set) {
             year = century_value * 100 + short_year_value - offset;
         }
@@ -932,51 +1080,44 @@ struct always_supports_field<tm_with_tz, field_tags::tzname> : std::true_type {
 template <typename Field>
 struct always_supports_field<datetime_components, Field> : std::true_type {};
 
-template <typename Field>
-struct always_supports_field<weekday, Field> : std::false_type {};
-template <>
-struct always_supports_field<weekday, field_tags::wday> : std::true_type {};
+// Format string checking for `time_point`: `datetime_components`, minus the
+// fields that can never produce a valid time_point
+struct time_point_fields {};
 
 template <typename Field>
-struct always_supports_field<day, Field> : std::false_type {};
+struct always_supports_field<time_point_fields, Field>
+    : always_supports_field<datetime_components, Field> {};
 template <>
-struct always_supports_field<day, field_tags::mday> : std::true_type {};
+struct always_supports_field<time_point_fields, field_tags::yday>
+    : std::false_type {};
+template <>
+struct always_supports_field<time_point_fields, field_tags::tzname>
+    : std::false_type {};
 
+// Calendar component types are scanned through `datetime_components`,
+// so they accept any field it does: fields not needed by the type are scanned
+// and discarded
 template <typename Field>
-struct always_supports_field<month, Field> : std::false_type {};
-template <>
-struct always_supports_field<month, field_tags::mon> : std::true_type {};
-
+struct always_supports_field<weekday, Field>
+    : always_supports_field<datetime_components, Field> {};
 template <typename Field>
-struct always_supports_field<year, Field> : std::false_type {};
-template <>
-struct always_supports_field<year, field_tags::year> : std::true_type {};
-
+struct always_supports_field<day, Field>
+    : always_supports_field<datetime_components, Field> {};
 template <typename Field>
-struct always_supports_field<year_month, Field> : std::false_type {};
-template <>
-struct always_supports_field<year_month, field_tags::year> : std::true_type {};
-template <>
-struct always_supports_field<year_month, field_tags::mon> : std::true_type {};
-
+struct always_supports_field<month, Field>
+    : always_supports_field<datetime_components, Field> {};
 template <typename Field>
-struct always_supports_field<month_day, Field> : std::false_type {};
-template <>
-struct always_supports_field<month_day, field_tags::mon> : std::true_type {};
-template <>
-struct always_supports_field<month_day, field_tags::mday> : std::true_type {};
-
+struct always_supports_field<year, Field>
+    : always_supports_field<datetime_components, Field> {};
 template <typename Field>
-struct always_supports_field<year_month_day, Field> : std::false_type {};
-template <>
-struct always_supports_field<year_month_day, field_tags::year>
-    : std::true_type {};
-template <>
-struct always_supports_field<year_month_day, field_tags::mon> : std::true_type {
-};
-template <>
-struct always_supports_field<year_month_day, field_tags::mday>
-    : std::true_type {};
+struct always_supports_field<year_month, Field>
+    : always_supports_field<datetime_components, Field> {};
+template <typename Field>
+struct always_supports_field<month_day, Field>
+    : always_supports_field<datetime_components, Field> {};
+template <typename Field>
+struct always_supports_field<year_month_day, Field>
+    : always_supports_field<datetime_components, Field> {};
 
 template <typename T>
 struct always_supports_field<T, field_tags::duration> : std::false_type {};
@@ -1061,11 +1202,13 @@ struct null_chrono_spec_handler {
     {
         unsupported();
     }
-    constexpr void on_dec1_week_of_year()
+    constexpr void on_dec1_week_of_year(
+        numeric_system = numeric_system::standard)
     {
         unsupported();
     }
-    constexpr void on_iso_week_of_year()
+    constexpr void on_iso_week_of_year(
+        numeric_system = numeric_system::standard)
     {
         unsupported();
     }
@@ -1188,8 +1331,9 @@ struct tm_format_checker {
     constexpr void on_localized()
     {
         if constexpr (SCN_DISABLE_LOCALE) {
-            on_error("'L' flag invalid when SCN_DISABLE_LOCALE is on");
+            on_error("'L' specifier invalid when SCN_DISABLE_LOCALE is on");
         }
+        st.localized = 1;
     }
 
     constexpr void on_full_year(numeric_system = numeric_system::standard)
@@ -1218,21 +1362,21 @@ struct tm_format_checker {
         if (!always_supports_field<T, field_tags::year>::value) {
             on_error("Years not supported with this type");
         }
-        unimplemented();
+        on_error("Unimplemented: %G");
     }
     constexpr void on_iso_week_based_short_year()
     {
         if (!always_supports_field<T, field_tags::year>::value) {
             on_error("Years not supported with this type");
         }
-        unimplemented();
+        on_error("Unimplemented: %g");
     }
     constexpr void on_loc_offset_year()
     {
         if (!always_supports_field<T, field_tags::year>::value) {
             on_error("Years not supported with this type");
         }
-        unimplemented();
+        on_error("Unimplemented: %Ey");
     }
 
     constexpr void on_month_name()
@@ -1240,6 +1384,7 @@ struct tm_format_checker {
         if (!always_supports_field<T, field_tags::mon>::value) {
             on_error("Months not supported with this type");
         }
+        st.set_mon(*this);
     }
     constexpr void on_dec_month(numeric_system = numeric_system::standard)
     {
@@ -1252,20 +1397,27 @@ struct tm_format_checker {
     constexpr void on_dec0_week_of_year(
         numeric_system = numeric_system::standard)
     {
-        unimplemented();
+        on_error("Unimplemented: %U");
     }
-    constexpr void on_dec1_week_of_year()
+    constexpr void on_dec1_week_of_year(
+        numeric_system = numeric_system::standard)
     {
-        unimplemented();
+        on_error("Unimplemented: %W");
     }
-    constexpr void on_iso_week_of_year()
+    constexpr void on_iso_week_of_year(
+        numeric_system = numeric_system::standard)
     {
-        unimplemented();
+        on_error("Unimplemented: %V");
     }
     constexpr void on_day_of_year()
     {
         if (!always_supports_field<T, field_tags::yday>::value) {
-            on_error("Day-of-year not supported with this type");
+            if constexpr (std::is_same_v<T, time_point_fields>) {
+                on_error("Day-of-year (%j) not supported with time_point");
+            }
+            else {
+                on_error("Day-of-year not supported with this type");
+            }
         }
         st.set_yday(*this);
     }
@@ -1332,10 +1484,6 @@ struct tm_format_checker {
         if (!always_supports_field<T, field_tags::subsec>::value) {
             on_error("Sub-seconds not supported with this type");
         }
-        if constexpr (SCN_DISABLE_TYPE_STRING || SCN_DISABLE_TYPE_DOUBLE) {
-            on_error(
-                "Support for strings and doubles required for sub-seconds");
-        }
         st.set_subsec(*this);
     }
 
@@ -1349,20 +1497,41 @@ struct tm_format_checker {
     constexpr void on_tz_name()
     {
         if (!always_supports_field<T, field_tags::tzname>::value) {
-            on_error("Timezone names not supported with this type");
+            if constexpr (std::is_same_v<T, time_point_fields>) {
+                on_error("Timezone names (%Z) not supported with time_point");
+            }
+            else {
+                on_error("Timezone names not supported with this type");
+            }
         }
         st.set_tzname(*this);
     }
 
+    // The fields set by these must match the ones set by `tm_reader`
+
     constexpr void on_loc_datetime(
         numeric_system sys = numeric_system::standard)
     {
-        on_loc_date(sys);
+        if (st.localized) {
+            on_loc_date(sys);
+        }
+        else {
+            // %a %b %d ... %Y, unlike %x
+            on_weekday_name();
+            on_month_name();
+            on_day_of_month();
+            on_full_year();
+        }
         on_loc_time(sys);
     }
     constexpr void on_loc_date(numeric_system sys = numeric_system::standard)
     {
-        on_full_year(sys);
+        if (st.localized) {
+            on_full_year(sys);
+        }
+        else {
+            on_short_year(sys);
+        }
         on_dec_month(sys);
         on_day_of_month(sys);
     }
@@ -1386,9 +1555,16 @@ struct tm_format_checker {
     }
     constexpr void on_loc_12_hour_time()
     {
-        on_24_hour();
+        if (st.localized) {
+            on_24_hour();
+            on_minute();
+            on_second();
+            return;
+        }
+        on_12_hour();
         on_minute();
         on_second();
+        on_am_pm();
     }
     constexpr void on_24_hour_time()
     {
@@ -1411,15 +1587,15 @@ struct tm_format_checker {
 
     constexpr void on_epoch_offset()
     {
-        unimplemented();
+        on_error("Unimplemented: %s");
     }
     constexpr void on_duration_tick_count()
     {
-        unimplemented();
+        on_error("Unimplemented: %Q");
     }
     constexpr void on_duration_suffix()
     {
-        unimplemented();
+        on_error("Unimplemented: %q");
     }
 
     constexpr void verify()
@@ -1485,11 +1661,6 @@ struct tm_format_checker {
         }
     }
 
-    void unimplemented()
-    {
-        on_error("Unimplemented");
-    }
-
     scan_expected<void> err{};
     setter_state st{};
 };
@@ -1513,7 +1684,7 @@ constexpr auto chrono_parse_impl(ParseCtx& pctx,
         fmt_str = detail::make_string_view_from_pointers(it, end);
     }
     if (auto e = checker.get_error(); SCN_UNLIKELY(!e)) {
-        assert(e.error().code() == scan_error::invalid_format_string);
+        SCN_EXPECT(e.error().code() == scan_error::invalid_format_string);
         pctx.on_error(e.error().msg());
     }
     return end;
@@ -1522,33 +1693,40 @@ constexpr auto chrono_parse_impl(ParseCtx& pctx,
 template <typename CharT, typename T, typename Context>
 SCN_PUBLIC auto chrono_scan_impl(std::basic_string_view<CharT> fmt_str,
                                  T& t,
-                                 Context& ctx)
+                                 Context& ctx,
+                                 seconds_format sec_format)
     -> scan_expected<typename Context::iterator>;
 
 extern template SCN_PUBLIC auto chrono_scan_impl(std::string_view,
                                                  std::tm&,
-                                                 scan_context&)
+                                                 scan_context&,
+                                                 seconds_format)
     -> scan_expected<scan_context::iterator>;
 extern template SCN_PUBLIC auto chrono_scan_impl(std::string_view,
                                                  tm_with_tz&,
-                                                 scan_context&)
+                                                 scan_context&,
+                                                 seconds_format)
     -> scan_expected<scan_context::iterator>;
 extern template SCN_PUBLIC auto chrono_scan_impl(std::string_view,
                                                  datetime_components&,
-                                                 scan_context&)
+                                                 scan_context&,
+                                                 seconds_format)
     -> scan_expected<scan_context::iterator>;
 
 extern template SCN_PUBLIC auto chrono_scan_impl(std::wstring_view,
                                                  std::tm&,
-                                                 wscan_context&)
+                                                 wscan_context&,
+                                                 seconds_format)
     -> scan_expected<wscan_context::iterator>;
 extern template SCN_PUBLIC auto chrono_scan_impl(std::wstring_view,
                                                  tm_with_tz&,
-                                                 wscan_context&)
+                                                 wscan_context&,
+                                                 seconds_format)
     -> scan_expected<wscan_context::iterator>;
 extern template SCN_PUBLIC auto chrono_scan_impl(std::wstring_view,
                                                  datetime_components&,
-                                                 wscan_context&)
+                                                 wscan_context&,
+                                                 seconds_format)
     -> scan_expected<wscan_context::iterator>;
 
 template <typename CharT, typename T>
@@ -1563,7 +1741,8 @@ struct chrono_datetime_scanner {
     auto scan(T& t, Context& ctx) const
         -> scan_expected<typename Context::iterator>
     {
-        return detail::chrono_scan_impl(m_fmt_str, t, ctx);
+        return detail::chrono_scan_impl(m_fmt_str, t, ctx,
+                                        seconds_format::integer);
     }
 
 protected:
@@ -1586,20 +1765,18 @@ struct scanner<datetime_components, CharT>
 
 namespace detail {
 
-template <typename CharT>
+// Scans a `T` through `datetime_components`.
+// The format string is checked against the fields required by `T`.
+template <typename CharT, typename T>
 struct chrono_component_scanner
     : protected chrono_datetime_scanner<CharT, datetime_components> {
-private:
-    using base = chrono_datetime_scanner<CharT, datetime_components>;
-
-public:
     template <typename ParseCtx>
     constexpr typename ParseCtx::iterator parse(ParseCtx& pctx)
     {
         if (pctx.begin() == pctx.end() || *pctx.begin() == CharT{'}'}) {
             pctx.on_error("Default format not supported for this type");
         }
-        return base::parse(pctx);
+        return detail::chrono_parse_impl<T, CharT>(pctx, this->m_fmt_str);
     }
 };
 
@@ -1607,65 +1784,69 @@ public:
 
 template <typename CharT>
 struct scanner<weekday, CharT>
-    : public detail::chrono_component_scanner<CharT> {
+    : public detail::chrono_component_scanner<CharT, weekday> {
     template <typename Context>
     scan_expected<typename Context::iterator> scan(weekday& wd,
                                                    Context& ctx) const
     {
         datetime_components dt{};
-        auto r = detail::chrono_component_scanner<CharT>::scan(dt, ctx);
+        auto r =
+            detail::chrono_component_scanner<CharT, weekday>::scan(dt, ctx);
         if (!r) {
             return unexpected(r.error());
         }
-        assert(dt.wday);
+        SCN_EXPECT(dt.wday);
         wd = *dt.wday;
         return *r;
     }
 };
 
 template <typename CharT>
-struct scanner<day, CharT> : public detail::chrono_component_scanner<CharT> {
+struct scanner<day, CharT>
+    : public detail::chrono_component_scanner<CharT, day> {
     template <typename Context>
     scan_expected<typename Context::iterator> scan(day& d, Context& ctx) const
     {
         datetime_components dt{};
-        auto r = detail::chrono_component_scanner<CharT>::scan(dt, ctx);
+        auto r = detail::chrono_component_scanner<CharT, day>::scan(dt, ctx);
         if (!r) {
             return unexpected(r.error());
         }
-        assert(dt.mday);
+        SCN_EXPECT(dt.mday);
         d = day{static_cast<unsigned>(*dt.mday)};
         return *r;
     }
 };
 
 template <typename CharT>
-struct scanner<month, CharT> : public detail::chrono_component_scanner<CharT> {
+struct scanner<month, CharT>
+    : public detail::chrono_component_scanner<CharT, month> {
     template <typename Context>
     scan_expected<typename Context::iterator> scan(month& m, Context& ctx) const
     {
         datetime_components dt{};
-        auto r = detail::chrono_component_scanner<CharT>::scan(dt, ctx);
+        auto r = detail::chrono_component_scanner<CharT, month>::scan(dt, ctx);
         if (!r) {
             return unexpected(r.error());
         }
-        assert(dt.mon);
+        SCN_EXPECT(dt.mon);
         m = *dt.mon;
         return *r;
     }
 };
 
 template <typename CharT>
-struct scanner<year, CharT> : public detail::chrono_component_scanner<CharT> {
+struct scanner<year, CharT>
+    : public detail::chrono_component_scanner<CharT, year> {
     template <typename Context>
     scan_expected<typename Context::iterator> scan(year& y, Context& ctx) const
     {
         datetime_components dt{};
-        auto r = detail::chrono_component_scanner<CharT>::scan(dt, ctx);
+        auto r = detail::chrono_component_scanner<CharT, year>::scan(dt, ctx);
         if (!r) {
             return unexpected(r.error());
         }
-        assert(dt.year);
+        SCN_EXPECT(dt.year);
         y = year{*dt.year};
         return *r;
     }
@@ -1673,18 +1854,25 @@ struct scanner<year, CharT> : public detail::chrono_component_scanner<CharT> {
 
 template <typename CharT>
 struct scanner<month_day, CharT>
-    : public detail::chrono_component_scanner<CharT> {
+    : public detail::chrono_component_scanner<CharT, month_day> {
     template <typename Context>
     scan_expected<typename Context::iterator> scan(month_day& md,
                                                    Context& ctx) const
     {
         datetime_components dt{};
-        auto r = detail::chrono_component_scanner<CharT>::scan(dt, ctx);
+        auto r =
+            detail::chrono_component_scanner<CharT, month_day>::scan(dt, ctx);
         if (!r) {
             return unexpected(r.error());
         }
-        assert(dt.mon);
-        assert(dt.mday);
+        SCN_EXPECT(dt.mon);
+        SCN_EXPECT(dt.mday);
+        if (!detail::is_valid_day_of_month(std::nullopt,
+                                           static_cast<unsigned>(*dt.mon),
+                                           static_cast<unsigned>(*dt.mday))) {
+            return unexpected(scan_error{scan_error::invalid_scanned_value,
+                                         "Invalid day of month"});
+        }
         md = month_day{month{static_cast<unsigned>(*dt.mon)},
                        day{static_cast<unsigned>(*dt.mday)}};
         return *r;
@@ -1693,18 +1881,19 @@ struct scanner<month_day, CharT>
 
 template <typename CharT>
 struct scanner<year_month, CharT>
-    : public detail::chrono_component_scanner<CharT> {
+    : public detail::chrono_component_scanner<CharT, year_month> {
     template <typename Context>
     scan_expected<typename Context::iterator> scan(year_month& ym,
                                                    Context& ctx) const
     {
         datetime_components dt{};
-        auto r = detail::chrono_component_scanner<CharT>::scan(dt, ctx);
+        auto r =
+            detail::chrono_component_scanner<CharT, year_month>::scan(dt, ctx);
         if (!r) {
             return unexpected(r.error());
         }
-        assert(dt.year);
-        assert(dt.mon);
+        SCN_EXPECT(dt.year);
+        SCN_EXPECT(dt.mon);
         ym = year_month{year{*dt.year}, month{static_cast<unsigned>(*dt.mon)}};
         return *r;
     }
@@ -1712,19 +1901,30 @@ struct scanner<year_month, CharT>
 
 template <typename CharT>
 struct scanner<year_month_day, CharT>
-    : public detail::chrono_component_scanner<CharT> {
+    : public detail::chrono_component_scanner<CharT, year_month_day> {
     template <typename Context>
     scan_expected<typename Context::iterator> scan(year_month_day& ymd,
                                                    Context& ctx) const
     {
         datetime_components dt{};
-        auto r = detail::chrono_component_scanner<CharT>::scan(dt, ctx);
+        auto r = detail::chrono_component_scanner<CharT, year_month_day>::scan(
+            dt, ctx);
         if (!r) {
             return unexpected(r.error());
         }
-        assert(dt.year);
-        assert(dt.mon);
-        assert(dt.mday);
+        SCN_EXPECT(dt.year);
+        SCN_EXPECT(dt.mon);
+        SCN_EXPECT(dt.mday);
+        if (!detail::is_valid_day_of_month(dt.year,
+                                           static_cast<unsigned>(*dt.mon),
+                                           static_cast<unsigned>(*dt.mday))) {
+            return unexpected(scan_error{scan_error::invalid_scanned_value,
+                                         "Invalid day of month"});
+        }
+        if (!detail::is_weekday_consistent(dt)) {
+            return unexpected(scan_error{scan_error::invalid_scanned_value,
+                                         "Weekday doesn't match the date"});
+        }
         ymd = year_month_day{year{*dt.year},
                              month{static_cast<unsigned>(*dt.mon)},
                              day{static_cast<unsigned>(*dt.mday)}};
@@ -1732,9 +1932,19 @@ struct scanner<year_month_day, CharT>
     }
 };
 
+/**
+ * Scans a `std::chrono::time_point<std::chrono::system_clock>`.
+ *
+ * The scanned date and time are interpreted as UTC, unless a timezone offset
+ * is scanned with `%z`, in which case it's applied.
+ * Unset fields default to 1970-01-01 00:00:00.
+ * Timezone names (`%Z`) and days of the year (`%j`) are not supported.
+ */
 template <typename CharT, typename Duration>
 struct scanner<std::chrono::time_point<std::chrono::system_clock, Duration>,
-               CharT> : public detail::chrono_component_scanner<CharT> {
+               CharT>
+    : public detail::chrono_component_scanner<CharT,
+                                              detail::time_point_fields> {
     using time_point_type =
         std::chrono::time_point<std::chrono::system_clock, Duration>;
 
@@ -1742,18 +1952,36 @@ struct scanner<std::chrono::time_point<std::chrono::system_clock, Duration>,
     scan_expected<typename Context::iterator> scan(time_point_type& tp,
                                                    Context& ctx) const
     {
+        constexpr auto sec_format =
+            std::ratio_less_v<typename Duration::period, std::ratio<1>>
+                ? detail::seconds_format::fractional
+                : detail::seconds_format::integer;
         datetime_components dt{};
-        auto r = detail::chrono_component_scanner<CharT>::scan(dt, ctx);
+        auto r = detail::chrono_scan_impl(this->m_fmt_str, dt, ctx, sec_format);
         if (!r) {
             return unexpected(r.error());
         }
-        if (auto tp_value = detail::time_since_unix_epoch<Duration>(dt)) {
-            tp = time_point_type{*tp_value};
-        }
-        else {
+        if (!detail::is_valid_day_of_month(
+                dt.year.value_or(1970),
+                static_cast<unsigned>(dt.mon.value_or(January)),
+                static_cast<unsigned>(dt.mday.value_or(1)))) {
             return unexpected(scan_error{scan_error::invalid_scanned_value,
-                                         "Invalid unix epoch"});
+                                         "Invalid day of month"});
         }
+        if (!detail::is_weekday_consistent(dt)) {
+            return unexpected(scan_error{scan_error::invalid_scanned_value,
+                                         "Weekday doesn't match the date"});
+        }
+        if (dt.sec == 60) {
+            return unexpected(scan_error{
+                scan_error::invalid_scanned_value,
+                "Leap seconds can't be represented by system_clock"});
+        }
+        auto tp_value = detail::time_since_unix_epoch<Duration>(dt);
+        if (!tp_value) {
+            return unexpected(tp_value.error());
+        }
+        tp = time_point_type{*tp_value};
         return *r;
     }
 };

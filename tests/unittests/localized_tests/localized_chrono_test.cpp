@@ -172,6 +172,52 @@ TEST(LocalizedChronoTest, Time12HourLocalized)
 }
 #endif
 
+// libstdc++ returns 0 for the hour 12
+TEST(LocalizedChronoTest, Hour12Modified)
+{
+    auto result = scn::scan<std::tm>(std::locale::classic(), "12 AM",
+                                     scn::runtime_format("{:L%OI %p}"));
+    ASSERT_THAT(result, Succeeded());
+    EXPECT_EQ(result->value().tm_hour, 0);
+
+    result = scn::scan<std::tm>(std::locale::classic(), "12 PM",
+                                scn::runtime_format("{:L%OI %p}"));
+    ASSERT_THAT(result, Succeeded());
+    EXPECT_EQ(result->value().tm_hour, 12);
+
+    result = scn::scan<std::tm>(std::locale::classic(), "12",
+                                scn::runtime_format("{:L%OI}"));
+    ASSERT_THAT(result, Succeeded());
+    EXPECT_EQ(result->value().tm_hour, 12);
+
+    result = scn::scan<std::tm>(std::locale::classic(), "07",
+                                scn::runtime_format("{:L%OI}"));
+    ASSERT_THAT(result, Succeeded());
+    EXPECT_EQ(result->value().tm_hour, 7);
+}
+
+TEST(LocalizedChronoTest, AfterOtherFields)
+{
+    auto result =
+        scn::scan<std::tm>(std::locale::classic(), "12 05/06/24", "{:L%H %x}");
+    ASSERT_THAT(result, Succeeded());
+    EXPECT_EQ(result->value().tm_hour, 12);
+    EXPECT_EQ(result->value().tm_mon, 5 - 1);
+    EXPECT_EQ(result->value().tm_mday, 6);
+}
+
+TEST(LocalizedChronoTest, FractionalSeconds)
+{
+    using sys_milliseconds = std::chrono::time_point<std::chrono::system_clock,
+                                                     std::chrono::milliseconds>;
+    auto result =
+        scn::scan<sys_milliseconds>(std::locale::classic(), "05.5", "{:L%OS}");
+    ASSERT_THAT(result, Succeeded());
+    EXPECT_TRUE(result->range().empty());
+    EXPECT_EQ(result->value().time_since_epoch(),
+              std::chrono::milliseconds{5500});
+}
+
 TEST(LocalizedChronoTest, MonthName)
 {
     auto result =
@@ -209,7 +255,7 @@ TEST(LocalizedChronoTest, MonthDec)
 }
 
 // libstdc++ pre-v12 requires two digits for %Om
-#if !SCN_STDLIB_LIBCPP && SCN_STDLIB_GLIBCXX >= 12
+#if SCN_STDLIB_LIBCPP || SCN_STDLIB_GLIBCXX >= 12
 TEST(LocalizedChronoTest, MonthDecModified)
 {
     auto result = scn::scan<std::tm>(std::locale::classic(), "2", "{:L%Om}");
@@ -259,7 +305,7 @@ TEST(LocalizedChronoTest, WeekdayDec)
 }
 
 // libstdc++ pre-v12 requires two digits for %Ow
-#if !SCN_STDLIB_LIBCPP && SCN_STDLIB_GLIBCXX >= 12
+#if SCN_STDLIB_LIBCPP || SCN_STDLIB_GLIBCXX >= 12
 TEST(LocalizedChronoTest, WeekdayDecModified)
 {
     auto result = scn::scan<std::tm>(std::locale::classic(), "1", "{:L%Ow}");
@@ -284,7 +330,7 @@ TEST(LocalizedChronoTest, MonthDayDec)
 }
 
 // libstdc++ pre-v12 requires two digits for %Od
-#if !SCN_STDLIB_LIBCPP && SCN_STDLIB_GLIBCXX >= 12
+#if SCN_STDLIB_LIBCPP || SCN_STDLIB_GLIBCXX >= 12
 TEST(LocalizedChronoTest, MonthDayDecModified)
 {
     auto result = scn::scan<std::tm>(std::locale::classic(), "1", "{:L%Od}");

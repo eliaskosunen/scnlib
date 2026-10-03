@@ -60,6 +60,9 @@ scn::scan<...>(strm, ...);
  * A whitespace character in a format string now also matches the end of the input, so `"{} "` matches `"123"`.
    A non-whitespace literal character not matched because the input ended now gives `end_of_input`,
    instead of `invalid_literal`.
+ * `std::chrono::time_point`s are now scanned as UTC, applying an offset scanned with `%z`,
+   instead of as local time with `std::mktime`, which depended on `TZ`.
+   Unset fields default to 1970-01-01 00:00:00.
 
 ### Features
 
@@ -105,6 +108,7 @@ scn::scan<...>(strm, ...);
  * Fix the last character of a character array source being dropped when it isn't a null terminator
  * Fix compilation with GCC 8 in debug mode
  * Fix CMake deprecation warnings caused by `FetchContent_Populate` and `CMAKE_FIND_PACKAGE_SORT_ORDER`
+ * Fix localized month names (`L%b`) being ignored when `SCN_DISABLE_FAST_FLOAT` is set
  * Fix the check for `SCN_REGEX_BOOST_USE_ICU` in the installed CMake package config
  * Fix the CMake option `SCN_DISABLE_CHRONO` having no effect,
    and fix the build errors with it and with `SCN_USE_EXCEPTIONS=OFF`
@@ -131,6 +135,24 @@ scn::scan<...>(strm, ...);
    so that a regex can end in a literal backslash (`{:/\\/}`)
  * Scanning from a character pointer (like `const char*`) is now a call to a deleted function,
    with an explanation in C++26, instead of an unexplained "no matching function"
+ * Fix `%u` in chrono format strings: `1` is now Monday and `7` Sunday, as in `strftime`,
+   and, without `L`, `0` is rejected (previously, `1` was Sunday)
+ * `%x` in chrono format strings, without `L`, is now `%m/%d/%y`, as in the C locale
+   (previously `%m/%d/%Y`)
+ * `%S` in chrono format strings reads an optional fractional part when scanning a `time_point`
+   more precise than seconds, like `std::chrono::parse`, and the fractional part of `%.S` is now optional
+ * Fix fractional seconds being off by one unit of the `time_point` precision
+   (e.g. `00.000511` scanned as 510 microseconds)
+ * `%Z` in chrono format strings no longer hits an assertion failure on an empty timezone name, and fails instead
+ * Fix chrono format strings: a weekday couldn't be used together with a day of the month,
+   `%C` wasn't range-checked, a non-ASCII literal character caused the character after it to be treated as a literal
+   (e.g. `ä%Y`), localized fields read from the beginning of the input instead of the current position,
+   and building with `SCN_DISABLE_TYPE_STRING` failed
+ * Fix `%y` and `%C` being combined incorrectly when scanning a `scn::datetime_components`,
+   and `%j` only accepting values up to 6
+ * Scanning a `month_day`, `year_month_day`, or `time_point` fails if the day doesn't exist in its month
+   (e.g. February 30th), like `std::chrono::parse`. Previously, it was accepted, and a `time_point` was normalized
+   to the next month. Scanning a `time_point` also fails on a leap second (second `60`).
 
 ## 4.0.1
 
