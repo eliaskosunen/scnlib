@@ -10167,15 +10167,21 @@ constexpr const CharT* parse_presentation_regex(const CharT*& begin,
     }
 
     handler.on_type(presentation_type::regex);
+    // A '/' preceded by an odd number of backslashes is escaped:
+    // `\/` is an escaped slash, `\\/` is an escaped backslash ending the regex
+    bool is_escaped = false;
     for (; begin != end; ++begin) {
+        if (*begin == CharT{'\\'}) {
+            is_escaped = !is_escaped;
+            continue;
+        }
         if (*begin == CharT{'/'}) {
-            if (*(begin - 1) != CharT{'\\'}) {
+            if (!is_escaped) {
                 break;
             }
-            else {
-                handler.on_type(presentation_type::regex_escaped);
-            }
+            handler.on_type(presentation_type::regex_escaped);
         }
+        is_escaped = false;
     }
     if (SCN_UNLIKELY(begin == end)) {
         handler.on_error("Unexpected end of regex in format string");

@@ -242,10 +242,11 @@ public:
 #if SCN_REGEX_SUPPORTS_NAMED_CAPTURES
         std::basic_string<CharT> name{};
 #endif
+        bool matched{false};
 
         explicit operator bool() const
         {
-            return len != 0;
+            return matched;
         }
     };
 
@@ -320,7 +321,10 @@ public:
         using difference_type = std::ptrdiff_t;
         using pointer = value_type*;
         using reference = value_type;
-        using iterator_category = std::random_access_iterator_tag;
+        // `reference` is not a true reference, so the legacy category
+        // can't be stronger than input
+        using iterator_category = std::input_iterator_tag;
+        using iterator_concept = std::random_access_iterator_tag;
 
         iterator() = default;
 
@@ -381,7 +385,8 @@ public:
             SCN_EXPECT(static_cast<difference_type>(m_index) + n <=
                        static_cast<difference_type>(m_parent->size()));
             SCN_EXPECT(static_cast<difference_type>(m_index) + n >= 0);
-            m_index += n;
+            m_index = static_cast<std::size_t>(
+                static_cast<difference_type>(m_index) + n);
             return *this;
         }
 
@@ -403,7 +408,8 @@ public:
             SCN_EXPECT(static_cast<difference_type>(m_index) - n <=
                        static_cast<difference_type>(m_parent->size()));
             SCN_EXPECT(static_cast<difference_type>(m_index) - n >= 0);
-            m_index -= n;
+            m_index = static_cast<std::size_t>(
+                static_cast<difference_type>(m_index) - n);
             return *this;
         }
 
@@ -414,7 +420,32 @@ public:
             return copy;
         }
 
-        value_type operator[](difference_type n)
+        difference_type operator-(const iterator& other) const
+        {
+            SCN_EXPECT(m_parent == other.m_parent);
+            return static_cast<difference_type>(m_index) -
+                   static_cast<difference_type>(other.m_index);
+        }
+
+        bool operator<(const iterator& other) const
+        {
+            SCN_EXPECT(m_parent == other.m_parent);
+            return m_index < other.m_index;
+        }
+        bool operator>(const iterator& other) const
+        {
+            return other < *this;
+        }
+        bool operator<=(const iterator& other) const
+        {
+            return !(other < *this);
+        }
+        bool operator>=(const iterator& other) const
+        {
+            return !(*this < other);
+        }
+
+        value_type operator[](difference_type n) const
         {
             return *(*this + n);
         }

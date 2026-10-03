@@ -30,6 +30,7 @@ make_scn_test(scn_tests
         main.cpp
 
         align_and_fill_test.cpp
+        all_headers_test.cpp
         args_test.cpp
         buffer_test.cpp
         char_test.cpp

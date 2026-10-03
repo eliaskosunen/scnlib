@@ -125,6 +125,10 @@ scn::scan<...>(strm, ...);
    and character set ranges crossing the ASCII boundary
  * `scn::scan_int` returns an error for an invalid base, and `scn::scan_int_exhaustive_valid` works on big-endian platforms
  * Fix the locale not being passed on when scanning a single argument with the default format string (`"{}"`)
+ * Regular expressions: with the Boost backend, `.` no longer matches a newline without the `s` flag,
+   and with the re2 backend, `^` and `$` no longer match at line breaks without the `m` flag
+ * A `/` in a regex in a format string is escaped only by an odd number of backslashes,
+   so that a regex can end in a literal backslash (`{:/\\/}`)
  * Scanning from a character pointer (like `const char*`) is now a call to a deleted function,
    with an explanation in C++26, instead of an unexplained "no matching function"
 

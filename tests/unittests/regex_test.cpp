@@ -42,6 +42,18 @@ auto regex_matches_are(
     return testing::ElementsAreArray(matchers.begin(), matchers.end());
 }
 
+static_assert(
+    std::is_same_v<
+        std::iterator_traits<scn::regex_matches::iterator>::iterator_category,
+        std::input_iterator_tag>);
+#if SCN_STD >= SCN_STD_20
+static_assert(
+    scn::ranges::random_access_iterator<scn::regex_matches::iterator>);
+static_assert(
+    scn::ranges::random_access_iterator<scn::wregex_matches::iterator>);
+static_assert(scn::ranges::random_access_range<scn::regex_matches>);
+#endif
+
 TEST(RegexTest, InvalidRegexString)
 {
     auto r = scn::scan<std::string>("foobar123", "{:/[a/}");
@@ -84,6 +96,35 @@ TEST(RegexTest, Matches)
     EXPECT_THAT(r->range(), IsEmptyRange());
     EXPECT_THAT(r->value(),
                 regex_matches_are<char>({"foobar123", "foobar", "123"}));
+}
+
+TEST(RegexTest, MatchesIteratorArithmetic)
+{
+    auto r =
+        scn::scan<scn::regex_matches>("foobar123", "{:/([a-zA-Z]+)([0-9]+)/}");
+    ASSERT_THAT(r, Succeeded());
+    const auto& matches = r->value();
+
+    const auto first = matches.begin();
+    const auto last = matches.end();
+    EXPECT_EQ(last - first, 3);
+    EXPECT_EQ(first - last, -3);
+    EXPECT_TRUE(first < last);
+    EXPECT_TRUE(first <= last);
+    EXPECT_TRUE(last > first);
+    EXPECT_TRUE(last >= first);
+    EXPECT_FALSE(first > last);
+    EXPECT_TRUE(first <= first);
+    EXPECT_TRUE(first >= first);
+
+    EXPECT_EQ(first + 3, last);
+    EXPECT_EQ(3 + first, last);
+    EXPECT_EQ(last - 3, first);
+    EXPECT_EQ((first + 2) - first, 2);
+
+    EXPECT_EQ(first[1]->get(), "foobar");
+    EXPECT_EQ(first[2]->get(), "123");
+    EXPECT_EQ((last - 1)[0]->get(), "123");
 }
 
 #if SCN_REGEX_SUPPORTS_NAMED_CAPTURES
@@ -272,6 +313,81 @@ TEST(RegexTest, EscapedSlashInPattern)
     ASSERT_THAT(r, Succeeded());
     EXPECT_THAT(r->range(), IsEmptyRange());
     EXPECT_EQ(r->value(), "foo/bar");
+}
+
+TEST(RegexTest, PatternEndingInEscapedBackslash)
+{
+    auto r = scn::scan<std::string_view>("a\\b", "{:/a\\\\/}");
+    ASSERT_THAT(r, Succeeded());
+    EXPECT_EQ(r->value(), "a\\");
+    EXPECT_STREQ(r->begin(), "b");
+}
+
+TEST(RegexTest, EscapedSlashAfterEscapedBackslash)
+{
+    auto r = scn::scan<std::string_view>("a\\/b", "{:/a\\\\\\/b/}");
+    ASSERT_THAT(r, Succeeded());
+    EXPECT_EQ(r->value(), "a\\/b");
+    EXPECT_THAT(r->range(), IsEmptyRange());
+}
+
+TEST(RegexTest, EmptyGroup)
+{
+    auto r = scn::scan<scn::regex_matches>("b", "{:/(a*)b/}");
+    ASSERT_THAT(r, Succeeded());
+    ASSERT_EQ(r->value().size(), 2);
+    ASSERT_TRUE(r->value()[1]);
+    EXPECT_EQ(r->value()[1]->get(), "");
+    EXPECT_THAT(r->range(), IsEmptyRange());
+}
+
+TEST(RegexTest, UnmatchedOptionalGroup)
+{
+    auto r = scn::scan<scn::regex_matches>("b", "{:/(a)?b/}");
+    ASSERT_THAT(r, Succeeded());
+    ASSERT_EQ(r->value().size(), 2);
+    EXPECT_FALSE(r->value()[1]);
+    EXPECT_THAT(r->range(), IsEmptyRange());
+}
+
+TEST(RegexTest, MultilineFlagAbsent)
+{
+    auto r = scn::scan<std::string_view>("a\nb", "{:/a$/}");
+    EXPECT_THAT(r, FailedWith(scn::scan_error::invalid_scanned_value));
+}
+
+TEST(RegexTest, MultilineFlag)
+{
+#if SCN_REGEX_BACKEND != SCN_REGEX_BACKEND_STD || SCN_HAS_STD_REGEX_MULTILINE
+    auto r = scn::scan<std::string_view>("a\nb", "{:/a$/m}");
+    ASSERT_THAT(r, Succeeded());
+    EXPECT_EQ(r->value(), "a");
+    EXPECT_STREQ(r->begin(), "\nb");
+#else
+    auto r =
+        scn::scan<std::string_view>("a\nb", scn::runtime_format("{:/a$/m}"));
+    EXPECT_THAT(r, FailedWith(scn::scan_error::invalid_format_string));
+#endif
+}
+
+TEST(RegexTest, SinglelineFlagAbsent)
+{
+    auto r = scn::scan<std::string_view>("a\nb", "{:/a.b/}");
+    EXPECT_THAT(r, FailedWith(scn::scan_error::invalid_scanned_value));
+}
+
+TEST(RegexTest, SinglelineFlag)
+{
+#if SCN_REGEX_BACKEND != SCN_REGEX_BACKEND_STD
+    auto r = scn::scan<std::string_view>("a\nb", "{:/a.b/s}");
+    ASSERT_THAT(r, Succeeded());
+    EXPECT_EQ(r->value(), "a\nb");
+    EXPECT_THAT(r->range(), IsEmptyRange());
+#else
+    auto r =
+        scn::scan<std::string_view>("a\nb", scn::runtime_format("{:/a.b/s}"));
+    EXPECT_THAT(r, FailedWith(scn::scan_error::invalid_format_string));
+#endif
 }
 
 #if SCN_REGEX_BACKEND == SCN_REGEX_BACKEND_STD || \
