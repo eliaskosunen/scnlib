@@ -26,6 +26,18 @@ set(buildfail_sources
         unterminated_format_specifier.cpp
         usertype_non_contiguous_source.cpp
 )
+if (NOT SCN_DISABLE_TYPE_DOUBLE)
+    list(APPEND buildfail_sources
+            float_format_unsupported_without_strtod.cpp
+    )
+endif ()
+if (NOT SCN_DISABLE_CHRONO)
+    list(APPEND buildfail_sources
+            chrono_missing_field.cpp
+            chrono_time_point_day_of_year.cpp
+            chrono_time_point_time_zone_name.cpp
+    )
+endif ()
 if (NOT SCN_DISABLE_REGEX)
     list(APPEND buildfail_sources
             regex_empty.cpp
