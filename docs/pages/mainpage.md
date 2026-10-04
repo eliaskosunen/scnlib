@@ -324,8 +324,8 @@ scnlib configuration options
 </tr>
 </table>
 
-<sup>1</sup>: As on October 2024, `std::from_chars` with floating-point values is supported on libstdc++ v11 and newer,
-and MSVC 19.24 (VS 2019 16.4) or newer. libc++ doesn't provide any support yet.
+<sup>1</sup>: `std::from_chars` with floating-point values is supported on libstdc++ v11 and newer,
+MSVC 19.24 (VS 2019 16.4) or newer, and libc++ 20 or newer (`float` and `double` only, not `long double`).
 
 Below, `ENABLE_FULL` is true, if `SCN_CI` is set in CMake, or scnlib
 is built as the primary project.

@@ -774,7 +774,15 @@
 // libc++
 #elif SCN_STDLIB_LIBCPP
 
+// libc++ 20 added std::from_chars for float and double, but not long double.
+// On Apple platforms, it also requires a new enough deployment target.
+#if SCN_STDLIB_LIBCPP >= 200000 &&                                 \
+    defined(_LIBCPP_AVAILABILITY_HAS_FROM_CHARS_FLOATING_POINT) && \
+    _LIBCPP_AVAILABILITY_HAS_FROM_CHARS_FLOATING_POINT
+#define SCN_HAS_FLOAT_CHARCONV 1
+#else
 #define SCN_HAS_FLOAT_CHARCONV 0
+#endif
 
 #if SCN_STDLIB_LIBCPP >= 7000
 #define SCN_HAS_INTEGER_CHARCONV 1

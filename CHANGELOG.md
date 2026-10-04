@@ -47,6 +47,7 @@ scn::scan<...>(strm, ...);
  * Regex support is disabled with `SCN_USE_EXCEPTIONS=OFF`, unless `SCN_REGEX_BACKEND` is `re2`,
    since `std::regex` and Boost.Regex report errors only by throwing
  * Textual boolean representations are now case-insensitive, so both `true` and `True` (and so on) are accepted.
+ * `std::from_chars` is now used for `float` and `double` with libc++ 20 and newer
  * Floating-point values that can't be parsed with fast_float or `std::from_chars` (like `long double`, or hexfloats without `std::from_chars`)
    are now parsed with a custom built-in implementation, instead of `std::strtod`.
    This covers every type with a known binary format: the regular IEEE 754 types (binary16/32/64/128),
