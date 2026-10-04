@@ -94,6 +94,15 @@ TEST(SourceTest, SourceIsCharArrayWithoutNullTerminator)
     EXPECT_EQ(result->end(), source + 3);
 }
 
+template <typename Source>
+using scan_int_result_t =
+    decltype(scn::scan<int>(std::declval<Source>(), "{}"));
+
+static_assert(!scn::detail::mp_valid<scan_int_result_t, const char*>::value);
+static_assert(!scn::detail::mp_valid<scan_int_result_t, char*>::value);
+static_assert(
+    scn::detail::mp_valid<scan_int_result_t, const char (&)[4]>::value);
+
 TEST(SourceTest, ResultRvalueAccessors)
 {
     const auto result = scn::scan<int>(std::string_view{"123 4"}, "{}");

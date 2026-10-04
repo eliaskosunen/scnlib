@@ -7107,6 +7107,10 @@ auto make_range_scan_buffer(Range&& range)
  *       std::basic_istream<CharT>> ||
  *   scannable_range<Source, CharT>;
  * \endcode
+ *
+ * Character pointers, like `const char*`, aren't ranges, and can't be scanned
+ * from: wrap them in a `std::string_view` instead.
+ * String literals and character arrays are ranges, and can be scanned from.
  */
 
 /**
@@ -12614,6 +12618,42 @@ SCN_NODISCARD auto scan_value(Source&& source, T initial_value)
                             detail::make_arg<scan_context>(result->value())));
     return result;
 }
+
+namespace detail {
+template <typename Source>
+inline constexpr bool is_character_pointer =
+    std::is_pointer_v<remove_cvref_t<Source>> &&
+    is_valid_char_type<std::remove_pointer_t<remove_cvref_t<Source>>>;
+}  // namespace detail
+
+// clang-format off
+template <typename... Args,
+          typename Source,
+          typename... Rest,
+          std::enable_if_t<detail::is_character_pointer<Source>>* = nullptr>
+void scan(Source&&, Rest&&...)
+    = SCN_DELETE("A character pointer (like `const char*`) is not a scannable source, since it's not a range: wrap it in a `std::string_view` first");
+// clang-format on
+
+// clang-format off
+template <typename... Args,
+          typename Locale,
+          typename Source,
+          typename... Rest,
+          std::enable_if_t<detail::is_character_pointer<Source>>* = nullptr,
+          typename = std::void_t<decltype(Locale::classic())>>
+void scan(const Locale&, Source&&, Rest&&...)
+    = SCN_DELETE("A character pointer (like `const char*`) is not a scannable source, since it's not a range: wrap it in a `std::string_view` first");
+// clang-format on
+
+// clang-format off
+template <typename T,
+          typename Source,
+          typename... Rest,
+          std::enable_if_t<detail::is_character_pointer<Source>>* = nullptr>
+void scan_value(Source&&, Rest&&...)
+    = SCN_DELETE("A character pointer (like `const char*`) is not a scannable source, since it's not a range: wrap it in a `std::string_view` first");
+// clang-format on
 
 /**
  * Scan from `stdin`.

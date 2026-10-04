@@ -5,6 +5,7 @@ set(buildfail_sources
         charset_empty.cpp
         charset_reversed_range.cpp
         charset_unterminated.cpp
+        character_pointer_source.cpp
         integer_with_string_presentation.cpp
         invalid_unicode_in_format_string.cpp
         letters_in_argument_id.cpp
