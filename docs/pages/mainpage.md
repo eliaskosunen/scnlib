@@ -29,7 +29,7 @@ int main() {
 
 This documentation is for the version 4.0 of the library.
 For other versions, see the dropdown in the upper right corner of the website.
-See <b><a href="./md_poxy_changelog.html">Changelog</a></b> for more.
+See <b><a href="./poxy_changelog.html">Changelog</a></b> for more.
 
 An introductory guide to the library can be found at \ref guide "Guide".
 Answers to frequently asked questions are listed at \ref faq "FAQ".
@@ -42,6 +42,8 @@ The most important modules are probably:
  - \ref scannable
  - \ref format-string
  - \ref result
+ - \ref regex
+ - \ref chrono
 
 \section main-install Installation
 
@@ -174,7 +176,7 @@ Building and running the runtime performance benchmarks:
 
 \code{.sh}
 # create build directory like above
-$ cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_INTERPROCEDURAL_OPTIMIZATION=ON -DSCN_NATIVE_ARCH=ON ..
+$ cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_INTERPROCEDURAL_OPTIMIZATION=ON -DSCN_USE_NATIVE_ARCH=ON ..
 $ make -j
 
 # disable CPU frequency scaling
@@ -217,7 +219,7 @@ $ c++ ... -Lpath-to-scn/build -lscn
 \endcode
 
 Note, that scnlib requires at least C++17,
-so `--std=c++17` (or equivalent, or newer) may need to be included in the build flags.
+so `-std=c++17` (or equivalent, or newer) may need to be included in the build flags.
 
 \subsection configuration Configuration
 
@@ -259,7 +261,7 @@ scnlib configuration options
 <td>✅</td>
 <td>✅</td>
 <td>`OFF`</td>
-<td>Disable regular expression support.<br>Always `ON` with `SCN_USE_EXCEPTIONS=OFF`, unless `SCN_REGEX_BACKEND` is `re2`, since `std::regex` and Boost.Regex require exceptions.</td>
+<td>Disable regular expression support.<br>Always `ON` with `SCN_USE_EXCEPTIONS=OFF`, unless `SCN_REGEX_BACKEND` is `re2`, since `std::regex` and Boost.Regex require exceptions.<sup>2</sup></td>
 </tr>
 
 <tr>
@@ -319,7 +321,7 @@ scnlib configuration options
 </tr>
 
 <tr>
-<td>`SCN_DISABLE_(TYPE)`</td>
+<td>`SCN_DISABLE_TYPE_(TYPE)`</td>
 <td>✅</td>
 <td>✅</td>
 <td>`OFF`</td>
@@ -330,8 +332,18 @@ scnlib configuration options
 <sup>1</sup>: `std::from_chars` with floating-point values is supported on libstdc++ v11 and newer,
 MSVC 19.24 (VS 2019 16.4) or newer, and libc++ 20 or newer (`float` and `double` only, not `long double`).
 
-Below, `ENABLE_FULL` is true, if `SCN_CI` is set in CMake, or scnlib
-is built as the primary project.
+<sup>2</sup>: This is done automatically by CMake. When building without CMake, `SCN_DISABLE_REGEX` needs to be set manually.
+
+<sup>3</sup>: scnlib converts `float` and `double` itself if they're IEEE 754 binary32 or binary64,
+and `long double` if it's binary32, binary64, x87 or m68k extended precision, binary128, or double-double.
+Other formats, like the IBM hexadecimal floating-point on z/OS, or VAX G_FLOAT, are converted with `strtof`, `strtod`, or `strtold`
+(`wcstof`, `wcstod`, or `wcstold` for wide characters).
+These use the decimal point of the global C locale (`LC_NUMERIC`), which scnlib reads with `localeconv()`,
+so calling `setlocale` concurrently with scanning such a type is a data race.
+With `SCN_DISABLE_STRTOD`, scanning such a type is a compile-time error.
+
+Below, `SCN_ENABLE_EXTRAS` is `ON`, if `SCN_CI` is set in CMake, or scnlib
+is built as the primary project (and `SCN_DISABLE_TOP_PROJECT` is `OFF`).
 
 <table>
 <caption>
@@ -382,15 +394,15 @@ CMake build type configuration
 <td>`SCN_TESTS`</td>
 <td>✅</td>
 <td>❌</td>
-<td>`ENABLE_FULL`</td>
-<td>Enable building of tests</td>
+<td>`SCN_ENABLE_EXTRAS`</td>
+<td>Enable building of tests<br>(`OFF` if `BUILD_TESTING` is `OFF`)</td>
 </tr>
 
 <tr>
 <td>`SCN_DOCS`</td>
 <td>✅</td>
 <td>❌</td>
-<td>`ENABLE_FULL`</td>
+<td>`SCN_ENABLE_EXTRAS`</td>
 <td>Enable building of documentation<br>(`scn_docs` target, requires `poxy`)</td>
 </tr>
 
@@ -398,7 +410,7 @@ CMake build type configuration
 <td>`SCN_EXAMPLES`</td>
 <td>✅</td>
 <td>❌</td>
-<td>`ENABLE_FULL`</td>
+<td>`SCN_ENABLE_EXTRAS`</td>
 <td>Enable building of examples</td>
 </tr>
 
@@ -406,7 +418,7 @@ CMake build type configuration
 <td>`SCN_INSTALL`</td>
 <td>✅</td>
 <td>❌</td>
-<td>`ON` when scnlib is the top-level CMake project (regardless of `SCN_DISABLE_TOP_PROJECT`), otherwise `ENABLE_FULL`</td>
+<td>`ON` when scnlib is the top-level CMake project (regardless of `SCN_DISABLE_TOP_PROJECT`), otherwise `SCN_ENABLE_EXTRAS`</td>
 <td>Enable `install` target</td>
 </tr>
 
@@ -414,7 +426,7 @@ CMake build type configuration
 <td>`SCN_BENCHMARKS`</td>
 <td>✅</td>
 <td>❌</td>
-<td>`ENABLE_FULL`</td>
+<td>`SCN_ENABLE_EXTRAS`</td>
 <td>Enable building of (runtime) benchmarks</td>
 </tr>
 
@@ -422,7 +434,7 @@ CMake build type configuration
 <td>`SCN_BENCHMARKS_BUILDTIME`</td>
 <td>✅</td>
 <td>❌</td>
-<td>`ENABLE_FULL`</td>
+<td>`SCN_ENABLE_EXTRAS`</td>
 <td>Enable build-time benchmark targets</td>
 </tr>
 
@@ -430,7 +442,7 @@ CMake build type configuration
 <td>`SCN_BENCHMARKS_BINARYSIZE`</td>
 <td>✅</td>
 <td>❌</td>
-<td>`ENABLE_FULL`</td>
+<td>`SCN_ENABLE_EXTRAS`</td>
 <td>Enable binary-size benchmark targets</td>
 </tr>
 
@@ -438,15 +450,39 @@ CMake build type configuration
 <td>`SCN_FUZZING`</td>
 <td>✅</td>
 <td>❌</td>
-<td>`ENABLE_FULL`</td>
-<td>Enable building of fuzzer targets</td>
+<td>`OFF`</td>
+<td>Enable building of fuzzer targets (clang only)</td>
+</tr>
+
+<tr>
+<td>`SCN_MODULES`</td>
+<td>✅</td>
+<td>❌</td>
+<td>`OFF`</td>
+<td>Enable the C++20 module target `scn::scn_module`, used with `import scn;`<br>(requires CMake 3.28 and Ninja)</td>
+</tr>
+
+<tr>
+<td>`SCN_DISABLE_TOP_PROJECT`</td>
+<td>✅</td>
+<td>❌</td>
+<td>`OFF`</td>
+<td>Treat scnlib as a subproject, even when it's the top-level CMake project</td>
+</tr>
+
+<tr>
+<td>`SCN_HEADERS_AS_SYSTEM`</td>
+<td>✅</td>
+<td>❌</td>
+<td>`OFF`</td>
+<td>Mark the scnlib include directory as `SYSTEM`, to suppress warnings from its headers</td>
 </tr>
 
 <tr>
 <td>`SCN_PEDANTIC`</td>
 <td>✅</td>
 <td>❌</td>
-<td>`ENABLE_FULL`</td>
+<td>`SCN_ENABLE_EXTRAS`</td>
 <td>Enable pedantic compilation flags (mostly warnings)</td>
 </tr>
 
@@ -456,6 +492,22 @@ CMake build type configuration
 <td>❌</td>
 <td>`SCN_CI`</td>
 <td>Enable warnings-as-errors</td>
+</tr>
+
+<tr>
+<td>`SCN_USE_EXCEPTIONS`</td>
+<td>✅</td>
+<td>❌</td>
+<td>`ON`</td>
+<td>Compile with exception support<br>(`OFF` also disables regex support, unless `SCN_REGEX_BACKEND` is `re2`)</td>
+</tr>
+
+<tr>
+<td>`SCN_USE_RTTI`</td>
+<td>✅</td>
+<td>❌</td>
+<td>`ON`</td>
+<td>Compile with RTTI</td>
 </tr>
 
 <tr>

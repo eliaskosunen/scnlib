@@ -106,6 +106,8 @@ SCN_BEGIN_NAMESPACE
  * (`std::basic_string` or `std::basic_string_view`), or
  * `scn::basic_regex_matches`.
  *
+ * A `/` in the pattern can be escaped as `\/`.
+ *
  * <table>
  * <caption id="regex-flags-table">
  * Possible flags for regex scanning
@@ -224,7 +226,7 @@ private:
  *
  * \code{.cpp}
  * auto result =
- *     scn::scan<scn::regex_matches>("abc123", "{:/[(a-z]+)([0-9]+)/}");
+ *     scn::scan<scn::regex_matches>("abc123", "{:/([a-z]+)([0-9]+)/}");
  * // result->value() has three elements:
  * //  [0]: "abc123" (entire match)
  * //  [1]: "abc" (first subexpression match)

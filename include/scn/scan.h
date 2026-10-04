@@ -5536,7 +5536,7 @@ struct borrowed_tail_subrange<R, false> {
 /// ranges::sentinel_t<R>>` if `R` is a `borrowed_range`, and
 /// `ranges::dangling` otherwise.
 ///
-/// Similar to `ranges::borrowed_subrange_t<R>`, expect this preserves
+/// Similar to `ranges::borrowed_subrange_t<R>`, except this preserves
 /// the range sentinel.
 template <typename R>
 using borrowed_tail_subrange_t = typename borrowed_tail_subrange<R>::type;
@@ -5638,7 +5638,7 @@ public:
         invalid_format_string,
 
         /// Scanned value was invalid for the given type,
-        /// or a value of the given couldn't be scanned.
+        /// or a value of the given type couldn't be scanned.
         invalid_scanned_value,
 
         /// Literal character specified in format string was not found
@@ -5658,11 +5658,11 @@ public:
         invalid_source_state,
 
         /// Value out of range, too large (higher than the maximum value)
-        /// i.e. >2^32 for int32
+        /// i.e. >2^31-1 for int32
         value_positive_overflow,
 
         /// Value out of range, too small (lower than the minimum value)
-        /// i.e. <2^32 for int32
+        /// i.e. <-2^31 for int32
         value_negative_overflow,
 
         /// Value out of range, magnitude too small, sign +
@@ -5701,6 +5701,10 @@ public:
         return m_code;
     }
     /// Get error message
+    ///
+    /// If the error comes from an exception thrown by a custom
+    /// `scanner::parse`, the message may be stored in thread-local storage.
+    /// It then stays valid only until the next such error on the same thread.
     SCN_NODISCARD constexpr auto msg() const noexcept -> const char*
     {
         return m_msg;
@@ -5819,6 +5823,8 @@ private:
 
 /**
  * An exception type used to report format string parsing errors.
+ *
+ * \ingroup ctx
  */
 class scan_format_string_error : public detail::scan_format_string_error_base {
 public:
@@ -6326,6 +6332,8 @@ struct scan_file_access;
  * which allows for a failure to sync with the underlying file
  * to not be fatal
  * (C `FILE` only guarantees a single character's worth of putback).
+ *
+ * \ingroup scannable
  */
 class scan_file {
     friend struct detail::scan_file_access;
@@ -8349,7 +8357,7 @@ public:
      * Construct a `basic_scan_parse_context` over a format string `format`.
      */
     [[deprecated(
-        "Use the source_tag constructor instead,"
+        "Use the source_tag constructor instead, "
         "to get more compile-time checking")]]
     explicit constexpr basic_scan_parse_context(
         std::basic_string_view<CharT> format,
@@ -8528,7 +8536,7 @@ public:
     {
     }
 
-    /// Access the ununsed source range
+    /// Access the unused source range
     SCN_NODISCARD range_type range() const
     {
         return m_range;
@@ -8851,6 +8859,8 @@ struct scan_result_alias_base<S, std::enable_if_t<ranges::range<S>>> {
  *     and `scn/istream.h` has been included,
  *     contains a reference to the stream,
  *     accessible with the `stream()` member function.
+ *  7. If `S` is `scn::stdin_tag_t` (used by `scn::input` and `scn::prompt`),
+ *     contains no source: there's no `range()`, `file()`, or `stream()`.
  *
  * For 1., `begin()` and `end()` member functions are available,
  * returning `ranges::dangling`.
@@ -10761,7 +10771,7 @@ SCN_CLANG_IGNORE("-Wdocumentation-unknown-command")
  *
  * \code
  * replacement-field   ::= '{' [arg-id] [':' format-spec] '}'
- * arg-id              ::= positive-integer
+ * arg-id              ::= nonnegative-integer
  *
  * format-spec         ::= [fill-and-align]
  *                         [width] [precision]
@@ -10774,8 +10784,16 @@ SCN_CLANG_IGNORE("-Wdocumentation-unknown-command")
  * precision           ::= '.' nonnegative-integer
  * type                ::= 'a' | 'A' | 'b' | 'B' | 'c' | 'd' |
  *                         'e' | 'E' | 'f' | 'F' | 'g' | 'G' |
- *                         'o' | 'p' | 's' | 'x' | 'X' | 'i' | 'u'
+ *                         'o' | 'p' | 's' | 'x' | 'X' | 'i' | 'u' |
+ *                         ('r' | 'R') radix | character-set | regex
+ * radix               ::= integer in range [2, 36]
+ * character-set       ::= '[' ['^'] character-set-items ']'
+ * regex               ::= '/' regex-pattern '/' [regex-flags]
  * \endcode
+ *
+ * See \ref type for the meaning of each type, and the syntax of
+ * character sets and regular expressions.
+ * Dates and times have their own format specifier syntax, see \ref chrono.
  *
  * \section arg-ids Argument IDs
  *
@@ -10871,7 +10889,7 @@ SCN_CLANG_IGNORE("-Wdocumentation-unknown-command")
  * * any code point with the East_Asian_Width="W" or East_Asian_Width="F"
  *   Derived Extracted Property as described by UAX#44
  * * U+4DC0 – U+4DFF (Yijing Hexagram Symbols)
- * * U+1F300 – U+1F5FF (Miscellaneous Symbols and Pictographs)
+ * * U+1F300 – U+1F64F (Miscellaneous Symbols and Pictographs, Emoticons)
  * * U+1F900 – U+1F9FF (Supplemental Symbols and Pictographs)
  *
  * \section precision Precision
@@ -10887,12 +10905,14 @@ SCN_CLANG_IGNORE("-Wdocumentation-unknown-command")
  *
  *  * For integers, it enables locale-specific thousands separators.
  *    Their placement is not validated against the locale's digit grouping.
+ *    Can't be combined with the `b`, `B`, `r`, and `R` type specifiers.
  *  * For floating-point numbers, it enables locale-specific thousands and
  *    radix (decimal) separators.
  *    The placement of thousands separators is not validated.
  *  * For booleans, it enables locale-specific textual representations (for
  *    `true` and `false`)
- *  * For other types, it has no effect
+ *  * For dates and times, see \ref chrono
+ *  * For other built-in types, it's an error
  *
  * \section type Type specifier
  *
@@ -10917,7 +10937,8 @@ SCN_CLANG_IGNORE("-Wdocumentation-unknown-command")
  * <tr>
  * <td>`c`</td>
  * <td>
- * Copies from the input until the field width is exhausted.
+ * Copies from the input until the field precision is exhausted,
+ * or the input ends.
  * Doesn't skip preceding whitespace.
  * Errors if no field precision is provided.
  * </td>
@@ -10930,6 +10951,14 @@ SCN_CLANG_IGNORE("-Wdocumentation-unknown-command")
  * the entire selection can be inverted with a prefix `^`. Matches and supports
  * arbitrary Unicode code points.
  * Doesn't skip preceding whitespace.
+ * Character classes (like `[:alpha:]`) and backslash escapes followed by
+ * a letter (like `\d`) are not supported, and are rejected in the format
+ * string.
+ * To match a literal backslash, put it last in the set (like `[abc\]`),
+ * so that no letter follows it.
+ * The set can't contain `]` as the first character, as `[]` is an empty set.
+ * It can only be matched in an inverted set, immediately after the `^`:
+ * `[^]a]` matches anything except `]` and `a`.
  * </td>
  * </tr>
  * <tr>
@@ -10949,13 +10978,14 @@ SCN_CLANG_IGNORE("-Wdocumentation-unknown-command")
  * \subsection type-int Type specifier: integers
  *
  * Integer values are scanned as if by using `std::from_chars`,
- * except a positive `+` sign and a base prefix (like `0x`) are always
- * allowed to be present.
+ * except a positive `+` sign is always allowed to be present,
+ * and a base prefix (like `0x`) is allowed where noted below.
  *
  * <table>
  * <caption id="type-int-table">
  * Integer types (`signed` and `unsigned` variants of `char`, `short`,
- * `int`, `long`, and `long long`)
+ * `int`, `long`, and `long long`, and `scn::int128` and `scn::uint128`,
+ * if supported by the compiler)
  * </caption>
  * <tr><th>Type</th> <th>Meaning</th></tr>
  * <tr>
@@ -10965,7 +10995,7 @@ SCN_CLANG_IGNORE("-Wdocumentation-unknown-command")
  * </td>
  * </tr>
  * <tr>
- * <td>`o`, `O`</td>
+ * <td>`o`</td>
  * <td>
  * `std::from_chars` with base `8`. The base prefix is `0o` or `0O`, or just
  * `0`.
@@ -11002,12 +11032,6 @@ SCN_CLANG_IGNORE("-Wdocumentation-unknown-command")
  * </td>
  * </tr>
  * <tr>
- * <td>`c`</td>
- * <td>
- * Copies a character (code unit) from the input.
- * </td>
- * </tr>
- * <tr>
  * <td>none</td>
  * <td>
  * Same as `d`.
@@ -11030,7 +11054,7 @@ SCN_CLANG_IGNORE("-Wdocumentation-unknown-command")
  * </td>
  * </tr>
  * <tr>
- * <td>`b`, `B`, `d`, `i`, `o`, `O`, `u`, `x`, `X`</td>
+ * <td>`b`, `B`, `d`, `i`, `o`, `u`, `x`, `X`</td>
  * <td>
  * Same as for integers, see above \ref type-int. Not allowed for `char32_t`.
  * </td>
@@ -11043,8 +11067,8 @@ SCN_CLANG_IGNORE("-Wdocumentation-unknown-command")
  * \subsection type-float Type specifier: floating-point values
  *
  * Floating-point values are scanned as if by using `std::from_chars`,
- * except a positive `+` sign and a base prefix (like `0x`) are always
- * allowed to be present.
+ * except a positive `+` sign is always allowed to be present,
+ * and a base prefix (`0x`) is allowed where noted below.
  *
  * Like with `std::from_chars`, infinities and NaNs are accepted,
  * case-insensitively, as `inf`, `infinity`, `nan`, and
@@ -11065,7 +11089,9 @@ SCN_CLANG_IGNORE("-Wdocumentation-unknown-command")
  *
  * <table>
  * <caption id="type-float-table">
- * Floating-point types (`float`, `double`, and `long double`)
+ * Floating-point types (`float`, `double`, `long double`, and
+ * `std::float16_t`, `std::float32_t`, `std::float64_t`, `std::float128_t`,
+ * and `std::bfloat16_t`, if supported by the standard library)
  * </caption>
  * <tr><th>Type</th> <th>Meaning</th></tr>
  * <tr>
@@ -11116,7 +11142,7 @@ SCN_CLANG_IGNORE("-Wdocumentation-unknown-command")
  * </td>
  * </tr>
  * <tr>
- * <td>`b`, `B`, `d`, `i`, `o`, `O`, `u`, `x`, `X`</td>
+ * <td>`b`, `B`, `d`, `i`, `o`, `u`, `x`, `X`</td>
  * <td>
  * Allows for the integral/numeric representation (`0` or `1`).
  * </td>
@@ -11125,6 +11151,21 @@ SCN_CLANG_IGNORE("-Wdocumentation-unknown-command")
  * <td>none</td>
  * <td>
  * Allows for both the textual and the integral/numeric representation.
+ * </td>
+ * </tr>
+ * </table>
+ *
+ * \subsection type-pointer Type specifier: pointers
+ *
+ * <table>
+ * <caption id="type-pointer-table">
+ * `void*` and `const void*`
+ * </caption>
+ * <tr><th>Type</th> <th>Meaning</th></tr>
+ * <tr>
+ * <td>none, `p`</td>
+ * <td>
+ * Same as the `x` integer type specifier, scanned as a `std::uintptr_t`.
  * </td>
  * </tr>
  * </table>
@@ -11213,7 +11254,7 @@ constexpr typename ParseCtx::iterator parse_format_specs_impl(
     static_assert(
         std::is_same_v<mp_eval_or<void, dt_scanner_scan, Scanner, T, Ctx>,
                        scan_expected<typename Ctx::iterator>>,
-        "scn::scanner::scan(T&, Context&) must be a const member function,"
+        "scn::scanner::scan(T&, Context&) must be a const member function, "
         "that returns scan_expected<Context::iterator>.");
 
     auto s = Scanner{};
@@ -11389,7 +11430,7 @@ template <typename Source, typename... Args, typename Str>
 constexpr auto check_format_string(const Str&)
     -> std::enable_if_t<!is_compile_string_v<Str>>
 {
-    // TODO: SCN_ENFORE_COMPILE_STRING?
+    // TODO: SCN_ENFORCE_COMPILE_STRING?
 #if 0  // SCN_ENFORE_COMPILE_STRING
     static_assert(dependent_false<Str>::value,
               "SCN_ENFORCE_COMPILE_STRING requires all format "
@@ -11598,7 +11639,7 @@ protected:
  * template <>
  * struct scn::scanner<mytype> {
  *   template <typename ParseContext>
- *   constexpr auto parse(ParseCtx& pctx)
+ *   constexpr auto parse(ParseContext& pctx)
  *     -> typename ParseContext::iterator {
  *     // parse() implementation just returning begin():
  *     // only permits empty format specifiers
@@ -11606,11 +11647,11 @@ protected:
  *   }
  *
  *   template <typename Context>
- *   auto scan(mytype& val, Context& ctx)
+ *   auto scan(mytype& val, Context& ctx) const
  *     -> scan_expected<typename Context::iterator> {
  *     return scn::scan<int, std::string>(ctx.range(), "{}: {}")
  *       .transform([&](auto result) {
- *         std::tie(val.key, val.value) = std::move(result->values());
+ *         std::tie(val.key, val.value) = std::move(result.values());
  *         return result.begin();
  *       });
  *   }
@@ -12208,8 +12249,10 @@ using scan_result_value_type = typename mp_cond<
 /**
  * Result type returned by `vscan`.
  *
- * The value type of the `scan_expected` is `FILE*` if `Source` is `FILE*`,
- * `detail::borrowed_tail_subrange_t<Source>` otherwise.
+ * The value type of the `scan_expected` is the type of the source stored
+ * in `scan_result`, see `scn::scan_result`: e.g.
+ * `detail::borrowed_tail_subrange_t<Source>` if `Source` is a forward range,
+ * or `FILE*` if `Source` is `FILE*`.
  *
  * \ingroup vscan
  */
@@ -12691,7 +12734,7 @@ SCN_NODISCARD auto scan(Source&& source,
  *
  * \code{.cpp}
  * auto result = scn::scan<double>(
- *     std::locale{"fi_FI.UTF-8"}, "3,14, "{:L}");
+ *     std::locale{"fi_FI.UTF-8"}, "3,14", "{:L}");
  * // result->value() == 3.14
  * \endcode
  *
@@ -12814,11 +12857,10 @@ void scan_value(Source&&, Rest&&...)
  * Scan from `stdin`.
  *
  * Equivalent to `scn::scan<...>(std::cin, ...)`,
- * except it maintains a separate thread-safe putback buffer
- * in case a putback into `stdin` fails.
+ * except concurrent calls to `scn::input` are serialized with a mutex.
  * Doesn't require inclusion of `"scn/istream.h"`.
  *
- * If iostreams are disabled (`SCN_DISABLE_IOSTREAMS` is `1`),
+ * If iostreams are disabled (`SCN_DISABLE_IOSTREAM` is `1`),
  * uses `stdin` instead of `std::cin`.
  *
  * \code{.cpp}
@@ -12859,7 +12901,7 @@ SCN_PUBLIC void prompt_print(const char* msg);
  * Write `msg` to `stdout`, and call `input<Args...>(format)`
  *
  * Uses `std::cout` to write the message, or if iostreams are disabled
- * (`SCN_DISABLE_IOSTREAMS` is `1`), `stdout`.
+ * (`SCN_DISABLE_IOSTREAM` is `1`), `stdout`.
  * Flushes the output stream after writing.
  *
  * \ingroup scan

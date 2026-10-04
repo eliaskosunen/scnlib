@@ -34,6 +34,130 @@ import std;
 namespace scn {
 SCN_BEGIN_NAMESPACE
 
+/**
+ * \defgroup chrono Dates and times
+ *
+ * \brief Scanning of `<chrono>` and `<ctime>` types.
+ *
+ * In header `<scn/chrono.h>`.
+ * Not available if `SCN_DISABLE_CHRONO` is `1`.
+ *
+ * The following types can be scanned:
+ *
+ *  * `std::tm`
+ *  * `scn::tm_with_tz`: a `std::tm`, with a timezone offset and name
+ *  * `scn::datetime_components`
+ *  * `std::chrono::time_point<std::chrono::system_clock, Duration>`
+ *  * `scn::weekday`, `scn::day`, `scn::month`, `scn::year`,
+ *    `scn::month_day`, `scn::year_month`, and `scn::year_month_day`.
+ *    These are aliases to the types with the same names in `std::chrono`,
+ *    if the standard library supports them (`__cpp_lib_chrono >= 201907L`),
+ *    and minimal fallback types otherwise.
+ *
+ * \section chrono-spec Format specifiers
+ *
+ * The format specifier of a chrono type is required, and its syntax is
+ * similar to `strftime` and `std::format`:
+ *
+ * \code
+ * chrono-format-spec  ::= ['L'] conversion-spec [chrono-specs]
+ * chrono-specs        ::= (conversion-spec | literal-char)...
+ * conversion-spec     ::= '%' [modifier] type | '%' '.' [modifier] 'S'
+ * modifier            ::= 'E' | 'O'
+ * \endcode
+ *
+ * Preceding whitespace is skipped before the first field.
+ * A whitespace character in the format specifier skips any amount of
+ * whitespace (including none) in the input.
+ * Any other literal character must match exactly.
+ *
+ * Numeric fields accept between one and the maximum number of digits,
+ * unless otherwise noted.
+ * Field values are range-checked (e.g. `%%H` accepts `0` to `23`).
+ * When scanning a `month_day`, `year_month_day`, or `time_point`, the day is
+ * also checked to exist in its month (e.g. February 30th is an error),
+ * like `std::chrono::parse` does.
+ * When the year, month, and day are all scanned into a `year_month_day` or
+ * a `time_point`, a scanned weekday must match the date, or it's an error.
+ * With other types, the weekday is not checked.
+ * `std::tm`, `tm_with_tz`, and `datetime_components` only get the
+ * field-level checks.
+ * A field can't be set twice.
+ *
+ * <table>
+ * <caption id="chrono-spec-table">
+ * Conversion specifiers
+ * </caption>
+ * <tr><th>Specifier</th> <th>Meaning</th></tr>
+ * <tr><td>`%%`</td> <td>A literal `%`</td></tr>
+ * <tr><td>`%%n`, `%%t`</td> <td>Whitespace, like a space</td></tr>
+ * <tr><td>`%%Y`</td> <td>Year, exactly four digits</td></tr>
+ * <tr><td>`%%y`</td> <td>Year within a century, two digits.
+ * Without `%%C`, `69`-`99` means 1969-1999, and `00`-`68` means 2000-2068.
+ * </td></tr>
+ * <tr><td>`%%C`</td> <td>Century, two digits.
+ * Without `%%y`, the year is the first year of the century.</td></tr>
+ * <tr><td>`%%b`, `%%B`, `%%h`</td> <td>Month name, full or abbreviated,
+ * case-insensitive</td></tr>
+ * <tr><td>`%%m`</td> <td>Month, `1`-`12`</td></tr>
+ * <tr><td>`%%d`, `%%e`</td> <td>Day of the month, `1`-`31`</td></tr>
+ * <tr><td>`%%j`</td> <td>Day of the year, `1`-`366`</td></tr>
+ * <tr><td>`%%a`, `%%A`</td> <td>Weekday name, full or abbreviated,
+ * case-insensitive</td></tr>
+ * <tr><td>`%%w`</td> <td>Weekday, `0`-`6`, Sunday is `0`</td></tr>
+ * <tr><td>`%%u`</td> <td>ISO weekday, `1`-`7`, Monday is `1`</td></tr>
+ * <tr><td>`%%H`, `%%k`</td> <td>Hour (24-hour clock), `0`-`23`</td></tr>
+ * <tr><td>`%%I`, `%%l`</td> <td>Hour (12-hour clock), `1`-`12`</td></tr>
+ * <tr><td>`%%p`, `%%P`</td> <td>`AM`, `PM`, `A.M.`, or `P.M.`,
+ * case-insensitive. Requires `%%I`.</td></tr>
+ * <tr><td>`%%M`</td> <td>Minute, `0`-`59`</td></tr>
+ * <tr><td>`%%S`</td> <td>Second, `0`-`60`.
+ * With a `time_point` more precise than seconds, also reads an optional
+ * fractional part, like `%.S`, and like `std::chrono::parse` does.</td></tr>
+ * <tr><td>`%.S`</td> <td>Second, with an optional fractional part
+ * (like `05` or `05.25`).
+ * Digits beyond nanoseconds, or beyond the precision of a `time_point`,
+ * are truncated.
+ * Not supported by `std::tm` and `scn::tm_with_tz`.</td></tr>
+ * <tr><td>`%%z`</td> <td>Timezone offset from UTC,
+ * `[+|-]hh[[:]mm]`. `%%Ez` and `%%Oz` accept `[+|-]h[h][:mm]`.
+ * With `std::tm`, requires `tm_gmtoff` to be available.</td></tr>
+ * <tr><td>`%%Z`</td> <td>Timezone name, consisting of ASCII letters,
+ * digits, and `-+_/`. Not supported by `std::tm`.
+ * Can't be used together with `%%z`.</td></tr>
+ * <tr><td>`%%D`</td> <td>Equivalent to `%%m/%%d/%%y`</td></tr>
+ * <tr><td>`%%F`</td> <td>Equivalent to `%%Y-%%m-%%d`</td></tr>
+ * <tr><td>`%%R`</td> <td>Equivalent to `%%H:%%M`</td></tr>
+ * <tr><td>`%%T`</td> <td>Equivalent to `%%H:%%M:%%S`</td></tr>
+ * <tr><td>`%%c`</td> <td>Date and time, `%%a %%b %%d %%H:%%M:%%S %%Y`
+ * (localized with `L`)</td></tr>
+ * <tr><td>`%%x`</td> <td>Date, `%%m/%%d/%%y` (localized with `L`)</td></tr>
+ * <tr><td>`%%X`</td> <td>Time, `%%H:%%M:%%S` (localized with `L`)</td></tr>
+ * <tr><td>`%%r`</td> <td>12-hour time, `%%I:%%M:%%S %%p`
+ * (localized with `L`)</td></tr>
+ * </table>
+ *
+ * `%%G`, `%%g`, `%%U`, `%%W`, `%%V`, `%%s`, `%%Q`, `%%q`, and `%%Ey` are
+ * recognized, but not implemented, and cause an error.
+ *
+ * The `L` flag makes the names (`%%a`, `%%b`), and the composite specifiers
+ * `%%c`, `%%x`, `%%X`, and `%%r` follow the locale passed to `scn::scan`.
+ * Together with `E` or `O` (e.g. `%.ES`), it also makes the decimal
+ * separator of a fractional second follow the locale.
+ * The `E` and `O` modifiers select the locale's alternative representation,
+ * and, except for `%%Ez` and `%%Oz`, only have an effect together with `L`.
+ *
+ * \code{.cpp}
+ * auto result = scn::scan<std::tm>("2024-03-04 12:30", "{:%F %R}");
+ * // result->value().tm_year == 124
+ *
+ * auto date = scn::scan<scn::year_month_day>("04.03.2024", "{:%d.%m.%Y}");
+ * \endcode
+ *
+ * The types `scn::weekday`, `scn::day`, `scn::month`, etc. require the
+ * corresponding fields to be present in the format string.
+ */
+
 #if defined(__cpp_lib_chrono) && __cpp_lib_chrono >= 201907L
 
 using weekday = std::chrono::weekday;
@@ -277,6 +401,8 @@ void assign_gmtoff(T& tm, std::chrono::seconds val)
  * An alternative to `std::tm`,
  * with support for subsecond precision, and
  * clear distinction between the value `0` and an unset field.
+ *
+ * \ingroup chrono
  */
 struct datetime_components {
     /// Fractions of a second, [0.0-1.0)
@@ -308,6 +434,9 @@ struct datetime_components {
      * Unset fields have a value of `0`, with `tm_isdst` having a value of `-1`.
      * The fields `subsec` and `tz_name` are discarded.
      * `tz_offset` is set to `tm_gmtoff`, if it's available.
+     *
+     * \pre `year`, if set, must be at least `INT_MIN + 1900`, so that
+     * `tm_year` doesn't overflow. Scanned values always satisfy this.
      */
     SCN_NODISCARD std::tm to_tm() const
     {
@@ -332,6 +461,11 @@ struct datetime_components {
     }
 };
 
+/**
+ * A `std::tm`, with a timezone offset (`%%z`) and name (`%%Z`).
+ *
+ * \ingroup chrono
+ */
 struct tm_with_tz : public std::tm {
     std::optional<std::chrono::minutes> tz_offset;
     std::optional<std::string> tz_name;
@@ -1936,9 +2070,16 @@ struct scanner<year_month_day, CharT>
  * Scans a `std::chrono::time_point<std::chrono::system_clock>`.
  *
  * The scanned date and time are interpreted as UTC, unless a timezone offset
- * is scanned with `%z`, in which case it's applied.
+ * is scanned with `%%z`, in which case it's applied.
  * Unset fields default to 1970-01-01 00:00:00.
- * Timezone names (`%Z`) and days of the year (`%j`) are not supported.
+ * Invalid dates (e.g. February 30th) and leap seconds (second `60`) are
+ * errors.
+ * Timezone names (`%%Z`) and days of the year (`%%j`) are not supported,
+ * and are format string errors.
+ * If `Duration` is more precise than seconds, `%%S` also reads a fractional
+ * part.
+ *
+ * \ingroup chrono
  */
 template <typename CharT, typename Duration>
 struct scanner<std::chrono::time_point<std::chrono::system_clock, Duration>,

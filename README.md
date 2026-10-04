@@ -69,7 +69,7 @@ int main() {
         // Access the read value with result->value()
         std::println("{}", result->value());
         
-        // Will output " world":
+        // Will output " world!":
         // result->range() returns a subrange containing the unused input
         // C++23 is required for the std::string_view range constructor used below
         std::println("{}", std::string_view{result->range()});
@@ -109,9 +109,12 @@ int main() {
 #include <scn/scan.h>
 
 #include <ranges>
+#include <string_view>
+
+using namespace std::literals;
 
 int main() {
-    auto result = scn::scan<int>("123" | std::views::reverse, "{}");
+    auto result = scn::scan<int>("123"sv | std::views::reverse, "{}");
     // result == true
     // result->begin() is an iterator into a reverse_view
     // result->range() is empty
@@ -123,13 +126,16 @@ int main() {
 
 ```cpp
 #include <scn/scan.h>
+#include <string_view>
 #include <vector>
+
+using namespace std::literals;
 
 int main() {
     std::vector<int> vec{};
     auto input = scn::ranges::subrange{"123 456 789"sv};
     
-    while (auto result = scn::scan<int>(input), "{}")) {
+    while (auto result = scn::scan<int>(input, "{}")) {
         vec.push_back(result->value());
         input = result->range();
     }
@@ -144,9 +150,10 @@ int main() {
       string)
     * convenience (ranges)
     * ergonomics (values returned from `scn::scan`, no output parameters)
-    * support for modules (enable target `scn::module` with `SCN_MODULES` in CMake)
+    * support for modules (enable target `scn::scn_module` with `SCN_MODULES` in CMake)
 * `"{python}"`-like format string syntax
     * Including compile-time format string checking
+      (in C++17, wrap the format string in `SCN_STRING(...)` to enable it)
 * Minimal code size increase (in user code, see Benchmarks)
 * Usable without exceptions, RTTI, or `<iostream>`s
     * Configurable through build flags
@@ -185,16 +192,18 @@ CI:
 
 * GCC 7 and newer
 * Clang 8 and newer
-* Visual Studio 2019 and 2022
+* Visual Studio 2022
 
 Including the following environments:
 
 * 32-bit and 64-bit builds on Windows
 * libc++ on Linux
 * gcc on Alpine Linux
-* AppleClang and gcc on macOS 14 and 15
-* clang-cl with VS 2019 and 2022
+* AppleClang and Homebrew Clang on macOS 15 and 26 (arm64 and x86-64), and gcc on arm64 macOS
+* clang-cl with Visual Studio 2022
 * MinGW and MSys2
+* Emscripten
+* GCC and Clang on aarch64 Linux, and Visual Studio on arm64 Windows
 * GCC on i686, armv5, armv6, armv7, aarch64, hppa, loongarch64, m68k,
   mips, mips64el, mips64r6el, powerpc, ppc64, ppc64le, riscv64, s390x, and sparc64
 * Visual Studio 2022, cross-compiling to arm64
@@ -391,7 +400,7 @@ $ ./benchmark/binarysize/run_binarysize_bench.py ./benchmark/binarysize $BUILD_T
 
 ### Build time
 
-#### Build time
+#### CPU time
 
 Time is in seconds of CPU time (user time + sys/kernel time).
 Lower is better.
@@ -443,9 +452,9 @@ and a somewhat POSIX-compatible `/usr/bin/time` must be available.
 
 ```sh
 $ cd build
-$ cmake -DSCN_BENCMARKS_BUILDTIME=ON ..
+$ cmake -DSCN_BENCHMARKS_BUILDTIME=ON ..
 $ cmake --build .
-$ ./benchmark/buildtime/run-buildtime-tests.sh
+$ ./benchmark/buildtime/run-buildtime-benchmarks.sh
 ```
 
 ## Acknowledgements

@@ -153,6 +153,7 @@ scn::scan<...>(strm, ...);
  * Scanning a `month_day`, `year_month_day`, or `time_point` fails if the day doesn't exist in its month
    (e.g. February 30th), like `std::chrono::parse`. Previously, it was accepted, and a `time_point` was normalized
    to the next month. Scanning a `time_point` also fails on a leap second (second `60`).
+ * Documentation fixes, and documentation for scanning dates and times
 
 ## 4.0.1
 
