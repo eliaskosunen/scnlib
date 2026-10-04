@@ -27,6 +27,7 @@ strip_paths = ['../include', 'pages']
 [macros]
 'SCN_DOXYGEN' = '1'
 'SCN_USE_IOSTREAMS' = '1'
+'SCN_HAS_EXCEPTIONS' = '1'
 'SCN_NOEXCEPT' = 'noexcept'
 'SCN_NOEXCEPT_P(a)' = 'noexcept(a)'
 'SCN_CONSTEVAL' = 'consteval'

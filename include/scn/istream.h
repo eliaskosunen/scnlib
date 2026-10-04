@@ -125,14 +125,14 @@ using wrange_streambuf = basic_range_streambuf<wscan_context::range_type>;
  * #include <scn/istream.h> // required for basic_istream_scanner
  *
  * struct mytype {
- *   friend std::istream& operator>>(std::istream&, const mytype&);
+ *   friend std::istream& operator>>(std::istream&, mytype&);
  * };
  *
  * // Use mytype::operator>> for scanning with scnlib
  * template <typename CharT>
- * struct scn::scanner<mytype> : scn::basic_istream_scanner<CharT> {};
+ * struct scn::scanner<mytype, CharT> : scn::basic_istream_scanner<CharT> {};
  *
- * auto [result, myvalue] = scn::scan<mytype>(...);
+ * auto result = scn::scan<mytype>(...);
  * \endcode
  */
 template <typename CharT>

@@ -170,8 +170,13 @@ struct scanner {
      * `scanner`, while only overriding `scan()`, and keeping the same
      * `parse()`, or at least delegating to it.
      *
-     * To report errors, an exception derived from `std::exception` can be
-     * thrown, or `ParseContext::on_error` can be called.
+     * To report errors, an exception derived from
+     * `scn::scan_format_string_error` can be thrown, or
+     * `ParseContext::on_error` can be called.
+     * Either one is a compile-time error when the format string is checked at
+     * compile time. At runtime, a thrown `scn::scan_format_string_error` is
+     * caught, and the scan fails with `scn::scan_error::invalid_format_string`.
+     * With exceptions disabled, only `ParseContext::on_error` can be used.
      *
      * \return On success, an iterator pointing to the `}` character at the end
      * of the replacement field in the format string.
@@ -186,7 +191,8 @@ struct scanner {
      * Scan a value of type `T` from `ctx` into `value`,
      * using the format specs in `*this`, populated by `parse()`.
      *
-     * `value` is guaranteed to only be default initialized.
+     * `value` is default initialized, unless an initial value was supplied
+     * (e.g. to `scn::scan` or `scn::scan_value`).
      *
      * \return On success, an iterator pointing past the last character consumed
      * from `ctx`.

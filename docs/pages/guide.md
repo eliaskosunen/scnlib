@@ -18,7 +18,7 @@ This is similar in nature to `std::scanf`, and has virtually the same syntax as 
 In the format string, arguments are marked with curly braces `{}`.
 Each `{}` means that a single value is to be scanned from the source range.
 Because scnlib uses templates, type information is not required in the format string,
-like it is with `std::scanf` (e.g. `%d`).
+like it is with `std::scanf` (e.g. `%%d`).
 
 The types of the values to scan are given as template parameters to `scn::scan`.
 `scn::scan` returns an object, which contains the read value.
@@ -27,7 +27,11 @@ otherwise all the read values can be accessed through a `std::tuple` with `value
 
 \code{.cpp}
 // Scanning an int
-auto result = scn::scan<int>("123", "{}"):
+auto result = scn::scan<int>("123", "{}");
+if (!result) {
+    // handle the error, see below
+    return;
+}
 auto i = result->value();
 // i == 123
 
@@ -94,7 +98,7 @@ The library compiles with `-fno-exceptions -fno-rtti` and is perfectly usable wi
 
 Instead, it uses return values to signal errors:
 `scn::scan` returns an `scn::scan_expected`,
-which is an (opaque) alias to `scn::expected<T, scn::scan_error>`,
+which is a type derived from `scn::expected<T, scn::scan_error>`,
 where `T` is a specialization of `scn::scan_result`,
 which is a type containing the result of a successful scanning operation.
 If there was an error,
@@ -106,11 +110,17 @@ The actual read values are accessed with either
 of the returned `scn::scan_expected`.
 This ensures that if an error occurred,
 the values are not accidentally accessed.
+`scn::scan_expected::value()` is checked:
+if the result contains an error, it throws `scn::bad_expected_access`
+(or aborts, if exceptions are disabled).
+`operator*` and `operator->` are not checked,
+so the result must always be checked before they are used.
+The examples in this guide omit the check for brevity, unless noted otherwise.
 
 \code{.cpp}
 // "foo" is not an integer
 auto result = scn::scan<int>("foo", "{}");
-// fails, result->value() would be UB, result.value().value() would throw
+// fails, result->value() would be UB, and result.value() would throw or abort
 if (!result) {
     std::cout << result.error().msg() << '\n';
 }
@@ -135,18 +145,18 @@ auto result = scn::scan<int>("123 456"sv, "{}");
 // result->value() == 123
 // result->range() == " 456"
 
-auto [other_result, i] = scn::scan<int>(result->range(), "{}");
+auto other_result = scn::scan<int>(result->range(), "{}");
 // other_result == true
-// i == 456
+// other_result->value() == 456
 // other_result->range() == ""
 \endcode
 
 The return type of `scn::scan_result::range()` is a view into the range `scn::scan` was given.
-Its type may not be the same as the source range, but its iterator and sentinel types are the same.
+Its type may not be the same as the source range, but for forward ranges, its iterator and sentinel types are the same.
 If the range given to `scn::scan` does not model `scn::ranges::borrowed_range`
 (essentially, the returned range would dangle), the returned range is of type `scn::ranges::dangling`.
 
-Because the range type returned by `scn::scan` is always a `scn::ranges::subrange` over its input,
+Because the range type returned by `scn::scan` for a forward range is always a `scn::ranges::subrange` over its input,
 it's easy to use `scn::scan` in loops, as long as the input type is a `scn::ranges::subrange` to begin with.
 If it's not, consider making it one with `scn::ranges::subrange{your-input-range}`.
 
@@ -169,12 +179,13 @@ if (auto result = scn::input<int>("{}")) {
 }
 \endcode
 
-`scn::input` uses the C++ standard output stream (`std::cout`) internally,
-and it's synchronized with `std::cout` automatically.
-If iostreams are disabled, the C standard output handle (`stdout`) is used, instead.
+`scn::input` uses the C++ standard input stream (`std::cin`) internally,
+and it's synchronized with `std::cin` automatically.
+If iostreams are disabled, the C standard input handle (`stdin`) is used, instead.
 
 `scn::prompt` is similar to `scn::input`,
-but it also prints the prompt given to it as an argument to `stdout` through `std::cout`.
+but it also prints the prompt given to it as an argument to `std::cout`
+(or `stdout`, if iostreams are disabled).
 
 In addition to `scn::input` and `scn::prompt`,
 `scn::scan` can also be directly used with files.
@@ -193,14 +204,14 @@ Plain C `FILE`s can also be used, but the support for them is deprecated,
 for the aforementioned reasons about the possibility for a synchronization failure.
 
 When used with files, `scn::scan` doesn't return a range, but the file it was passed,
-which can be accessed with `->file()`. To prevent confusion,
-there's no member `->range()` when using files.
+which can be accessed with `->file()` (or `->stream()`, for `std::istream`s).
+To prevent confusion, there's no member `->range()` when using files.
+The result of `scn::input` and `scn::prompt` has neither.
 
 \code{.cpp}
-auto result = scn::input<int>("{}");
-// equivalent to (deprecated):
-auto result = scn::scan<int>(stdin, "{}");
-// result->file() is stdin
+auto file = scn::scan_file{stdin};
+auto result = scn::scan<int>(file, "{}");
+// result->file() is file
 // result->range() doesn't exist
 \endcode
 
@@ -273,10 +284,13 @@ scnlib also supports wide (`wchar_t`) ranges to be used as source ranges,
 including wide string literals and `std::wstring` s.
 Wide strings are expected to be encoded in UTF-16 (with platform endianness), or UTF-32,
 depending on the width of `wchar_t` (2 byte `wchar_t` -> UTF-16, 4 byte `wchar_t` -> UTF-32).
+Scanning with a wide format string requires including `<scn/xchar.h>`.
 
 Any other character types are currently not supported.
 
 \code{.cpp}
+#include <scn/xchar.h>
+
 auto result = scn::scan<std::wstring>(L"foo bar", L"{}");
 // result->value() == L"foo"
 
@@ -304,7 +318,7 @@ struct scn::scanner<mytype, char> {
         -> typename ParseContext::iterator;
 
     template <typename Context>
-    auto scan(mytype& val, Context& ctx)
+    auto scan(mytype& val, Context& ctx) const
         -> scan_expected<typename Context::iterator>;
 };
 \endcode
@@ -313,9 +327,13 @@ struct scn::scanner<mytype, char> {
 The easiest ways to implement it are to inherit it from another type, or to just accept no options:
 
 \code{.cpp}
-// Inherit
+// Inherit (scan() still needs to be defined)
 template <>
-struct scn::scanner<mytype, char> : scn::scanner<std::string_view, char> {};
+struct scn::scanner<mytype, char> : scn::scanner<std::string_view, char> {
+    template <typename Context>
+    auto scan(mytype& val, Context& ctx) const
+        -> scan_expected<typename Context::iterator>;
+};
 
 // Accept only empty
 template <typename ParseContext>
@@ -324,23 +342,24 @@ constexpr auto parse(ParseContext& pctx) -> typename ParseContext::iterator {
 }
 \endcode
 
-`parse` can report errors by throwing an exception of type `scn::scan_format_string_error`,
+`parse` can report errors by throwing an exception derived from `scn::scan_format_string_error`,
 or by calling the `on_error` member function on the `ParseContext`.
 
 `scan` parses the actual value, using the supplied `Context`.
-The context has a member function, `current`, to get an iterator pointing to the next character in the source range,
+The context has a member function, `begin`, to get an iterator pointing to the next character in the source range,
 and `range`, to get the entire source range that's still left to scan.
 These values can be then passed to `scn::scan`.
 Alternatively, scanning can be delegated to another `scn::scanner`.
 
 \code{.cpp}
 template <typename Context>
-auto scan(mytype& val, Context& ctx) -> scan_expected<typename Context::iterator> {
-    auto result = scn::scan(ctx.range(), "{} {}");
+auto scan(mytype& val, Context& ctx) const -> scan_expected<typename Context::iterator> {
+    auto result = scn::scan<int, double>(ctx.range(), "{} {}");
     if (!result) {
         return unexpected(result.error());
     }
 
+    auto [i, d] = result->values();
     val = {i, d};
     return result->begin();
 
@@ -358,7 +377,7 @@ If your type has an `std::istream` compatible `operator>>` overload, that can al
 Include the header `<scn/istream.h>`, and specialize `scn::scanner` by inheriting from `scn::istream_scanner`.
 
 \code{.cpp}
-std::istream& operator>>(std::istream&, const mytype&);
+std::istream& operator>>(std::istream&, mytype&);
 
 template <>
 struct scn::scanner<mytype, char> : scn::istream_scanner {};
@@ -374,18 +393,18 @@ This is mostly used with floats, to get locale-specific decimal separators.
 
 Because of the way `std::locale` and the facilities around it work,
 parsing using a locale is significantly slower compared to not using one.
-This is, because the library effectively has to fall back on iostreams for parsing.
+This is because the library effectively has to fall back on iostreams for parsing.
 
 Just passing a locale isn't enough, but you'll need to opt-in to locale-specific parsing,
 by using the `L` flag in the format string. Not every type supports localized parsing.
 
 \code{.cpp}
-auto result = scn::scan(std::locale{"fi_FI.UTF-8"}, "2,73", "{:L}");
+auto result = scn::scan<double>(std::locale{"fi_FI.UTF-8"}, "2,73", "{:L}");
 // result->value() == 2.73
 \endcode
 
 Because localized scanning uses iostreams under the hood,
-the results may not be entirely the same when no locale is used,
+the results may not be entirely the same as when no locale is used,
 even if `std::locale::classic()` was passed.
 This is due to limitations of the design of iostreams,
 and platform-specific differences in locales and iostreams.
