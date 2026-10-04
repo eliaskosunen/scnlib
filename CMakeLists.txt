@@ -98,6 +98,7 @@ target_include_directories(scn
 )
 target_link_libraries(scn PRIVATE
         ${SCN_FAST_FLOAT_TARGET}
+        ${SCN_EKNAN_TARGET}
         ${SCN_REGEX_BACKEND_TARGET}
 )
 set_library_flags(scn)
@@ -128,6 +129,7 @@ add_library(scn_internal INTERFACE)
 target_link_libraries(scn_internal INTERFACE
         scn::scn
         ${SCN_FAST_FLOAT_TARGET}
+        ${SCN_EKNAN_TARGET}
         ${SCN_REGEX_BACKEND_TARGET}
 )
 target_include_directories(scn_internal INTERFACE

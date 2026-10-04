@@ -67,7 +67,14 @@ scn::scan<...>(strm, ...);
    (`std::float16_t`, `std::float32_t`, `std::float64_t`, `std::float128_t`, `std::bfloat16_t`)
  * `__int128` and `unsigned __int128` can now be scanned, if they're supported by the implementation.
    Aliases for these types are provided and used, with `scn::int128` and `scn::uint128`.
- * The payload of a NaN in floating-point values is now parsed and stored in the scanned floating-point value.
+ * The payload of a NaN in floating-point values (like `nan(0x1234)`) is now parsed and stored in the scanned floating-point value.
+   * This uses a new optional dependency, [eknan](https://github.com/eliaskosunen/eknan),
+     fetched with `FetchContent` by default, like fast_float.
+     It can be disabled with `SCN_DISABLE_EKNAN`, which makes payloads ignored,
+     or found with `find_package`, with `SCN_USE_EXTERNAL_EKNAN`.
+   * The payload is an integer, with the same base prefixes as with the `i` type specifier
+     (`0b`, `0o`, `0x`, or `0` for octal), and `_` allowed anywhere after the prefix.
+     A payload that is invalid, or doesn't fit in the NaN, gives the default quiet NaN.
  * C++20 modules support
  * Building as a shared library (with `BUILD_SHARED_LIBS`) is now supported, with the exported symbols marked explicitly
  * More optimized reading for source ranges that are both `bidirectional_range`s and `sized_range`s.

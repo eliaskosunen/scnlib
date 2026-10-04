@@ -160,10 +160,18 @@
 #endif
 
 // SCN_DISABLE_FAST_FLOAT
-// If 1, doesn't use fast_float for parsing floats,
-// making the library free of hard dependencies
+// If 1, doesn't use fast_float for parsing floats.
+// Together with SCN_DISABLE_EKNAN, makes the library free of
+// external dependencies.
 #ifndef SCN_DISABLE_FAST_FLOAT
 #define SCN_DISABLE_FAST_FLOAT 0
+#endif
+
+// SCN_DISABLE_EKNAN
+// If 1, doesn't use eknan for constructing NaNs,
+// and ignores the payloads of scanned NaNs, like `nan(0x1234)`.
+#ifndef SCN_DISABLE_EKNAN
+#define SCN_DISABLE_EKNAN 0
 #endif
 
 // SCN_DISABLE_FROM_CHARS
@@ -925,13 +933,6 @@
 #else
 #define SCN_IS_FLOAT_BIG_ENDIAN 0
 
-#endif
-
-// Detect legacy (pre-IEEE 754-2008) NaN encoding, used by MIPS without NaN2008.
-#if (defined(__mips__) || defined(__mips)) && !defined(__mips_nan2008)
-#define SCN_HAS_LEGACY_NAN_ENCODING 1
-#else
-#define SCN_HAS_LEGACY_NAN_ENCODING 0
 #endif
 
 // Detect standard extended float types

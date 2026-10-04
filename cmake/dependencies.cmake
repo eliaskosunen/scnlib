@@ -179,6 +179,60 @@ else ()
     set(SCN_FAST_FLOAT_TARGET FastFloat::fast_float)
 endif ()
 
+# eknan
+
+set(SCN_EKNAN_BUNDLED OFF)
+if (SCN_DISABLE_EKNAN)
+    message(STATUS "eknan disabled, NaN payloads won't be parsed")
+    set(SCN_EKNAN_TARGET)
+elseif (SCN_USE_EXTERNAL_EKNAN)
+    if (NOT TARGET eknan::eknan)
+        find_package(eknan 0.1.0 CONFIG REQUIRED)
+    else ()
+        message(STATUS "Target eknan::eknan already defined, not doing find_package(eknan) (SCN_USE_EXTERNAL_EKNAN is ON)")
+    endif ()
+    set(SCN_EKNAN_TARGET eknan::eknan)
+elseif (TARGET eknan::eknan)
+    message(WARNING "Target eknan::eknan already defined, not doing FetchContent(eknan), even though SCN_USE_EXTERNAL_EKNAN is OFF")
+    set(SCN_EKNAN_TARGET eknan::eknan)
+elseif (CMAKE_VERSION VERSION_GREATER_EQUAL "3.30.0")
+    FetchContent_Declare(
+            eknan
+            GIT_REPOSITORY https://github.com/eliaskosunen/eknan.git
+            GIT_TAG v0.1.0
+            GIT_SHALLOW TRUE
+            SYSTEM
+            EXCLUDE_FROM_ALL
+    )
+
+    set(EKNAN_INSTALL OFF CACHE INTERNAL "")
+    set(EKNAN_BUILD_TESTS OFF CACHE INTERNAL "")
+    list(APPEND SCN_DEPENDENCIES_TO_MAKE_AVAILABLE "eknan")
+    set(SCN_EKNAN_BUNDLED ON)
+    set(SCN_EKNAN_TARGET eknan::eknan)
+else ()
+    FetchContent_Declare(
+            eknan
+            GIT_REPOSITORY https://github.com/eliaskosunen/eknan.git
+            GIT_TAG v0.1.0
+            GIT_SHALLOW TRUE
+    )
+
+    cmake_policy(SET CMP0077 NEW)
+    set(EKNAN_INSTALL OFF CACHE INTERNAL "")
+    set(EKNAN_BUILD_TESTS OFF CACHE INTERNAL "")
+
+    FetchContent_GetProperties(eknan)
+    if (NOT eknan_POPULATED)
+        FetchContent_Populate(eknan)
+
+        add_subdirectory(${eknan_SOURCE_DIR} ${eknan_BINARY_DIR} EXCLUDE_FROM_ALL)
+    endif ()
+
+    set(SCN_EKNAN_BUNDLED ON)
+    set(SCN_EKNAN_TARGET eknan::eknan)
+endif ()
+
 # std::regex
 
 set(SCN_REGEX_BACKEND_TARGET)

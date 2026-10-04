@@ -1628,55 +1628,38 @@ auto parse_regular_integer(std::basic_string_view<CharT> input,
     return begin;
 }
 
+#if SCN_HAS_INT128
 // int128 is parsed with a different algorithm,
 // going over the input char-by-char and checking for overflow on each step.
 // It's slower, but simpler,
 // and we don't have to build separate lookup tables for it.
-template <typename SignedT, typename UnsignedT, typename CharT, typename T>
-[[maybe_unused]]
+template <typename CharT, typename T>
 auto parse_int128(std::basic_string_view<CharT> input,
                   T& val,
                   int base,
                   bool is_negative) -> scan_expected<const CharT*>
 {
-    constexpr UnsignedT uint_max = std::numeric_limits<UnsignedT>::max();
-    [[maybe_unused]] constexpr UnsignedT int_max = uint_max >> UnsignedT{1u};
-    [[maybe_unused]] constexpr UnsignedT abs_int_min = int_max + UnsignedT{1u};
+    constexpr uint128 uint_max = std::numeric_limits<uint128>::max();
+    [[maybe_unused]] constexpr uint128 int_max = uint_max >> uint128{1u};
+    [[maybe_unused]] constexpr uint128 abs_int_min = int_max + uint128{1u};
 
     SCN_GCC_COMPAT_PUSH
     SCN_GCC_COMPAT_IGNORE("-Wsign-conversion")
-    auto const [limit_val,
-                max_digit] = [&]() -> std::pair<UnsignedT, UnsignedT> {
-        if constexpr (std::is_same_v<T, SignedT>) {
+    auto const [limit_val, max_digit] = [&]() -> std::pair<uint128, uint128> {
+        if constexpr (std::is_same_v<T, int128>) {
             if (is_negative) {
                 return {abs_int_min / base, abs_int_min % static_cast<T>(base)};
             }
             return {int_max / base, int_max % static_cast<T>(base)};
         }
-        else if constexpr (!std::is_same_v<T, uint128_polyfill>) {
-            return {uint_max / base, uint_max % static_cast<T>(base)};
-        }
         else {
-            SCN_EXPECT(base == 10 || base == 2 || base == 8 || base == 16);
-            if (base == 2) {
-                return {uint_max >> T{1u}, uint_max & T{1u}};
-            }
-            if (base == 8) {
-                return {uint_max >> T{3u}, uint_max & T{7u}};
-            }
-            if (base == 16) {
-                return {uint_max >> T{4u}, uint_max & T{15u}};
-            }
-            // Can't be bothered to figure out the math for base-10,
-            // using base-16, this is fine because this will only ever be used
-            // for filling NaN payloads that don't use the full 128 bits anyway
-            return {uint_max >> T{4u}, uint_max & T{15u}};
+            return {uint_max / base, uint_max % static_cast<T>(base)};
         }
     }();
 
     const CharT* begin = input.data();
     const CharT* const end = input.data() + input.size();
-    UnsignedT acc{};
+    uint128 acc{};
 
     while (begin != end) {
         const auto digit = char_to_int(*begin);
@@ -1685,24 +1668,7 @@ auto parse_int128(std::basic_string_view<CharT> input,
         }
         if (acc < limit_val || (acc == limit_val && digit <= max_digit)) {
             SCN_LIKELY_ATTR
-            if constexpr (std::is_same_v<T, uint128_polyfill>) {
-                if (base == 2) {
-                    acc = (acc << T{1u}) + static_cast<T>(digit);
-                }
-                else if (base == 8) {
-                    acc = (acc << T{3u}) + static_cast<T>(digit);
-                }
-                else if (base == 16) {
-                    acc = (acc << T{4u}) + static_cast<T>(digit);
-                }
-                else {
-                    acc =
-                        (acc << T{3u}) + (acc << T{1u}) + static_cast<T>(digit);
-                }
-            }
-            else {
-                acc = acc * static_cast<T>(base) + static_cast<T>(digit);
-            }
+            acc = acc * static_cast<T>(base) + static_cast<T>(digit);
         }
         else {
             return detail::unexpected_scan_error(
@@ -1718,14 +1684,13 @@ auto parse_int128(std::basic_string_view<CharT> input,
     return begin;
 }
 
-#if SCN_HAS_INT128
 template <typename CharT>
 auto parse_regular_integer(std::basic_string_view<CharT> input,
                            int128& val,
                            int base,
                            bool is_negative) -> scan_expected<const CharT*>
 {
-    return parse_int128<int128, uint128>(input, val, base, is_negative);
+    return parse_int128(input, val, base, is_negative);
 }
 
 template <typename CharT>
@@ -1735,20 +1700,9 @@ auto parse_regular_integer(std::basic_string_view<CharT> input,
                            bool is_negative) -> scan_expected<const CharT*>
 {
     SCN_EXPECT(!is_negative);
-    return parse_int128<int128, uint128>(input, val, base, is_negative);
+    return parse_int128(input, val, base, is_negative);
 }
 #endif
-
-template <typename CharT>
-[[maybe_unused]] auto parse_regular_integer(std::basic_string_view<CharT> input,
-                                            uint128_polyfill& val,
-                                            int base,
-                                            bool is_negative)
-    -> scan_expected<const CharT*>
-{
-    SCN_EXPECT(!is_negative);
-    return parse_int128<void, uint128_polyfill>(input, val, base, is_negative);
-}
 
 }  // namespace
 

@@ -90,14 +90,21 @@ target_link_libraries(my_program scn::scn)
 \subsection main-deps Dependencies
 
 scnlib internally optionally depends on
-<a href="https://github.com/fastfloat/fast_float">fast_float</a>.
+<a href="https://github.com/fastfloat/fast_float">fast_float</a>,
+for parsing floating-point values, and on
+<a href="https://github.com/eliaskosunen/eknan">eknan</a>,
+for storing the payloads of scanned NaNs (like `nan(0x1234)`) into floating-point values.
 
-By default, the CMake machinery automatically fetches, builds, and links it with `FetchContent`.
-It's only used in the implementation, and it isn't visible to the users of the library.
+By default, the CMake machinery automatically fetches, builds, and links them with `FetchContent`.
+They're only used in the implementation, and they aren't visible to the users of the library.
 
-Alternatively, by setting the CMake option `SCN_USE_EXTERNAL_FAST_FLOAT` to `ON`,
-fast_float is searched for using `find_package`. Use this option
-if you already have the library installed.
+Alternatively, by setting the CMake options `SCN_USE_EXTERNAL_FAST_FLOAT` and `SCN_USE_EXTERNAL_EKNAN` to `ON`,
+fast_float and eknan are searched for using `find_package`. Use these options
+if you already have the libraries installed.
+
+Both dependencies can be disabled, with `SCN_DISABLE_FAST_FLOAT` and `SCN_DISABLE_EKNAN`.
+Without fast_float, floating-point value parsing will be slower, but the behavior isn't affected.
+Without eknan, NaNs are still scanned, but their payloads are ignored.
 
 To enable support for regular expressions, a regex engine backend is required.
 The default option is to use `std::regex`, but an alternative can be picked
@@ -125,6 +132,13 @@ Library dependencies
 <td>`>= 6.0.0`</td>
 <td>⚠️</td>
 <td>Required if `SCN_DISABLE_FAST_FLOAT` is `OFF`.<br>Header only. Downloaded by default with `FetchContent`, controlled with `SCN_USE_EXTERNAL_FAST_FLOAT`.</td>
+</tr>
+
+<tr>
+<td>eknan</td>
+<td>`>= 0.1.0`</td>
+<td>⚠️</td>
+<td>Required if `SCN_DISABLE_EKNAN` is `OFF`.<br>Header only. Downloaded by default with `FetchContent`, controlled with `SCN_USE_EXTERNAL_EKNAN`.</td>
 </tr>
 
 <tr>
@@ -175,10 +189,11 @@ $ sudo cpupower frequency-set --governor powersave
 
 \subsection main-without-cmake Without CMake
 
-As mentioned above, the implementation of scnlib depends on fast_float.
-If you're not using CMake, you'll need to download it yourself, and
-make it available for the build.
-Since fast_float is a header-only library, it doesn't need to be built.
+As mentioned above, the implementation of scnlib depends on fast_float and eknan.
+If you're not using CMake, you'll need to download them yourself, and
+make them available for the build, or disable them by defining
+`SCN_DISABLE_FAST_FLOAT=1` or `SCN_DISABLE_EKNAN=1`.
+Since fast_float and eknan are header-only libraries, they don't need to be built.
 
 Headers for scnlib can be found from the `include/` directory, and source files from the `src/` directory.
 
@@ -187,7 +202,7 @@ Building and linking the library:
 \code{.sh}
 $ mkdir build
 $ cd build
-$ c++ -c -I../include/ ../src/*.cpp -Ipath-to-fast-float
+$ c++ -c -I../include/ ../src/*.cpp -Ipath-to-fast-float -Ipath-to-eknan
 $ ar rcs libscn.a *.o
 \endcode
 
@@ -226,6 +241,14 @@ scnlib configuration options
 <td>✅</td>
 <td>`OFF`</td>
 <td>Disable external dependency on FastFloat.<br>Using `ON` requires standard library support for floating-point `std::from_chars`.<sup>1</sup></td>
+</tr>
+
+<tr>
+<td>`SCN_DISABLE_EKNAN`</td>
+<td>✅</td>
+<td>✅</td>
+<td>`OFF`</td>
+<td>Disable external dependency on eknan.<br>Using `ON` makes the payloads of scanned NaNs ignored: `nan(0x1234)` gives the same value as `nan`.</td>
 </tr>
 
 <tr>
@@ -326,6 +349,14 @@ CMake build type configuration
 <td>❌</td>
 <td>`OFF`</td>
 <td>Use `find_package` to get fast_float, instead of CMake `FetchContent`</td>
+</tr>
+
+<tr>
+<td>`SCN_USE_EXTERNAL_EKNAN`</td>
+<td>✅</td>
+<td>❌</td>
+<td>`OFF`</td>
+<td>Use `find_package` to get eknan, instead of CMake `FetchContent`</td>
 </tr>
 
 <tr>

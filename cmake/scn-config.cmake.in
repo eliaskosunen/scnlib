@@ -6,6 +6,10 @@ if (NOT @SCN_FAST_FLOAT_BUNDLED@ AND NOT @SCN_DISABLE_FAST_FLOAT@)
     find_dependency(FastFloat)
 endif ()
 
+if (NOT @SCN_EKNAN_BUNDLED@ AND NOT @SCN_DISABLE_EKNAN@)
+    find_dependency(eknan 0.1.0)
+endif ()
+
 if (NOT @SCN_DISABLE_REGEX@ AND (@SCN_REGEX_BACKEND@ STREQUAL "Boost") AND @SCN_USE_EXTERNAL_REGEX_BACKEND@)
     find_dependency(Boost COMPONENTS regex)
 

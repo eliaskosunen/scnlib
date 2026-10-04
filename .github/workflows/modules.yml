@@ -92,13 +92,24 @@ jobs:
           cmake --build .
           sudo cmake --build . --target install
 
+      - name: Build eknan
+        if: matrix.external_deps == 1
+        run: |
+          git clone https://github.com/eliaskosunen/eknan -b v0.1.0 --depth=1
+          cd eknan
+          mkdir build
+          cd build
+          cmake -G "${{ matrix.generator }}" -DEKNAN_BUILD_TESTS=OFF ..
+          sudo cmake --build . --target install
+
       - name: Run CMake
         run: |
           mkdir ${{ runner.workspace }}/lib-build
           cd ${{ runner.workspace }}/lib-build
           if [[ ${{ matrix.external_deps }} -eq 1 ]]; then
             cmake -G "${{ matrix.generator }}" -DSCN_INSTALL=ON \
-                  -DSCN_USE_EXTERNAL_FAST_FLOAT=ON -DSCN_MODULES=ON \
+                  -DSCN_USE_EXTERNAL_FAST_FLOAT=ON -DSCN_USE_EXTERNAL_EKNAN=ON \
+                  -DSCN_MODULES=ON \
                   $GITHUB_WORKSPACE
           else
             cmake -G "${{ matrix.generator }}" -DSCN_INSTALL=ON \
