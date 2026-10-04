@@ -21,9 +21,10 @@
 #include <cstring>
 #include <iomanip>
 
-#include "nan_repr.h"
+#include "float_classification.h"
 #include "test_common.h"
 
+#include <scn/impl.h>
 #include <scn/scan.h>
 
 #if !defined(LDBL_MANT_DIG)
@@ -345,6 +346,49 @@ template <typename T>
 using float_test_suite_values =
     float_test_suite_value_set<T, float_kind_for<T>>;
 
+// Whether scanning `nan(payload)` should give a NaN with a payload different
+// from that of `quiet_NaN()`: T supports payloads, `payload` can be stored in
+// one, and isn't the payload of `quiet_NaN()`. That's usually 0, but not on
+// every platform (on m68k, every payload bit is set).
+// Without a payload (`std::nullopt`), the result should be `quiet_NaN()`.
+template <typename T>
+bool expect_nan_payload(std::optional<std::uint64_t> payload)
+{
+    if (!payload) {
+        return false;
+    }
+    if constexpr (scn::impl::float_conversion::supports_nan_payload<T>) {
+#if !SCN_DISABLE_EKNAN
+        constexpr auto bits = eknan::get_payload_bit_count<T>();
+        if constexpr (bits < 64) {
+            if ((*payload >> bits) != 0) {
+                return false;
+            }
+        }
+        using payload_type = decltype(eknan::get_payload(T{}));
+        // Fails if the result would be an infinity
+        // (payload 0 with the legacy NaN encoding)
+        T expected{};
+        if (!eknan::make_qnan(expected, static_cast<payload_type>(*payload))) {
+            return false;
+        }
+        return eknan::get_payload(expected) !=
+               eknan::get_payload(std::numeric_limits<T>::quiet_NaN());
+#endif
+    }
+    return false;
+}
+
+template <typename T>
+auto make_nan_check(std::optional<std::uint64_t> payload, bool negative = false)
+{
+    return [payload, negative](T parsed) {
+        return check_nan(
+            parsed, negative,
+            expect_nan_payload<T>(payload) ? payload : std::nullopt);
+    };
+}
+
 template <typename CharT, typename FloatT>
 class FloatTestSuiteBase : public testing::Test {
 protected:
@@ -426,10 +470,6 @@ protected:
                   << "quiet_NaN: "
                   << get_bytes_str(std::numeric_limits<type>::quiet_NaN())
                   << '\n'
-                  << "nan(\"0\"): "
-                  << get_bytes_str(make_nan_with_payload<type>("0")) << '\n'
-                  << "nan(\"1234\"): "
-                  << get_bytes_str(make_nan_with_payload<type>("1234")) << '\n'
                   << "------\n"
                   << std::flush;
     }
@@ -833,70 +873,87 @@ TYPED_TEST_P(FloatTestSuite, Infinity)
 
 TYPED_TEST_P(FloatTestSuite, Nan)
 {
-    if (!std::numeric_limits<typename TestFixture::float_type>::has_quiet_NaN) {
+    using Float = typename TestFixture::float_type;
+    if (!std::numeric_limits<Float>::has_quiet_NaN) {
         GTEST_SKIP() << "NaNs not supported by the float type";
     }
     if (!TestFixture::interface_type::supports_nan) {
         GTEST_SKIP() << "NaNs not supported by the reader";
     }
 
-    const auto check = [](typename TestFixture::float_type parsed) {
-        return check_nan_eq(
-            parsed,
-            std::numeric_limits<typename TestFixture::float_type>::quiet_NaN());
-    };
+    EXPECT_TRUE(TestFixture::test("nan", make_nan_check<Float>(std::nullopt)));
+    EXPECT_TRUE(TestFixture::test("NaN", make_nan_check<Float>(std::nullopt)));
+    EXPECT_TRUE(TestFixture::test("NAN", make_nan_check<Float>(std::nullopt)));
 
-    EXPECT_TRUE(TestFixture::test("nan", check));
-    EXPECT_TRUE(TestFixture::test("NaN", check));
-    EXPECT_TRUE(TestFixture::test("NAN", check));
+    EXPECT_TRUE(TestFixture::test("+nan", make_nan_check<Float>(std::nullopt)));
+    EXPECT_TRUE(
+        TestFixture::test("-nan", make_nan_check<Float>(std::nullopt, true)));
 }
 
 TYPED_TEST_P(FloatTestSuite, NanWithPayload)
 {
-    if (!std::numeric_limits<typename TestFixture::float_type>::has_quiet_NaN) {
+    using Float = typename TestFixture::float_type;
+    if (!std::numeric_limits<Float>::has_quiet_NaN) {
         GTEST_SKIP() << "NaNs not supported by the float type";
     }
     if (!TestFixture::interface_type::supports_nan) {
         GTEST_SKIP() << "NaNs not supported by the reader";
     }
 
-    const auto check_quiet = [](typename TestFixture::float_type parsed) {
-        if (!classify_float(parsed).is_quiet_nan()) {
-            return testing::AssertionFailure()
-                   << "not a quiet NaN (bytes: " << get_bytes_str(parsed)
-                   << ")";
-        }
-        return testing::AssertionSuccess();
-    };
-    const auto make_check = [&](const char* payload) {
-        SCN_EXPECT(payload);
-        return [payload, check_quiet](typename TestFixture::float_type parsed) {
-            if (auto r = check_quiet(parsed); !r) {
-                return r;
-            }
-            return check_nan_eq(
-                parsed, make_nan_with_payload<typename TestFixture::float_type>(
-                            payload));
-        };
+    const auto check = [](std::optional<std::uint64_t> payload,
+                          bool negative = false) {
+        return make_nan_check<Float>(payload, negative);
     };
 
-    EXPECT_TRUE(TestFixture::test("nan(0)", make_check("0")));
-    EXPECT_TRUE(TestFixture::test("nan(1234)", make_check("1234")));
-    EXPECT_TRUE(TestFixture::test("nan(01234)", make_check("01234")));
-    EXPECT_TRUE(TestFixture::test("nan(0x1234)", make_check("0x1234")));
-    EXPECT_TRUE(TestFixture::test("nan()", make_check("")));
+    EXPECT_TRUE(TestFixture::test("nan(0)", check(0)));
+    EXPECT_TRUE(TestFixture::test("nan(1234)", check(1234)));
+    EXPECT_TRUE(TestFixture::test("nan(01234)", check(01234)));
+    EXPECT_TRUE(TestFixture::test("nan(0o17)", check(15)));
+    EXPECT_TRUE(TestFixture::test("nan(0O17)", check(15)));
+    EXPECT_TRUE(TestFixture::test("nan(0x1234)", check(0x1234)));
+    EXPECT_TRUE(TestFixture::test("NAN(0X1234)", check(0x1234)));
+    EXPECT_TRUE(TestFixture::test("nan(0xaBc)", check(0xabc)));
+    EXPECT_TRUE(TestFixture::test("nan(0b101)", check(5)));
+    EXPECT_TRUE(TestFixture::test("nan(0B101)", check(5)));
 
-    EXPECT_TRUE(TestFixture::test("nan(Foo_Bar)", make_check("Foo_Bar")));
-    EXPECT_TRUE(TestFixture::test("nan(Foo_Bar)", make_check("")));
+    // `_` is allowed anywhere after the base prefix
+    EXPECT_TRUE(TestFixture::test("nan(0x1_2)", check(0x12)));
+    EXPECT_TRUE(TestFixture::test("nan(0x_1_2)", check(0x12)));
+    EXPECT_TRUE(TestFixture::test("nan(0b_1_0_1_)", check(5)));
+    EXPECT_TRUE(TestFixture::test("nan(0_17)", check(15)));
+    EXPECT_TRUE(TestFixture::test("nan(1__2)", check(12)));
+    EXPECT_TRUE(TestFixture::test("nan(12_)", check(12)));
+    EXPECT_TRUE(TestFixture::test("nan(_12)", check(12)));
 
-    // Payloads wide enough to reach the quiet/signaling bit (or overflow)
-    // must still produce a quiet NaN
-    EXPECT_TRUE(TestFixture::test("nan(0x200)", check_quiet));
-    EXPECT_TRUE(TestFixture::test("nan(0x400000)", check_quiet));
-    EXPECT_TRUE(TestFixture::test("nan(0x8000000000000)", check_quiet));
-    EXPECT_TRUE(TestFixture::test("nan(0xFFFFFFFFFFFFFFFF)", check_quiet));
-    EXPECT_TRUE(TestFixture::test(
-        "nan(0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF)", check_quiet));
+    EXPECT_TRUE(TestFixture::test("-nan(0x12)", check(0x12, true)));
+    EXPECT_TRUE(TestFixture::test("+nan(0x12)", check(0x12)));
+
+    // Invalid payloads give the default NaN
+    EXPECT_TRUE(TestFixture::test("nan()", check(std::nullopt)));
+    EXPECT_TRUE(TestFixture::test("nan(_)", check(std::nullopt)));
+    EXPECT_TRUE(TestFixture::test("nan(Foo_Bar)", check(std::nullopt)));
+    EXPECT_TRUE(TestFixture::test("-nan(Foo_Bar)", check(std::nullopt, true)));
+    EXPECT_TRUE(TestFixture::test("nan(0x)", check(std::nullopt)));
+    EXPECT_TRUE(TestFixture::test("nan(0x_)", check(std::nullopt)));
+    EXPECT_TRUE(TestFixture::test("nan(0b)", check(std::nullopt)));
+    EXPECT_TRUE(TestFixture::test("nan(0b2)", check(std::nullopt)));
+    EXPECT_TRUE(TestFixture::test("nan(089)", check(std::nullopt)));
+    EXPECT_TRUE(TestFixture::test("nan(0x1g)", check(std::nullopt)));
+    EXPECT_TRUE(TestFixture::test("nan(_0x12)", check(std::nullopt)));
+
+    // Payloads too large for the payload field of some (or all) types.
+    // These give the default NaN, instead of affecting the quiet bit or the
+    // exponent
+    EXPECT_TRUE(TestFixture::test("nan(0x40)", check(0x40)));
+    EXPECT_TRUE(TestFixture::test("nan(0x200)", check(0x200)));
+    EXPECT_TRUE(TestFixture::test("nan(0x400000)", check(0x400000)));
+    EXPECT_TRUE(
+        TestFixture::test("nan(0x8000000000000)", check(0x8000000000000)));
+    EXPECT_TRUE(TestFixture::test("nan(0xFFFFFFFFFFFFFFFF)",
+                                  check(0xFFFFFFFFFFFFFFFF)));
+    EXPECT_TRUE(
+        TestFixture::test("nan(0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF)",
+                          check(std::nullopt)));
 }
 
 TYPED_TEST_P(FloatTestSuite, Overflow)

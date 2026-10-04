@@ -273,3 +273,28 @@ TEST_F(SimpleDecimalConversionTest, PlanckConstant)
     EXPECT_TRUE(check_floating_eq(d, 6.62607015e-34));
     EXPECT_TRUE(check_floating_eq(d, 0x1.b860bde023111p-111));
 }
+
+TEST(FloatConversionTest, NanPayloadSupport)
+{
+    using scn::impl::float_conversion::supports_nan_payload;
+    constexpr bool expected = !SCN_DISABLE_EKNAN;
+
+    EXPECT_EQ(supports_nan_payload<float>, expected);
+    EXPECT_EQ(supports_nan_payload<double>, expected);
+    EXPECT_EQ(supports_nan_payload<long double>, expected);
+#if SCN_HAS_STD_F16
+    EXPECT_EQ(supports_nan_payload<std::float16_t>, expected);
+#endif
+#if SCN_HAS_STD_F32
+    EXPECT_EQ(supports_nan_payload<std::float32_t>, expected);
+#endif
+#if SCN_HAS_STD_F64
+    EXPECT_EQ(supports_nan_payload<std::float64_t>, expected);
+#endif
+#if SCN_HAS_STD_F128
+    EXPECT_EQ(supports_nan_payload<std::float128_t>, expected);
+#endif
+#if SCN_HAS_STD_BF16
+    EXPECT_EQ(supports_nan_payload<std::bfloat16_t>, expected);
+#endif
+}

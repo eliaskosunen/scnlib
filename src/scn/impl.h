@@ -105,6 +105,10 @@ SCN_GCC_POP
 
 #endif  // !SCN_DISABLE_FAST_FLOAT
 
+#if !SCN_DISABLE_EKNAN
+#include <eknan/eknan.hpp>
+#endif
+
 #if SCN_HAS_FLOAT_CHARCONV
 #include <charconv>
 #endif
@@ -4691,17 +4695,13 @@ using uint128_always_t = uint128;
 using uint128_always_t = uint128_polyfill;
 #endif
 
-// Value of the quiet bit (the msb of the fraction) in a quiet NaN
-inline constexpr unsigned nan_quiet_bit_value =
-    SCN_HAS_LEGACY_NAN_ENCODING ? 0u : 1u;
-
 SCN_GCC_PUSH
 SCN_GCC_IGNORE("-Wconversion")
 
 template <typename F>
 struct float_traits_impl_f32 {
     using type = F;
-    // can hold the significand/nan payload (only) + 4 bits
+    // can hold the significand (only) + 4 bits
     using significand_int_type = std::uint32_t;
 
     static constexpr unsigned exponent_bits = 8;
@@ -4729,37 +4729,6 @@ struct float_traits_impl_f32 {
         void apply_significand(significand_int_type s)
         {
             significand = s;
-        }
-
-        void clear_padding() {}
-    };
-
-    static constexpr unsigned nan_payload_bits = 22;
-
-    struct nan_repr {
-#if !SCN_IS_BIG_ENDIAN
-        unsigned payload : 22;
-        unsigned quiet_nan : 1;
-        unsigned exponent : 8;
-        unsigned sign : 1;
-#else
-        unsigned sign : 1;
-        unsigned exponent : 8;
-        unsigned quiet_nan : 1;
-        unsigned payload : 22;
-#endif
-
-        // Returns false, if the resulting value would not be a NaN.
-        // Possible only with the legacy NaN encoding, where a NaN
-        // with a zero payload can't be quiet.
-        bool apply_payload(significand_int_type p)
-        {
-            SCN_EXPECT(exponent == (1u << exponent_bits) - 1u);
-            payload = p;
-            // Always produce a quiet NaN,
-            // regardless of the bits of the original value
-            quiet_nan = nan_quiet_bit_value;
-            return quiet_nan != 0 || payload != 0;
         }
 
         void clear_padding() {}
@@ -4804,41 +4773,6 @@ struct float_traits_impl_f64 {
         {
             significand0 = static_cast<unsigned>(s >> 32);
             significand1 = static_cast<unsigned>(s);
-        }
-
-        void clear_padding() {}
-    };
-
-    static constexpr unsigned nan_payload_bits = 51;
-
-    struct nan_repr {
-#if !SCN_IS_BIG_ENDIAN && !SCN_IS_FLOAT_BIG_ENDIAN
-        unsigned payload1 : 32;
-        unsigned payload0 : 19;
-        unsigned quiet_nan : 1;
-        unsigned exponent : 11;
-        unsigned sign : 1;
-#elif !SCN_IS_BIG_ENDIAN && SCN_IS_FLOAT_BIG_ENDIAN
-        unsigned payload0 : 19;
-        unsigned quiet_nan : 1;
-        unsigned exponent : 11;
-        unsigned sign : 1;
-        unsigned payload1 : 32;
-#else
-        unsigned sign : 1;
-        unsigned exponent : 11;
-        unsigned quiet_nan : 1;
-        unsigned payload0 : 19;
-        unsigned payload1 : 32;
-#endif
-
-        bool apply_payload(significand_int_type p)
-        {
-            SCN_EXPECT(exponent == (1u << exponent_bits) - 1u);
-            payload0 = static_cast<unsigned>(p >> 32);
-            payload1 = static_cast<unsigned>(p);
-            quiet_nan = nan_quiet_bit_value;
-            return quiet_nan != 0 || payload0 != 0 || payload1 != 0;
         }
 
         void clear_padding() {}
@@ -4897,56 +4831,6 @@ struct float_traits_impl_f80 {
             padding = 0;
         }
     };
-
-    static constexpr unsigned nan_payload_bits = 62;
-
-    struct nan_repr {
-#if !SCN_IS_BIG_ENDIAN && !SCN_IS_FLOAT_BIG_ENDIAN
-        unsigned payload1 : 32;
-        unsigned payload0 : 30;
-        unsigned quiet_nan : 1;
-        unsigned one : 1;
-        unsigned exponent : 15;
-        unsigned sign : 1;
-        unsigned padding : 16;
-#elif !SCN_IS_BIG_ENDIAN && SCN_IS_FLOAT_BIG_ENDIAN
-        unsigned exponent : 15;
-        unsigned sign : 1;
-        unsigned padding : 16;
-        unsigned payload0 : 30;
-        unsigned quiet_nan : 1;
-        unsigned one : 1;
-        unsigned payload1 : 32;
-#else
-        unsigned padding : 16;
-        unsigned sign : 1;
-        unsigned exponent : 15;
-        unsigned one : 1;
-        unsigned quiet_nan : 1;
-        unsigned payload0 : 30;
-        unsigned payload1 : 32;
-#endif
-
-        void apply_exponent(int e)
-        {
-            exponent = static_cast<unsigned>(e);
-        }
-
-        bool apply_payload(significand_int_type p)
-        {
-            SCN_EXPECT(exponent == (1u << exponent_bits) - 1u);
-            one = 1;
-            payload0 = static_cast<unsigned>(p >> 32u);
-            payload1 = static_cast<unsigned>(p);
-            quiet_nan = nan_quiet_bit_value;
-            return quiet_nan != 0 || payload0 != 0 || payload1 != 0;
-        }
-
-        void clear_padding()
-        {
-            padding = 0;
-        }
-    };
 };
 
 template <typename F>
@@ -4995,50 +4879,6 @@ struct float_traits_impl_f128 {
             significand1 = static_cast<unsigned>(s >> 64u);
             significand2 = static_cast<unsigned>(s >> 32u);
             significand3 = static_cast<unsigned>(s);
-        }
-
-        void clear_padding() {}
-    };
-
-    static constexpr unsigned nan_payload_bits = 111;
-
-    struct nan_repr {
-#if !SCN_IS_BIG_ENDIAN && !SCN_IS_FLOAT_BIG_ENDIAN
-        unsigned payload3 : 32;
-        unsigned payload2 : 32;
-        unsigned payload1 : 32;
-        unsigned payload0 : 15;
-        unsigned quiet_nan : 1;
-        unsigned exponent : 15;
-        unsigned sign : 1;
-#elif !SCN_IS_BIG_ENDIAN && SCN_IS_FLOAT_BIG_ENDIAN
-        unsigned payload0 : 15;
-        unsigned quiet_nan : 1;
-        unsigned exponent : 15;
-        unsigned sign : 1;
-        unsigned payload1 : 32;
-        unsigned payload2 : 32;
-        unsigned payload3 : 32;
-#else
-        unsigned sign : 1;
-        unsigned exponent : 15;
-        unsigned quiet_nan : 1;
-        unsigned payload0 : 15;
-        unsigned payload1 : 32;
-        unsigned payload2 : 32;
-        unsigned payload3 : 32;
-#endif
-
-        bool apply_payload(significand_int_type p)
-        {
-            SCN_EXPECT(exponent == (1u << exponent_bits) - 1u);
-            payload0 = static_cast<unsigned>(p >> 96u);
-            payload1 = static_cast<unsigned>(p >> 64u);
-            payload2 = static_cast<unsigned>(p >> 32u);
-            payload3 = static_cast<unsigned>(p);
-            quiet_nan = nan_quiet_bit_value;
-            return quiet_nan != 0 || payload0 != 0 || payload1 != 0 ||
-                   payload2 != 0 || payload3 != 0;
         }
 
         void clear_padding() {}
@@ -5195,31 +5035,6 @@ struct float_traits_impl_doubledouble {
             std::memcpy(&low, &p.low, sizeof(double));
         }
     };
-
-    static constexpr unsigned nan_payload_bits = base::nan_payload_bits;
-
-    struct nan_repr {
-        base::nan_repr high;
-        base::value_repr low;
-
-        bool apply_payload(significand_int_type p)
-        {
-            if (!high.apply_payload(
-                    static_cast<base::significand_int_type>(p))) {
-                return false;
-            }
-
-            low.apply_significand(0);
-            low.exponent = 0;
-            return true;
-        }
-
-        void clear_padding()
-        {
-            high.clear_padding();
-            low.clear_padding();
-        }
-    };
 };
 
 template <typename F>
@@ -5256,32 +5071,6 @@ struct float_traits_impl_f16 {
 
         void clear_padding() {}
     };
-
-    static constexpr unsigned nan_payload_bits = 9;
-
-    struct nan_repr {
-#if !SCN_IS_BIG_ENDIAN
-        std::uint16_t payload : 9;
-        std::uint16_t quiet_nan : 1;
-        std::uint16_t exponent : 5;
-        std::uint16_t sign : 1;
-#else
-        std::uint16_t sign : 1;
-        std::uint16_t exponent : 5;
-        std::uint16_t quiet_nan : 1;
-        std::uint16_t payload : 9;
-#endif
-
-        bool apply_payload(significand_int_type p)
-        {
-            SCN_EXPECT(exponent == (1u << exponent_bits) - 1u);
-            payload = p;
-            quiet_nan = nan_quiet_bit_value;
-            return quiet_nan != 0 || payload != 0;
-        }
-
-        void clear_padding() {}
-    };
 };
 
 template <typename F>
@@ -5314,32 +5103,6 @@ struct float_traits_impl_bf16 {
         void apply_significand(significand_int_type s)
         {
             significand = s;
-        }
-
-        void clear_padding() {}
-    };
-
-    static constexpr unsigned nan_payload_bits = 6;
-
-    struct nan_repr {
-#if !SCN_IS_BIG_ENDIAN
-        std::uint16_t payload : 6;
-        std::uint16_t quiet_nan : 1;
-        std::uint16_t exponent : 8;
-        std::uint16_t sign : 1;
-#else
-        std::uint16_t sign : 1;
-        std::uint16_t exponent : 8;
-        std::uint16_t quiet_nan : 1;
-        std::uint16_t payload : 6;
-#endif
-
-        bool apply_payload(significand_int_type p)
-        {
-            SCN_EXPECT(exponent == (1u << exponent_bits) - 1u);
-            payload = p;
-            quiet_nan = nan_quiet_bit_value;
-            return quiet_nan != 0 || payload != 0;
         }
 
         void clear_padding() {}
@@ -6491,24 +6254,148 @@ struct convert_fast_float_traits {
 #endif
 };
 
-template <typename F>
-void apply_nan_payload(F& value,
-                       typename float_traits<F>::significand_int_type payload)
+template <typename T, typename = void>
+inline constexpr bool supports_nan_payload = false;
+
+#if !SCN_DISABLE_EKNAN
+template <typename T>
+inline constexpr bool supports_nan_payload<
+    T,
+    std::void_t<decltype(eknan::is_nan(SCN_DECLVAL(const T&)))>> = true;
+
+template <typename T, typename Iterator>
+std::optional<eknan::payload_type<T>> parse_nan_payload(Iterator it,
+                                                        Iterator last)
 {
-    static_assert(
-        !std::is_base_of_v<float_traits<F>, float_traits_impl_none<F>>, "");
+    using payload_type = eknan::payload_type<T>;
+    constexpr auto payload_bits = eknan::get_payload_bit_count<T>();
+    // Checking the range after every digit keeps `payload` from overflowing,
+    // as long as there's always room for one more hex digit
+    static_assert(payload_bits + 4 <= sizeof(payload_type) * 8);
 
-    using traits = float_traits<F>;
-    static_assert(sizeof(typename traits::nan_repr) <= sizeof(F),
-                  "nan_repr must not be larger than the float type");
+    const auto base_for_prefix = [](auto ch) -> unsigned {
+        if (ch == 'b' || ch == 'B') {
+            return 2;
+        }
+        if (ch == 'o' || ch == 'O') {
+            return 8;
+        }
+        if (ch == 'x' || ch == 'X') {
+            return 16;
+        }
+        return 0;
+    };
 
-    typename traits::nan_repr repr{};
-    std::memcpy(&repr, &value, sizeof(repr));
-    if (!repr.apply_payload(payload)) {
-        // Keep the original (default quiet) NaN, like glibc does
-        return;
+    unsigned base = 10;
+    if (it != last && *it == '0') {
+        // Without a letter after it, the `0` is parsed as a digit
+        base = 8;
+        if (auto next = ranges::next(it);
+            next != last && base_for_prefix(*next) != 0) {
+            base = base_for_prefix(*next);
+            it = ranges::next(next);
+        }
     }
-    std::memcpy(&value, &repr, sizeof(repr));
+
+    // Shifts instead of operator*, which uint128_polyfill doesn't have
+    const auto multiply_by_base = [base](payload_type x) {
+        switch (base) {
+            case 2:
+                return static_cast<payload_type>(x << 1u);
+            case 8:
+                return static_cast<payload_type>(x << 3u);
+            case 16:
+                return static_cast<payload_type>(x << 4u);
+            default:
+                return static_cast<payload_type>((x << 3u) + (x << 1u));
+        }
+    };
+
+    payload_type payload{};
+    bool has_digits = false;
+    for (; it != last; ++it) {
+        if (*it == '_') {
+            continue;
+        }
+
+        const auto digit = char_to_int(*it);
+        if (digit >= base) {
+            return std::nullopt;
+        }
+        payload = static_cast<payload_type>(multiply_by_base(payload) +
+                                            static_cast<payload_type>(digit));
+        if (static_cast<bool>(payload >> payload_bits)) {
+            return std::nullopt;
+        }
+        has_digits = true;
+    }
+
+    if (!has_digits) {
+        return std::nullopt;
+    }
+    return payload;
+}
+#endif  // !SCN_DISABLE_EKNAN
+
+// Sets the sign bit of `value` with bit operations. Floating-point operations,
+// like negation, may not keep the sign or the payload of a NaN.
+template <typename T>
+void set_sign_bit(T& value, bool negative)
+{
+    using traits = float_traits<T>;
+    if constexpr (std::is_base_of_v<float_traits_impl_none<>, traits>) {
+        if (static_cast<bool>(std::signbit(value)) != negative) {
+            value = -value;
+        }
+    }
+    else {
+        typename traits::value_repr repr{};
+        static_assert(sizeof(repr) <= sizeof(T));
+        std::memcpy(&repr, &value, sizeof(repr));
+
+        SCN_GCC_PUSH
+        SCN_GCC_IGNORE("-Wconversion")
+        if constexpr (std::is_base_of_v<float_traits_impl_doubledouble<T>,
+                                        traits>) {
+            if (static_cast<bool>(repr.high.sign) != negative) {
+                // Set signs of both doubles for a double-double
+                repr.high.sign = !repr.high.sign;
+                repr.low.sign = !repr.low.sign;
+            }
+        }
+        else {
+            repr.sign = negative;
+        }
+        SCN_GCC_POP
+
+        std::memcpy(&value, &repr, sizeof(repr));
+    }
+}
+
+template <typename T, typename Iterator>
+void make_quiet_nan(T& value,
+                    bool negative,
+                    Iterator payload_first,
+                    Iterator payload_last)
+{
+    value = std::numeric_limits<T>::quiet_NaN();
+
+    if constexpr (supports_nan_payload<T>) {
+#if !SCN_DISABLE_EKNAN
+        if (const auto payload =
+                parse_nan_payload<T>(payload_first, payload_last)) {
+            // make_qnan fails, leaving `value` unchanged,
+            // if the result would be an infinity
+            // (e.g., payload == 0 with the legacy encoding)
+            (void)eknan::make_qnan(value, *payload);
+        }
+#endif
+    }
+    else {
+        SCN_UNUSED(payload_first);
+        SCN_UNUSED(payload_last);
+    }
+    set_sign_bit(value, negative);
 }
 
 template <typename CharT, typename... TraitTs>
@@ -6624,64 +6511,25 @@ private:
                     }
                 }
 
-                case kind_type::nan_without_payload: {
-                    if constexpr (std::numeric_limits<T>::has_quiet_NaN) {
-                        value = m_sign == sign_type::minus_sign
-                                    ? -std::numeric_limits<T>::quiet_NaN()
-                                    : std::numeric_limits<T>::quiet_NaN();
-                        SCN_ENSURE(res->definite_end);
-                        return *res->definite_end;
-                    }
-                    else {
-                        return detail::unexpected_scan_error(
-                            scan_error::invalid_scanned_value,
-                            "Floating-point type doesn't support NaNs");
-                    }
-                }
-
+                case kind_type::nan_without_payload:
                 case kind_type::nan_with_payload: {
                     if constexpr (std::numeric_limits<T>::has_quiet_NaN) {
-                        value = m_sign == sign_type::minus_sign
-                                    ? -std::numeric_limits<T>::quiet_NaN()
-                                    : std::numeric_limits<T>::quiet_NaN();
-
                         SCN_ENSURE(res->definite_end);
-                        if constexpr (std::numeric_limits<T>::is_iec559) {
-                            std::string nan_payload;
-                            ranges::advance(it, std::strlen("nan("));
-                            for (; it != *res->definite_end; ++it) {
-                                if (*it == CharT{'_'}) {
-                                    continue;
-                                }
-                                if (*it == CharT{')'}) {
-                                    break;
-                                }
-                                SCN_EXPECT(is_ascii_char(*it) &&
-                                           char_to_int(*it) < 36);
-                                nan_payload.push_back(static_cast<char>(*it));
-                            }
-                            SCN_ENSURE(std::next(it) == *res->definite_end);
 
-                            using payload_type =
-                                typename float_traits<T>::significand_int_type;
-                            payload_type parsed_payload{};
-                            detail::format_specs payload_specs{};
-                            payload_specs.type =
-                                detail::presentation_type::int_generic;
-                            if (auto result =
-                                    reader_impl_for_int<char>{}.read_specs(
-                                        std::string_view(nan_payload),
-                                        payload_specs, parsed_payload, {})) {
-                                apply_nan_payload(value, parsed_payload);
+                        auto payload_first = *res->definite_end;
+                        auto payload_last = payload_first;
+                        if (m_kind == kind_type::nan_with_payload) {
+                            payload_first = ranges::next(it, 4);  // "nan("
+                            payload_last = payload_first;
+                            while (*payload_last != CharT{')'}) {
+                                ++payload_last;
                             }
-                            else if (result.error().code() ==
-                                     scan_error::value_positive_overflow) {
-                                apply_nan_payload(
-                                    value,
-                                    std::numeric_limits<payload_type>::max());
-                            }
+                            SCN_ENSURE(ranges::next(payload_last) ==
+                                       *res->definite_end);
                         }
 
+                        make_quiet_nan(value, m_sign == sign_type::minus_sign,
+                                       payload_first, payload_last);
                         return *res->definite_end;
                     }
                     else {
@@ -9105,25 +8953,3 @@ struct custom_reader {
 
 SCN_END_NAMESPACE
 }  // namespace scn
-
-namespace std {
-
-template <>
-struct numeric_limits<::scn::impl::uint128_polyfill> {
-    static constexpr bool is_specialized = true;
-
-    static constexpr ::scn::impl::uint128_polyfill min() noexcept
-    {
-        return {0u};
-    }
-
-    static constexpr ::scn::impl::uint128_polyfill max() noexcept
-    {
-        ::scn::impl::uint128_polyfill result;
-        result.low = std::numeric_limits<uint64_t>::max();
-        result.high = std::numeric_limits<uint64_t>::max();
-        return result;
-    }
-};
-
-}  // namespace std

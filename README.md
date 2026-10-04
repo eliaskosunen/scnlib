@@ -462,6 +462,9 @@ https://github.com/r1chardj0n3s/parse
 *fast_float* for floating-point number parsing:  
 https://github.com/fastfloat/fast_float
 
+*eknan* for NaN payloads:
+https://github.com/eliaskosunen/eknan
+
 *NanoRange* for a minimal `<ranges>` implementation:  
 https://github.com/tcbrindle/NanoRange
 

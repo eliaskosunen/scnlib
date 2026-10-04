@@ -15,10 +15,12 @@
 // This file is a part of scnlib:
 //     https://github.com/eliaskosunen/scnlib
 
-#include "nan_repr.h"
+#include "float_classification.h"
 #include "test_common.h"
 
 #include <scn/scan.h>
+
+#include <deque>
 
 TEST(FloatTest, FloatWithSuffix)
 {
@@ -122,6 +124,22 @@ TEST(FloatTest, NaN)
     result = scn::scan<double>("NaN", "{}");
     ASSERT_THAT(result, Succeeded());
     EXPECT_TRUE(classify_float(result->value()).is_nan());
+}
+
+TEST(FloatTest, NaNWithPayloadFromNonContiguousSource)
+{
+    const std::string_view str = "-nan(0x1_2) ";
+    std::deque<char> input(str.begin(), str.end());
+
+    auto result = scn::scan<double>(
+        scn::ranges::subrange{input.begin(), input.end()}, "{}");
+    ASSERT_THAT(result, Succeeded());
+    ASSERT_NE(result->begin(), input.end());
+    EXPECT_EQ(*result->begin(), ' ');
+
+    EXPECT_TRUE(check_nan(
+        result->value(), true,
+        SCN_DISABLE_EKNAN ? std::nullopt : std::optional<std::uint64_t>{0x12}));
 }
 
 TEST(FloatTest, PositiveZero)

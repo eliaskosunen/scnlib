@@ -48,6 +48,8 @@ option(SCN_REGEX_BOOST_USE_ICU "Use ICU with the regex backend (Boost SCN_REGEX_
 
 option(SCN_DISABLE_FAST_FLOAT "Disable the external dependency on fast_float" OFF)
 option(SCN_USE_EXTERNAL_FAST_FLOAT "Use find_package for fast_float, instead of FetchContent" OFF)
+option(SCN_DISABLE_EKNAN "Disable the external dependency on eknan, and with it, NaN payload parsing" OFF)
+option(SCN_USE_EXTERNAL_EKNAN "Use find_package for eknan, instead of FetchContent" OFF)
 
 option(SCN_USE_EXTERNAL_GTEST "Use find_package for GTest, instead of FetchContent" OFF)
 option(SCN_USE_EXTERNAL_BENCHMARK "Use find_package for Benchmark, instead of FetchContent" OFF)

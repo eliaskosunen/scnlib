@@ -10635,6 +10635,23 @@ SCN_CLANG_IGNORE("-Wdocumentation-unknown-command")
  * except a positive `+` sign and a base prefix (like `0x`) are always
  * allowed to be present.
  *
+ * Like with `std::from_chars`, infinities and NaNs are accepted,
+ * case-insensitively, as `inf`, `infinity`, `nan`, and
+ * `nan(n-char-sequence)`, where the n-char-sequence consists of ASCII letters,
+ * digits, and underscores. A scanned NaN is always quiet.
+ * If the n-char-sequence is an integer that fits in the payload of the NaN,
+ * it's used as the payload (except 0 with the legacy NaN encoding of
+ * pre-2008 MIPS and PA-RISC, which would make an infinity, and gives
+ * `std::numeric_limits<T>::quiet_NaN()` instead).
+ * The integer has the same base prefixes as with
+ * the `i` type specifier for integers (`0b`, `0o`, `0x`, or `0` for octal),
+ * and `_` is allowed anywhere after the base prefix.
+ * At least one digit is required.
+ * Otherwise, the result is `std::numeric_limits<T>::quiet_NaN()`, with the
+ * scanned sign.
+ * Payloads are only supported if scnlib is built with eknan
+ * (`SCN_DISABLE_EKNAN` is `OFF`), and eknan supports the binary format of `T`.
+ *
  * <table>
  * <caption id="type-float-table">
  * Floating-point types (`float`, `double`, and `long double`)

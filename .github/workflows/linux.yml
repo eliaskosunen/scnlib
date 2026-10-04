@@ -803,13 +803,24 @@ jobs:
           cmake --build .
           sudo cmake --build . --target install
 
+      - name: Build eknan
+        if: matrix.external_deps == 1
+        run: |
+          git clone https://github.com/eliaskosunen/eknan -b v0.1.0 --depth=1
+          cd eknan
+          mkdir build
+          cd build
+          cmake -G Ninja -DEKNAN_BUILD_TESTS=OFF ..
+          sudo cmake --build . --target install
+
       - name: Build scnlib
         run: |
           mkdir ${{ runner.workspace }}/lib-build
           cd ${{ runner.workspace }}/lib-build
           if [[ ${{ matrix.external_deps }} -eq 1 ]]; then
             cmake -G Ninja -DSCN_INSTALL=ON -DSCN_ENABLE_EXTRAS=OFF \
-                  -DSCN_USE_EXTERNAL_FAST_FLOAT=ON -DBUILD_SHARED_LIBS=${{ matrix.shared_libs }} \
+                  -DSCN_USE_EXTERNAL_FAST_FLOAT=ON -DSCN_USE_EXTERNAL_EKNAN=ON \
+                  -DBUILD_SHARED_LIBS=${{ matrix.shared_libs }} \
                   $GITHUB_WORKSPACE
           else
             cmake -G Ninja -DSCN_INSTALL=ON -DSCN_ENABLE_EXTRAS=OFF -DBUILD_SHARED_LIBS=${{ matrix.shared_libs }} \
@@ -868,6 +879,9 @@ jobs:
           - key: fast-float
             flags: "-DSCN_DISABLE_FAST_FLOAT=ON"
             enable_tests: 0
+          - key: eknan
+            flags: "-DSCN_DISABLE_EKNAN=ON"
+            enable_tests: 1
           - key: exceptions
             flags: "-DSCN_USE_EXCEPTIONS=OFF"
             enable_tests: 1
