@@ -196,13 +196,16 @@ make them available for the build, or disable them by defining
 Since fast_float and eknan are header-only libraries, they don't need to be built.
 
 Headers for scnlib can be found from the `include/` directory, and source files from the `src/` directory.
+Without CMake, only building scnlib as a static library is supported.
+Any configuration macros (see \ref configuration) need to be defined identically
+both when building scnlib, and when compiling code that uses it.
 
 Building and linking the library:
 
 \code{.sh}
 $ mkdir build
 $ cd build
-$ c++ -c -I../include/ ../src/*.cpp -Ipath-to-fast-float -Ipath-to-eknan
+$ c++ -c -I../include/ -I../src/ ../src/scn/*.cpp -Ipath-to-fast-float -Ipath-to-eknan
 $ ar rcs libscn.a *.o
 \endcode
 
