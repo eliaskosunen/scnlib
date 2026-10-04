@@ -1104,6 +1104,16 @@
 #define SCN_MAYBE_UNUSED /*maybe_unused*/
 #endif
 
+// SCN_DELETE(reason): `= delete("reason")`, if supported.
+// Clang defines __cpp_deleted_function in older modes too,
+// but warns about using it there with -Wpedantic.
+#if defined(__cpp_deleted_function) && __cpp_deleted_function >= 202403L && \
+    SCN_STD > SCN_STD_23
+#define SCN_DELETE(reason) delete (reason)
+#else
+#define SCN_DELETE(reason) delete
+#endif
+
 // SCN_NO_UNIQUE_ADDRESS
 #if SCN_HAS_NO_UNIQUE_ADDRESS_STD
 #define SCN_NO_UNIQUE_ADDRESS [[no_unique_address]]
