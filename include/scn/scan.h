@@ -5680,10 +5680,11 @@ public:
         max_error
     };
 
-private:
+    /// The error code enum.
+    /// Use this to name it, since `scan_error::code` names the member function
+    /// `code()`.
     using code_t = code;
 
-public:
     /// Constructs an error with `c` and `m`
     constexpr scan_error(code_t c, const char* m) noexcept : m_msg(m), m_code(c)
     {
@@ -5758,20 +5759,20 @@ constexpr bool operator!=(scan_error a, scan_error b) noexcept
     return !(a == b);
 }
 
-constexpr bool operator==(scan_error a, enum scan_error::code b) noexcept
+constexpr bool operator==(scan_error a, scan_error::code_t b) noexcept
 {
     return a.code() == b;
 }
-constexpr bool operator!=(scan_error a, enum scan_error::code b) noexcept
+constexpr bool operator!=(scan_error a, scan_error::code_t b) noexcept
 {
     return !(a == b);
 }
 
-constexpr bool operator==(enum scan_error::code a, scan_error b) noexcept
+constexpr bool operator==(scan_error::code_t a, scan_error b) noexcept
 {
     return a == b.code();
 }
-constexpr bool operator!=(enum scan_error::code a, scan_error b) noexcept
+constexpr bool operator!=(scan_error::code_t a, scan_error b) noexcept
 {
     return !(a == b);
 }
@@ -5885,7 +5886,7 @@ struct scan_expected : public expected<T, scan_error> {
 };
 
 namespace detail {
-constexpr auto unexpected_scan_error(enum scan_error::code c, const char* m)
+constexpr auto unexpected_scan_error(scan_error::code_t c, const char* m)
 {
     return unexpected(scan_error{c, m});
 }

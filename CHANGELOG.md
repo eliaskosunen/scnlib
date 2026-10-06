@@ -41,6 +41,7 @@ scn::scan<...>(strm, ...);
 
 ### Changes
 
+ * `scn::scan_error::code_t` is now public, to name the error code enum without `enum scn::scan_error::code`
  * Charset scanning (`{:[...]}` with strings) now accepts an empty string as a valid result.
    Previously, at least a single character must've matched for scanning to succeed.
  * A read error from a C `FILE` now fails the scan, instead of being treated as the end of the input

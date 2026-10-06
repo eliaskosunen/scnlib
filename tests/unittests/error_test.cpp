@@ -26,7 +26,8 @@ TEST(ErrorTest, General)
     const auto invalid_scanned_value_error =
         scn::scan_error{scn::scan_error::invalid_scanned_value, ""};
 
-    EXPECT_EQ(eof_error.code(), scn::scan_error::end_of_input);
+    const scn::scan_error::code_t eof_code = eof_error.code();
+    EXPECT_EQ(eof_code, scn::scan_error::end_of_input);
     EXPECT_EQ(invalid_scanned_value_error.code(),
               scn::scan_error::invalid_scanned_value);
 

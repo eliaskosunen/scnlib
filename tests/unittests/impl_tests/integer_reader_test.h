@@ -361,7 +361,7 @@ protected:
     SCN_NODISCARD testing::AssertionResult check_failure_with_code(
         const Result& result,
         int_type val,
-        enum scn::scan_error::code c) const
+        scn::scan_error::code_t c) const
     {
         if (result) {
             return testing::AssertionFailure()
@@ -385,7 +385,7 @@ protected:
     SCN_NODISCARD testing::AssertionResult check_failure_with_code_and_value(
         const Result& result,
         int_type val,
-        enum scn::scan_error::code c,
+        scn::scan_error::code_t c,
         int_type expected_value) const
     {
         if (result) {
