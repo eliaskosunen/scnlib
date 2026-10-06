@@ -2,7 +2,7 @@
 
 ## 5.0.0
 
-_Release 2025-xx-xx_
+_Release 2026-xx-xx_
 
 ### Breaking changes
 
@@ -31,14 +31,25 @@ scn::scan<...>(strm, ...);
  * Previously deprecated `scn::visit_scan_arg` is now removed. Use `scn::basic_scan_arg::visit` instead.
  * The `basic_scan_context` constructor only taking an iterator is now deprecated.
    Instead, use the new constructors that take a range, or both an interator and a sentinel.
- * `scn::invalid_input_range` renamed as `scn::input_source`.
- * `file_marker` removed as a return type of `scan`
+ * `scn::invalid_input_range` is renamed to `scn::invalid_source`.
+ * `file_marker` is removed as a return type of `scan`
+ * The `basic_scan_parse_context` constructor only taking a format string is now deprecated.
+   Instead, use the new constructor taking a `scn::source_tag<Source>`, which enables more compile-time checking.
+ * `scn::basic_regex_matches` is no longer a `std::vector` of `std::optional<scn::basic_regex_match>`:
+   it can't be modified, and doesn't have `data()`, `swap()`, or reverse iterators.
+   `operator[]`, `at()`, and its iterators return the `std::optional<scn::basic_regex_match>` by value.
 
 ### Changes
 
  * Charset scanning (`{:[...]}` with strings) now accepts an empty string as a valid result.
    Previously, at least a single character must've matched for scanning to succeed.
+ * A read error from a C `FILE` now fails the scan, instead of being treated as the end of the input
  * Textual boolean representations are now case-insensitive, so both `true` and `True` (and so on) are accepted.
+ * IEEE 754 floating-point values are now parsed with a custom built-in implementation
+   when fast_float and `std::from_chars` can't be used, instead of falling back on `std::strtod`.
+ * The configuration macros are now in a separate header, `<scn/macros.h>`
+ * When scnlib is the top-level CMake project (and `SCN_DISABLE_TOP_PROJECT` is `OFF`), symbols are hidden by default
+   (`CMAKE_CXX_VISIBILITY_PRESET` and `CMAKE_VISIBILITY_INLINES_HIDDEN`)
 
 ### Features
 
@@ -46,11 +57,9 @@ scn::scan<...>(strm, ...);
    (previous requirement was `ranges::forward_range`)
    * When the source range is an `input_range`, the range type returned from `scn::scan` isn't a `subrange` anymore,
      but another `input_range`.
- * Reading from stdin with any scanning function is now thread-safe.
- * More resilient parsing of files with `scn::scan_file`
+ * `scn::scan_file` has been added, to scan from a `FILE` more resiliently than from a `FILE*` directly
  * `std::istream`s can now be used as sources for `scn::scan`, if `"scn/istream.h"` is included.
    * Instead of `.range()`, the member function to access the stream from a `scn::scan` result object is `.stream()`.
- * `scn::vinput` has been added to read from stdin directly with the type-erased API.
  * Locale-enabled overloads for `scn::input` have been added.
  * Extended standard floating point types can now be scanned, if they're supported by the implementation
    (`std::float16_t`, `std::float32_t`, `std::float64_t`, `std::float128_t`, `std::bfloat16_t`)
@@ -58,15 +67,24 @@ scn::scan<...>(strm, ...);
    Aliases for these types are provided and used, with `scn::int128` and `scn::uint128`.
  * The payload of a NaN in floating-point values is now parsed and stored in the scanned floating-point value.
  * C++20 modules support
+ * Building as a shared library (with `BUILD_SHARED_LIBS`) is now supported, with the exported symbols marked explicitly
  * More optimized reading for source ranges that are both `bidirectional_range`s and `sized_range`s.
+ * Regular expressions can now be scanned from non-contiguous sources, with the `std` and `Boost` regex backends
+ * Compile-time format string checking now also runs `scanner::parse` for user-defined types,
+   and rejects scanning a `string_view` or a regex from a source that can't support it
+   * `scn::basic_scan_parse_context` exposes this information with `is_source_contiguous()` and `is_source_borrowed()`
 
 ### Fixes
 
  * Tons of compiler warning fixes
  * Fix compiler errors occurring from accidental use of ADL when calling `decay_copy` unqualified
- * Files are no longer considered "borrowed" by `scn::basic_scan_parse_context`
- * Fix symbol visibility when compiling as a shared library
+ * Fix scanning from stdin not being thread-safe on MinGW, and with other C standard libraries not recognized by scnlib,
+   since the `FILE` wasn't locked
  * Add compatibility with fast_float v7 and v8
+ * Fix a double-width character (like an emoji) being read when only one column of field width or precision was left
+ * Fix the last character of a character array source being dropped when it isn't a null terminator
+ * Fix compilation with GCC 8 in debug mode
+ * Fix CMake deprecation warnings caused by `FetchContent_Populate` and `CMAKE_FIND_PACKAGE_SORT_ORDER`
 
 ## 4.0.1
 
