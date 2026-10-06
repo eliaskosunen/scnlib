@@ -42,7 +42,260 @@ std::tuple<testing::AssertionResult, Args...> do_test(
     return std::tuple_cat(std::tuple{testing::AssertionSuccess()},
                           result->values());
 }
+
+#if !SCN_DISABLE_LOCALE
+struct comma_grouping_numpunct : std::numpunct<char> {
+    char do_thousands_sep() const override
+    {
+        return ',';
+    }
+    std::string do_grouping() const override
+    {
+        return "\3";
+    }
+};
+#endif
+
+template <typename T, typename = void>
+inline constexpr bool can_call_scan_int = false;
+template <typename T>
+inline constexpr bool can_call_scan_int<
+    T,
+    std::void_t<decltype(scn::scan_int<T>(std::string_view{}))>> = true;
+
+template <typename T, typename = void>
+inline constexpr bool can_call_scan_int_exhaustive_valid = false;
+template <typename T>
+inline constexpr bool can_call_scan_int_exhaustive_valid<
+    T,
+    std::void_t<decltype(scn::scan_int_exhaustive_valid<T>(
+        std::string_view{}))>> = true;
+
+char digit_to_char(unsigned digit)
+{
+    return "0123456789abcdefghijklmnopqrstuvwxyz"[digit];
+}
+unsigned char_to_digit(char ch)
+{
+    return ch <= '9' ? static_cast<unsigned>(ch - '0')
+                     : static_cast<unsigned>(ch - 'a' + 10);
+}
+
+std::string to_base(uint64_t value, int base)
+{
+    std::string result;
+    do {
+        result.insert(result.begin(),
+                      digit_to_char(static_cast<unsigned>(
+                          value % static_cast<uint64_t>(base))));
+        value /= static_cast<uint64_t>(base);
+    } while (value != 0);
+    return result;
+}
+
+// Digit-string addition, for values that don't fit in an uint64_t
+std::string add_in_base(std::string_view lhs, std::string_view rhs, int base)
+{
+    std::string result;
+    unsigned carry = 0;
+    for (size_t i = 0; i < std::max(lhs.size(), rhs.size()) || carry != 0;
+         ++i) {
+        unsigned sum = carry;
+        if (i < lhs.size()) {
+            sum += char_to_digit(lhs[lhs.size() - 1 - i]);
+        }
+        if (i < rhs.size()) {
+            sum += char_to_digit(rhs[rhs.size() - 1 - i]);
+        }
+        result.insert(result.begin(),
+                      digit_to_char(sum % static_cast<unsigned>(base)));
+        carry = sum / static_cast<unsigned>(base);
+    }
+    return result;
+}
+
+struct base_format {
+    int base;
+    std::string_view prefix;
+    std::string format;
+
+    // With `{:i}`, a leading zero would make the number octal
+    bool allows_leading_zeroes() const
+    {
+        return !(format == "{:i}" && prefix.empty());
+    }
+};
+
+std::vector<base_format> get_formats_for_all_bases()
+{
+    std::vector<base_format> formats;
+    for (int base = 2; base <= 36; ++base) {
+        formats.push_back({base, "", "{:r" + std::to_string(base) + "}"});
+    }
+    formats.push_back({2, "", "{:b}"});
+    formats.push_back({2, "0b", "{:b}"});
+    formats.push_back({2, "0b", "{:i}"});
+    formats.push_back({8, "", "{:o}"});
+    formats.push_back({8, "0o", "{:o}"});
+    formats.push_back({8, "0", "{:i}"});
+    formats.push_back({10, "", "{}"});
+    formats.push_back({10, "", "{:d}"});
+    formats.push_back({10, "", "{:i}"});
+    formats.push_back({16, "", "{:x}"});
+    formats.push_back({16, "0x", "{:x}"});
+    formats.push_back({16, "0x", "{:i}"});
+    return formats;
+}
+
+// Values around the limits of 64-bit integers, as digit strings in `base`
+struct limit_digits {
+    explicit limit_digits(int base)
+        : u64_max(to_base(std::numeric_limits<uint64_t>::max(), base)),
+          u64_max_plus_one(add_in_base(u64_max, "1", base)),
+          i64_max(to_base(std::numeric_limits<int64_t>::max(), base)),
+          i64_max_plus_one(add_in_base(i64_max, "1", base)),
+          i64_max_plus_two(add_in_base(i64_max, "2", base)),
+          // 2^64 + base^(max_digits-1): has max_digits digits in most bases,
+          // and wraps around to base^(max_digits-1) in an uint64_t
+          wrapping(add_in_base(u64_max_plus_one,
+                               "1" + std::string(u64_max.size() - 1, '0'),
+                               base))
+    {
+    }
+
+    bool has_wrapping() const
+    {
+        return wrapping.size() == u64_max.size();
+    }
+
+    std::string u64_max, u64_max_plus_one, i64_max, i64_max_plus_one,
+        i64_max_plus_two, wrapping;
+};
+
+template <typename T>
+void check_scan_succeeds(const std::string& input,
+                         const std::string& format,
+                         T expected)
+{
+    auto result = scn::scan<T>(input, scn::runtime_format(format));
+    ASSERT_THAT(result, Succeeded()) << input << ' ' << format;
+    EXPECT_EQ(result->value(), expected) << input << ' ' << format;
+    EXPECT_THAT(result->range(), IsEmptyRange()) << input << ' ' << format;
+}
+
+template <typename T>
+void check_scan_fails(const std::string& input,
+                      const std::string& format,
+                      scn::scan_error::code_t code)
+{
+    EXPECT_THAT(scn::scan<T>(input, scn::runtime_format(format)),
+                FailedWith(code))
+        << input << ' ' << format;
+}
+
+template <typename T>
+void test_signed_64bit_limits()
+{
+    static_assert(std::is_signed_v<T> && sizeof(T) == 8);
+    constexpr auto max = std::numeric_limits<T>::max();
+    constexpr auto min = std::numeric_limits<T>::min();
+    constexpr auto positive_overflow = scn::scan_error::value_positive_overflow;
+    constexpr auto negative_overflow = scn::scan_error::value_negative_overflow;
+
+    for (const auto& base_fmt : get_formats_for_all_bases()) {
+        const auto& format = base_fmt.format;
+        const limit_digits digits{base_fmt.base};
+        const auto positive = [&](const std::string& d) {
+            return std::string{base_fmt.prefix} + d;
+        };
+        const auto negative = [&](const std::string& d) {
+            return "-" + positive(d);
+        };
+
+        check_scan_succeeds<T>(positive(digits.i64_max), format, max);
+        check_scan_succeeds<T>(negative(digits.i64_max_plus_one), format, min);
+        if (base_fmt.allows_leading_zeroes()) {
+            check_scan_succeeds<T>(positive("000" + digits.i64_max), format,
+                                   max);
+            check_scan_succeeds<T>(negative("000" + digits.i64_max_plus_one),
+                                   format, min);
+        }
+
+        check_scan_fails<T>(positive(digits.i64_max_plus_one), format,
+                            positive_overflow);
+        check_scan_fails<T>(negative(digits.i64_max_plus_two), format,
+                            negative_overflow);
+        check_scan_fails<T>(positive(digits.u64_max), format,
+                            positive_overflow);
+        check_scan_fails<T>(negative(digits.u64_max), format,
+                            negative_overflow);
+        check_scan_fails<T>(positive(digits.u64_max_plus_one), format,
+                            positive_overflow);
+        check_scan_fails<T>(negative(digits.u64_max_plus_one), format,
+                            negative_overflow);
+        if (digits.has_wrapping()) {
+            check_scan_fails<T>(positive(digits.wrapping), format,
+                                positive_overflow);
+            check_scan_fails<T>(negative(digits.wrapping), format,
+                                negative_overflow);
+        }
+    }
+}
+
+template <typename T>
+void test_unsigned_64bit_limits()
+{
+    static_assert(std::is_unsigned_v<T> && sizeof(T) == 8);
+    constexpr auto max = std::numeric_limits<T>::max();
+    constexpr auto positive_overflow = scn::scan_error::value_positive_overflow;
+
+    for (const auto& base_fmt : get_formats_for_all_bases()) {
+        const auto& format = base_fmt.format;
+        const limit_digits digits{base_fmt.base};
+        const auto positive = [&](const std::string& d) {
+            return std::string{base_fmt.prefix} + d;
+        };
+
+        check_scan_succeeds<T>(positive(digits.u64_max), format, max);
+        check_scan_succeeds<T>(positive("0"), format, T{0});
+        if (base_fmt.allows_leading_zeroes()) {
+            check_scan_succeeds<T>(positive("000" + digits.u64_max), format,
+                                   max);
+        }
+
+        check_scan_fails<T>(positive(digits.u64_max_plus_one), format,
+                            positive_overflow);
+        if (digits.has_wrapping()) {
+            check_scan_fails<T>(positive(digits.wrapping), format,
+                                positive_overflow);
+        }
+    }
+}
 }  // namespace
+
+// Only the types instantiated in the compiled library can be used
+static_assert(can_call_scan_int<int>);
+static_assert(can_call_scan_int<unsigned long long>);
+static_assert(can_call_scan_int<signed char>);
+static_assert(!can_call_scan_int<bool>);
+static_assert(!can_call_scan_int<char>);
+static_assert(!can_call_scan_int<wchar_t>);
+static_assert(!can_call_scan_int<char16_t>);
+static_assert(!can_call_scan_int<char32_t>);
+#if SCN_HAS_CHAR8
+static_assert(!can_call_scan_int<char8_t>);
+#endif
+static_assert(can_call_scan_int_exhaustive_valid<int>);
+static_assert(can_call_scan_int_exhaustive_valid<unsigned char>);
+static_assert(!can_call_scan_int_exhaustive_valid<bool>);
+static_assert(!can_call_scan_int_exhaustive_valid<char16_t>);
+#if SCN_HAS_INT128
+static_assert(can_call_scan_int<scn::int128>);
+static_assert(can_call_scan_int<scn::uint128>);
+// No instantiation of scan_int_exhaustive_valid_impl for 128-bit integers
+static_assert(!can_call_scan_int_exhaustive_valid<scn::int128>);
+static_assert(!can_call_scan_int_exhaustive_valid<scn::uint128>);
+#endif
 
 TEST(IntegerTest, Simple)
 {
@@ -196,38 +449,35 @@ TEST(IntegerTest, WonkyInputWithThsep2)
     EXPECT_EQ(result->value(), 0);
 }
 
-namespace {
-struct comma_grouping_numpunct : std::numpunct<char> {
-    char do_thousands_sep() const override
-    {
-        return ',';
-    }
-    std::string do_grouping() const override
-    {
-        return "\3";
-    }
-};
-}  // namespace
-
-// A thousands separator not followed by a digit is not part of the number
-TEST(IntegerTest, TrailingThsepIsNotConsumed)
+TEST(IntegerTest, TrailingThsepIsNotConsumedBeforeComma)
 {
     const std::locale loc{std::locale::classic(), new comma_grouping_numpunct};
 
     auto result = scn::scan<int, int>(loc, "1, 2", "{:L}, {}");
     ASSERT_THAT(result, Succeeded());
-    EXPECT_THAT(result->values(), testing::FieldsAre(1, 2));
+    auto [first, second] = result->values();
+    EXPECT_EQ(first, 1);
+    EXPECT_EQ(second, 2);
+    EXPECT_THAT(result->range(), IsEmptyRange());
+}
+TEST(IntegerTest, TrailingThsepIsNotConsumedAfterGroups)
+{
+    const std::locale loc{std::locale::classic(), new comma_grouping_numpunct};
 
     std::string_view input = "12,345, x";
-    auto trailing = scn::scan<int>(loc, input, "{:L}");
-    ASSERT_THAT(trailing, Succeeded());
-    EXPECT_EQ(trailing->value(), 12345);
-    EXPECT_EQ(trailing->begin(), input.begin() + 6);
+    auto result = scn::scan<int>(loc, input, "{:L}");
+    ASSERT_THAT(result, Succeeded());
+    EXPECT_EQ(result->value(), 12345);
+    EXPECT_EQ(result->begin(), input.begin() + 6);
+}
+TEST(IntegerTest, TrailingThsepIsNotConsumedWhenRepeated)
+{
+    const std::locale loc{std::locale::classic(), new comma_grouping_numpunct};
 
-    auto repeated = scn::scan<int>(loc, "1,,", "{:L}");
-    ASSERT_THAT(repeated, Succeeded());
-    EXPECT_EQ(repeated->value(), 1);
-    EXPECT_STREQ(repeated->begin(), ",,");
+    auto result = scn::scan<int>(loc, "1,,", "{:L}");
+    ASSERT_THAT(result, Succeeded());
+    EXPECT_EQ(result->value(), 1);
+    EXPECT_STREQ(result->begin(), ",,");
 }
 #endif
 
@@ -663,47 +913,6 @@ TEST(IntegerTest, Fuzz_RepeatedDeque2)
     EXPECT_THAT(result, Failed());
 }
 
-namespace {
-template <typename T, typename = void>
-inline constexpr bool can_call_scan_int = false;
-template <typename T>
-inline constexpr bool can_call_scan_int<
-    T,
-    std::void_t<decltype(scn::scan_int<T>(std::string_view{}))>> = true;
-
-template <typename T, typename = void>
-inline constexpr bool can_call_scan_int_exhaustive_valid = false;
-template <typename T>
-inline constexpr bool can_call_scan_int_exhaustive_valid<
-    T,
-    std::void_t<decltype(scn::scan_int_exhaustive_valid<T>(
-        std::string_view{}))>> = true;
-}  // namespace
-
-// Only the types instantiated in the compiled library can be used
-static_assert(can_call_scan_int<int>);
-static_assert(can_call_scan_int<unsigned long long>);
-static_assert(can_call_scan_int<signed char>);
-static_assert(!can_call_scan_int<bool>);
-static_assert(!can_call_scan_int<char>);
-static_assert(!can_call_scan_int<wchar_t>);
-static_assert(!can_call_scan_int<char16_t>);
-static_assert(!can_call_scan_int<char32_t>);
-#if SCN_HAS_CHAR8
-static_assert(!can_call_scan_int<char8_t>);
-#endif
-static_assert(can_call_scan_int_exhaustive_valid<int>);
-static_assert(can_call_scan_int_exhaustive_valid<unsigned char>);
-static_assert(!can_call_scan_int_exhaustive_valid<bool>);
-static_assert(!can_call_scan_int_exhaustive_valid<char16_t>);
-#if SCN_HAS_INT128
-static_assert(can_call_scan_int<scn::int128>);
-static_assert(can_call_scan_int<scn::uint128>);
-// No instantiation of scan_int_exhaustive_valid_impl for 128-bit integers
-static_assert(!can_call_scan_int_exhaustive_valid<scn::int128>);
-static_assert(!can_call_scan_int_exhaustive_valid<scn::uint128>);
-#endif
-
 TEST(ScanIntTest, Simple)
 {
     std::string_view input = "42";
@@ -712,26 +921,34 @@ TEST(ScanIntTest, Simple)
     EXPECT_THAT(result->range(), IsEmptyRange());
     EXPECT_EQ(result->value(), 42);
 }
-TEST(ScanIntTest, Bases)
+TEST(ScanIntTest, Hex)
 {
-    auto hex = scn::scan_int<int>("ff", 16);
-    ASSERT_THAT(hex, Succeeded());
-    EXPECT_EQ(hex->value(), 255);
-
-    auto base36 = scn::scan_int<int>("z", 36);
-    ASSERT_THAT(base36, Succeeded());
-    EXPECT_EQ(base36->value(), 35);
-
-    auto detected = scn::scan_int<int>("0x10", 0);
-    ASSERT_THAT(detected, Succeeded());
-    EXPECT_EQ(detected->value(), 16);
-
+    auto result = scn::scan_int<int>("ff", 16);
+    ASSERT_THAT(result, Succeeded());
+    EXPECT_THAT(result->range(), IsEmptyRange());
+    EXPECT_EQ(result->value(), 255);
+}
+TEST(ScanIntTest, Base36)
+{
+    auto result = scn::scan_int<int>("z", 36);
+    ASSERT_THAT(result, Succeeded());
+    EXPECT_THAT(result->range(), IsEmptyRange());
+    EXPECT_EQ(result->value(), 35);
+}
+TEST(ScanIntTest, AutoDetectedBase)
+{
+    auto result = scn::scan_int<int>("0x10", 0);
+    ASSERT_THAT(result, Succeeded());
+    EXPECT_THAT(result->range(), IsEmptyRange());
+    EXPECT_EQ(result->value(), 16);
+}
+TEST(ScanIntTest, InvalidBase)
+{
     constexpr std::array<int, 4> invalid_bases{-1, 1, 37, 100};
     for (int base : invalid_bases) {
         auto result = scn::scan_int<int>("1", base);
-        ASSERT_FALSE(result) << base;
-        EXPECT_EQ(result.error().code(),
-                  scn::scan_error::invalid_format_string);
+        ASSERT_THAT(result, FailedWith(scn::scan_error::invalid_format_string))
+            << base;
     }
 }
 
@@ -780,290 +997,7 @@ TEST(ScanIntTest, Empty)
     ASSERT_THAT(result, FailedWith(scn::scan_error::end_of_input));
 }
 
-TEST(ScanIntExhaustiveValidTest, Simple)
-{
-    EXPECT_EQ(scn::scan_int_exhaustive_valid<int>("42"), 42);
-}
-TEST(ScanIntExhaustiveValidTest, Negative)
-{
-    EXPECT_EQ(scn::scan_int_exhaustive_valid<int>("-42"), -42);
-}
-TEST(ScanIntExhaustiveValidTest, Large)
-{
-    EXPECT_EQ(scn::scan_int_exhaustive_valid<long long>("999999999999"),
-              999999999999);
-    EXPECT_EQ(scn::scan_int_exhaustive_valid<long long>("1234567890123456"),
-              1234567890123456);
-    EXPECT_EQ(scn::scan_int_exhaustive_valid<long long>("-123456789"),
-              -123456789);
-}
-
-TEST(IntegerArbitraryBaseTest, Simple)
-{
-    auto hex = scn::scan<int>("ff", "{:r16}");
-    ASSERT_THAT(hex, Succeeded());
-    EXPECT_EQ(hex->value(), 255);
-
-    auto base36 = scn::scan<int>("Zz", "{:R36}");
-    ASSERT_THAT(base36, Succeeded());
-    EXPECT_EQ(base36->value(), 35 * 36 + 35);
-
-    auto base3 = scn::scan<unsigned>("-12", "{:r3}");
-    ASSERT_THAT(base3, Failed());
-
-    auto negative = scn::scan<int>("-12", "{:r3}");
-    ASSERT_THAT(negative, Succeeded());
-    EXPECT_EQ(negative->value(), -5);
-}
-
-TEST(IntegerArbitraryBaseTest, NoBasePrefix)
-{
-    auto result = scn::scan<int>("0x1f", "{:r16}");
-    ASSERT_THAT(result, Succeeded());
-    EXPECT_EQ(result->value(), 0);
-    EXPECT_STREQ(result->begin(), "x1f");
-}
-
-TEST(IntegerArbitraryBaseTest, InvalidBase)
-{
-    constexpr std::array<const char*, 8> formats{"{:r}",    "{:r1}", "{:r37}",
-                                                 "{:r100}", "{:rx}", "{:r010}",
-                                                 "{:r02}",  "{:r0}"};
-    for (auto fmt : formats) {
-        auto result = scn::scan<int>("1", scn::runtime_format(fmt));
-        ASSERT_THAT(result, Failed()) << fmt;
-        EXPECT_EQ(result.error().code(), scn::scan_error::invalid_format_string)
-            << fmt;
-    }
-
-    auto localized = scn::scan<int>("1", scn::runtime_format("{:Lr16}"));
-    ASSERT_THAT(localized, Failed());
-}
-
-namespace {
-char digit_to_char(unsigned digit)
-{
-    return "0123456789abcdefghijklmnopqrstuvwxyz"[digit];
-}
-unsigned char_to_digit(char ch)
-{
-    return ch <= '9' ? static_cast<unsigned>(ch - '0')
-                     : static_cast<unsigned>(ch - 'a' + 10);
-}
-
-std::string to_base(uint64_t value, int base)
-{
-    std::string result;
-    do {
-        result.insert(result.begin(),
-                      digit_to_char(static_cast<unsigned>(
-                          value % static_cast<uint64_t>(base))));
-        value /= static_cast<uint64_t>(base);
-    } while (value != 0);
-    return result;
-}
-
-// Digit-string addition, for values that don't fit in an uint64_t
-std::string add_in_base(std::string_view lhs, std::string_view rhs, int base)
-{
-    std::string result;
-    unsigned carry = 0;
-    for (size_t i = 0; i < std::max(lhs.size(), rhs.size()) || carry != 0;
-         ++i) {
-        unsigned sum = carry;
-        if (i < lhs.size()) {
-            sum += char_to_digit(lhs[lhs.size() - 1 - i]);
-        }
-        if (i < rhs.size()) {
-            sum += char_to_digit(rhs[rhs.size() - 1 - i]);
-        }
-        result.insert(result.begin(),
-                      digit_to_char(sum % static_cast<unsigned>(base)));
-        carry = sum / static_cast<unsigned>(base);
-    }
-    return result;
-}
-
-struct base_format {
-    int base;
-    std::string_view prefix;
-    std::string format;
-
-    // With `{:i}`, a leading zero would make the number octal
-    bool allows_leading_zeroes() const
-    {
-        return !(format == "{:i}" && prefix.empty());
-    }
-};
-
-std::vector<base_format> get_formats_for_all_bases()
-{
-    std::vector<base_format> formats;
-    for (int base = 2; base <= 36; ++base) {
-        formats.push_back({base, "", "{:r" + std::to_string(base) + "}"});
-    }
-    formats.push_back({2, "", "{:b}"});
-    formats.push_back({2, "0b", "{:b}"});
-    formats.push_back({2, "0b", "{:i}"});
-    formats.push_back({8, "", "{:o}"});
-    formats.push_back({8, "0o", "{:o}"});
-    formats.push_back({8, "0", "{:i}"});
-    formats.push_back({10, "", "{}"});
-    formats.push_back({10, "", "{:d}"});
-    formats.push_back({10, "", "{:i}"});
-    formats.push_back({16, "", "{:x}"});
-    formats.push_back({16, "0x", "{:x}"});
-    formats.push_back({16, "0x", "{:i}"});
-    return formats;
-}
-
-// Values around the limits of 64-bit integers, as digit strings in `base`
-struct limit_digits {
-    explicit limit_digits(int base)
-        : u64_max(to_base(std::numeric_limits<uint64_t>::max(), base)),
-          u64_max_plus_one(add_in_base(u64_max, "1", base)),
-          i64_max(to_base(std::numeric_limits<int64_t>::max(), base)),
-          i64_max_plus_one(add_in_base(i64_max, "1", base)),
-          i64_max_plus_two(add_in_base(i64_max, "2", base)),
-          // 2^64 + base^(max_digits-1): has max_digits digits in most bases,
-          // and wraps around to base^(max_digits-1) in an uint64_t
-          wrapping(add_in_base(u64_max_plus_one,
-                               "1" + std::string(u64_max.size() - 1, '0'),
-                               base))
-    {
-    }
-
-    bool has_wrapping() const
-    {
-        return wrapping.size() == u64_max.size();
-    }
-
-    std::string u64_max, u64_max_plus_one, i64_max, i64_max_plus_one,
-        i64_max_plus_two, wrapping;
-};
-
-template <typename T>
-void check_scan_succeeds(const std::string& input,
-                         const std::string& format,
-                         T expected)
-{
-    auto result = scn::scan<T>(input, scn::runtime_format(format));
-    ASSERT_THAT(result, Succeeded()) << input << ' ' << format;
-    EXPECT_EQ(result->value(), expected) << input << ' ' << format;
-    EXPECT_TRUE(result->range().empty()) << input << ' ' << format;
-}
-
-template <typename T>
-void check_scan_fails(const std::string& input,
-                      const std::string& format,
-                      enum scn::scan_error::code code)
-{
-    EXPECT_THAT(scn::scan<T>(input, scn::runtime_format(format)),
-                FailedWith(code))
-        << input << ' ' << format;
-}
-
-template <typename T>
-void test_signed_64bit_limits()
-{
-    static_assert(std::is_signed_v<T> && sizeof(T) == 8);
-    constexpr auto max = std::numeric_limits<T>::max();
-    constexpr auto min = std::numeric_limits<T>::min();
-    constexpr auto positive_overflow = scn::scan_error::value_positive_overflow;
-    constexpr auto negative_overflow = scn::scan_error::value_negative_overflow;
-
-    for (const auto& base_fmt : get_formats_for_all_bases()) {
-        const auto& format = base_fmt.format;
-        const limit_digits digits{base_fmt.base};
-        const auto positive = [&](const std::string& d) {
-            return std::string{base_fmt.prefix} + d;
-        };
-        const auto negative = [&](const std::string& d) {
-            return "-" + positive(d);
-        };
-
-        check_scan_succeeds<T>(positive(digits.i64_max), format, max);
-        check_scan_succeeds<T>(negative(digits.i64_max_plus_one), format, min);
-        if (base_fmt.allows_leading_zeroes()) {
-            check_scan_succeeds<T>(positive("000" + digits.i64_max), format,
-                                   max);
-            check_scan_succeeds<T>(negative("000" + digits.i64_max_plus_one),
-                                   format, min);
-        }
-
-        check_scan_fails<T>(positive(digits.i64_max_plus_one), format,
-                            positive_overflow);
-        check_scan_fails<T>(negative(digits.i64_max_plus_two), format,
-                            negative_overflow);
-        check_scan_fails<T>(positive(digits.u64_max), format,
-                            positive_overflow);
-        check_scan_fails<T>(negative(digits.u64_max), format,
-                            negative_overflow);
-        check_scan_fails<T>(positive(digits.u64_max_plus_one), format,
-                            positive_overflow);
-        check_scan_fails<T>(negative(digits.u64_max_plus_one), format,
-                            negative_overflow);
-        if (digits.has_wrapping()) {
-            check_scan_fails<T>(positive(digits.wrapping), format,
-                                positive_overflow);
-            check_scan_fails<T>(negative(digits.wrapping), format,
-                                negative_overflow);
-        }
-    }
-}
-
-template <typename T>
-void test_unsigned_64bit_limits()
-{
-    static_assert(std::is_unsigned_v<T> && sizeof(T) == 8);
-    constexpr auto max = std::numeric_limits<T>::max();
-    constexpr auto positive_overflow = scn::scan_error::value_positive_overflow;
-
-    for (const auto& base_fmt : get_formats_for_all_bases()) {
-        const auto& format = base_fmt.format;
-        const limit_digits digits{base_fmt.base};
-        const auto positive = [&](const std::string& d) {
-            return std::string{base_fmt.prefix} + d;
-        };
-
-        check_scan_succeeds<T>(positive(digits.u64_max), format, max);
-        check_scan_succeeds<T>(positive("0"), format, T{0});
-        if (base_fmt.allows_leading_zeroes()) {
-            check_scan_succeeds<T>(positive("000" + digits.u64_max), format,
-                                   max);
-        }
-
-        check_scan_fails<T>(positive(digits.u64_max_plus_one), format,
-                            positive_overflow);
-        if (digits.has_wrapping()) {
-            check_scan_fails<T>(positive(digits.wrapping), format,
-                                positive_overflow);
-        }
-    }
-}
-}  // namespace
-
-TEST(IntegerOverflowTest, Signed64BitLimitsInAllBases)
-{
-    test_signed_64bit_limits<long long>();
-    test_signed_64bit_limits<int64_t>();
-}
-
-TEST(IntegerOverflowTest, Unsigned64BitLimitsInAllBases)
-{
-    test_unsigned_64bit_limits<unsigned long long>();
-    test_unsigned_64bit_limits<uint64_t>();
-}
-
-TEST(IntegerOverflowTest, WrappingIsDetectedOnlyInBasesWithRoom)
-{
-    for (int base = 2; base <= 36; ++base) {
-        const bool can_wrap = base != 2 && base != 4 && base != 16;
-        EXPECT_EQ(limit_digits{base}.has_wrapping(), can_wrap) << base;
-    }
-}
-
-TEST(IntegerOverflowTest, ScanIntLimitsInAllBases)
+TEST(ScanIntTest, LimitsInAllBases)
 {
     for (int base = 2; base <= 36; ++base) {
         const limit_digits digits{base};
@@ -1097,6 +1031,107 @@ TEST(IntegerOverflowTest, ScanIntLimitsInAllBases)
                         FailedWith(scn::scan_error::value_negative_overflow))
                 << base;
         }
+    }
+}
+
+TEST(ScanIntExhaustiveValidTest, Simple)
+{
+    EXPECT_EQ(scn::scan_int_exhaustive_valid<int>("42"), 42);
+}
+TEST(ScanIntExhaustiveValidTest, Negative)
+{
+    EXPECT_EQ(scn::scan_int_exhaustive_valid<int>("-42"), -42);
+}
+TEST(ScanIntExhaustiveValidTest, Large)
+{
+    EXPECT_EQ(scn::scan_int_exhaustive_valid<long long>("999999999999"),
+              999999999999);
+    EXPECT_EQ(scn::scan_int_exhaustive_valid<long long>("1234567890123456"),
+              1234567890123456);
+    EXPECT_EQ(scn::scan_int_exhaustive_valid<long long>("-123456789"),
+              -123456789);
+}
+
+TEST(ScanIntExhaustiveValidTest, LeadingZeroes)
+{
+    EXPECT_EQ(scn::scan_int_exhaustive_valid<long long>(
+                  "000000000000009223372036854775807"),
+              std::numeric_limits<long long>::max());
+    EXPECT_EQ(scn::scan_int_exhaustive_valid<unsigned long long>(
+                  "0000000000000000000000000000001"),
+              1u);
+}
+
+TEST(IntegerArbitraryBaseTest, LowercaseHex)
+{
+    auto result = scn::scan<int>("ff", "{:r16}");
+    ASSERT_THAT(result, Succeeded());
+    EXPECT_THAT(result->range(), IsEmptyRange());
+    EXPECT_EQ(result->value(), 255);
+}
+TEST(IntegerArbitraryBaseTest, UppercaseBase36)
+{
+    auto result = scn::scan<int>("Zz", "{:R36}");
+    ASSERT_THAT(result, Succeeded());
+    EXPECT_THAT(result->range(), IsEmptyRange());
+    EXPECT_EQ(result->value(), 35 * 36 + 35);
+}
+TEST(IntegerArbitraryBaseTest, UnsignedNegative)
+{
+    auto result = scn::scan<unsigned>("-12", "{:r3}");
+    ASSERT_THAT(result, Failed());
+}
+TEST(IntegerArbitraryBaseTest, SignedNegative)
+{
+    auto result = scn::scan<int>("-12", "{:r3}");
+    ASSERT_THAT(result, Succeeded());
+    EXPECT_THAT(result->range(), IsEmptyRange());
+    EXPECT_EQ(result->value(), -5);
+}
+
+TEST(IntegerArbitraryBaseTest, NoBasePrefix)
+{
+    auto result = scn::scan<int>("0x1f", "{:r16}");
+    ASSERT_THAT(result, Succeeded());
+    EXPECT_EQ(result->value(), 0);
+    EXPECT_STREQ(result->begin(), "x1f");
+}
+
+TEST(IntegerArbitraryBaseTest, InvalidBase)
+{
+    constexpr std::array<const char*, 8> formats{"{:r}",    "{:r1}", "{:r37}",
+                                                 "{:r100}", "{:rx}", "{:r010}",
+                                                 "{:r02}",  "{:r0}"};
+    for (auto fmt : formats) {
+        auto result = scn::scan<int>("1", scn::runtime_format(fmt));
+        ASSERT_THAT(result, FailedWith(scn::scan_error::invalid_format_string))
+            << fmt;
+    }
+}
+
+TEST(IntegerArbitraryBaseTest, LocalizedNotSupported)
+{
+    auto result = scn::scan<int>("1", scn::runtime_format("{:Lr16}"));
+    ASSERT_THAT(result, Failed());
+}
+
+TEST(IntegerOverflowTest, Signed64BitLimitsInAllBases)
+{
+    test_signed_64bit_limits<long long>();
+    test_signed_64bit_limits<int64_t>();
+}
+
+TEST(IntegerOverflowTest, Unsigned64BitLimitsInAllBases)
+{
+    test_unsigned_64bit_limits<unsigned long long>();
+    test_unsigned_64bit_limits<uint64_t>();
+}
+
+TEST(IntegerOverflowTest, WrappingIsDetectedOnlyInBasesWithRoom)
+{
+    for (int base = 2; base <= 36; ++base) {
+        const bool can_wrap = base != 2 && base != 4 && base != 16;
+        EXPECT_EQ(limit_digits{base}.has_wrapping(), can_wrap) << base;
     }
 }
 
@@ -1142,14 +1177,4 @@ TEST(IntegerOverflowTest, NarrowerTypeLimits)
         check_scan_fails<int16_t>("-" + to_base(32769, base), format,
                                   scn::scan_error::value_negative_overflow);
     }
-}
-
-TEST(ScanIntExhaustiveValidTest, LeadingZeroes)
-{
-    EXPECT_EQ(scn::scan_int_exhaustive_valid<long long>(
-                  "000000000000009223372036854775807"),
-              std::numeric_limits<long long>::max());
-    EXPECT_EQ(scn::scan_int_exhaustive_valid<unsigned long long>(
-                  "0000000000000000000000000000001"),
-              1u);
 }

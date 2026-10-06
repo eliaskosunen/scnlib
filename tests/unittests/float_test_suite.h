@@ -552,7 +552,7 @@ protected:
 
     static testing::AssertionResult test_failure(
         std::string_view input,
-        enum scn::scan_error::code expected)
+        scn::scan_error::code_t expected)
     {
         interface_type i{};
         typename base::float_type parsed{};
@@ -1042,7 +1042,7 @@ TYPED_TEST_P(FloatTestSuite, UnderflowHex)
 
 TYPED_TEST_P(FloatTestSuite, ExtremeExponents)
 {
-    using code = decltype(scn::scan_error::end_of_input);
+    using code = scn::scan_error::code_t;
     constexpr std::array<std::pair<std::string_view, code>, 14> cases{{
         {"1e2147483647", code::value_positive_overflow},
         {"1e2147483648", code::value_positive_overflow},
@@ -1073,7 +1073,7 @@ TYPED_TEST_P(FloatTestSuite, ExtremeExponents)
 
 TYPED_TEST_P(FloatTestSuite, ExtremeExponentsHex)
 {
-    using code = decltype(scn::scan_error::end_of_input);
+    using code = scn::scan_error::code_t;
     if (!TestFixture::interface_type::supports_hex) {
         GTEST_SKIP() << "Hexfloats not supported by the reader";
     }
@@ -1209,7 +1209,7 @@ TYPED_TEST_P(FloatTestSuite, SubnormalMinHex)
 TYPED_TEST_P(FloatTestSuite, HexRoundingToSubnormalMin)
 {
     using Float = typename TestFixture::float_type;
-    using code = decltype(scn::scan_error::end_of_input);
+    using code = scn::scan_error::code_t;
     if (!TestFixture::interface_type::supports_hex) {
         GTEST_SKIP() << "Hexfloats not supported by the reader";
     }

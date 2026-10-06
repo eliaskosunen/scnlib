@@ -974,7 +974,7 @@ inline constexpr parse_error make_eof_parse_error(eof_error err)
 
 inline constexpr scan_expected<void> make_scan_error_from_parse_error(
     parse_error err,
-    enum scan_error::code code,
+    scan_error::code_t code,
     const char* msg)
 {
     if (err == parse_error::good) {
@@ -988,7 +988,7 @@ inline constexpr scan_expected<void> make_scan_error_from_parse_error(
     return detail::unexpected_scan_error(code, msg);
 }
 
-inline constexpr auto map_parse_error_to_scan_error(enum scan_error::code code,
+inline constexpr auto map_parse_error_to_scan_error(scan_error::code_t code,
                                                     const char* msg)
 {
     return [code, msg](parse_error err) {
