@@ -5,7 +5,7 @@ endif()
 set(INSTALL_CONFIGDIR ${CMAKE_INSTALL_LIBDIR}/cmake/scn)
 
 set(targets "scn")
-if (NOT SCN_DISABLE_FAST_FLOAT AND NOT SCN_USE_EXTERNAL_FAST_FLOAT)
+if (SCN_FAST_FLOAT_BUNDLED)
     list(APPEND targets fast_float)
 endif ()
 if (SCN_MODULES)
@@ -14,16 +14,14 @@ endif ()
 
 set(install_file_set)
 if (SCN_MODULES AND SCN_USE_CMAKE_MODULES)
-    set(install_file_set FILE_SET scn DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}/scn")
+    set(install_file_set FILE_SET scn DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}/scn" COMPONENT scnlib_Development)
 endif ()
 
 install(TARGETS ${targets}
         EXPORT scn-targets
-        LIBRARY DESTINATION "${CMAKE_INSTALL_LIBDIR}"
-        ARCHIVE DESTINATION "${CMAKE_INSTALL_LIBDIR}"
-        RUNTIME DESTINATION "${CMAKE_INSTALL_BINDIR}"
-        PUBLIC_HEADER DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}/scn"
-        COMPONENT scnlib_Development
+        LIBRARY DESTINATION "${CMAKE_INSTALL_LIBDIR}" COMPONENT scnlib_Development
+        ARCHIVE DESTINATION "${CMAKE_INSTALL_LIBDIR}" COMPONENT scnlib_Development
+        RUNTIME DESTINATION "${CMAKE_INSTALL_BINDIR}" COMPONENT scnlib_Development
         ${install_file_set}
 )
 
@@ -74,5 +72,3 @@ export(EXPORT scn-targets
         FILE "${CMAKE_CURRENT_BINARY_DIR}/scn-targets.cmake"
         NAMESPACE scn::
 )
-
-export(PACKAGE scn)

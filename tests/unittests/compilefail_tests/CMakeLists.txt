@@ -28,7 +28,8 @@ if (NOT SCN_DISABLE_REGEX)
     )
 endif ()
 
-if ((SCN_CXX_FRONTEND STREQUAL "GNU" AND CMAKE_CXX_COMPILER_VERSION VERSION_GREATER_EQUAL 9.0) OR SCN_CXX_FRONTEND STREQUAL "Clang")
+if (SCN_CXX_FRONTEND STREQUAL "GNU" AND
+        NOT (CMAKE_CXX_COMPILER_ID STREQUAL "GNU" AND CMAKE_CXX_COMPILER_VERSION VERSION_LESS 9.0))
     # gcc pre-9 has weird error messages
     icm_add_multiple_build_failure_tests(
             SOURCES ${buildfail_sources}

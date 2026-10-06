@@ -122,7 +122,7 @@ Library dependencies
 
 <tr>
 <td>fast_float</td>
-<td>`>= 5.0.0`</td>
+<td>`>= 6.0.0`</td>
 <td>⚠️</td>
 <td>Required if `SCN_DISABLE_FAST_FLOAT` is `OFF`.<br>Header only. Downloaded by default with `FetchContent`, controlled with `SCN_USE_EXTERNAL_FAST_FLOAT`.</td>
 </tr>
@@ -233,7 +233,7 @@ scnlib configuration options
 <td>✅</td>
 <td>✅</td>
 <td>`OFF`</td>
-<td>Disable regular expression support</td>
+<td>Disable regular expression support.<br>Always `ON` with `SCN_USE_EXCEPTIONS=OFF`, unless `SCN_REGEX_BACKEND` is `re2`, since `std::regex` and Boost.Regex require exceptions.</td>
 </tr>
 
 <tr>
@@ -372,7 +372,7 @@ CMake build type configuration
 <td>`SCN_INSTALL`</td>
 <td>✅</td>
 <td>❌</td>
-<td>`ENABLE_FULL`</td>
+<td>`ON` when scnlib is the top-level CMake project (regardless of `SCN_DISABLE_TOP_PROJECT`), otherwise `ENABLE_FULL`</td>
 <td>Enable `install` target</td>
 </tr>
 

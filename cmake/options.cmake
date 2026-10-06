@@ -17,9 +17,16 @@ endif()
 option(SCN_TESTS "Enable tests" ${SCN_ENABLE_TESTS})
 option(SCN_DOCS "Enable docs target" ${SCN_ENABLE_EXTRAS})
 option(SCN_EXAMPLES "Enable examples target" ${SCN_ENABLE_EXTRAS})
-option(SCN_INSTALL "Enable install target" ${SCN_ENABLE_EXTRAS})
+# Unlike the other extras, installing isn't turned off by SCN_DISABLE_TOP_PROJECT,
+# since that's how package managers build scnlib
+if (PROJECT_IS_TOP_LEVEL OR SCN_ENABLE_EXTRAS)
+    set(SCN_ENABLE_INSTALL ON)
+else ()
+    set(SCN_ENABLE_INSTALL OFF)
+endif ()
+option(SCN_INSTALL "Enable install target" ${SCN_ENABLE_INSTALL})
 option(SCN_HEADERS_AS_SYSTEM "Expose scn headers by marking them as SYSTEM" OFF)
-option(SCN_MODULES "Enable C++20 module target (scn::module), requires CMake 3.28 and Ninja" OFF)
+option(SCN_MODULES "Enable C++20 module target (scn::scn_module), requires CMake 3.28 and Ninja" OFF)
 
 option(SCN_BENCHMARKS "Enable runtime benchmarks" ${SCN_ENABLE_EXTRAS})
 option(SCN_BENCHMARKS_BUILDTIME "Enable buildtime benchmarks" ${SCN_ENABLE_EXTRAS})
@@ -47,7 +54,7 @@ option(SCN_USE_EXTERNAL_BENCHMARK "Use find_package for Benchmark, instead of Fe
 option(SCN_USE_EXTERNAL_REGEX_BACKEND "Use find_package for SCN_REGEX_BACKEND, instead of FetchContent" ON)
 
 option(SCN_USE_32BIT "Compile as 32-bit (gcc or clang only)" OFF)
-option(SCN_USE_EXCEPTIONS "Compile with exception support (disabling will cause test failures)" ON)
+option(SCN_USE_EXCEPTIONS "Compile with exception support (disabling also disables regex support, unless SCN_REGEX_BACKEND is re2)" ON)
 option(SCN_USE_RTTI "Compile with RTTI (run-time type information) support" ON)
 
 option(SCN_USE_NATIVE_ARCH "Add -march=native to build flags (gcc or clang only)" OFF)
@@ -89,8 +96,13 @@ option(SCN_DISABLE_TYPE_CUSTOM "Disable scanning of user types" OFF)
 
 option(SCN_DISABLE_IOSTREAM "Disable iostreams" OFF)
 option(SCN_DISABLE_LOCALE "Disable all localization" OFF)
-option(SCN_DISABLE_STRTOD "Disallow falling back on std::strtod when scanning floating-point values" OFF)
 option(SCN_DISABLE_CHRONO "Disable <chrono> and <ctime> scanners" OFF)
 
 option(SCN_DISABLE_FROM_CHARS "Disallow falling back on std::from_chars when scanning floating-point values" OFF)
 option(SCN_DISABLE_STRTOD "Disallow falling back on std::strtod when scanning floating-point values" OFF)
+
+# std::regex and Boost.Regex report errors only by throwing
+if (NOT SCN_USE_EXCEPTIONS AND NOT SCN_DISABLE_REGEX AND NOT SCN_REGEX_BACKEND STREQUAL "re2")
+    message(STATUS "scn: Disabling regex support, because the ${SCN_REGEX_BACKEND} regex backend requires exceptions (SCN_USE_EXCEPTIONS is OFF)")
+    set(SCN_DISABLE_REGEX ON)
+endif ()

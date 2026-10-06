@@ -1,213 +1,4 @@
-function(get_config_definitions defs)
-    set(tmp)
-    if (SCN_DISABLE_REGEX)
-        list(APPEND tmp SCN_DISABLE_REGEX=1)
-    else ()
-        if (SCN_REGEX_BACKEND STREQUAL "std")
-            list(APPEND tmp SCN_REGEX_BACKEND=0)
-        elseif (SCN_REGEX_BACKEND STREQUAL "Boost")
-            list(APPEND tmp
-                    SCN_REGEX_BACKEND=1
-                    $<$<BOOL:${SCN_REGEX_BOOST_USE_ICU}>: SCN_REGEX_BOOST_USE_ICU=1>
-            )
-        elseif (SCN_REGEX_BACKEND STREQUAL "re2")
-            list(APPEND tmp SCN_REGEX_BACKEND=2)
-        endif ()
-    endif ()
-
-    if (SCN_DISABLE_TYPE_SCHAR)
-        list(APPEND tmp SCN_DISABLE_TYPE_SCHAR=1)
-    endif ()
-    if (SCN_DISABLE_TYPE_SHORT)
-        list(APPEND tmp SCN_DISABLE_TYPE_SHORT=1)
-    endif ()
-    if (SCN_DISABLE_TYPE_INT)
-        list(APPEND tmp SCN_DISABLE_TYPE_INT=1)
-    endif ()
-    if (SCN_DISABLE_TYPE_LONG)
-        list(APPEND tmp SCN_DISABLE_TYPE_LONG=1)
-    endif ()
-    if (SCN_DISABLE_TYPE_LONG_LONG)
-        list(APPEND tmp SCN_DISABLE_TYPE_LONG_LONG=1)
-    endif ()
-    if (SCN_DISABLE_TYPE_INT128)
-        list(APPEND tmp SCN_DISABLE_TYPE_INT128=1)
-    endif ()
-    if (SCN_DISABLE_TYPE_UCHAR)
-        list(APPEND tmp SCN_DISABLE_TYPE_UCHAR=1)
-    endif ()
-    if (SCN_DISABLE_TYPE_USHORT)
-        list(APPEND tmp SCN_DISABLE_TYPE_USHORT=1)
-    endif ()
-    if (SCN_DISABLE_TYPE_UINT)
-        list(APPEND tmp SCN_DISABLE_TYPE_UINT=1)
-    endif ()
-    if (SCN_DISABLE_TYPE_ULONG)
-        list(APPEND tmp SCN_DISABLE_TYPE_ULONG=1)
-    endif ()
-    if (SCN_DISABLE_TYPE_ULONG_LONG)
-        list(APPEND tmp SCN_DISABLE_TYPE_ULONG_LONG=1)
-    endif ()
-    if (SCN_DISABLE_TYPE_UINT128)
-        list(APPEND tmp SCN_DISABLE_TYPE_UINT128=1)
-    endif ()
-    if (SCN_DISABLE_TYPE_POINTER)
-        list(APPEND tmp SCN_DISABLE_TYPE_POINTER=1)
-    endif ()
-    if (SCN_DISABLE_TYPE_BOOL)
-        list(APPEND tmp SCN_DISABLE_TYPE_BOOL=1)
-    endif ()
-    if (SCN_DISABLE_TYPE_CHAR)
-        list(APPEND tmp SCN_DISABLE_TYPE_CHAR=1)
-    endif ()
-    if (SCN_DISABLE_TYPE_CHAR32)
-        list(APPEND tmp SCN_DISABLE_TYPE_CHAR32=1)
-    endif ()
-    if (SCN_DISABLE_TYPE_FLOAT)
-        list(APPEND tmp SCN_DISABLE_TYPE_FLOAT=1)
-    endif ()
-    if (SCN_DISABLE_TYPE_DOUBLE)
-        list(APPEND tmp SCN_DISABLE_TYPE_DOUBLE=1)
-    endif ()
-    if (SCN_DISABLE_TYPE_LONG_DOUBLE)
-        list(APPEND tmp SCN_DISABLE_TYPE_LONG_DOUBLE=1)
-    endif ()
-    if (SCN_DISABLE_TYPE_FLOAT16)
-        list(APPEND tmp SCN_DISABLE_TYPE_FLOAT16=1)
-    endif ()
-    if (SCN_DISABLE_TYPE_FLOAT32)
-        list(APPEND tmp SCN_DISABLE_TYPE_FLOAT32=1)
-    endif ()
-    if (SCN_DISABLE_TYPE_FLOAT64)
-        list(APPEND tmp SCN_DISABLE_TYPE_FLOAT64=1)
-    endif ()
-    if (SCN_DISABLE_TYPE_FLOAT128)
-        list(APPEND tmp SCN_DISABLE_TYPE_FLOAT128=1)
-    endif ()
-    if (SCN_DISABLE_TYPE_BFLOAT16)
-        list(APPEND tmp SCN_DISABLE_TYPE_BFLOAT16=1)
-    endif ()
-    if (SCN_DISABLE_TYPE_STRING)
-        list(APPEND tmp SCN_DISABLE_TYPE_STRING=1)
-    endif ()
-    if (SCN_DISABLE_TYPE_STRING_VIEW)
-        list(APPEND tmp SCN_DISABLE_TYPE_STRING_VIEW=1)
-    endif ()
-    if (SCN_DISABLE_TYPE_CUSTOM)
-        list(APPEND tmp SCN_DISABLE_TYPE_CUSTOM=1)
-    endif ()
-
-    if (SCN_DISABLE_FROM_CHARS)
-        list(APPEND tmp SCN_DISABLE_FROM_CHARS=1)
-    endif ()
-    if (SCN_DISABLE_STRTOD)
-        list(APPEND tmp SCN_DISABLE_STRTOD=1)
-    endif ()
-    if (SCN_DISABLE_IOSTREAM)
-        list(APPEND tmp SCN_DISABLE_IOSTREAM=1)
-    endif ()
-    if (SCN_DISABLE_LOCALE)
-        list(APPEND tmp SCN_DISABLE_LOCALE=1)
-    endif ()
-
-    set(${defs} ${tmp} PARENT_SCOPE)
-endfunction()
-
-function(get_gcc_warning_flags flags)
-    set(tmp
-            -ftemplate-backtrace-limit=0
-            -Wall -Wextra -Wpedantic
-            -Wconversion -Wsign-conversion
-            -Wold-style-cast -Wfloat-equal
-            -Wlogical-op
-            -Wredundant-decls -Wshadow
-            -Wwrite-strings
-            -Wpointer-arith -Wcast-qual
-            -Wformat=2 -Wswitch-default
-            -Wmissing-include-dirs -Wcast-align
-            -Wswitch-enum -Wnon-virtual-dtor
-            -Wctor-dtor-privacy -Wdisabled-optimization
-            -Winvalid-pch -Wnoexcept
-            -Wmissing-declarations -Woverloaded-virtual
-            -Wno-psabi
-    )
-
-    if (CMAKE_CXX_COMPILER_VERSION VERSION_GREATER_EQUAL 5.0)
-        list(APPEND tmp
-                -Wdouble-promotion -Wtrampolines
-                -Wzero-as-null-pointer-constant
-                -Wuseless-cast -Wvector-operation-performance
-        )
-    endif ()
-    if (CMAKE_CXX_COMPILER_VERSION VERSION_GREATER_EQUAL 6.0)
-        list(APPEND tmp
-                -Wshift-overflow=2 -Wnull-dereference
-                -Wduplicated-cond
-        )
-    endif ()
-    if (CMAKE_CXX_COMPILER_VERSION VERSION_GREATER_EQUAL 7.0)
-        list(APPEND tmp
-                -Walloca
-                -Wduplicated-branches
-        )
-    endif ()
-    if (CMAKE_CXX_COMPILER_VERSION VERSION_GREATER_EQUAL 8.0)
-        list(APPEND tmp
-                -Wcast-align=strict
-        )
-    endif ()
-    if (CMAKE_CXX_COMPILER_VERSION VERSION_GREATER_EQUAL 10.0)
-        list(APPEND tmp
-                -fconcepts-diagnostics-depth=99
-                -Wmismatched-tags -Wredundant-tags
-        )
-    endif ()
-    if (CMAKE_CXX_COMPILER_VERSION VERSION_GREATER_EQUAL 13.0)
-        list(APPEND tmp
-                -Wundef
-        )
-    endif ()
-    if (CMAKE_CXX_COMPILER_VERSION VERSION_GREATER_EQUAL 14.0)
-        list(APPEND tmp
-                #-Wnrvo
-                -fdiagnostics-all-candidates
-        )
-    endif ()
-
-    set(${flags} ${tmp} PARENT_SCOPE)
-endfunction()
-
-function(get_clang_warning_flags flags)
-    set(tmp
-            -ftemplate-backtrace-limit=0
-            -Weverything
-            -Wno-padded
-            -Wno-c++98-compat
-            -Wno-c++98-compat-pedantic
-            -Wno-c++98-compat-bind-to-temporary-copy
-            -Wno-c++98-compat-local-type-template-args
-            -Qunused-arguments -fcolor-diagnostics)
-
-    if (CMAKE_CXX_COMPILER_VERSION VERSION_GREATER_EQUAL 16.0)
-        list(APPEND tmp -Wno-unsafe-buffer-usage)
-    endif ()
-    if (CMAKE_CXX_COMPILER_VERSION VERSION_GREATER_EQUAL 17.0)
-        list(APPEND tmp -fsafe-buffer-usage-suggestions)
-    endif ()
-    if (CMAKE_CXX_COMPILER_VERSION VERSION_GREATER_EQUAL 21.1)
-        list(APPEND tmp -Wno-nrvo)
-    endif ()
-
-    set(${flags} ${tmp} PARENT_SCOPE)
-endfunction()
-
-function(get_msvc_warning_flags flags)
-    set(${flags}
-            /W3
-            /wd4324 # padding
-            /permissive-
-            PARENT_SCOPE)
-endfunction()
+include(CheckCXXCompilerFlag)
 
 if (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
     set(SCN_CXX_FRONTEND "GNU")
@@ -223,204 +14,252 @@ else ()
     set(SCN_CXX_FRONTEND "Other")
 endif ()
 
-function(get_warning_flags flags)
+# Appends the flags given after `out_var` to it, if the compiler accepts them.
+# -Wno-X is checked as -WX, because GCC accepts -Wno-X for any X.
+function(scn_append_supported_flags out_var)
+    set(result ${${out_var}})
+    foreach (flag IN LISTS ARGN)
+        string(REGEX REPLACE "^-Wno-" "-W" checked_flag "${flag}")
+        string(MAKE_C_IDENTIFIER "SCN_HAS_FLAG${checked_flag}" flag_variable)
+        check_cxx_compiler_flag(${checked_flag} ${flag_variable})
+        if (${flag_variable})
+            list(APPEND result ${flag})
+        endif ()
+    endforeach ()
+    set(${out_var} ${result} PARENT_SCOPE)
+endfunction()
+
+# Options passed on to the code as a definition (OPTION=1), when ON
+set(SCN_CONFIG_OPTIONS
+        SCN_DISABLE_TYPE_SCHAR
+        SCN_DISABLE_TYPE_SHORT
+        SCN_DISABLE_TYPE_INT
+        SCN_DISABLE_TYPE_LONG
+        SCN_DISABLE_TYPE_LONG_LONG
+        SCN_DISABLE_TYPE_INT128
+        SCN_DISABLE_TYPE_UCHAR
+        SCN_DISABLE_TYPE_USHORT
+        SCN_DISABLE_TYPE_UINT
+        SCN_DISABLE_TYPE_ULONG
+        SCN_DISABLE_TYPE_ULONG_LONG
+        SCN_DISABLE_TYPE_UINT128
+        SCN_DISABLE_TYPE_POINTER
+        SCN_DISABLE_TYPE_BOOL
+        SCN_DISABLE_TYPE_CHAR
+        SCN_DISABLE_TYPE_CHAR32
+        SCN_DISABLE_TYPE_FLOAT
+        SCN_DISABLE_TYPE_DOUBLE
+        SCN_DISABLE_TYPE_LONG_DOUBLE
+        SCN_DISABLE_TYPE_FLOAT16
+        SCN_DISABLE_TYPE_FLOAT32
+        SCN_DISABLE_TYPE_FLOAT64
+        SCN_DISABLE_TYPE_FLOAT128
+        SCN_DISABLE_TYPE_BFLOAT16
+        SCN_DISABLE_TYPE_STRING
+        SCN_DISABLE_TYPE_STRING_VIEW
+        SCN_DISABLE_TYPE_CUSTOM
+        SCN_DISABLE_FAST_FLOAT
+        SCN_DISABLE_FROM_CHARS
+        SCN_DISABLE_STRTOD
+        SCN_DISABLE_IOSTREAM
+        SCN_DISABLE_LOCALE
+        SCN_DISABLE_CHRONO
+)
+
+set(SCN_CONFIG_DEFINITIONS)
+foreach (option IN LISTS SCN_CONFIG_OPTIONS)
+    if (${option})
+        list(APPEND SCN_CONFIG_DEFINITIONS ${option}=1)
+    endif ()
+endforeach ()
+
+if (SCN_DISABLE_REGEX)
+    list(APPEND SCN_CONFIG_DEFINITIONS SCN_DISABLE_REGEX=1)
+elseif (SCN_REGEX_BACKEND STREQUAL "Boost")
+    list(APPEND SCN_CONFIG_DEFINITIONS SCN_REGEX_BACKEND=1)
+    if (SCN_REGEX_BOOST_USE_ICU)
+        list(APPEND SCN_CONFIG_DEFINITIONS SCN_REGEX_BOOST_USE_ICU=1)
+    endif ()
+elseif (SCN_REGEX_BACKEND STREQUAL "re2")
+    list(APPEND SCN_CONFIG_DEFINITIONS SCN_REGEX_BACKEND=2)
+endif ()
+
+if (NOT SCN_USE_EXCEPTIONS)
+    list(APPEND SCN_CONFIG_DEFINITIONS SCN_USE_EXCEPTIONS=0)
+endif ()
+
+set(SCN_MSVC_SECURE_DEFINITIONS)
+if (SCN_CXX_FRONTEND STREQUAL "MSVC")
+    set(SCN_MSVC_SECURE_DEFINITIONS
+            _CRT_SECURE_NO_WARNINGS
+            _SCL_SECURE_NO_WARNINGS
+    )
+endif ()
+
+set(SCN_WARNING_FLAGS)
+if (SCN_PEDANTIC)
     if (SCN_CXX_FRONTEND STREQUAL "MSVC")
-        get_msvc_warning_flags(flag_list)
+        set(SCN_WARNING_FLAGS
+                /W3
+                /wd4324 # padding
+                /permissive-
+        )
     elseif (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
-        get_gcc_warning_flags(flag_list)
+        scn_append_supported_flags(SCN_WARNING_FLAGS
+                -ftemplate-backtrace-limit=0
+                -fconcepts-diagnostics-depth=99
+                -fdiagnostics-all-candidates
+                -Wall -Wextra -Wpedantic
+                -Wconversion -Wsign-conversion
+                -Wold-style-cast -Wfloat-equal -Wdouble-promotion
+                -Wuseless-cast -Wzero-as-null-pointer-constant
+                -Wlogical-op -Wduplicated-cond -Wduplicated-branches
+                -Wredundant-decls -Wshadow
+                -Wwrite-strings
+                -Wpointer-arith -Wcast-qual -Wcast-align -Wcast-align=strict
+                -Wformat=2 -Wswitch-default -Wswitch-enum
+                -Wmissing-include-dirs
+                -Wnon-virtual-dtor -Wctor-dtor-privacy
+                -Wdisabled-optimization -Winvalid-pch -Wnoexcept
+                -Wmissing-declarations -Woverloaded-virtual
+                -Wmismatched-tags -Wredundant-tags
+                -Wshift-overflow=2 -Wnull-dereference
+                -Wtrampolines -Walloca -Wvector-operation-performance
+                -Wno-psabi
+        )
+        # Before GCC 13, #pragma GCC diagnostic can't disable -Wundef in C++
+        # (GCC PR53431), which impl.h needs to do
+        if (CMAKE_CXX_COMPILER_VERSION VERSION_GREATER_EQUAL 13.0)
+            list(APPEND SCN_WARNING_FLAGS -Wundef)
+        endif ()
     elseif (CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
-        get_clang_warning_flags(flag_list)
+        scn_append_supported_flags(SCN_WARNING_FLAGS
+                -ftemplate-backtrace-limit=0
+                -fsafe-buffer-usage-suggestions
+                -Qunused-arguments -fcolor-diagnostics
+                -Weverything
+                -Wno-padded
+                -Wno-c++98-compat
+                -Wno-c++98-compat-pedantic
+                -Wno-c++98-compat-bind-to-temporary-copy
+                -Wno-c++98-compat-local-type-template-args
+                -Wno-unsafe-buffer-usage
+                -Wno-nrvo
+                # Clang 23: suggestions to add [[clang::lifetimebound]], and
+                # false positives for using a reference to a string after
+                # modifying it
+                -Wno-lifetime-safety-suggestions
+                -Wno-lifetime-safety-invalidation
+        )
     endif ()
-    set(${flags} ${flag_list} PARENT_SCOPE)
-endfunction()
+endif ()
 
-function(get_werror_flags flags)
+set(SCN_WERROR_FLAGS)
+if (SCN_WERROR)
     if (SCN_CXX_FRONTEND STREQUAL "GNU")
-        set(${flags} -Werror -pedantic-errors PARENT_SCOPE)
+        set(SCN_WERROR_FLAGS -Werror -pedantic-errors)
     elseif (SCN_CXX_FRONTEND STREQUAL "MSVC")
-        set(${flags} /WX PARENT_SCOPE)
-    else ()
-        set(${flags} PARENT_SCOPE)
+        set(SCN_WERROR_FLAGS /WX)
     endif ()
-endfunction()
+endif ()
 
-function(get_suppress_warnings_flags flags)
-    if (SCN_CXX_FRONTEND STREQUAL "GNU")
-        set(${flags} -w PARENT_SCOPE)
+set(SCN_BIGOBJ_FLAGS)
+if (SCN_CXX_FRONTEND STREQUAL "MSVC")
+    set(SCN_BIGOBJ_FLAGS /bigobj)
+elseif (MINGW)
+    set(SCN_BIGOBJ_FLAGS -Wa,-mbig-obj)
+endif ()
+
+# In CI, disable warnings about deprecated stuff on MSVC,
+# because seemingly the pragmas can't disable it all
+# (we still want to test deprecated features)
+set(SCN_CI_FLAGS)
+if (SCN_CI)
+    if (CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
+        set(SCN_CI_FLAGS /wd4996)
     elseif (SCN_CXX_FRONTEND STREQUAL "MSVC")
-        set(${flags} /w PARENT_SCOPE)
-    else ()
-        set(${flags} PARENT_SCOPE)
-    endif ()
-endfunction()
-
-function(get_disable_exceptions_flags flags)
-    if (SCN_CXX_FRONTEND STREQUAL "GNU")
-        set(${flags} -fno-exceptions PARENT_SCOPE)
-    elseif (SCN_CXX_FRONTEND STREQUAL "MSVC")
-        set(${flags} /EHs-c- PARENT_SCOPE)
-    else ()
-        set(${flags} PARENT_SCOPE)
-    endif ()
-endfunction()
-
-function(get_disable_rtti_flags flags)
-    if (SCN_CXX_FRONTEND STREQUAL "GNU")
-        set(${flags} -fno-rtti PARENT_SCOPE)
-    elseif (SCN_CXX_FRONTEND STREQUAL "MSVC")
-        set(${flags} /GR- PARENT_SCOPE)
-    else ()
-        set(${flags} PARENT_SCOPE)
-    endif ()
-endfunction()
-
-function(get_coverage_flags flags)
-    if (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
-        set(${flags} -O0 -g --coverage PARENT_SCOPE)
-    else ()
-        set(${flags} PARENT_SCOPE)
-    endif ()
-endfunction()
-
-function(get_disable_msvc_secure_definitions flags)
-    if (SCN_CXX_FRONTEND STREQUAL "MSVC")
-        set(${flags}
-                _CRT_SECURE_NO_WARNINGS
-                _SCL_SECURE_NO_WARNINGS
-                PARENT_SCOPE)
-    else ()
-        set(${flags} PARENT_SCOPE)
-    endif ()
-endfunction()
-
-function(get_bigobj_flags flags)
-    if (SCN_CXX_FRONTEND STREQUAL "MSVC")
-        set(${flags} /bigobj PARENT_SCOPE)
-    elseif (MINGW)
-        set(${flags} -Wa,-mbig-obj PARENT_SCOPE)
-    else ()
-        set(${flags} PARENT_SCOPE)
-    endif ()
-endfunction()
-
-function(get_ci_flags flags)
-    # In CI, disable warnings about deprecated stuff on MSVC,
-    # because seemingly the pragmas can't disable it all
-    # (we still want to test deprecated features)
-    if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang" AND
-            CMAKE_CXX_COMPILER_FRONTEND_VARIANT STREQUAL "MSVC")
         # clang-cl
-        set(${flags} -Wno-error=deprecated-declarations PARENT_SCOPE)
-    elseif (CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
-        set(${flags} /wd4996 PARENT_SCOPE)
+        set(SCN_CI_FLAGS -Wno-error=deprecated-declarations)
     endif ()
-endfunction()
+endif ()
 
-function(get_interface_flags prefix)
-    set(flags_list)
-    set(definitions_list)
+set(SCN_DISABLE_EXCEPTIONS_FLAGS)
+set(SCN_DISABLE_EXCEPTIONS_DEFINITIONS)
+if (SCN_CXX_FRONTEND STREQUAL "GNU")
+    set(SCN_DISABLE_EXCEPTIONS_FLAGS -fno-exceptions)
+elseif (SCN_CXX_FRONTEND STREQUAL "MSVC")
+    set(SCN_DISABLE_EXCEPTIONS_FLAGS /EHs-c-)
+    # Without it, the MSVC STL still uses exceptions, warning about it (C4530)
+    set(SCN_DISABLE_EXCEPTIONS_DEFINITIONS _HAS_EXCEPTIONS=0)
+endif ()
 
-    if (SCN_PEDANTIC)
-        get_warning_flags(warning_flags)
-        list(APPEND flags_list ${warning_flags})
+# Flags for the library target (scn), also used for the module (scn_module)
+set(SCN_LIBRARY_PUBLIC_FLAGS ${SCN_CI_FLAGS})
+set(SCN_LIBRARY_PRIVATE_FLAGS
+        ${SCN_WARNING_FLAGS}
+        ${SCN_WERROR_FLAGS}
+        ${SCN_BIGOBJ_FLAGS}
+)
+set(SCN_LIBRARY_LINK_FLAGS)
+
+if (SCN_USE_32BIT)
+    list(APPEND SCN_LIBRARY_PUBLIC_FLAGS -m32)
+    list(APPEND SCN_LIBRARY_LINK_FLAGS -m32)
+endif ()
+
+if (SCN_USE_NATIVE_ARCH)
+    list(APPEND SCN_LIBRARY_PRIVATE_FLAGS -march=native)
+elseif (SCN_USE_HASWELL_ARCH)
+    list(APPEND SCN_LIBRARY_PRIVATE_FLAGS -march=haswell)
+endif ()
+
+if (NOT SCN_USE_EXCEPTIONS)
+    list(APPEND SCN_LIBRARY_PRIVATE_FLAGS ${SCN_DISABLE_EXCEPTIONS_FLAGS})
+elseif (CMAKE_CXX_COMPILER_ID STREQUAL "Clang" AND SCN_CXX_FRONTEND STREQUAL "MSVC")
+    # clang-cl requires explicitly enabling exceptions
+    list(APPEND SCN_LIBRARY_PUBLIC_FLAGS /EHsc)
+endif ()
+
+if (NOT SCN_USE_RTTI)
+    if (SCN_CXX_FRONTEND STREQUAL "GNU")
+        list(APPEND SCN_LIBRARY_PRIVATE_FLAGS -fno-rtti)
+    elseif (SCN_CXX_FRONTEND STREQUAL "MSVC")
+        list(APPEND SCN_LIBRARY_PRIVATE_FLAGS /GR-)
     endif ()
-    if (SCN_WERROR)
-        get_werror_flags(werror_flags)
-        list(APPEND flags_list ${werror_flags})
-    endif ()
+endif ()
 
-    get_bigobj_flags(bigobj_flags)
-    list(APPEND flags_list ${bigobj_flags})
-
-    if (SCN_CI)
-        get_ci_flags(ci_flags)
-        list(APPEND flags_list ${ci_flags})
-    endif ()
-
-    get_config_definitions(config_defs)
-    get_disable_msvc_secure_definitions(msvc_sec_defs)
-    list(APPEND definitions_list ${config_defs} ${msvc_sec_defs})
-
-    set(${prefix}_flags ${flags_list} PARENT_SCOPE)
-    set(${prefix}_definitions ${definitions_list} PARENT_SCOPE)
-endfunction()
-
-function(set_interface_flags target)
-    get_interface_flags(${target})
-    target_compile_options(${target} INTERFACE ${${target}_flags})
-    target_compile_definitions(${target} INTERFACE ${${target}_definitions})
-    target_compile_features(${target} INTERFACE cxx_std_17)
-endfunction()
-
-function(get_library_flags prefix)
-    set(list_public_flags)
-    set(list_private_flags)
-    set(list_public_definitions)
-    set(list_private_definitions)
-    set(list_public_link_flags)
-
-    if (SCN_PEDANTIC)
-        get_warning_flags(warning_flags)
-        list(APPEND list_private_flags ${warning_flags})
-    endif ()
-    if (SCN_WERROR)
-        get_werror_flags(werror_flags)
-        list(APPEND list_private_flags ${werror_flags})
-    endif ()
-    if (SCN_USE_32BIT)
-        list(APPEND list_public_flags -m32)
-        list(APPEND list_public_link_flags -m32)
-    endif ()
-    if (SCN_USE_NATIVE_ARCH)
-        list(APPEND list_private_flags -march=native)
-    elseif (SCN_USE_HASWELL_ARCH)
-        list(APPEND list_private_flags -march=haswell)
-    endif ()
-    if (NOT SCN_USE_EXCEPTIONS)
-        get_disable_exceptions_flags(noexceptions_flags)
-        list(APPEND list_private_flags ${noexceptions_flag})
-    elseif (CMAKE_CXX_COMPILER_ID STREQUAL "Clang" AND SCN_CXX_FRONTEND STREQUAL "MSVC")
-        # clang-cl requires explicitly enabling exceptions
-        list(APPEND list_public_flags /EHsc)
-    endif ()
-    if (NOT SCN_USE_RTTI)
-        get_disable_rtti_flags(nortti_flags)
-        list(APPEND list_private_flags ${nortti_flags})
-    endif ()
-    if (SCN_COVERAGE)
-        get_coverage_flags(coverage_flags)
-        list(APPEND list_public_flags ${coverage_flags})
-        list(APPEND list_public_link_flags --coverage)
-    endif ()
-    if (SCN_DISABLE_FAST_FLOAT)
-        list(APPEND list_public_definitions SCN_DISABLE_FAST_FLOAT=1)
-    endif ()
-
-    get_config_definitions(config_defs)
-    list(APPEND list_public_definitions ${config_defs})
-
-    get_disable_msvc_secure_definitions(msvc_sec_defs)
-    list(APPEND list_private_definitions ${msvc_sec_defs})
-
-    get_bigobj_flags(bigobj_flags)
-    list(APPEND list_private_flags ${bigobj_flags})
-
-    if (SCN_CI)
-        get_ci_flags(ci_flags)
-        list(APPEND list_public_flags ${ci_flags})
-    endif ()
-
-    set(${prefix}_public_flags ${list_public_flags} PARENT_SCOPE)
-    set(${prefix}_private_flags ${list_private_flags} PARENT_SCOPE)
-    set(${prefix}_public_definitions ${list_public_definitions} PARENT_SCOPE)
-    set(${prefix}_private_definitions ${list_private_definitions} PARENT_SCOPE)
-    set(${prefix}_public_link_flags ${list_public_link_flags} PARENT_SCOPE)
-endfunction()
+if (SCN_COVERAGE AND CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+    list(APPEND SCN_LIBRARY_PUBLIC_FLAGS -O0 -g --coverage)
+    list(APPEND SCN_LIBRARY_LINK_FLAGS --coverage)
+endif ()
 
 function(set_library_flags target)
-    get_library_flags(${target})
-    target_compile_options(${target} PUBLIC ${${target}_public_flags} PRIVATE ${${target}_private_flags})
-    target_compile_definitions(${target} PUBLIC ${${target}_public_definitions} PRIVATE ${${target}_private_definitions})
-    target_link_options(${target} PUBLIC ${${target}_public_link_flags})
+    target_compile_options(${target}
+            PUBLIC ${SCN_LIBRARY_PUBLIC_FLAGS}
+            PRIVATE ${SCN_LIBRARY_PRIVATE_FLAGS})
+    target_compile_definitions(${target}
+            PUBLIC ${SCN_CONFIG_DEFINITIONS}
+            PRIVATE ${SCN_MSVC_SECURE_DEFINITIONS})
+    if (NOT SCN_USE_EXCEPTIONS)
+        target_compile_definitions(${target} PRIVATE ${SCN_DISABLE_EXCEPTIONS_DEFINITIONS})
+    endif ()
+    target_link_options(${target} PUBLIC ${SCN_LIBRARY_LINK_FLAGS})
     target_compile_features(${target} PUBLIC cxx_std_17)
+endfunction()
+
+# For targets using the library internals, like the tests
+function(set_interface_flags target)
+    target_compile_options(${target} INTERFACE
+            ${SCN_WARNING_FLAGS}
+            ${SCN_WERROR_FLAGS}
+            ${SCN_BIGOBJ_FLAGS}
+            ${SCN_CI_FLAGS})
+    if (NOT SCN_USE_EXCEPTIONS)
+        target_compile_options(${target} INTERFACE ${SCN_DISABLE_EXCEPTIONS_FLAGS})
+        target_compile_definitions(${target} INTERFACE ${SCN_DISABLE_EXCEPTIONS_DEFINITIONS})
+    endif ()
+    target_compile_definitions(${target} INTERFACE
+            ${SCN_CONFIG_DEFINITIONS}
+            ${SCN_MSVC_SECURE_DEFINITIONS})
+    target_compile_features(${target} INTERFACE cxx_std_17)
 endfunction()

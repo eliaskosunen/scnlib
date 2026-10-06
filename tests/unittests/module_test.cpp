@@ -17,19 +17,18 @@
 
 import scn;
 
-#include <stdexcept>
-#include <string>
+#include <cstdio>
 
 int main()
 {
     auto result = scn::scan<int>("42", "{}");
 
     if (!result) {
-        throw std::runtime_error("Failed to scan: " +
-                                 std::string{result.error().msg()});
+        std::fprintf(stderr, "Failed to scan: %s\n", result.error().msg());
+        return 1;
     }
     if (result->value() != 42) {
-        throw std::runtime_error("Invalid value: " +
-                                 std::to_string(result->value()));
+        std::fprintf(stderr, "Invalid value: %d\n", result->value());
+        return 1;
     }
 }

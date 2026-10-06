@@ -4303,9 +4303,9 @@ template auto chrono_scan_impl(std::wstring_view,
                                wscan_context&)
     -> scan_expected<wscan_context::iterator>;
 
-}  // namespace detail
-
 #endif  // !SCN_DISABLE_CHRONO
+
+}  // namespace detail
 
 #if !SCN_DISABLE_IOSTREAM
 

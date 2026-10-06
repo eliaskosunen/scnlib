@@ -45,6 +45,13 @@ SCN_CLANG_POP
 #include <strings.h>
 #endif
 
+// std::regex and Boost.Regex report errors only by throwing
+#if !SCN_HAS_EXCEPTIONS && !SCN_DISABLE_REGEX && \
+    SCN_REGEX_BACKEND != SCN_REGEX_BACKEND_RE2
+#error \
+    "Regex support requires exceptions, unless SCN_REGEX_BACKEND is re2: set SCN_DISABLE_REGEX, or use re2"
+#endif
+
 #if SCN_REGEX_BACKEND == SCN_REGEX_BACKEND_STD
 #include <regex>
 #if SCN_REGEX_BOOST_USE_ICU
