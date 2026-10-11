@@ -87,6 +87,8 @@ scn::scan<...>(strm, ...);
  * Compile-time format string checking now also runs `scanner::parse` for user-defined types,
    and rejects scanning a `string_view` or a regex from a source that can't support it
    * `scn::basic_scan_parse_context` exposes this information with `is_source_contiguous()` and `is_source_borrowed()`
+ * `std::views::istream` and other C++20 views whose `iterator_concept` is stronger than their `iterator_category`
+   (like `std::views::transform`) can now be scanned from, instead of being treated as input ranges or rejected
 
 ### Fixes
 
@@ -109,6 +111,8 @@ scn::scan<...>(strm, ...);
    and assigning a value over an error swallowed an exception thrown while constructing it
  * `scn::expected` is no longer marked `[[clang::trivial_abi]]` when `T` or `E` isn't trivially copyable,
    which made Clang relocate them with a bitwise copy
+ * Fix scanning from ranges that can only be iterated over when non-const (like `std::views::filter`),
+   and from sized bidirectional ranges that aren't random access (like `std::list`)
 
 ## 4.0.1
 
