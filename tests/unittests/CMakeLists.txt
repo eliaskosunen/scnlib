@@ -37,6 +37,7 @@ make_scn_test(scn_tests
         context_test.cpp
         custom_type_test.cpp
         error_test.cpp
+        expected_test.cpp
         float_test.cpp
         format_string_test.cpp
         format_string_parser_test.cpp

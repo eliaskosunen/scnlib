@@ -351,7 +351,7 @@ private:
             if (index > 0) {
                 if (auto e = detail::scan_str(ctx.range(), this->m_separator);
                     SCN_LIKELY(e)) {
-                    ctx.advance_to(e.value());
+                    ctx.advance_to(*e);
                 }
                 else {
                     err = unexpected(e.error());
@@ -361,7 +361,7 @@ private:
 
             scanner<detail::remove_cvref_t<decltype(val)>, CharT> s{};
             if (auto e = s.scan(val, ctx); SCN_LIKELY(e)) {
-                ctx.advance_to(e.value());
+                ctx.advance_to(*e);
                 ++index;
             }
             else {

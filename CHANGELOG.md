@@ -104,6 +104,11 @@ scn::scan<...>(strm, ...);
    and fix the build errors with it and with `SCN_USE_EXCEPTIONS=OFF`
  * `SCN_INSTALL` now defaults to `ON` whenever scnlib is the top-level CMake project,
    even with `SCN_DISABLE_TOP_PROJECT`, so that package managers don't need to set it
+ * Fix `scn::expected`: `emplace()` over an error leaked the error,
+   the converting constructors default-constructed a value and never destroyed it,
+   and assigning a value over an error swallowed an exception thrown while constructing it
+ * `scn::expected` is no longer marked `[[clang::trivial_abi]]` when `T` or `E` isn't trivially copyable,
+   which made Clang relocate them with a bitwise copy
 
 ## 4.0.1
 
