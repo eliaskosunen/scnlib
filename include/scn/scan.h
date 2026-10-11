@@ -8418,8 +8418,9 @@ public:
     constexpr void check_arg_id(std::size_t id)
     {
         if (SCN_UNLIKELY(m_next_arg_id > 0)) {
-            on_error(
-                "Cannot switch from manual to automatic argument indexing");
+            // clang-format off
+            on_error("Cannot switch from automatic to manual argument indexing");
+            // clang-format on
             return;
         }
         m_next_arg_id = -1;
@@ -9710,15 +9711,21 @@ public:
 #endif
 
     // Intentionally not constexpr to get a compiler-time error when called
+    // Keep the first error: later ones are consequences of it
     /*not-constexpr*/ void on_error(const char* msg)
     {
         SCN_UNLIKELY_ATTR
-        m_error = unexpected_scan_error(scan_error::invalid_format_string, msg);
+        if (m_error) {
+            m_error =
+                unexpected_scan_error(scan_error::invalid_format_string, msg);
+        }
     }
     /*not-constexpr*/ void on_error(scan_error err)
     {
         SCN_UNLIKELY_ATTR
-        m_error = unexpected(err);
+        if (m_error) {
+            m_error = unexpected(err);
+        }
     }
 
     constexpr scan_expected<void> get_error() const
@@ -9959,6 +9966,10 @@ constexpr const CharT* parse_precision(const CharT* begin,
 
     if (*begin >= CharT{'0'} && *begin <= CharT{'9'}) {
         int prec = parse_simple_int(begin, end);
+        if (SCN_UNLIKELY(prec == 0)) {
+            handler.on_error("Precision must be greater than zero");
+            return begin;
+        }
         if (SCN_LIKELY(prec != -1)) {
             handler.on_precision(prec);
         }
@@ -10593,10 +10604,13 @@ template <typename Handler>
 constexpr void check_char_type_specs(const format_specs& specs,
                                      Handler&& handler)
 {
-    if (specs.type > presentation_type::int_hex ||
+    if ((specs.type > presentation_type::int_hex &&
+         specs.type != presentation_type::character) ||
         specs.type == presentation_type::int_arbitrary_base) {
         SCN_UNLIKELY_ATTR
-        return handler.on_error("Invalid type specifier for character type");
+        // clang-format off
+        return handler.on_error("Invalid type specifier for a character type, expected one of: c, b, B, d, i, u, o, x, X");
+        // clang-format on
     }
 }
 
@@ -11795,8 +11809,11 @@ constexpr typename ParseCtx::iterator scanner_parse_for_builtin_type(
 
         case arg_type::narrow_character_type:
         case arg_type::wide_character_type:
-        case arg_type::code_point_type:
             check_char_type_specs(specs, checker);
+            break;
+
+        case arg_type::code_point_type:
+            check_code_point_type_specs(specs, checker);
             break;
 
         case arg_type::float_type:

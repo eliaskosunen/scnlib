@@ -57,6 +57,9 @@ scn::scan<...>(strm, ...);
  * The configuration macros are now in a separate header, `<scn/macros.h>`
  * When scnlib is the top-level CMake project (and `SCN_DISABLE_TOP_PROJECT` is `OFF`), symbols are hidden by default
    (`CMAKE_CXX_VISIBILITY_PRESET` and `CMAKE_VISIBILITY_INLINES_HIDDEN`)
+ * A whitespace character in a format string now also matches the end of the input, so `"{} "` matches `"123"`.
+   A non-whitespace literal character not matched because the input ended now gives `end_of_input`,
+   instead of `invalid_literal`.
 
 ### Features
 
@@ -115,6 +118,8 @@ scn::scan<...>(strm, ...);
  * Fix multi-byte whitespace (like U+2028) not being recognized when it's split between two chunks of a non-contiguous source
  * Fix `putback()` and repeated `unget()` in an `operator>>` used through `scn::basic_istream_scanner`
    failing an assertion, and `unget()` at the beginning of the input not failing
+ * Fix argument tracking in format strings with 64 or more arguments,
+   and report the first error in a format string, instead of the last
  * Overlong UTF-8 sequences and encoded surrogate code points are now treated as invalid
  * Fix non-ASCII fill characters on big-endian platforms, fill characters encoded as a UTF-16 surrogate pair,
    and character set ranges crossing the ASCII boundary

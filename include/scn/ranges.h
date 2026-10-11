@@ -154,9 +154,13 @@ scan_expected<ranges::iterator_t<Source>> scan_str(
 {
     SCN_TRY(it, internal_skip_classic_whitespace(source, false));
     for (auto ch_to_read : str_to_read) {
+        if (SCN_UNLIKELY(it == ranges::end(source))) {
+            return unexpected_scan_error(scan_error::end_of_input, "EOF");
+        }
         if (SCN_UNLIKELY(ch_to_read != *it)) {
-            return unexpected_scan_error(scan_error::invalid_scanned_value,
-                                         "Invalid range character");
+            return unexpected_scan_error(
+                scan_error::invalid_scanned_value,
+                "Expected a range bracket or separator");
         }
         ++it;
     }
@@ -225,6 +229,16 @@ DiffT range_max_size(const Range& r)
     }
 }
 
+template <typename CharT, char Ch>
+inline constexpr CharT single_char_storage = static_cast<CharT>(Ch);
+
+// String view of the single ASCII character `Ch`, in any character type
+template <typename CharT, char Ch>
+constexpr std::basic_string_view<CharT> single_char_view()
+{
+    return {&single_char_storage<CharT, Ch>, 1};
+}
+
 template <typename CharT>
 class range_scanner_base {
 public:
@@ -242,9 +256,11 @@ public:
 protected:
     constexpr range_scanner_base() = default;
 
-    std::basic_string_view<CharT> m_separator{","};
-    std::basic_string_view<CharT> m_opening_bracket{"["};
-    std::basic_string_view<CharT> m_closing_bracket{"]"};
+    std::basic_string_view<CharT> m_separator{single_char_view<CharT, ','>()};
+    std::basic_string_view<CharT> m_opening_bracket{
+        single_char_view<CharT, '['>()};
+    std::basic_string_view<CharT> m_closing_bracket{
+        single_char_view<CharT, ']'>()};
 };
 
 template <typename CharT>
@@ -315,8 +331,9 @@ struct scanner<
 public:
     constexpr scanner()
     {
-        this->set_separator(",");
-        this->set_brackets("(", ")");
+        this->set_separator(detail::single_char_view<CharT, ','>());
+        this->set_brackets(detail::single_char_view<CharT, '('>(),
+                           detail::single_char_view<CharT, ')'>());
     }
 
     template <typename ParseCtx>
@@ -485,12 +502,14 @@ private:
     constexpr void init()
     {
         if constexpr (Kind == range_format::set) {
-            m_underlying.set_brackets("{", "}");
+            m_underlying.set_brackets(single_char_view<CharT, '{'>(),
+                                      single_char_view<CharT, '}'>());
         }
         else if constexpr (Kind == range_format::map) {
-            m_underlying.set_brackets("{", "}");
+            m_underlying.set_brackets(single_char_view<CharT, '{'>(),
+                                      single_char_view<CharT, '}'>());
             m_underlying.base().set_brackets({}, {});
-            m_underlying.base().set_separator(":");
+            m_underlying.base().set_separator(single_char_view<CharT, ':'>());
         }
     }
 
