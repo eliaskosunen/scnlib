@@ -2003,7 +2003,7 @@ void transcode_to_string_impl_32to16(std::basic_string_view<SourceCharT> src,
             dest.push_back(
                 static_cast<char16_t>((u32cp - 0x10000) / 0x400 + 0xd800));
             dest.push_back(
-                static_cast<char16_t>((u32cp - 0x10000) % 0x400 + 0xd800));
+                static_cast<char16_t>((u32cp - 0x10000) % 0x400 + 0xdc00));
         }
     }
 }
@@ -2033,7 +2033,7 @@ void transcode_to_string(std::basic_string_view<SourceCharT> src,
                 std::u32string_view{tmp}, dest);
         }
         else if constexpr (sizeof(DestCharT) == 4) {
-            return trasncode_to_string_impl_to32(src, dest);
+            return transcode_to_string_impl_to32(src, dest);
         }
     }
     else if constexpr (sizeof(SourceCharT) == 4) {
@@ -2075,7 +2075,7 @@ void transcode_valid_to_string(std::basic_string_view<SourceCharT> src,
                 std::u32string_view{tmp}, dest);
         }
         else if constexpr (sizeof(DestCharT) == 4) {
-            return trasncode_valid_to_string_impl_to32(src, dest);
+            return transcode_valid_to_string_impl_to32(src, dest);
         }
     }
     else if constexpr (sizeof(SourceCharT) == 4) {
@@ -2489,7 +2489,7 @@ public:
 
     constexpr codepoint_string() = default;
 
-    template <std::size_t N, std::enable_if_t<N <= max_size + 1>>
+    template <std::size_t N, std::enable_if_t<N <= max_size + 1>* = nullptr>
     /*implicit*/ constexpr codepoint_string(const CharT (&d)[N])
         : codepoint_string(d, N - 1)
     {
@@ -2505,7 +2505,7 @@ public:
     constexpr codepoint_string(Iterator d, std::size_t n)
         : m_size(static_cast<unsigned char>(n))
     {
-        SCN_EXPECT(n <= 4);
+        SCN_EXPECT(n <= max_size);
         std::copy_n(d, n, m_data);
     }
 
@@ -2514,7 +2514,7 @@ public:
     constexpr codepoint_string(Iterator b, Iterator e)
         : m_size(static_cast<unsigned char>(std::distance(b, e)))
     {
-        SCN_EXPECT(m_size <= 4);
+        SCN_EXPECT(m_size <= max_size);
         std::copy(b, e, m_data);
     }
 
@@ -8302,14 +8302,23 @@ public:
     auto read(const SourceRange& range, char32_t& cp)
         -> scan_expected<ranges::iterator_t<SourceRange>>
     {
+        if (auto e = eof_check(range); SCN_UNLIKELY(!e)) {
+            return unexpected(make_eof_scan_error(e));
+        }
+
         auto result = read_code_point_into(range);
         if (SCN_UNLIKELY(!result.is_valid())) {
             return detail::unexpected_scan_error(
                 scan_error::invalid_scanned_value, "Invalid code point");
         }
-        cp = detail::decode_code_point_exhaustive_valid(
+        const auto decoded = detail::decode_code_point_exhaustive(
             std::basic_string_view<detail::char_t<SourceRange>>{
                 result.codepoint.data(), result.codepoint.size()});
+        if (SCN_UNLIKELY(decoded >= detail::invalid_code_point)) {
+            return detail::unexpected_scan_error(
+                scan_error::invalid_scanned_value, "Invalid code point");
+        }
+        cp = decoded;
         return result.iterator;
     }
 };

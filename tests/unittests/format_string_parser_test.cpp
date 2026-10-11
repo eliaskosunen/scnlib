@@ -19,6 +19,8 @@
 
 #include <scn/scan.h>
 
+#include <array>
+
 TEST(FormatStringParserTest, DefaultConstructedSpecs)
 {
     auto specs = scn::detail::format_specs{};
@@ -121,6 +123,32 @@ TEST_F(FormatStringParserAlignTest, InvalidFillCharacter)
         input.data(), input.data() + input.size(), handler);
     EXPECT_EQ(specs, scn::detail::format_specs{});
     EXPECT_NE(handler.latest_error, nullptr);
+}
+
+TEST_F(FormatStringParserAlignTest, InvalidEncodingInFillCharacter)
+{
+    constexpr std::array<std::string_view, 3> inputs{
+        std::string_view{"\xc3\x28>4}"},  // bad continuation
+        std::string_view{"\xe4\xb8"},     // truncated at the end
+        std::string_view{"\xa4>"},        // stray continuation
+    };
+    for (std::string_view input : inputs) {
+        handler.latest_error = nullptr;
+        std::ignore = scn::detail::parse_align(
+            input.data(), input.data() + input.size(), handler);
+        EXPECT_NE(handler.latest_error, nullptr) << input;
+    }
+}
+
+TEST_F(FormatStringParserAlignTest, MultibyteFillCharacter)
+{
+    std::string_view input{"\xc3\xa4>4}"};
+    auto result = scn::detail::parse_align(
+        input.data(), input.data() + input.size(), handler);
+    EXPECT_EQ(specs.fill.get_code_units<char>(), "\xc3\xa4");
+    EXPECT_EQ(specs.align, scn::detail::align_type::right);
+    EXPECT_EQ(result, input.data() + 3);
+    EXPECT_EQ(handler.latest_error, nullptr);
 }
 
 class FormatStringParserWidthTest : public ::testing::Test {
