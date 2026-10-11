@@ -19,6 +19,13 @@
 
 #include <scn/scan.h>
 
+#include <string>
+#include <utility>
+
+#if defined(SCN_TEST_NO_EXCEPTIONS)
+static_assert(!SCN_HAS_EXCEPTIONS);
+#endif
+
 TEST(ErrorTest, General)
 {
     const auto eof_error =
@@ -55,4 +62,30 @@ TEST(ErrorTest, ExpectedVoid)
     EXPECT_EQ(eof_error.error(), scn::scan_error::end_of_input);
     EXPECT_EQ(invalid_scanned_value_error.error(),
               scn::scan_error::invalid_scanned_value);
+}
+
+TEST(ErrorTest, ExpectedCopyAssignValueOverError)
+{
+    const scn::scan_expected<std::string> source{std::string("value")};
+    scn::scan_expected<std::string> destination{scn::unexpected(
+        scn::scan_error{scn::scan_error::end_of_input, "EOF"})};
+
+    destination = source;
+
+    ASSERT_TRUE(destination);
+    EXPECT_EQ(destination.value(), "value");
+    ASSERT_TRUE(source);
+    EXPECT_EQ(source.value(), "value");
+}
+
+TEST(ErrorTest, ExpectedMoveAssignValueOverError)
+{
+    scn::scan_expected<std::string> source{std::string("value")};
+    scn::scan_expected<std::string> destination{scn::unexpected(
+        scn::scan_error{scn::scan_error::end_of_input, "EOF"})};
+
+    destination = std::move(source);
+
+    ASSERT_TRUE(destination);
+    EXPECT_EQ(destination.value(), "value");
 }
