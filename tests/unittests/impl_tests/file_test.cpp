@@ -27,7 +27,10 @@ SCN_GCC_COMPAT_IGNORE("-Wdeprecated-declarations")
 #include "../test_common.h"
 
 #include <algorithm>
+#include <cerrno>
 #include <cstdio>
+#include <cstring>
+#include <locale>
 #include <memory>
 #include <numeric>
 #include <string>
@@ -519,6 +522,52 @@ struct scn::scanner<custom_type> {
         return res->begin();
     }
 };
+
+#if !SCN_DISABLE_LOCALE
+namespace {
+struct comma_numpunct : std::numpunct<char> {
+    char do_decimal_point() const override
+    {
+        return ',';
+    }
+};
+
+std::locale make_comma_locale()
+{
+    return {std::locale::classic(), new comma_numpunct};
+}
+
+// Records the decimal point of the locale it's scanned with,
+// without consuming anything
+struct decimal_point_probe {
+    char decimal_point{};
+};
+}  // namespace
+
+template <>
+struct scn::scanner<decimal_point_probe> {
+    template <typename ParseCtx>
+    constexpr auto parse(ParseCtx& pctx) -> decltype(pctx.begin())
+    {
+        return pctx.begin();
+    }
+
+    template <typename Ctx>
+    auto scan(decimal_point_probe& val, Ctx& ctx) const
+        -> scn::scan_expected<typename Ctx::iterator>
+    {
+        if (!ctx.locale()) {
+            val.decimal_point = '?';
+        }
+        else {
+            val.decimal_point = std::use_facet<std::numpunct<char>>(
+                                    ctx.locale().template get<std::locale>())
+                                    .decimal_point();
+        }
+        return ctx.begin();
+    }
+};
+#endif
 
 using namespace std::string_literals;
 using testing::ElementsAre;
@@ -1020,6 +1069,27 @@ TYPED_TEST(FileTestP, PutbackFailWithCustomTypeFail2)
     this->expect_prelude("a");
     EXPECT_EQ(this->get_file_remainder(), "abc def");
 }
+
+#if !SCN_DISABLE_LOCALE
+TYPED_TEST(FileTestP, LocaleWithSingleArgument)
+{
+    auto& range = this->get("abc");
+    auto result =
+        scn::scan<decimal_point_probe>(make_comma_locale(), range, "{}");
+    ASSERT_THAT(result, Succeeded());
+    EXPECT_EQ(result->value().decimal_point, ',');
+    EXPECT_EQ(this->get_file_remainder(), "abc");
+}
+
+TYPED_TEST(FileTestP, NoLocaleWithSingleArgument)
+{
+    auto& range = this->get("abc");
+    auto result = scn::scan<decimal_point_probe>(range, "{}");
+    ASSERT_THAT(result, Succeeded());
+    EXPECT_EQ(result->value().decimal_point, '?');
+    EXPECT_EQ(this->get_file_remainder(), "abc");
+}
+#endif
 
 TYPED_TEST(FileTestP, ScanValue)
 {
