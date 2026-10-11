@@ -23,12 +23,19 @@
 #include <list>
 #include <sstream>
 #include <string>
+#include <vector>
 
 #if SCN_STD >= SCN_STD_20
 #include <ranges>
 #endif
 
 using ::testing::Test;
+
+static_assert(scn::detail::is_scannable_source<std::string>);
+static_assert(scn::detail::is_scannable_source<std::string_view>);
+static_assert(scn::detail::is_scannable_source<scn::scan_file>);
+static_assert(!scn::detail::is_scannable_source<int>);
+static_assert(!scn::detail::is_scannable_source<std::vector<int>>);
 
 template <bool, typename>
 struct scan_result_helper_impl;
@@ -75,6 +82,24 @@ TEST(SourceTest, SourceIsStringLiteral)
     auto [i, d] = result->values();
     EXPECT_EQ(i, 123);
     EXPECT_DOUBLE_EQ(d, 3.14);
+}
+
+TEST(SourceTest, SourceIsCharArrayWithoutNullTerminator)
+{
+    const char source[3] = {'1', '2', '3'};
+    auto result = scn::scan<int>(source, "{}");
+    ASSERT_THAT(result, Succeeded());
+    EXPECT_EQ(result->value(), 123);
+    EXPECT_EQ(result->begin(), source + 3);
+    EXPECT_EQ(result->end(), source + 3);
+}
+
+TEST(SourceTest, ResultRvalueAccessors)
+{
+    const auto result = scn::scan<int>(std::string_view{"123 4"}, "{}");
+    ASSERT_THAT(result, Succeeded());
+    EXPECT_EQ(*std::move(*result).begin(), ' ');
+    EXPECT_EQ(std::move(*result).range().size(), 2u);
 }
 
 TEST(SourceTest, SourceIsStringView)
@@ -169,6 +194,16 @@ TEST(SourceTest, SourceIsInputRange)
                                  expected_result2::value_type::source_type>);
     ASSERT_THAT(result2, Succeeded());
     EXPECT_DOUBLE_EQ(result2->value(), 3.14);
+}
+
+TEST(SourceTest, SourceIsInputRangeResultBegin)
+{
+    auto source = std::string_view{"123 456"};
+    auto input = scn::ranges::views::to_input(source);
+    auto result = scn::scan<int>(input, "{}");
+    ASSERT_THAT(result, Succeeded());
+    auto it = result->begin();
+    EXPECT_EQ(*it, ' ');
 }
 
 TEST(SourceTest, SourceIsInputRangeRvalue)

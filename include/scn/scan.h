@@ -7269,12 +7269,6 @@ auto impl(Source&&, priority_tag<0>)
 }  // namespace _make_scan_buffer
 
 template <typename Source>
-inline constexpr bool is_scannable_source =
-    !std::is_base_of_v<invalid_source,
-                       decltype(_make_scan_buffer::impl(SCN_DECLVAL(Source&)),
-                                priority_tag<4>{})>;
-
-template <typename Source>
 decltype(auto) make_scan_buffer(Source&& source)
 {
     SCN_GCC_PUSH
@@ -7347,6 +7341,11 @@ using dt_make_scan_buffer =
 SCN_MSVC_POP
 SCN_CLANG_POP
 SCN_GCC_POP
+
+template <typename Source>
+inline constexpr bool is_scannable_source = !std::is_base_of_v<
+    invalid_source,
+    mp_eval_or<invalid_source, dt_make_scan_buffer, Source&>>;
 
 template <typename Source>
 using scan_buffer_char_t =
@@ -7874,7 +7873,7 @@ constexpr bool check_scan_arg_types()
                   "Scan argument types must be Destructible");
 
     constexpr bool non_reference_constraint =
-        !std::conjunction_v<std::false_type, std::is_reference<Args>...>;
+        !std::disjunction_v<std::is_reference<Args>...>;
     static_assert(non_reference_constraint,
                   "Scan argument types must not be references");
 
@@ -8551,7 +8550,7 @@ public:
         return SCN_MOVE(*m_range);
     }
 
-    SCN_NODISCARD iterator& begin() &
+    SCN_NODISCARD iterator begin() &
     {
         SCN_EXPECT(m_range.has_value());
         return ranges::begin(*m_range);
@@ -8991,7 +8990,7 @@ public:
                                     detail::scan_result_source_storage<S>&&)
                                     .range())
     {
-        return m_source.range();
+        return SCN_MOVE(m_source).range();
     }
     /// Return the unparsed portion of the source range
     template <typename S = Source>
@@ -9000,7 +8999,7 @@ public:
                                 const detail::scan_result_source_storage<S>&&)
                                 .range())
     {
-        return m_source.range();
+        return SCN_MOVE(m_source).range();
     }
 
     /// Return the begin of the unparsed portion of the source range
@@ -9026,7 +9025,7 @@ public:
                                     detail::scan_result_source_storage<S>&&)
                                     .begin())
     {
-        return m_source.begin();
+        return SCN_MOVE(m_source).begin();
     }
     /// Return the begin of the unparsed portion of the source range
     template <typename S = Source>
@@ -9035,7 +9034,7 @@ public:
                                 const detail::scan_result_source_storage<S>&&)
                                 .begin())
     {
-        return m_source.range();
+        return SCN_MOVE(m_source).begin();
     }
 
     /// Return the end of the unparsed portion of the source range
@@ -9117,11 +9116,15 @@ auto make_vscan_result_end(SourceRange& source)
 {
     return ranges::end(source);
 }
+// Must match the handling of string literals in `make_scan_buffer`
 template <typename CharT, size_t N>
 auto make_vscan_result_end(CharT (&source)[N])
     -> ranges::sentinel_t<CharT (&)[N]>
 {
-    return source + N - 1;
+    if (N != 0 && source[N - 1] == 0) {
+        return source + N - 1;
+    }
+    return source + N;
 }
 
 template <typename SourceRange,
