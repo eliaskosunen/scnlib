@@ -5201,6 +5201,42 @@ struct float_parts {
     bool exponent_positive{true};
 };
 
+// Parsed exponents are saturated at this magnitude. It's way beyond the
+// exponent range of any floating-point type, even after adding a digit count
+// (of an input that fits in memory) to it, so that a saturated exponent stays
+// out of range. It's also small enough for `value * 10 + 9` in
+// `parse_saturating_exponent` to not overflow.
+inline constexpr std::int64_t max_exponent_magnitude = std::int64_t{1} << 59;
+
+template <typename CharT>
+constexpr std::int64_t parse_saturating_exponent(
+    std::basic_string_view<CharT> digits,
+    bool is_positive)
+{
+    std::int64_t value = 0;
+    for (CharT ch : digits) {
+        const auto d = char_to_int(ch);
+        SCN_EXPECT(d < 10);
+        value = value * 10 + d;
+        if (value >= max_exponent_magnitude) {
+            value = max_exponent_magnitude;
+            break;
+        }
+    }
+    return is_positive ? value : -value;
+}
+
+// The exponent of `parts`, adjusted by `digit_offset`, which accounts for the
+// position of the radix point among the significand digits (in the unit of
+// the exponent)
+template <typename CharT>
+constexpr std::int64_t adjusted_exponent(const float_parts<CharT>& parts,
+                                         std::int64_t digit_offset)
+{
+    return parse_saturating_exponent(parts.exponent, parts.exponent_positive) +
+           digit_offset;
+}
+
 // Simple Decimal Conversion (SDC), as described in
 // https://nigeltao.github.io/blog/2020/parse-number-f64-simple.html
 
@@ -5282,6 +5318,12 @@ constexpr std::pair<std::uint8_t, std::string_view> left_shift_table[] = {
 // clang-format on
 
 struct high_precision_decimal {
+    // `decimal_point` is clamped to this magnitude, so that it fits in an
+    // int32. It's way beyond the exponent range of any floating-point type,
+    // so the clamping doesn't change the result.
+    static constexpr std::int32_t max_decimal_point_magnitude = std::int32_t{1}
+                                                                << 30;
+
     std::uint32_t num_digits{};
     std::int32_t decimal_point{};
     bool truncated{false};
@@ -5296,31 +5338,37 @@ struct high_precision_decimal {
     high_precision_decimal& operator=(high_precision_decimal&&) = delete;
 
     template <typename CharT>
-    static scan_expected<void> populate(high_precision_decimal& hpd,
-                                        const float_parts<CharT>& parts)
+    static void populate(high_precision_decimal& hpd,
+                         const float_parts<CharT>& parts)
     {
+        // Leading zeroes aren't stored, so that `decimal_point` is
+        // relative to the first significant digit
+        std::int64_t decimal_point = 0;
         std::size_t idx = 0;
-        for (CharT ch : parts.before_radix_point) {
+        auto push_digit = [&](CharT ch) {
+            const auto digit = char_to_int(ch);
+            SCN_EXPECT(digit < std::uint8_t{10});
             if (idx < hpd.digits.size()) {
-                hpd.digits[idx] = char_to_int(ch);
-                SCN_ENSURE(hpd.digits[idx] < std::uint8_t{10});
+                hpd.digits[idx++] = digit;
             }
-            else {
+            else if (digit != 0) {
                 hpd.truncated = true;
             }
-            idx++;
-        }
-        hpd.decimal_point = static_cast<std::int32_t>(idx);
+        };
 
+        for (CharT ch : parts.before_radix_point) {
+            if (idx == 0 && ch == CharT{'0'}) {
+                continue;
+            }
+            push_digit(ch);
+            ++decimal_point;
+        }
         for (CharT ch : parts.after_radix_point) {
-            if (idx < hpd.digits.size()) {
-                hpd.digits[idx] = char_to_int(ch);
-                SCN_ENSURE(hpd.digits[idx] < std::uint8_t{10});
+            if (idx == 0 && ch == CharT{'0'}) {
+                --decimal_point;
+                continue;
             }
-            else {
-                hpd.truncated = true;
-            }
-            idx++;
+            push_digit(ch);
         }
 
         SCN_GCC_PUSH
@@ -5328,27 +5376,12 @@ struct high_precision_decimal {
         hpd.num_digits = static_cast<std::uint32_t>(idx);
         SCN_GCC_POP
 
-        if (!parts.exponent.empty()) {
-            std::int32_t exponent{};
-            auto r = parse_integer_value(parts.exponent, exponent,
-                                         parts.exponent_positive
-                                             ? sign_type::plus_sign
-                                             : sign_type::minus_sign,
-                                         10);
-            if (!r) {
-                return detail::unexpected_scan_error(
-                    r.error().code(),
-                    "Invalid exponent value for floating-point value");
-            }
-
-            hpd.decimal_point = static_cast<std::int32_t>(
-                static_cast<std::int64_t>(hpd.decimal_point) +
-                static_cast<std::int64_t>(exponent));
-        }
+        hpd.decimal_point = static_cast<std::int32_t>(
+            std::clamp(adjusted_exponent(parts, decimal_point),
+                       std::int64_t{-max_decimal_point_magnitude},
+                       std::int64_t{max_decimal_point_magnitude}));
 
         hpd.trim();
-
-        return {};
     }
 
     template <typename T>
@@ -5607,6 +5640,24 @@ scan_expected<void> simple_decimal_conversion(T& result,
     if (value.num_digits == 0) {
         result = static_cast<T>(0.0);
         return {};
+    }
+
+    // Early cutoffs: the value is 0.ddd * 10^decimal_point, with a non-zero
+    // first digit. Without these, the shift loops below would be linear in
+    // the magnitude of the exponent.
+    constexpr auto min_decimal_point = std::numeric_limits<T>::min_exponent10 -
+                                       std::numeric_limits<T>::max_digits10 - 3;
+    constexpr auto max_decimal_point =
+        std::numeric_limits<T>::max_exponent10 + 2;
+    if (value.decimal_point < min_decimal_point) {
+        return detail::unexpected_scan_error(
+            scan_error::value_positive_underflow,
+            "Parsed float rounds to zero, but is non-zero");
+    }
+    if (value.decimal_point > max_decimal_point) {
+        return detail::unexpected_scan_error(
+            scan_error::value_positive_overflow,
+            "Parsed float exponent too large");
     }
 
     constexpr std::int32_t exp_bias = float_traits<T>::exponent_bias;
@@ -5903,7 +5954,6 @@ struct source_reader {
 
     struct state_type {
         std::basic_string<CharT> normalized_string{};
-        std::string thsep_positions{};
         std::size_t significand_digits_count{};
         std::size_t whole_part_digits_count{};
         std::size_t fractional_part_digits_count{};
@@ -5993,25 +6043,8 @@ private:
     {
         auto it = source.begin();
         for (; it != source.end(); ++it) {
-            // Handle leading zeroes:
-            // count them as `significand_digits` so `0.` will be valid,
-            // but don't count them as `whole_part_digits`
-            // and don't put them in `normalized_string`,
-            // so we can skip them easily
-            if (*it == CharT{'0'}) {
-                ++m_state.significand_digits_count;
-            }
+            // Digit grouping isn't validated
             if (*it == m_options.group_separator) {
-                m_state.thsep_positions.push_back(
-                    static_cast<char>(m_state.significand_digits_count));
-                continue;
-            }
-            break;
-        }
-        for (; it != source.end(); ++it) {
-            if (*it == m_options.group_separator) {
-                m_state.thsep_positions.push_back(
-                    static_cast<char>(m_state.significand_digits_count));
                 continue;
             }
             if (char_to_int(*it) < Base) {

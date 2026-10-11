@@ -17,6 +17,7 @@
 
 #pragma once
 
+#include <array>
 #include <cfloat>
 #include <cstring>
 #include <iomanip>
@@ -408,6 +409,18 @@ auto make_nan_check(std::optional<std::uint64_t> payload, bool negative = false)
     };
 }
 
+// Width of the integer that the custom hexfloat parser accumulates the
+// significand of T in. Other parsers have no such limit, so any width works
+// for them.
+template <typename T, typename = void>
+inline constexpr int hex_significand_bits = 128;
+template <typename T>
+inline constexpr int hex_significand_bits<
+    T,
+    std::void_t<typename scn::impl::float_traits<T>::significand_int_type>> =
+    static_cast<int>(
+        sizeof(typename scn::impl::float_traits<T>::significand_int_type) * 8);
+
 template <typename CharT, typename FloatT>
 class FloatTestSuiteBase : public testing::Test {
 protected:
@@ -517,6 +530,26 @@ protected:
         }
     }
 
+    static int current_test_part_count()
+    {
+        return testing::UnitTest::GetInstance()
+            ->current_test_info()
+            ->result()
+            ->total_part_count();
+    }
+
+    static bool skipped_since(int part_count_before)
+    {
+        const auto* result =
+            testing::UnitTest::GetInstance()->current_test_info()->result();
+        for (int i = part_count_before; i < result->total_part_count(); ++i) {
+            if (result->GetTestPartResult(i).skipped()) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     static testing::AssertionResult test_failure(
         std::string_view input,
         enum scn::scan_error::code expected)
@@ -524,12 +557,10 @@ protected:
         interface_type i{};
         typename base::float_type parsed{};
 
-        const auto skipped_count_before =
-            testing::UnitTest::GetInstance()->skipped_test_count();
+        const auto part_count_before = current_test_part_count();
 
         if (auto result = run_test(i, input, parsed); result) {
-            if (skipped_count_before <
-                testing::UnitTest::GetInstance()->skipped_test_count()) {
+            if (skipped_since(part_count_before)) {
                 return testing::AssertionSuccess() << "Test skipped";
             }
             return testing::AssertionFailure() << "Expected failure";
@@ -553,16 +584,14 @@ protected:
         interface_type i{};
         typename base::float_type parsed{};
 
-        const auto skipped_count_before =
-            testing::UnitTest::GetInstance()->skipped_test_count();
+        const auto part_count_before = current_test_part_count();
 
         if (auto result = run_test(i, input, parsed); !result) {
             return testing::AssertionFailure()
                    << "Failed with " << result.error().code() << " ("
                    << result.error().msg() << ")";
         }
-        if (skipped_count_before <
-            testing::UnitTest::GetInstance()->skipped_test_count()) {
+        if (skipped_since(part_count_before)) {
             return testing::AssertionSuccess() << "Test skipped";
         }
 
@@ -1011,6 +1040,77 @@ TYPED_TEST_P(FloatTestSuite, UnderflowHex)
                                   scn::scan_error::value_positive_underflow));
 }
 
+TYPED_TEST_P(FloatTestSuite, ExtremeExponents)
+{
+    using code = decltype(scn::scan_error::end_of_input);
+    constexpr std::array<std::pair<std::string_view, code>, 14> cases{{
+        {"1e2147483647", code::value_positive_overflow},
+        {"1e2147483648", code::value_positive_overflow},
+        {"1e99999999999", code::value_positive_overflow},
+        {"1e2000000", code::value_positive_overflow},
+        {"-1e99999999999", code::value_negative_overflow},
+        {"1e-2147483648", code::value_positive_underflow},
+        {"1e-99999999999", code::value_positive_underflow},
+        {"1e-2000000", code::value_positive_underflow},
+        {"-1e-99999999999", code::value_negative_underflow},
+        // Exponents beyond the range of int64
+        {"1e99999999999999999999", code::value_positive_overflow},
+        {"1e18446744073709551616", code::value_positive_overflow},
+        {"1e-99999999999999999999", code::value_positive_underflow},
+        {"0.000001e99999999999999999999", code::value_positive_overflow},
+        {"100000e-99999999999999999999", code::value_positive_underflow},
+    }};
+    for (auto [input, expected] : cases) {
+        EXPECT_TRUE(TestFixture::test_failure(input, expected)) << input;
+    }
+
+    const auto long_exponent = std::string(400, '9');
+    EXPECT_TRUE(TestFixture::test_failure("1e" + long_exponent,
+                                          code::value_positive_overflow));
+    EXPECT_TRUE(TestFixture::test_failure("1e-" + long_exponent,
+                                          code::value_positive_underflow));
+}
+
+TYPED_TEST_P(FloatTestSuite, ExtremeExponentsHex)
+{
+    using code = decltype(scn::scan_error::end_of_input);
+    if (!TestFixture::interface_type::supports_hex) {
+        GTEST_SKIP() << "Hexfloats not supported by the reader";
+    }
+    constexpr std::array<std::pair<std::string_view, code>, 8> cases{{
+        {"0x1p2147483647", code::value_positive_overflow},
+        {"0x1p99999999999", code::value_positive_overflow},
+        {"0x1p-2147483648", code::value_positive_underflow},
+        {"0x1p-99999999999", code::value_positive_underflow},
+        // Exponents beyond the range of int64
+        {"0x1p99999999999999999999", code::value_positive_overflow},
+        {"0x1p-99999999999999999999", code::value_positive_underflow},
+        {"0x0.000001p99999999999999999999", code::value_positive_overflow},
+        {"0x100000p-99999999999999999999", code::value_positive_underflow},
+    }};
+    for (auto [input, expected] : cases) {
+        EXPECT_TRUE(TestFixture::test_failure(input, expected)) << input;
+    }
+
+    const auto long_exponent = std::string(400, '9');
+    EXPECT_TRUE(TestFixture::test_failure("0x1p" + long_exponent,
+                                          code::value_positive_overflow));
+    EXPECT_TRUE(TestFixture::test_failure("0x1p-" + long_exponent,
+                                          code::value_positive_underflow));
+}
+
+TYPED_TEST_P(FloatTestSuite, ManyDigits)
+{
+    using Float = typename TestFixture::float_type;
+    const auto one = static_cast<Float>(1.0);
+
+    const auto zeroes = std::string(900, '0');
+    EXPECT_TRUE(TestFixture::test_success({one, "1" + zeroes + "e-900"}));
+    EXPECT_TRUE(TestFixture::test_success({one, "0." + zeroes + "1e901"}));
+    EXPECT_TRUE(TestFixture::test_success({one, "1" + zeroes + "1e-901"}));
+    EXPECT_TRUE(TestFixture::test_success({one, zeroes + "1"}));
+}
+
 TYPED_TEST_P(FloatTestSuite, Subnormal)
 {
     ASSERT_TRUE(
@@ -1106,6 +1206,48 @@ TYPED_TEST_P(FloatTestSuite, SubnormalMinHex)
         TestFixture::test_success(TestFixture::values::subnormal_min_hex));
 }
 
+TYPED_TEST_P(FloatTestSuite, HexRoundingToSubnormalMin)
+{
+    using Float = typename TestFixture::float_type;
+    using code = decltype(scn::scan_error::end_of_input);
+    if (!TestFixture::interface_type::supports_hex) {
+        GTEST_SKIP() << "Hexfloats not supported by the reader";
+    }
+
+    // Hexfloats with exactly `bits` significant bits, scaled so that the
+    // smallest subnormal is 2^bits units: the custom parser has to shift
+    // all of the bits out when rounding
+    constexpr int bits = hex_significand_bits<Float>;
+    constexpr int digits = bits / 4;
+    constexpr int exponent = std::numeric_limits<Float>::min_exponent -
+                             std::numeric_limits<Float>::digits - bits;
+    const auto make = [](std::string_view significand, int exp) {
+        return "0x" + std::string{significand} + "p" + std::to_string(exp);
+    };
+    const auto zeroes = std::string(digits - 1, '0');
+    const auto denorm_min = std::numeric_limits<Float>::denorm_min();
+
+    // Just below 1 unit
+    EXPECT_TRUE(TestFixture::test_success(
+        {denorm_min, make(std::string(digits, 'f'), exponent)}));
+    // Exactly half a unit: rounds to even (zero)
+    EXPECT_TRUE(TestFixture::test_failure(make("8" + zeroes, exponent),
+                                          code::value_positive_underflow));
+    // Just above half a unit
+    EXPECT_TRUE(TestFixture::test_success(
+        {denorm_min, make("8" + zeroes.substr(1) + "1", exponent)}));
+    // Same, with a digit that doesn't fit in the significand
+    EXPECT_TRUE(
+        TestFixture::test_failure(make("8" + zeroes + "0", exponent - 4),
+                                  code::value_positive_underflow));
+    EXPECT_TRUE(TestFixture::test_success(
+        {denorm_min, make("8" + zeroes + "1", exponent - 4)}));
+    // Just below half a unit
+    EXPECT_TRUE(
+        TestFixture::test_failure(make(std::string(digits, 'f'), exponent - 1),
+                                  code::value_positive_underflow));
+}
+
 TYPED_TEST_P(FloatTestSuite, Max)
 {
     ASSERT_EQ(TestFixture::values::normal_max.first,
@@ -1181,12 +1323,16 @@ REGISTER_TYPED_TEST_SUITE_P(FloatTestSuite,
                             OverflowHex,
                             Underflow,
                             UnderflowHex,
+                            ExtremeExponents,
+                            ExtremeExponentsHex,
+                            ManyDigits,
                             Subnormal,
                             SubnormalHex,
                             SubnormalMax,
                             SubnormalMaxHex,
                             SubnormalMin,
                             SubnormalMinHex,
+                            HexRoundingToSubnormalMin,
                             Max,
                             MaxHex,
                             NormalMin,

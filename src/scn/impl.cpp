@@ -819,9 +819,7 @@ struct convert_custom_dec {
         float_rounding_guard guard{};
 
         high_precision_decimal hpd{};
-        if (auto res = high_precision_decimal::populate(hpd, parts); !res) {
-            return unexpected(res.error());
-        }
+        high_precision_decimal::populate(hpd, parts);
         if (auto res = simple_decimal_conversion(value, hpd); !res) {
             return unexpected(res.error());
         }
@@ -860,7 +858,7 @@ struct convert_custom_hex {
         static constexpr auto total_bits =
             static_cast<int>(sizeof(significand_int_type) * 8);
         significand_int_type significand{0u};
-        int dropped_significand_digits{};
+        std::int64_t dropped_significand_digits{};
         bool sticky = false;
 
         auto add_digit = [&](uint8_t d) {
@@ -888,22 +886,10 @@ struct convert_custom_hex {
             return {};
         }
 
-        // Handle explicit binary exponent
-        int binary_exponent = 0;
-        if (!parts.exponent.empty()) {
-            auto exp_opt =
-                parse_exponent(parts.exponent, parts.exponent_positive);
-            if (!exp_opt) {
-                return detail::unexpected_scan_error(
-                    scan_error::invalid_scanned_value,
-                    "Invalid hexfloat binary exponent");
-            }
-            binary_exponent = *exp_opt;
-        }
-
-        auto exp2 = binary_exponent -
-                    4 * static_cast<int>(parts.after_radix_point.size()) +
-                    4 * dropped_significand_digits;
+        const std::int64_t exp2 = adjusted_exponent(
+            parts,
+            4 * (dropped_significand_digits -
+                 static_cast<std::int64_t>(parts.after_radix_point.size())));
 
         // Normalize value to 1.fraction * 2^exponent (for normal values)
         //
@@ -919,7 +905,7 @@ struct convert_custom_hex {
         static constexpr int max_biased_exp =
             float_traits<T>::max_biased_exponent;
 
-        auto biased_exp = static_cast<int>(N) - 1 + exp2 + exp_bias;
+        auto biased_exp = static_cast<std::int64_t>(N) - 1 + exp2 + exp_bias;
 
         // Check for overflow (value too large → infinity)
         if (biased_exp >= max_biased_exp) {
@@ -977,16 +963,25 @@ struct convert_custom_hex {
             // (including the leading 1) to fill the fraction_bits field.
             // significand_stored = significand * 2^(biased_exp + fraction_bits
             // - N)
-            const int e_shift =
-                biased_exp + fraction_bits - static_cast<int>(N);
+            const auto e_shift =
+                biased_exp + fraction_bits - static_cast<std::int64_t>(N);
             biased_exp = 0;  // subnormals are stored with biased_exp = 0
 
             if (e_shift < 0) {
-                const auto shift = static_cast<unsigned>(-e_shift);
-                if (shift >= total_bits) {
+                if (-e_shift > total_bits) {
+                    // Less than half of the smallest subnormal
                     return detail::unexpected_scan_error(
                         scan_error::value_positive_underflow,
                         "Hexfloat value too small");
+                }
+                auto shift = static_cast<unsigned>(-e_shift);
+                if (shift == static_cast<unsigned>(total_bits)) {
+                    // `right_shift_round` can't shift by all the bits:
+                    // shift by one first, keeping the dropped bit in `sticky`
+                    sticky |= static_cast<bool>(significand &
+                                                significand_int_type{1u});
+                    significand >>= 1u;
+                    --shift;
                 }
                 significand = right_shift_round(significand, shift);
                 // If rounding carried up to the minimum normal, adjust
@@ -1008,28 +1003,8 @@ struct convert_custom_hex {
         }
 
         SCN_ENSURE(biased_exp >= 0);
-        return compute_float_value(value, biased_exp, significand);
-    }
-
-private:
-    template <typename CharT>
-    static std::optional<int> parse_exponent(
-        std::basic_string_view<CharT> input,
-        bool is_positive)
-    {
-        if (input.empty()) {
-            return 0;
-        }
-
-        int value{};
-        auto r = parse_integer_value(
-            input, value,
-            is_positive ? sign_type::plus_sign : sign_type::minus_sign, 10);
-        if (!r || *r != input.end()) {
-            return std::nullopt;
-        }
-        SCN_ENSURE(r.value() == input.end());
-        return value;
+        return compute_float_value(value, static_cast<int>(biased_exp),
+                                   significand);
     }
 };
 
