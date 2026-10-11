@@ -2475,10 +2475,36 @@ struct incrementable_traits_helper<
     std::enable_if_t<enable_incrtraits_subtractable<T>>>
     : with_difference_type<
           std::make_signed_t<typename subtraction_result_type<T>::type>> {};
+
+// Types like `std::common_iterator` only provide `difference_type` through an
+// `iterator_traits` specialization.
+// Pointers are excluded, because `iterator_traits<void*>` is a hard error.
+template <typename T, typename = void>
+struct incrementable_traits_iterator_traits {};
+template <typename T>
+struct incrementable_traits_iterator_traits<
+    T,
+    std::void_t<typename std::iterator_traits<T>::difference_type>>
+    : with_difference_type<typename std::iterator_traits<T>::difference_type> {
+};
+
+template <typename T, bool = std::is_pointer_v<T>>
+struct incrementable_traits_fallback : incrementable_traits_iterator_traits<T> {
+};
+template <typename T>
+struct incrementable_traits_fallback<T, true> {};
+
+template <typename T, typename = void>
+struct incrementable_traits_select : incrementable_traits_fallback<T> {};
+template <typename T>
+struct incrementable_traits_select<
+    T,
+    std::void_t<typename incrementable_traits_helper<T>::difference_type>>
+    : incrementable_traits_helper<T> {};
 }  // namespace detail
 
 template <typename T>
-struct incrementable_traits : detail::incrementable_traits_helper<T> {};
+struct incrementable_traits : detail::incrementable_traits_select<T> {};
 
 template <typename T>
 using iter_difference_t = typename incrementable_traits<T>::difference_type;
@@ -2550,10 +2576,35 @@ template <typename T>
 struct readable_traits_helper<T,
                               std::enable_if_t<has_member_element_type_v<T> &&
                                                has_member_value_type_v<T>>> {};
+
+// Types like `std::common_iterator` only provide `value_type` through an
+// `iterator_traits` specialization.
+// Pointers are excluded, because `iterator_traits<void*>` is a hard error.
+template <typename T, typename = void>
+struct readable_traits_iterator_traits {};
+template <typename T>
+struct readable_traits_iterator_traits<
+    T,
+    std::enable_if_t<
+        std::is_object_v<typename std::iterator_traits<T>::value_type>>>
+    : with_value_type<typename std::iterator_traits<T>::value_type> {};
+
+template <typename T, bool = std::is_pointer_v<T>>
+struct readable_traits_fallback : readable_traits_iterator_traits<T> {};
+template <typename T>
+struct readable_traits_fallback<T, true> {};
+
+template <typename T, typename = void>
+struct readable_traits_select : readable_traits_fallback<T> {};
+template <typename T>
+struct readable_traits_select<
+    T,
+    std::void_t<typename readable_traits_helper<T>::value_type>>
+    : readable_traits_helper<T> {};
 }  // namespace detail
 
 template <typename T>
-struct readable_traits : detail::readable_traits_helper<T> {};
+struct readable_traits : detail::readable_traits_select<T> {};
 
 template <typename T>
 using iter_value_t = typename readable_traits<T>::value_type;
@@ -2637,6 +2688,89 @@ struct legacy_iterator_category<
 
 template <typename T>
 using legacy_iterator_category_t = typename legacy_iterator_category<T>::type;
+
+// ITER_CONCEPT
+//
+// ITER_TRAITS(I) is `I` if `std::iterator_traits<I>` is the primary template,
+// and `std::iterator_traits<I>` otherwise. Detecting the primary template needs
+// help from the standard library: libstdc++, libc++ and the MS STL are
+// supported. Elsewhere, `iterator_traits<I>` is never considered primary, and
+// the lookup is lenient: a specialization is preferred, but the members of `I`
+// are used as well (which gets C++17 and primary templates right, but not the
+// random-access fallback, if `iterator_traits<I>` computes a category).
+// Even when detected, a specialization lacking both `iterator_concept` and
+// `iterator_category` is not diagnosed, but classified as random access.
+#if SCN_STDLIB_LIBCPP
+template <typename T, typename = void>
+inline constexpr bool iterator_traits_is_primary = false;
+template <typename T>
+inline constexpr bool iterator_traits_is_primary<
+    T,
+    std::void_t<typename std::iterator_traits<T>::__primary_template>> =
+    std::is_same_v<typename std::iterator_traits<T>::__primary_template,
+                   std::iterator_traits<T>>;
+#elif SCN_STDLIB_GLIBCXX
+template <typename T, typename = void>
+inline constexpr bool iterator_traits_is_primary =
+    std::is_base_of_v<std::__iterator_traits<T>, std::iterator_traits<T>>;
+#elif SCN_STDLIB_MS_STL
+template <typename T, typename = void>
+inline constexpr bool iterator_traits_is_primary = false;
+template <typename T>
+inline constexpr bool iterator_traits_is_primary<
+    T,
+    std::void_t<typename std::iterator_traits<T>::_From_primary>> =
+    std::is_same_v<typename std::iterator_traits<T>::_From_primary,
+                   std::iterator_traits<T>>;
+#else
+template <typename T, typename = void>
+inline constexpr bool iterator_traits_is_primary = false;
+#endif
+
+template <typename T>
+auto iter_concept_primary(priority_tag<2>)
+    -> type_identity<typename T::iterator_concept>;
+template <typename T>
+auto iter_concept_primary(priority_tag<1>)
+    -> type_identity<typename T::iterator_category>;
+template <typename T>
+auto iter_concept_primary(priority_tag<0>)
+    -> type_identity<random_access_iterator_tag>;
+
+template <typename T>
+auto iter_concept_lenient(priority_tag<4>)
+    -> type_identity<typename std::iterator_traits<T>::iterator_concept>;
+template <typename T>
+auto iter_concept_lenient(priority_tag<3>)
+    -> type_identity<typename T::iterator_concept>;
+template <typename T>
+auto iter_concept_lenient(priority_tag<2>)
+    -> type_identity<typename std::iterator_traits<T>::iterator_category>;
+template <typename T>
+auto iter_concept_lenient(priority_tag<1>)
+    -> type_identity<typename T::iterator_category>;
+template <typename T>
+auto iter_concept_lenient(priority_tag<0>)
+    -> type_identity<random_access_iterator_tag>;
+
+template <typename T, bool = iterator_traits_is_primary<T>>
+struct iter_concept_select
+    : decltype(iter_concept_primary<T>(priority_tag<2>{})) {};
+template <typename T>
+struct iter_concept_select<T, false>
+    : decltype(iter_concept_lenient<T>(priority_tag<4>{})) {};
+
+template <typename T, typename = void>
+struct iter_concept : iter_concept_select<T> {};
+template <typename T>
+struct iter_concept<T*, std::enable_if_t<std::is_object_v<T>>> {
+    using type = contiguous_iterator_tag;
+};
+template <typename T>
+struct iter_concept<T*, std::enable_if_t<!std::is_object_v<T>>> {};
+
+template <typename T>
+using iter_concept_t = typename iter_concept<T>::type;
 
 }  // namespace detail
 
@@ -2789,10 +2923,9 @@ inline constexpr bool sized_sentinel_for<void*, void*> = false;
 
 namespace detail {
 
-// FIXME: Use ITER_CONCEPT, not iterator_category_t
 struct input_iterator_concept {
     template <typename I>
-    auto requires_() -> iterator_category_t<I>;
+    auto requires_() -> iter_concept_t<I>;
 
     template <typename>
     static auto test(long) -> std::false_type;
@@ -2801,7 +2934,7 @@ struct input_iterator_concept {
     static auto test(int) -> std::enable_if_t<
         input_or_output_iterator<I> && readable<I> &&
             detail::requires_<input_iterator_concept, I> &&
-            std::is_base_of_v<input_iterator_tag, iterator_category_t<I>>,
+            std::is_base_of_v<input_iterator_tag, iter_concept_t<I>>,
         std::true_type>;
 };
 
@@ -2834,7 +2967,7 @@ struct forward_iterator_concept {
     template <typename I>
     static auto test(int) -> std::enable_if_t<
         input_iterator<I> &&
-            std::is_base_of_v<forward_iterator_tag, iterator_category_t<I>> &&
+            std::is_base_of_v<forward_iterator_tag, iter_concept_t<I>> &&
             incrementable<I> && sentinel_for<I, I>,
         std::true_type>;
 };
@@ -2859,8 +2992,7 @@ struct bidirectional_iterator_concept {
     template <typename I>
     static auto test(int) -> std::enable_if_t<
         forward_iterator<I> &&
-            std::is_base_of_v<bidirectional_iterator_tag,
-                              iterator_category_t<I>> &&
+            std::is_base_of_v<bidirectional_iterator_tag, iter_concept_t<I>> &&
             detail::requires_<bidirectional_iterator_concept, I>,
         std::true_type>;
 };
@@ -2880,8 +3012,7 @@ struct random_access_iterator_concept {
     template <typename I>
     static auto test(int) -> std::enable_if_t<
         bidirectional_iterator<I> &&
-            std::is_base_of_v<random_access_iterator_tag,
-                              iterator_category_t<I>> &&
+            std::is_base_of_v<random_access_iterator_tag, iter_concept_t<I>> &&
             totally_ordered<I> && sized_sentinel_for<I, I> &&
             detail::requires_<random_access_iterator_concept, I>,
         std::true_type>;
@@ -4074,62 +4205,52 @@ public:
     // Not exception safe,
     // but let's just assume these never throw and leave it at that.
 
-    template <typename II = I,
-              typename SS = S,
-              std::enable_if_t<std::is_copy_constructible_v<II> &&
-                               std::is_copy_constructible_v<SS>>* = nullptr>
     common_iterator_storage(const common_iterator_storage& other)
     {
         if (other.m_is_iterator) {
-            _make_iterator(other._get_as<I>());
+            _make_iterator(other.template _get_as<I>());
         }
         else {
-            _make_sentinel(other._get_as<S>());
+            _make_sentinel(other.template _get_as<S>());
         }
     }
 
-    template <typename II = I,
-              typename SS = S,
-              std::enable_if_t<std::is_copy_constructible_v<II> &&
-                               std::is_copy_constructible_v<SS>>* = nullptr>
     common_iterator_storage& operator=(const common_iterator_storage& other)
     {
+        if (this == &other) {
+            return *this;
+        }
         _destroy();
         if (other.m_is_iterator) {
-            _make_iterator(other._get_as<I>());
+            _make_iterator(other.template _get_as<I>());
         }
         else {
-            _make_sentinel(other._get_as<S>());
+            _make_sentinel(other.template _get_as<S>());
         }
         return *this;
     }
 
-    template <typename II = I,
-              typename SS = S,
-              std::enable_if_t<std::is_move_constructible_v<II> &&
-                               std::is_move_constructible_v<SS>>* = nullptr>
     common_iterator_storage(common_iterator_storage&& other)
     {
         if (other.m_is_iterator) {
-            _make_iterator(SCN_MOVE(other._get_as<I>()));
+            _make_iterator(SCN_MOVE(other.template _get_as<I>()));
         }
         else {
-            _make_sentinel(SCN_MOVE(other._get_as<S>()));
+            _make_sentinel(SCN_MOVE(other.template _get_as<S>()));
         }
     }
 
-    template <typename II = I,
-              typename SS = S,
-              std::enable_if_t<std::is_move_constructible_v<II> &&
-                               std::is_move_constructible_v<SS>>* = nullptr>
     common_iterator_storage& operator=(common_iterator_storage&& other)
     {
+        if (this == &other) {
+            return *this;
+        }
         _destroy();
         if (other.m_is_iterator) {
-            _make_iterator(SCN_MOVE(other._get_as<I>()));
+            _make_iterator(SCN_MOVE(other.template _get_as<I>()));
         }
         else {
-            _make_sentinel(SCN_MOVE(other._get_as<S>()));
+            _make_sentinel(SCN_MOVE(other.template _get_as<S>()));
         }
         return *this;
     }
@@ -4145,18 +4266,22 @@ protected:
         return m_is_iterator;
     }
 
+    SCN_GCC_PUSH
+    SCN_GCC_IGNORE("-Wcast-align")
     template <typename T>
     T& _get_as()
     {
         static_assert(std::is_object_v<T>);
-        return *reinterpret_cast<T*>(m_storage);
+        return *reinterpret_cast<T*>(SCN_ASSUME_ALIGNED(m_storage, alignof(T)));
     }
     template <typename T>
     const T& _get_as() const
     {
         static_assert(std::is_object_v<T>);
-        return *reinterpret_cast<const T*>(m_storage);
+        return *reinterpret_cast<const T*>(
+            SCN_ASSUME_ALIGNED(m_storage, alignof(T)));
     }
+    SCN_GCC_POP
 
     void _destroy()
     {
@@ -4269,7 +4394,7 @@ public:
     constexpr common_iterator& operator--()
     {
         SCN_EXPECT(base_type::_is_iterator());
-        ++base_type::template _get_as<II>();
+        --base_type::template _get_as<II>();
         return *this;
     }
 
@@ -4811,6 +4936,9 @@ inline constexpr auto to_input = to_input_::fn{};
 namespace detail {
 struct pair_concat_first_tag {};
 struct pair_concat_second_tag {};
+// Leaves the storage of the iterator uninitialized:
+// it must be initialized with `_make_first` or `_make_second` right after
+struct pair_concat_uninitialized_tag {};
 
 template <typename FirstIt, typename SecondIt>
 struct pair_concat_iterator_noncopyable_storage {
@@ -4821,7 +4949,15 @@ protected:
     using first_iterator = FirstIt;
     using second_iterator = SecondIt;
 
-    pair_concat_iterator_noncopyable_storage() = default;
+    pair_concat_iterator_noncopyable_storage() : m_is_first(true)
+    {
+        _make_first();
+    }
+
+    explicit pair_concat_iterator_noncopyable_storage(
+        pair_concat_uninitialized_tag)
+    {
+    }
 
     pair_concat_iterator_noncopyable_storage(pair_concat_first_tag, FirstIt f)
         : m_is_first(true)
@@ -4855,6 +4991,9 @@ protected:
     pair_concat_iterator_noncopyable_storage& operator=(
         pair_concat_iterator_noncopyable_storage&& other)
     {
+        if (this == &other) {
+            return *this;
+        }
         _destroy();
         if (other.m_is_first) {
             _make_first(SCN_MOVE(other._get_first()));
@@ -4957,7 +5096,8 @@ protected:
 
     pair_concat_iterator_copyable_storage(
         const pair_concat_iterator_copyable_storage& other)
-        : pair_concat_iterator_noncopyable_storage<FirstIt, SecondIt>()
+        : pair_concat_iterator_noncopyable_storage<FirstIt, SecondIt>(
+              pair_concat_uninitialized_tag{})
     {
         this->_copy(other);
     }
@@ -4965,6 +5105,9 @@ protected:
     pair_concat_iterator_copyable_storage& operator=(
         const pair_concat_iterator_copyable_storage& other)
     {
+        if (this == &other) {
+            return *this;
+        }
         this->_destroy();
         this->_copy(other);
         return *this;
@@ -5047,7 +5190,9 @@ class pair_concat_view : view_interface<pair_concat_view<First, Second>> {
                              std::is_convertible_v<iterator_t<Second>,
                                                    const_iterator_t<Second>>>* =
                 nullptr>
-        iterator(iterator<Other> other) : base(), m_parent(other.m_parent)
+        iterator(iterator<Other> other)
+            : base(detail::pair_concat_uninitialized_tag{}),
+              m_parent(other.m_parent)
         {
             if (other._is_first()) {
                 base::_make_first(SCN_MOVE(other._get_first()));
@@ -6640,7 +6785,8 @@ public:
     basic_scan_sized_range_buffer(const Range& r)
         : base(typename base::non_contiguous_tag{}),
           m_range(&r),
-          m_cursor(ranges::begin(*m_range))
+          m_cursor(ranges::begin(*m_range)),
+          m_remaining(static_cast<std::size_t>(ranges::size(*m_range)))
     {
         m_current_buffer.reserve(chunk_size);
     }
@@ -6648,29 +6794,27 @@ public:
 private:
     bool do_fill() override
     {
-        if (m_cursor == ranges::end(*m_range)) {
+        if (m_remaining == 0) {
             return false;
         }
-        SCN_EXPECT(m_cursor < ranges::end(*m_range));
         if (!this->m_current_buffer.empty()) {
             this->m_putback_buffer.append(m_current_buffer);
             m_current_buffer.clear();
         }
-        auto const n =
-            std::min(chunk_size, static_cast<std::size_t>(std::distance(
-                                     m_cursor, ranges::end(*m_range))));
+        auto const n = detail::min(chunk_size, m_remaining);
         for (std::size_t i = 0; i < n; ++i) {
             m_current_buffer.push_back(*m_cursor);
             ++m_cursor;
         }
+        m_remaining -= n;
         this->m_current_view =
             std::basic_string_view<char_type>(m_current_buffer);
-        SCN_EXPECT(m_cursor <= ranges::end(*m_range));
         return true;
     }
 
     const Range* m_range;
     iterator m_cursor;
+    std::size_t m_remaining;
     std::basic_string<char_type> m_current_buffer;
 };
 
@@ -6759,10 +6903,10 @@ inline void set_prelude_after_sync(std::basic_string<CharT>& prelude,
     prelude.reserve(static_cast<std::size_t>(n_needed));
 
     const auto n_from_current_view =
-        std::min(n_needed, static_cast<std::ptrdiff_t>(current_view.size()));
+        detail::min(n_needed, static_cast<std::ptrdiff_t>(current_view.size()));
     const auto n_from_putback_buffer =
-        std::min(n_needed - n_from_current_view,
-                 static_cast<std::ptrdiff_t>(putback_buffer.size()));
+        detail::min(n_needed - n_from_current_view,
+                    static_cast<std::ptrdiff_t>(putback_buffer.size()));
     SCN_EXPECT(n_from_putback_buffer + n_from_current_view == n_needed);
 
     prelude.append(putback_buffer.end() - n_from_putback_buffer,
@@ -6774,7 +6918,8 @@ inline void set_prelude_after_sync(std::basic_string<CharT>& prelude,
 template <typename Range>
 class basic_scan_input_range_buffer
     : public basic_scan_buffer<detail::char_t<Range>> {
-    static_assert(ranges::input_range<Range> && !ranges::forward_range<Range>);
+    // Also used for forward ranges that can't be iterated over when const
+    static_assert(ranges::input_range<Range>);
 
     using _char_type = detail::char_t<Range>;
     using base = basic_scan_buffer<_char_type>;
@@ -6901,11 +7046,13 @@ auto make_string_scan_buffer(const Range& range)
 template <typename Range>
 auto make_range_scan_buffer(Range&& range)
 {
-    if constexpr (ranges::bidirectional_range<Range> &&
-                  ranges::sized_range<Range>) {
+    // The sized and forward range buffers iterate over a const range
+    using const_range = const remove_cvref_t<Range>;
+    if constexpr (ranges::bidirectional_range<const_range> &&
+                  ranges::sized_range<const_range>) {
         return basic_scan_sized_range_buffer(range);
     }
-    else if constexpr (ranges::forward_range<Range>) {
+    else if constexpr (ranges::forward_range<const_range>) {
         return basic_scan_forward_range_buffer(range);
     }
     else {
@@ -7061,9 +7208,9 @@ inline auto impl(scan_file& file, priority_tag<3>)
 }
 auto impl(scan_file&&, priority_tag<3>) = delete;
 
-// (at least) forward_range -> the appropriate range buffer
+// (at least) forward_range, when const -> the appropriate range buffer
 template <typename Range,
-          std::enable_if_t<ranges::forward_range<Range>>* = nullptr>
+          std::enable_if_t<ranges::forward_range<const Range>>* = nullptr>
 auto impl(const Range& r, priority_tag<2>)
 {
     if constexpr (!is_valid_char_type<char_t<Range>>) {
@@ -7090,10 +7237,14 @@ auto impl(const Range& r, priority_tag<2>)
     }
 }
 
-// input_range -> input_range_buffer
+// input_range, or a forward_range only when non-const
+// (e.g. `views::filter`)
+// -> input_range_buffer
 template <typename Range,
-          std::enable_if_t<ranges::input_range<Range> &&
-                           !ranges::forward_range<Range>>* = nullptr>
+          std::enable_if_t<
+              ranges::input_range<Range> &&
+              !ranges::forward_range<const std::remove_reference_t<Range>>>* =
+              nullptr>
 auto impl(Range&& r, priority_tag<1>)
 {
     if constexpr (!is_valid_char_type<char_t<Range>>) {

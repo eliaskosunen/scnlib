@@ -1192,14 +1192,14 @@
 #elif SCN_HAS_ASSUME_ALIGNED
 #define SCN_ASSUME_ALIGNED(x, n) __assume_aligned(x, n)
 #else
-#define SCN_ASSUME_ALIGNED(x, n)                                           \
-    ([&](auto* p) noexcept -> decltype(p) {                                \
-        if ((reinterpret_cast<std::uintptr_t>(p) & ((1 << n) - 1)) == 0) { \
-            return p;                                                      \
-        }                                                                  \
-        else {                                                             \
-            SCN_UNREACHABLE;                                               \
-        }                                                                  \
+#define SCN_ASSUME_ALIGNED(x, n)                                      \
+    ([&](auto* p) noexcept -> decltype(p) {                           \
+        if ((reinterpret_cast<std::uintptr_t>(p) & ((n) - 1)) == 0) { \
+            return p;                                                 \
+        }                                                             \
+        else {                                                        \
+            SCN_UNREACHABLE;                                          \
+        }                                                             \
     }(x))
 #endif
 
@@ -1221,9 +1221,11 @@
 #define SCN_EXPECT(cond) SCN_ASSERT(cond, "Precondition violation")
 #define SCN_ENSURE(cond) SCN_ASSERT(cond, "Postcondition violation")
 
+// `decltype((x))` and not `decltype(x)`, to keep the constness of `x`,
+// when it's a member accessed in a const member function
 #define SCN_MOVE(x) \
     static_cast<    \
-        typename ::scn::detail::remove_reference<decltype(x)>::type&&>(x)
+        typename ::scn::detail::remove_reference<decltype((x))>::type&&>(x)
 #define SCN_FWD(x)          static_cast<decltype(x)&&>(x)
 #define SCN_DECLVAL(...)    static_cast<__VA_ARGS__ (*)()>(nullptr)()
 

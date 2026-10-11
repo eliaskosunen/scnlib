@@ -20,6 +20,13 @@
 #include <scn/scan.h>
 
 #include <deque>
+#include <list>
+#include <sstream>
+#include <string>
+
+#if SCN_STD >= SCN_STD_20
+#include <ranges>
+#endif
 
 using ::testing::Test;
 
@@ -119,6 +126,20 @@ TEST(SourceTest, SourceIsRandomAccessRange)
     EXPECT_DOUBLE_EQ(d, 3.14);
 }
 
+TEST(SourceTest, SourceIsSizedBidirectionalRange)
+{
+    // Longer than the 16-character chunk of the sized range buffer
+    const auto str = std::string_view{"123 3.14 abcdefghijklmnopqrstuvwxyz"};
+    auto source = std::list<char>(str.begin(), str.end());
+    auto result = scn::scan<int, double, std::string>(source, "{} {} {}");
+    ASSERT_THAT(result, Succeeded());
+    EXPECT_THAT(result->range(), IsEmptyRange());
+    auto [i, d, s] = result->values();
+    EXPECT_EQ(i, 123);
+    EXPECT_DOUBLE_EQ(d, 3.14);
+    EXPECT_EQ(s, "abcdefghijklmnopqrstuvwxyz");
+}
+
 TEST(SourceTest, SourceIsInputRange)
 {
     auto source = std::deque<char>{'1', '2', '3', ' ', '3', '.', '1', '4'};
@@ -164,3 +185,63 @@ TEST(SourceTest, SourceIsInputRangeRvalue)
     EXPECT_EQ(i, 123);
     EXPECT_DOUBLE_EQ(d, 3.14);
 }
+
+// Clang before 16 can't compile the views of libstdc++'s <ranges>,
+// even though __cpp_lib_ranges is defined
+#if SCN_STD >= SCN_STD_20 && defined(__cpp_lib_ranges) && \
+    __cpp_lib_ranges >= 201911L &&                        \
+    !(SCN_STDLIB_GLIBCXX && SCN_CLANG && SCN_CLANG < SCN_COMPILER(16, 0, 0))
+// These views have an `iterator_concept`, and either no `iterator_category`,
+// or a weaker one
+TEST(SourceTest, SourceIsIstreamView)
+{
+    auto stream = std::istringstream{"123 456"};
+    stream >> std::noskipws;
+    // Not `std::views::istream`, which is missing before libstdc++ 12
+    auto view = std::ranges::istream_view<char>(stream);
+    auto result = scn::scan<int>(view, "{}");
+    ASSERT_THAT(result, Succeeded());
+    EXPECT_EQ(result->value(), 123);
+
+    auto result2 = scn::scan<int>(result->range(), "{}");
+    ASSERT_THAT(result2, Succeeded());
+    EXPECT_EQ(result2->value(), 456);
+}
+
+TEST(SourceTest, SourceIsTransformView)
+{
+    auto source = std::string_view{"789 x"};
+    auto view =
+        source | std::views::transform([](char c) noexcept { return c; });
+    static_assert(scn::ranges::random_access_range<decltype(view)>);
+    auto result = scn::scan<int>(view, "{}");
+    ASSERT_THAT(result, Succeeded());
+    EXPECT_EQ(result->value(), 789);
+    EXPECT_EQ(*result->begin(), ' ');
+}
+
+// Forward ranges that can only be iterated over when non-const
+TEST(SourceTest, SourceIsMutableTransformView)
+{
+    auto source = std::string_view{"789 x 12"};
+    // `mutable` makes `operator()` non-const
+    auto mutable_transform =
+        source |
+        std::views::transform([](char c) mutable noexcept { return c; });
+    auto result = scn::scan<int>(mutable_transform, "{}");
+    ASSERT_THAT(result, Succeeded());
+    EXPECT_EQ(result->value(), 789);
+    EXPECT_EQ(*result->begin(), ' ');
+}
+
+TEST(SourceTest, SourceIsFilterView)
+{
+    auto source = std::string_view{"789 x 12"};
+    auto filter =
+        source | std::views::filter([](char c) noexcept { return c != 'x'; });
+    auto filter_result = scn::scan<int, int>(filter, "{} {}");
+    ASSERT_THAT(filter_result, Succeeded());
+    EXPECT_THAT(filter_result->values(), testing::FieldsAre(789, 12));
+    EXPECT_TRUE(filter_result->range().begin() == filter_result->range().end());
+}
+#endif

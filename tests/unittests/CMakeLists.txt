@@ -46,6 +46,7 @@ make_scn_test(scn_tests
         istream_scanner_test.cpp
         istream_source_test.cpp
         memory_test.cpp
+        ranges_polyfill_test.cpp
         ranges_test.cpp
         regex_test.cpp
         result_test.cpp

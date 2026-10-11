@@ -161,7 +161,7 @@ public:
         -> std::enable_if_t<input_or_output_iterator<I> && sentinel_for<S, I>,
                             iter_difference_t<I>>
     {
-        return fn::impl(std::move(first), std::move(last), priority_tag<0>{});
+        return fn::impl(SCN_MOVE(first), SCN_MOVE(last), priority_tag<1>{});
     }
 };
 }  // namespace detail::distance_
@@ -192,7 +192,9 @@ private:
     }
 
     template <typename I>
-    static constexpr auto impl(I& i, iter_difference_t<I> n, priority_tag<1>)
+    static constexpr auto impl_i_n(I& i,
+                                   iter_difference_t<I> n,
+                                   priority_tag<1>)
         -> std::enable_if_t<has_batch_advance<I>::value>
     {
         i.batch_advance(n);
@@ -250,7 +252,7 @@ private:
     static constexpr auto impl_i_s(I& i, S bound, priority_tag<1>)
         -> std::enable_if_t<sized_sentinel_for<S, I>>
     {
-        fn::impl_i_n(i, bound - i);
+        fn::impl_i_n(i, bound - i, priority_tag<1>{});
     }
 
     template <typename I, typename S>
@@ -284,10 +286,10 @@ private:
         iter_difference_t<I> counter{0};
 
         if (n < zero) {
-            do {
+            while (n++ < zero && i != bound) {
                 --i;
                 --counter;  // Yes, really
-            } while (++n < zero && i != bound);
+            }
         }
         else {
             while (n-- > zero && i != bound) {
@@ -382,97 +384,6 @@ struct fn {
 }  // namespace next_impl
 
 inline constexpr next_impl::fn next{};
-
-// prev, for forward_iterators
-namespace detail::prev_backtrack_ {
-struct fn {
-private:
-    template <typename It>
-    static constexpr auto impl(It it, It, priority_tag<2>)
-        -> std::enable_if_t<bidirectional_iterator<It>, It>
-    {
-        --it;
-        return it;
-    }
-
-    template <typename It>
-    static constexpr auto impl(It it, It beg, priority_tag<1>)
-        -> remove_cvref_t<decltype((void)beg.batch_advance(42), it)>
-    {
-        return beg.batch_advance(it.position() - 1);
-    }
-
-    template <typename It>
-    static constexpr auto impl(It it, It beg, priority_tag<0>)
-        -> std::enable_if_t<forward_iterator<It>, It>
-    {
-        SCN_EXPECT(it != beg);
-
-        while (true) {
-            auto tmp = beg;
-            ++beg;
-            if (beg == it) {
-                return tmp;
-            }
-        }
-    }
-
-public:
-    template <typename It>
-    constexpr auto operator()(It it, It beg) const
-        -> decltype(fn::impl(it, beg, priority_tag<2>{}))
-    {
-        return fn::impl(it, beg, priority_tag<2>{});
-    }
-};
-}  // namespace detail::prev_backtrack_
-
-inline constexpr auto prev_backtrack = detail::prev_backtrack_::fn{};
-
-// operator<, for forward_iterators
-namespace detail::less_backtrack_ {
-struct fn {
-private:
-    template <typename It>
-    static constexpr auto impl(It lhs, It rhs, It, priority_tag<2>)
-        -> decltype(static_cast<void>(lhs < rhs), true)
-    {
-        return lhs < rhs;
-    }
-
-    template <typename It>
-    static constexpr auto impl(It lhs, It rhs, It, priority_tag<1>)
-        -> decltype(static_cast<void>(lhs.position() < rhs.position()), true)
-    {
-        return lhs.position() < rhs.position();
-    }
-
-    template <typename It>
-    static constexpr auto impl(It lhs, It rhs, It beg, priority_tag<0>)
-        -> std::enable_if_t<ranges::forward_iterator<It>, bool>
-    {
-        while (true) {
-            if (beg == rhs) {
-                return false;
-            }
-            if (beg == lhs) {
-                return true;
-            }
-            ++beg;
-        }
-    }
-
-public:
-    template <typename It>
-    constexpr auto operator()(It lhs, It rhs, It beg) const
-        -> decltype(fn::impl(lhs, rhs, beg, priority_tag<2>{}))
-    {
-        return fn::impl(lhs, rhs, beg, priority_tag<2>{});
-    }
-};
-}  // namespace detail::less_backtrack_
-
-inline constexpr auto less_backtrack = detail::less_backtrack_::fn{};
 
 }  // namespace ranges
 
