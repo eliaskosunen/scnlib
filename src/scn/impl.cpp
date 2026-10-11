@@ -226,12 +226,21 @@ using stdio_file_buffer_interface =
 SCN_PUBLIC scan_cfile_buffer::scan_cfile_buffer(std::FILE* file)
     : base(base::non_contiguous_tag{}), m_file(file)
 {
+    if (m_file == nullptr) {
+        this->m_source_error = detail::unexpected_scan_error(
+            scan_error::invalid_source_state,
+            "Failed to read FILE, null FILE pointer");
+        return;
+    }
     auto f = impl::stdio_file_interface{m_file};
     stdio_file_buffer_interface::construct(f, this->m_source_error);
 }
 
 SCN_PUBLIC scan_cfile_buffer::~scan_cfile_buffer()
 {
+    if (m_file == nullptr) {
+        return;
+    }
     auto f = impl::stdio_file_interface{m_file};
     stdio_file_buffer_interface::destruct(f);
 }
@@ -246,35 +255,36 @@ SCN_PUBLIC bool scan_cfile_buffer::do_fill()
 SCN_PUBLIC bool scan_cfile_buffer::do_sync(std::ptrdiff_t position)
 {
     auto f = impl::stdio_file_interface{m_file};
-    return stdio_file_buffer_interface::sync(f, position, *this, m_current_view,
-                                             m_putback_buffer,
-                                             true) == position;
+    return stdio_file_buffer_interface::sync(f, position, m_current_view,
+                                             m_putback_buffer) == position;
 }
 
 SCN_PUBLIC scan_file_buffer::scan_file_buffer(scan_file& file)
     : base(scan_file_access::get_handle(file)),
       m_prelude(scan_file_access::get_prelude(file))
 {
-    this->m_current_view = std::string_view{m_prelude.data(), m_prelude.size()};
+    // If the file can't be read from, scanning fails before syncing,
+    // so the prelude would be lost
+    if (!this->m_source_error) {
+        return;
+    }
+    // The prelude has already been consumed from the file
+    this->m_putback_buffer = SCN_MOVE(m_prelude);
+    m_prelude.clear();
 }
 
 SCN_PUBLIC scan_file_buffer::~scan_file_buffer() = default;
 
 SCN_PUBLIC bool scan_file_buffer::do_fill()
 {
-    if (scan_cfile_buffer::do_fill()) {
-        m_prelude.clear();
-        return true;
-    }
-    return false;
+    return scan_cfile_buffer::do_fill();
 }
 
 SCN_PUBLIC bool scan_file_buffer::do_sync(std::ptrdiff_t position)
 {
     auto f = impl::stdio_file_interface{m_file};
-    if (auto i = stdio_file_buffer_interface::sync(
-            f, position, *this, m_current_view, m_putback_buffer,
-            m_prelude.empty());
+    if (auto i = stdio_file_buffer_interface::sync(f, position, m_current_view,
+                                                   m_putback_buffer);
         i != position) {
         detail::set_prelude_after_sync(m_prelude, position, i, m_current_view,
                                        m_putback_buffer);
@@ -2289,6 +2299,40 @@ scan_expected<std::ptrdiff_t> vscan_internal(
     return vscan_parse_format_string(format, handler);
 }
 
+// Calls `scan`, and syncs the buffer of `source` with its underlying source:
+// to where scanning ended, or back to the beginning, if scanning failed
+template <typename CharT, typename Scan>
+scan_expected<std::ptrdiff_t> scan_and_sync_buffer(
+    typename detail::basic_scan_buffer<
+        detail::type_identity_t<CharT>>::range_type source,
+    Scan&& scan)
+{
+    auto& buffer = *source.begin().parent();
+    if (auto e = buffer.get_source_error(); SCN_UNLIKELY(!e)) {
+        return unexpected(e.error());
+    }
+
+    const auto begin_position = source.begin().position();
+    const scan_expected<std::ptrdiff_t> end_position = SCN_FWD(scan)();
+
+    // A read error fails the scan, even if the values were scanned
+    // successfully from what was read before it
+    const bool failed = !end_position || !buffer.get_source_error();
+
+    if (auto pos = failed ? begin_position : *end_position;
+        SCN_UNLIKELY(!buffer.sync(pos))) {
+        return detail::unexpected_scan_error(
+            scan_error::invalid_source_state,
+            "Failed to sync with underlying source");
+    }
+
+    if (auto e = buffer.get_source_error(); SCN_UNLIKELY(!e)) {
+        return unexpected(e.error());
+    }
+
+    return end_position;
+}
+
 template <typename CharT>
 scan_expected<std::ptrdiff_t> vscan_internal(
     typename detail::basic_scan_buffer<
@@ -2302,13 +2346,7 @@ scan_expected<std::ptrdiff_t> vscan_internal(
                               loc);
     }
 
-    auto& buffer = *source.begin().parent();
-    if (auto e = buffer.get_source_error(); SCN_UNLIKELY(!e)) {
-        return unexpected(e.error());
-    }
-
-    const auto begin_position = source.begin().position();
-    const auto end_position = [&]() {
+    return scan_and_sync_buffer<CharT>(source, [&]() {
         const auto argcount = args.size();
         if (is_simple_single_argument_format_string(format) && argcount == 1) {
             auto arg = args.get(0);
@@ -2318,36 +2356,29 @@ scan_expected<std::ptrdiff_t> vscan_internal(
         auto handler = format_handler<false, CharT>{
             source, format, SCN_MOVE(args), loc, argcount};
         return vscan_parse_format_string(format, handler);
-    }();
-
-    if (SCN_LIKELY(end_position)) {
-        if (SCN_UNLIKELY(!buffer.sync(*end_position))) {
-            return detail::unexpected_scan_error(
-                scan_error::invalid_source_state,
-                "Failed to sync with underlying source");
-        }
-    }
-    else {
-        if (SCN_UNLIKELY(!buffer.sync(begin_position))) {
-            return detail::unexpected_scan_error(
-                scan_error::invalid_source_state,
-                "Failed to sync with underlying source");
-        }
-    }
-
-    if (auto e = buffer.get_source_error(); SCN_UNLIKELY(!e)) {
-        return unexpected(e.error());
-    }
-
-    return end_position;
+    });
 }
 
-template <typename Source, typename CharT>
+template <typename CharT>
 scan_expected<std::ptrdiff_t> vscan_value_internal(
-    Source&& source,
+    std::basic_string_view<CharT> source,
     basic_scan_arg<detail::default_context<CharT>> arg)
 {
-    return scan_simple_single_argument(SCN_FWD(source), {}, arg);
+    return scan_simple_single_argument(source, {}, arg);
+}
+
+template <typename CharT>
+scan_expected<std::ptrdiff_t> vscan_value_internal(
+    typename detail::basic_scan_buffer<
+        detail::type_identity_t<CharT>>::range_type source,
+    basic_scan_arg<detail::default_context<CharT>> arg)
+{
+    if (!source.begin().stores_parent()) {
+        return vscan_value_internal(source.begin().contiguous_segment(), arg);
+    }
+
+    return scan_and_sync_buffer<CharT>(
+        source, [&]() { return scan_simple_single_argument(source, {}, arg); });
 }
 }  // namespace
 

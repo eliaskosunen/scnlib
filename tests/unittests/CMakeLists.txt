@@ -93,6 +93,14 @@ make_scn_test(scn_impl_tests
         impl_tests/integer_reader_test.impl_wide_classic.cpp
         impl_tests/integer_reader_test.impl_wide_localized.cpp
 )
+# Tests the deprecated C FILE* sources on purpose. MSVC and clang-cl report the
+# deprecation inside scn/scan.h, where the pragmas in the test can't disable it.
+if (MSVC)
+    set_source_files_properties(impl_tests/file_test.cpp PROPERTIES
+            COMPILE_OPTIONS
+            $<IF:$<CXX_COMPILER_ID:MSVC>,/wd4996,-Wno-deprecated-declarations>
+    )
+endif ()
 add_test(NAME scn_impl_tests COMMAND scn_impl_tests)
 
 # pragma ignores seem to not always work for overflowing literals

@@ -1193,6 +1193,11 @@ struct stdio_file_interface_impl<File, default_file_tag>
         SCN_EXPECT(false);
         SCN_UNREACHABLE;
     }
+    static bool has_error()
+    {
+        SCN_EXPECT(false);
+        SCN_UNREACHABLE;
+    }
 
     SCN_NODISCARD expected<char, stdio_file_error> read_one()
     {
@@ -1207,9 +1212,6 @@ struct stdio_file_interface_impl<File, default_file_tag>
         }
         return static_cast<char>(res);
     }
-
-    static void prepare_putback() {}
-    static void finalize_putback() {}
 
     SCN_NODISCARD bool putback(char ch)
     {
@@ -1245,6 +1247,11 @@ struct posix_stdio_file_interface : stdio_file_interface_base<File> {
     }
 #endif
 
+    SCN_NODISCARD bool has_error()
+    {
+        return ferror_unlocked(this->file) != 0;
+    }
+
     SCN_NODISCARD expected<char, stdio_file_error> read_one()
     {
         clearerr_unlocked(this->file);
@@ -1256,15 +1263,6 @@ struct posix_stdio_file_interface : stdio_file_interface_base<File> {
             return unexpected(stdio_file_error::eof);
         }
         return static_cast<char>(res);
-    }
-
-    void prepare_putback()
-    {
-        unlock();
-    }
-    void finalize_putback()
-    {
-        lock();
     }
 
     SCN_NODISCARD bool putback(char ch)
@@ -1418,6 +1416,11 @@ struct stdio_file_interface_impl<File, win32_file_tag>
         SCN_EXPECT(false);
         SCN_UNREACHABLE;
     }
+    SCN_NODISCARD static bool has_error()
+    {
+        SCN_EXPECT(false);
+        SCN_UNREACHABLE;
+    }
 
     SCN_NODISCARD expected<char, stdio_file_error> read_one()
     {
@@ -1431,9 +1434,6 @@ struct stdio_file_interface_impl<File, win32_file_tag>
         }
         return static_cast<char>(res);
     }
-
-    static void prepare_putback() {}
-    static void finalize_putback() {}
 
     SCN_NODISCARD bool putback(char ch)
     {
@@ -1475,21 +1475,29 @@ struct file_buffer_interface {
         std::basic_string<char_type> previous_view{current_view};
 
         if (file.has_buffering()) {
-            if (!current_view.empty()) {
+            if (is_view_in_file_buffer(file, current_view)) {
                 file.unsafe_advance_n(
                     static_cast<std::ptrdiff_t>(current_view.size()));
             }
 
-            if (!file.buffer().empty()) {
-                current_view = file.buffer();
-                return true;
-            }
-            if (file.fill_buffer()) {
+            if (!file.buffer().empty() || file.fill_buffer()) {
                 current_view = file.buffer();
                 putback_buffer.append(previous_view.begin(),
                                       previous_view.end());
                 return true;
             }
+
+            // Don't fall through to `read_one`: it clears the EOF and error
+            // flags, which would hide the failure, and could join data
+            // read before and after the failure.
+            if (file.has_error()) {
+                source_error = detail::unexpected_scan_error(
+                    scan_error::invalid_source_state,
+                    "Failed to read FILE, ferror true");
+            }
+            putback_buffer.append(previous_view.begin(), previous_view.end());
+            current_view = {};
+            return false;
         }
 
         auto res = file.read_one();
@@ -1513,44 +1521,42 @@ struct file_buffer_interface {
     SCN_NODISCARD static std::ptrdiff_t sync(
         FileInterface& file,
         std::ptrdiff_t position,
-        [[maybe_unused]] const detail::basic_scan_buffer<char_type>& buffer,
         std::basic_string_view<char_type>& current_view,
-        std::basic_string<char_type>& putback_buffer,
-        [[maybe_unused]] bool is_prelude_empty)
+        std::basic_string<char_type>& putback_buffer)
     {
-        struct putback_guard {
-            explicit putback_guard(FileInterface& file) : m_file(file)
-            {
-                m_file.prepare_putback();
-            }
-            ~putback_guard()
-            {
-                m_file.finalize_putback();
-            }
-
-        private:
-            FileInterface& m_file;
-        };
-
-        if (file.has_buffering()) {
-            const auto pbb_size =
-                static_cast<std::ptrdiff_t>(putback_buffer.size());
-            if (position == pbb_size) {
+        if (file.has_buffering() &&
+            is_view_in_file_buffer(file, current_view)) {
+            const auto position_in_view =
+                position - static_cast<std::ptrdiff_t>(putback_buffer.size());
+            if (position_in_view >= 0) {
+                // Keep `current_view` as the unconsumed part of the file buffer
+                const auto consumed = current_view.substr(
+                    0, static_cast<std::size_t>(position_in_view));
+                putback_buffer.append(consumed.begin(), consumed.end());
+                current_view = current_view.substr(consumed.size());
+                file.unsafe_advance_n(position_in_view);
                 return position;
             }
-            const auto pos_without_putback_buffer = position - pbb_size;
-            if (pos_without_putback_buffer > 0 &&
-                pos_without_putback_buffer <=
-                    static_cast<std::ptrdiff_t>(file.buffer().size())) {
-                file.unsafe_advance_n(pos_without_putback_buffer);
-                return position;
-            }
+
+            // `current_view` hasn't been consumed from the file yet,
+            // so only the putback buffer needs to be put back
+            current_view = {};
         }
 
-        putback_guard guard{file};
         return impl::buffer_sync_helper(
             position, current_view, putback_buffer,
             [&](char ch) { return file.putback(ch); });
+    }
+
+private:
+    // If true, `view` is the unread part of the file's buffer:
+    // it has been read by us, but not yet consumed from the file.
+    // Otherwise, `view` has already been consumed from the file
+    // (like a single character read with `read_one`).
+    static bool is_view_in_file_buffer(const FileInterface& file,
+                                       std::basic_string_view<char_type> view)
+    {
+        return !view.empty() && view.data() == file.buffer().data();
     }
 };
 
