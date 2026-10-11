@@ -111,6 +111,17 @@ TEST(FormatStringTest, HasId)
     EXPECT_THAT(result, Succeeded());
 }
 
+TEST(FormatStringTest, AutomaticThenManualIndexingRuntime)
+{
+    auto result = scn::scan<int, int>("1 2", scn::runtime_format("{} {0}"));
+    EXPECT_THAT(result, FailedWith(scn::scan_error::invalid_format_string));
+}
+TEST(FormatStringTest, ManualThenAutomaticIndexingRuntime)
+{
+    auto result = scn::scan<int, int>("1 2", scn::runtime_format("{1} {}"));
+    EXPECT_THAT(result, FailedWith(scn::scan_error::invalid_format_string));
+}
+
 TEST(FormatStringTest, UnexpectedEndOfSpecs_WithOnlyOpenBrace)
 {
     auto result = scn::scan<std::string>("42", scn::runtime_format("{"));
@@ -197,6 +208,52 @@ TEST(FormatStringTest, MultibyteFillCharacter)
     ASSERT_THAT(result, Succeeded());
     EXPECT_EQ(result->value(), "ab");
     EXPECT_THAT(result->range(), IsEmptyRange());
+}
+
+TEST(FormatStringTest, InvalidFillCharacterErrorMessage)
+{
+    auto result =
+        scn::scan<std::string>("abcd", scn::runtime_format("{:\xc3\x28>4}"));
+    ASSERT_FALSE(result);
+    EXPECT_STREQ(result.error().msg(), "Invalid encoding in fill character");
+}
+
+TEST(FormatStringTest, ZeroPrecisionErrorMessage)
+{
+    auto result = scn::scan<std::string>("abcd", scn::runtime_format("{:.0}"));
+    ASSERT_FALSE(result);
+    EXPECT_STREQ(result.error().msg(), "Precision must be greater than zero");
+}
+
+TEST(FormatStringTest, CharacterSetClassErrorMessage)
+{
+    auto result =
+        scn::scan<std::string>("abcd", scn::runtime_format("{:[[:alpha:]]}"));
+    ASSERT_FALSE(result);
+    EXPECT_STREQ(result.error().msg(),
+                 "Character classes are not supported in [character set]; use "
+                 "a regex or explicit ranges");
+}
+
+TEST(FormatStringTest, ZeroPrecision)
+{
+    constexpr std::array<const char*, 4> formats{"{:.0}", "{:.0c}", "{:.0f}",
+                                                 "{:5.0}"};
+    for (auto fmt : formats) {
+        EXPECT_THAT(scn::scan<std::string>("abcd", scn::runtime_format(fmt)),
+                    FailedWith(scn::scan_error::invalid_format_string))
+            << fmt;
+    }
+    EXPECT_THAT(scn::scan<double>("1.5", scn::runtime_format("{:.0f}")),
+                FailedWith(scn::scan_error::invalid_format_string));
+}
+
+TEST(FormatStringTest, PrecisionOne)
+{
+    auto result = scn::scan<std::string>("abcd", scn::runtime_format("{:.1}"));
+    ASSERT_THAT(result, Succeeded());
+    EXPECT_EQ(result->value(), "a");
+    EXPECT_STREQ(result->begin(), "bcd");
 }
 
 TEST(FormatStringTest, CharacterSetClassesAndEscapesRejected)

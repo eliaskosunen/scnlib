@@ -8,6 +8,8 @@ set(buildfail_sources
         charset_reversed_range.cpp
         charset_unterminated.cpp
         character_pointer_source.cpp
+        code_point_with_integer_presentation.cpp
+        integer_base_leading_zero.cpp
         integer_with_string_presentation.cpp
         invalid_fill_character_encoding.cpp
         invalid_unicode_in_format_string.cpp
@@ -15,6 +17,7 @@ set(buildfail_sources
         locale_flag_with_locale_disabled.cpp
         locale_flag_with_string.cpp
         negative_argument_id.cpp
+        precision_zero.cpp
         regex_disabled.cpp
         scan_int_exhaustive_valid_unsupported_type.cpp
         scan_int_unsupported_type.cpp

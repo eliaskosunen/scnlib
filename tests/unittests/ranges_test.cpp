@@ -17,12 +17,45 @@
 
 #include "test_common.h"
 
+#include <array>
 #include <map>
 #include <set>
+#include <tuple>
 #include <vector>
 
 #include <scn/ranges.h>
 #include <scn/scan.h>
+#include <scn/xchar.h>
+
+namespace {
+struct arrow_separated {
+    std::vector<int> values;
+};
+}  // namespace
+
+template <>
+struct scn::scanner<arrow_separated, char> {
+    constexpr scanner()
+    {
+        m_underlying.set_separator("->");
+        m_underlying.set_brackets("<<", ">>");
+    }
+
+    template <typename ParseCtx>
+    constexpr auto parse(ParseCtx& pctx) -> typename ParseCtx::iterator
+    {
+        return m_underlying.parse(pctx);
+    }
+
+    template <typename Context>
+    auto scan(arrow_separated& val, Context& ctx) const
+        -> scn::scan_expected<typename Context::iterator>
+    {
+        return m_underlying.scan(val.values, ctx);
+    }
+
+    scn::range_scanner<int, char> m_underlying;
+};
 
 TEST(RangesTest, VectorSequence)
 {
@@ -179,4 +212,63 @@ TEST(RangesTest, VectorInvalidElementType)
 {
     auto result = scn::scan<std::vector<int>>("[abc, def]", "{}");
     ASSERT_THAT(result, Failed());
+}
+
+TEST(RangesTest, WideVector)
+{
+    auto result = scn::scan<std::vector<int>>(L"[1, 2, 3]", L"{}");
+    ASSERT_THAT(result, Succeeded());
+    EXPECT_THAT(result->value(), testing::ElementsAre(1, 2, 3));
+    EXPECT_THAT(result->range(), IsEmptyRange());
+}
+
+TEST(RangesTest, WideSet)
+{
+    auto result = scn::scan<std::set<int>>(L"{3, 1}", L"{}");
+    ASSERT_THAT(result, Succeeded());
+    EXPECT_THAT(result->value(), testing::ElementsAre(1, 3));
+    EXPECT_THAT(result->range(), IsEmptyRange());
+}
+
+TEST(RangesTest, WideMap)
+{
+    auto result = scn::scan<std::map<int, int>>(L"{1: 2}", L"{}");
+    ASSERT_THAT(result, Succeeded());
+    EXPECT_THAT(result->value(), testing::ElementsAre(std::pair{1, 2}));
+    EXPECT_THAT(result->range(), IsEmptyRange());
+}
+
+TEST(RangesTest, Tuple)
+{
+    auto result = scn::scan<std::tuple<int, double>>("(1, 2.5) x", "{}");
+    ASSERT_THAT(result, Succeeded());
+    EXPECT_EQ(std::get<0>(result->value()), 1);
+    EXPECT_DOUBLE_EQ(std::get<1>(result->value()), 2.5);
+    EXPECT_STREQ(result->begin(), " x");
+}
+
+TEST(RangesTest, WideTuple)
+{
+    auto result = scn::scan<std::tuple<int, double>>(L"(1, 2.5)", L"{}");
+    ASSERT_THAT(result, Succeeded());
+    EXPECT_EQ(std::get<0>(result->value()), 1);
+    EXPECT_DOUBLE_EQ(std::get<1>(result->value()), 2.5);
+    EXPECT_THAT(result->range(), IsEmptyRange());
+}
+
+TEST(RangesTest, MultiCharacterSeparatorAndBrackets)
+{
+    auto result = scn::scan<arrow_separated>("<<1->2>>", "{}");
+    ASSERT_THAT(result, Succeeded());
+    EXPECT_THAT(result->value().values, testing::ElementsAre(1, 2));
+    EXPECT_THAT(result->range(), IsEmptyRange());
+}
+
+TEST(RangesTest, MultiCharacterSeparatorAndBracketsTruncated)
+{
+    constexpr std::array<std::string_view, 3> inputs{"<", "<<1-", "<<1->2>"};
+    for (std::string_view input : inputs) {
+        auto result = scn::scan<arrow_separated>(input, "{}");
+        EXPECT_THAT(result, Failed()) << input;
+    }
 }

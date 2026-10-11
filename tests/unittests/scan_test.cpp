@@ -19,7 +19,64 @@
 
 #include <scn/scan.h>
 
+#include <array>
 #include <deque>
+#include <string>
+#include <utility>
+
+// gcc 7 exceeds its maximum template instantiation depth with this many
+// arguments
+#if !SCN_GCC || SCN_GCC >= SCN_COMPILER(8, 0, 0)
+namespace {
+template <std::size_t N>
+constexpr auto make_repeated_ints_format()
+{
+    std::array<char, N * 3> result{};
+    for (std::size_t i = 0; i < N; ++i) {
+        result[i * 3] = '{';
+        result[i * 3 + 1] = '}';
+        result[i * 3 + 2] = ' ';
+    }
+    return result;
+}
+template <std::size_t N>
+inline constexpr auto repeated_ints_format = make_repeated_ints_format<N>();
+
+template <std::size_t N>
+std::string make_repeated_ints_input()
+{
+    std::string result;
+    for (std::size_t i = 0; i < N; ++i) {
+        result += std::to_string(i) + ' ';
+    }
+    return result;
+}
+
+template <std::size_t... I>
+void check_many_arguments(std::index_sequence<I...>)
+{
+    constexpr auto n = sizeof...(I);
+    const auto input = make_repeated_ints_input<n>();
+    constexpr auto format = std::string_view{
+        repeated_ints_format<n>.data(), repeated_ints_format<n>.size() - 1};
+
+    auto compiletime = scn::scan<decltype((void)I, int{})...>(input, format);
+    ASSERT_THAT(compiletime, Succeeded()) << n;
+    EXPECT_EQ(compiletime->values(), std::tuple{static_cast<int>(I)...});
+
+    auto runtime = scn::scan<decltype((void)I, int{})...>(
+        input, scn::runtime_format(format));
+    ASSERT_THAT(runtime, Succeeded()) << n;
+    EXPECT_EQ(runtime->values(), std::tuple{static_cast<int>(I)...});
+
+    // Format string with one too few replacement fields
+    auto missing = scn::scan<decltype((void)I, int{})...>(
+        input, scn::runtime_format(format.substr(0, format.size() - 3)));
+    ASSERT_THAT(missing, FailedWith(scn::scan_error::invalid_format_string))
+        << n;
+}
+}  // namespace
+#endif
 
 TEST(ScanTest, SingleValue)
 {
@@ -233,6 +290,19 @@ TEST(ScanTest, EvenMoreArguments)
     ASSERT_THAT(res, Succeeded());
 }
 
+#if !SCN_GCC || SCN_GCC >= SCN_COMPILER(8, 0, 0)
+TEST(ScanTest, SixtyFourOrMoreArguments)
+{
+    check_many_arguments(std::make_index_sequence<63>{});
+    check_many_arguments(std::make_index_sequence<64>{});
+    check_many_arguments(std::make_index_sequence<65>{});
+    check_many_arguments(std::make_index_sequence<71>{});
+    check_many_arguments(std::make_index_sequence<72>{});
+    check_many_arguments(std::make_index_sequence<73>{});
+    check_many_arguments(std::make_index_sequence<80>{});
+}
+#endif
+
 TEST(ScanTest, DoubleNewline)
 {
     auto res = scn::scan<int>("1\n\n", "{}\n\n");
@@ -435,4 +505,30 @@ TEST(ScanTest, CharThenString)
     auto [c, s] = result->values();
     EXPECT_EQ(c, 'a');
     EXPECT_EQ(s, "hello");
+}
+
+TEST(ScanTest, TrailingWhitespaceInFormatAtEndOfInput)
+{
+    auto result = scn::scan<int>("123", "{} ");
+    ASSERT_THAT(result, Succeeded());
+    EXPECT_EQ(result->value(), 123);
+    EXPECT_THAT(result->range(), IsEmptyRange());
+}
+
+TEST(ScanTest, MissingFieldAtEndOfInputIsEndOfInput)
+{
+    auto result = scn::scan<int, int, int>("123 456", "{} {} {}");
+    ASSERT_THAT(result, FailedWith(scn::scan_error::end_of_input));
+}
+
+TEST(ScanTest, LiteralAtEndOfInputIsEndOfInput)
+{
+    auto result = scn::scan<int>("123", "{},");
+    ASSERT_THAT(result, FailedWith(scn::scan_error::end_of_input));
+}
+
+TEST(ScanTest, LiteralMismatch)
+{
+    auto result = scn::scan<int>("123;", "{},");
+    ASSERT_THAT(result, FailedWith(scn::scan_error::invalid_literal));
 }

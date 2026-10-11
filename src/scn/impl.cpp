@@ -1933,7 +1933,7 @@ struct format_handler_base {
     format_handler_base(size_t argcount) : args_count(argcount)
     {
         if (SCN_UNLIKELY(args_count >= 64)) {
-            visited_args_upper.resize((args_count - 64) / 8);
+            visited_args_upper.resize((args_count - 64 + 7) / 8);
         }
     }
 
@@ -1955,32 +1955,30 @@ struct format_handler_base {
             return;
         }
 
-        auto last_args_count = args_count - 64;
-        for (auto it = visited_args_upper.begin();
-             it != visited_args_upper.end() - 1; ++it) {
-            if (*it != std::numeric_limits<uint8_t>::max()) {
+        auto remaining_args_count = args_count - 64;
+        for (auto visited : visited_args_upper) {
+            const auto bits = std::min(remaining_args_count, std::size_t{8});
+            const auto mask = static_cast<uint8_t>((1u << bits) - 1u);
+            if (visited != mask) {
                 return on_error({scan_error::invalid_format_string,
                                  "Argument list not exhausted"});
             }
-            last_args_count -= 8;
-        }
-
-        const auto mask = static_cast<uint8_t>(1u << last_args_count) - 1;
-        if (visited_args_upper.back() != mask) {
-            return on_error({scan_error::invalid_format_string,
-                             "Argument list not exhausted"});
+            remaining_args_count -= bits;
         }
     }
 
     void on_error(const char* msg)
     {
         SCN_UNLIKELY_ATTR
-        error = detail::unexpected_scan_error(scan_error::invalid_format_string,
-                                              msg);
+        on_error({scan_error::invalid_format_string, msg});
     }
     void on_error(scan_error err)
     {
-        error = unexpected(err);
+        // Keep the first error: later ones tend to be less specific
+        // consequences of it
+        if (error) {
+            error = unexpected(err);
+        }
     }
 
     SCN_NODISCARD scan_expected<void> get_error() const
@@ -2125,13 +2123,6 @@ struct format_handler : format_handler_base {
     void on_literal_text(const char_type* begin, const char_type* end)
     {
         for (; begin != end; ++begin) {
-            auto it = get_ctx().begin();
-            if (impl::is_range_eof(it, get_ctx().end())) {
-                SCN_UNLIKELY_ATTR
-                return on_error(
-                    {scan_error::invalid_literal, "Unexpected end of source"});
-            }
-
             if (auto [after_space_it, cp, is_space] = impl::is_first_char_space(
                     detail::make_string_view_from_pointers(begin, end));
                 cp == detail::invalid_code_point) {
@@ -2140,7 +2131,7 @@ struct format_handler : format_handler_base {
                                  "Invalid encoding in format string"});
             }
             else if (is_space) {
-                // Skip all whitespace in input
+                // Skip all whitespace in input (possibly none, even at EOF)
                 get_ctx().advance_to(
                     impl::read_while_classic_space(get_ctx().range()));
                 // And, skip all whitespace in the format string
@@ -2153,6 +2144,12 @@ struct format_handler : format_handler_base {
                 continue;
             }
 
+            auto it = get_ctx().begin();
+            if (impl::is_range_eof(it, get_ctx().end())) {
+                SCN_UNLIKELY_ATTR
+                return on_error(
+                    {scan_error::end_of_input, "Unexpected end of source"});
+            }
             if (*it != *begin) {
                 SCN_UNLIKELY_ATTR
                 return on_error({scan_error::invalid_literal,
@@ -2162,14 +2159,24 @@ struct format_handler : format_handler_base {
         }
     }
 
-    constexpr std::size_t on_arg_id()
+    std::size_t on_arg_id()
     {
-        return parse_ctx.next_arg_id();
+        const auto id = parse_ctx.next_arg_id();
+        forward_parse_context_error();
+        return id;
     }
-    constexpr std::size_t on_arg_id(std::size_t id)
+    std::size_t on_arg_id(std::size_t id)
     {
         parse_ctx.check_arg_id(id);
+        forward_parse_context_error();
         return id;
+    }
+
+    void forward_parse_context_error()
+    {
+        if (auto e = parse_ctx.get_error(); SCN_UNLIKELY(!e)) {
+            on_error(e.error());
+        }
     }
 
     template <typename Visitor>
@@ -2222,13 +2229,14 @@ struct format_handler : format_handler_base {
             detail::get_arg_type(arg)};
 
         begin = detail::parse_format_specs(begin, end, handler);
+        if (auto e = handler.get_error(); SCN_UNLIKELY(!e)) {
+            on_error(e.error());
+            return parse_ctx.begin();
+        }
         if (begin == end || *begin != char_type{'}'}) {
             SCN_UNLIKELY_ATTR
             on_error({scan_error::invalid_format_string,
                       "Missing '}' in format string"});
-            return parse_ctx.begin();
-        }
-        if (SCN_UNLIKELY(!handler.get_error())) {
             return parse_ctx.begin();
         }
         parse_ctx.advance_to(begin);

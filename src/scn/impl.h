@@ -933,10 +933,7 @@ struct SCN_TRIVIAL_ABI parse_error {
     using code_t = code;
 
     constexpr parse_error() = default;
-    constexpr parse_error(code c) : m_code(c)
-    {
-        SCN_UNLIKELY_ATTR SCN_UNUSED(m_code);
-    }
+    constexpr parse_error(code c) : m_code(c) {}
 
     constexpr explicit operator bool() const
     {
@@ -995,7 +992,7 @@ inline constexpr auto map_parse_error_to_scan_error(enum scan_error::code code,
                                                     const char* msg)
 {
     return [code, msg](parse_error err) {
-        assert(err != parse_error::good);
+        SCN_EXPECT(err != parse_error::good);
         return make_scan_error_from_parse_error(err, code, msg).error();
     };
 }
@@ -3182,7 +3179,7 @@ public:
 
     bool is_current_double_wide() const
     {
-        assert(count() != 0 || multibyte_left() != 0);
+        SCN_EXPECT(count() != 0 || multibyte_left() != 0);
         return _get_width_at_current_cp_start(_get_cp_length_at_current()) == 2;
     }
 
@@ -3339,7 +3336,7 @@ public:
         const counted_width_iterator<OtherIt, OtherS>& b)
         -> decltype(SCN_DECLVAL(const It&) < SCN_DECLVAL(const OtherIt&))
     {
-        return !(b < a);
+        return b < a;
     }
 
     template <typename OtherIt, typename OtherS>

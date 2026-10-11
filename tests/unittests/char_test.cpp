@@ -117,16 +117,71 @@ TEST(CharTest, CodePointFromNarrowEmptyInput)
                     FailedWith(scn::scan_error::end_of_input))
             << '"' << input << "\" " << fmt;
     }
-    // `{:c}` isn't currently accepted for wchar_t
-    for (auto [input, fmt] :
-         {std::pair<std::string_view, const char*>{"", "{:.2}"},
-          {"", "{:>4}"},
-          {" ", "{:>4}"},
-          {"    ", "{:>4}"}}) {
+}
+
+TEST(CharTest, WcharFromNarrowEmptyInput)
+{
+    // Whitespace is only skipped as fill, so `{:c}` and `{:.2}` would read it
+    constexpr std::array<std::pair<std::string_view, const char*>, 5>
+        wide_cases{{{"", "{:c}"},
+                    {"", "{:.2}"},
+                    {"", "{:>4}"},
+                    {" ", "{:>4}"},
+                    {"    ", "{:>4}"}}};
+    for (auto [input, fmt] : wide_cases) {
         EXPECT_THAT(scn::scan<wchar_t>(input, scn::runtime_format(fmt)),
                     FailedWith(scn::scan_error::end_of_input))
             << '"' << input << "\" " << fmt;
     }
+}
+
+TEST(CharTest, CharacterPresentationNarrow)
+{
+    auto result = scn::scan<char>("a", "{:c}");
+    ASSERT_THAT(result, Succeeded());
+    EXPECT_EQ(result->value(), 'a');
+    EXPECT_THAT(result->range(), IsEmptyRange());
+}
+
+TEST(CharTest, CharacterPresentationWide)
+{
+    auto result = scn::scan<wchar_t>(L"a", L"{:c}");
+    ASSERT_THAT(result, Succeeded());
+    EXPECT_EQ(result->value(), L'a');
+    EXPECT_THAT(result->range(), IsEmptyRange());
+}
+
+TEST(CharTest, CharacterPresentationCodePointFromNarrow)
+{
+    auto result = scn::scan<char32_t>("\xc3\xa4", "{:c}");
+    ASSERT_THAT(result, Succeeded());
+    EXPECT_EQ(result->value(), char32_t{0xe4});
+    EXPECT_THAT(result->range(), IsEmptyRange());
+}
+
+TEST(CharTest, CharacterPresentationCodePointFromWide)
+{
+    auto result = scn::scan<char32_t>(L"a", L"{:c}");
+    ASSERT_THAT(result, Succeeded());
+    EXPECT_EQ(result->value(), char32_t{'a'});
+    EXPECT_THAT(result->range(), IsEmptyRange());
+}
+
+TEST(CharTest, CodePointRejectsIntegerPresentation)
+{
+    constexpr std::array<const char*, 5> formats{"{:d}", "{:x}", "{:b}", "{:s}",
+                                                 "{:?}"};
+    for (auto fmt : formats) {
+        EXPECT_THAT(scn::scan<char32_t>("a", scn::runtime_format(fmt)),
+                    FailedWith(scn::scan_error::invalid_format_string))
+            << fmt;
+    }
+}
+
+TEST(CharTest, CharRejectsArbitraryBasePresentation)
+{
+    EXPECT_THAT(scn::scan<char>("1", scn::runtime_format("{:r16}")),
+                FailedWith(scn::scan_error::invalid_format_string));
 }
 
 TEST(CharTest, CodePointFromNarrowInvalidUtf8)
