@@ -113,6 +113,7 @@ scn::scan<...>(strm, ...);
    which made Clang relocate them with a bitwise copy
  * Fix scanning from ranges that can only be iterated over when non-const (like `std::views::filter`),
    and from sized bidirectional ranges that aren't random access (like `std::list`)
+ * Fix multi-byte whitespace (like U+2028) not being recognized when it's split between two chunks of a non-contiguous source
  * Scanning from a character pointer (like `const char*`) is now a call to a deleted function,
    with an explanation in C++26, instead of an unexplained "no matching function"
 

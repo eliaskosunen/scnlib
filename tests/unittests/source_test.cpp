@@ -174,6 +174,58 @@ TEST(SourceTest, SourceIsSizedBidirectionalRange)
     EXPECT_EQ(s, "abcdefghijklmnopqrstuvwxyz");
 }
 
+// The buffer for a std::deque reads 16 characters at a time:
+// U+2028 LINE SEPARATOR (3 bytes) may be split between two of them
+TEST(SourceTest, MultibyteWhitespaceAcrossBufferChunks)
+{
+    for (std::size_t spaces = 10; spaces <= 18; ++spaces) {
+        const auto str = "1" + std::string(spaces, ' ') + "\xe2\x80\xa8" + "x";
+        auto source = std::deque<char>(str.begin(), str.end());
+        auto result = scn::scan<int, std::string>(source, "{} {}");
+        ASSERT_THAT(result, Succeeded()) << spaces;
+        EXPECT_EQ(std::get<1>(result->values()), "x") << spaces;
+    }
+
+    for (std::size_t length = 10; length <= 18; ++length) {
+        const auto str = std::string(length, 'a') + "\xe2\x80\xa8" + "x";
+        auto source = std::deque<char>(str.begin(), str.end());
+        auto result = scn::scan<std::string, std::string>(source, "{} {}");
+        ASSERT_THAT(result, Succeeded()) << length;
+        EXPECT_EQ(std::get<0>(result->values()), std::string(length, 'a'))
+            << length;
+        EXPECT_EQ(std::get<1>(result->values()), "x") << length;
+    }
+}
+
+// An invalid code point is not whitespace, regardless of the source type
+TEST(SourceTest, InvalidCodePointIsNotWhitespace)
+{
+    const std::string str = "\xa8 1f";
+
+    auto contiguous = scn::scan<int>(std::string_view{str}, "{:x}");
+    EXPECT_THAT(contiguous, Failed());
+
+    auto deque_source = std::deque<char>(str.begin(), str.end());
+    auto non_contiguous = scn::scan<int>(deque_source, "{:x}");
+    EXPECT_THAT(non_contiguous, Failed());
+
+    if (!contiguous && !non_contiguous) {
+        EXPECT_EQ(contiguous.error().code(), non_contiguous.error().code());
+    }
+}
+
+TEST(SourceTest, InvalidCodePointAfterWhitespaceIsNotWhitespace)
+{
+    const std::string str = " \xa8 1f";
+
+    auto contiguous = scn::scan<int>(std::string_view{str}, "{:x}");
+    EXPECT_THAT(contiguous, Failed());
+
+    auto deque_source = std::deque<char>(str.begin(), str.end());
+    auto non_contiguous = scn::scan<int>(deque_source, "{:x}");
+    EXPECT_THAT(non_contiguous, Failed());
+}
+
 TEST(SourceTest, SourceIsInputRange)
 {
     auto source = std::deque<char>{'1', '2', '3', ' ', '3', '.', '1', '4'};
