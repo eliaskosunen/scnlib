@@ -7222,9 +7222,9 @@ SCN_TYPE_CONSTANT(wchar_t, wide_character_type, SCN_DISABLE_TYPE_CHAR);
 SCN_TYPE_CONSTANT(char32_t, code_point_type, SCN_DISABLE_TYPE_CHAR32);
 SCN_TYPE_CONSTANT(void*, pointer_type, SCN_DISABLE_TYPE_POINTER);
 SCN_TYPE_CONSTANT(const void*, pointer_type, SCN_DISABLE_TYPE_POINTER);
-SCN_TYPE_CONSTANT(float, float_type, SCN_DISABLE_TYPE_FLOAT);
-SCN_TYPE_CONSTANT(double, double_type, SCN_DISABLE_TYPE_DOUBLE);
-SCN_TYPE_CONSTANT(long double, ldouble_type, SCN_DISABLE_TYPE_LONG_DOUBLE);
+SCN_TYPE_CONSTANT(float, float_type, !SCN_IS_FLOAT_SCANNABLE);
+SCN_TYPE_CONSTANT(double, double_type, !SCN_IS_DOUBLE_SCANNABLE);
+SCN_TYPE_CONSTANT(long double, ldouble_type, !SCN_IS_LONG_DOUBLE_SCANNABLE);
 SCN_TYPE_CONSTANT(std::string_view,
                   string_view_type,
                   SCN_DISABLE_TYPE_STRING_VIEW);
@@ -7256,6 +7256,20 @@ SCN_TYPE_CONSTANT(std::bfloat16_t, bfloat16_type, SCN_DISABLE_TYPE_BFLOAT16);
 #endif
 
 #undef SCN_TYPE_CONSTANT
+
+// Disabled not by SCN_DISABLE_TYPE_*, but because the binary format of the
+// type isn't supported, and SCN_DISABLE_STRTOD disallows falling back on strtod
+template <typename T>
+inline constexpr bool is_float_format_unsupported_without_strtod = false;
+template <>
+inline constexpr bool is_float_format_unsupported_without_strtod<float> =
+    !SCN_DISABLE_TYPE_FLOAT && !SCN_IS_FLOAT_SCANNABLE;
+template <>
+inline constexpr bool is_float_format_unsupported_without_strtod<double> =
+    !SCN_DISABLE_TYPE_DOUBLE && !SCN_IS_DOUBLE_SCANNABLE;
+template <>
+inline constexpr bool is_float_format_unsupported_without_strtod<long double> =
+    !SCN_DISABLE_TYPE_LONG_DOUBLE && !SCN_IS_LONG_DOUBLE_SCANNABLE;
 
 struct custom_value_type {
     void* value;
@@ -7573,9 +7587,17 @@ constexpr auto make_value_impl(Arg&& arg)
         !std::is_same_v<arg_nocvref_t, unscannable_const>;
     static_assert(scannable_const, "Cannot scan a const argument");
 
+    constexpr bool scannable_float_format =
+        !is_float_format_unsupported_without_strtod<remove_cvref_t<T>>;
+    static_assert(scannable_float_format,
+                  "Cannot scan an argument of a floating-point type with "
+                  "a binary format that isn't supported on this platform, "
+                  "because SCN_DISABLE_STRTOD disallows falling back on "
+                  "strtod");
+
     constexpr bool scannable_disabled =
         !std::is_same_v<arg_nocvref_t, unscannable_disabled>;
-    static_assert(scannable_disabled,
+    static_assert(scannable_disabled || !scannable_float_format,
                   "Cannot scan an argument that has been disabled by "
                   "flag (SCN_DISABLE_TYPE_*)");
 

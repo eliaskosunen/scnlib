@@ -876,6 +876,12 @@ jobs:
           - key: from-chars-and-strtod
             flags: "-DSCN_DISABLE_FROM_CHARS=ON -DSCN_DISABLE_STRTOD=ON"
             enable_tests: 0 # alters the behavior in float tests
+          - key: force-strtod-fallback
+            # Scans float, double, and long double with the strtod fallback,
+            # which is otherwise only used on platforms with exotic
+            # floating-point types
+            flags: "-DCMAKE_CXX_FLAGS=-DSCN_FORCE_STRTOD_FALLBACK=1"
+            enable_tests: 1
           - key: fast-float
             flags: "-DSCN_DISABLE_FAST_FLOAT=ON"
             enable_tests: 0
@@ -903,6 +909,10 @@ jobs:
         run: |
           mkdir ${{ runner.workspace }}/build
           ${APT_INSTALL} ccache
+          if [[ "${{ matrix.key }}" == "force-strtod-fallback" ]]; then
+            # For the test of strtod under a comma decimal point
+            sudo locale-gen fi_FI.UTF-8
+          fi
 
       - name: Load ccache
         uses: actions/cache@v6

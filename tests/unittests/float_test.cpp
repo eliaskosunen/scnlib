@@ -137,9 +137,12 @@ TEST(FloatTest, NaNWithPayloadFromNonContiguousSource)
     ASSERT_NE(result->begin(), input.end());
     EXPECT_EQ(*result->begin(), ' ');
 
+    // No payloads for a type without a custom conversion
+    constexpr bool has_payloads =
+        !SCN_DISABLE_EKNAN && !SCN_FORCE_STRTOD_FALLBACK;
     EXPECT_TRUE(check_nan(
         result->value(), true,
-        SCN_DISABLE_EKNAN ? std::nullopt : std::optional<std::uint64_t>{0x12}));
+        has_payloads ? std::optional<std::uint64_t>{0x12} : std::nullopt));
 }
 
 TEST(FloatTest, PositiveZero)

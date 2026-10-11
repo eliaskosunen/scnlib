@@ -101,7 +101,7 @@ option(SCN_DISABLE_LOCALE "Disable all localization" OFF)
 option(SCN_DISABLE_CHRONO "Disable <chrono> and <ctime> scanners" OFF)
 
 option(SCN_DISABLE_FROM_CHARS "Disallow falling back on std::from_chars when scanning floating-point values" OFF)
-option(SCN_DISABLE_STRTOD "Disallow falling back on std::strtod when scanning floating-point values" OFF)
+option(SCN_DISABLE_STRTOD "Disallow falling back on strtof, strtod, and strtold when scanning a float, double, or long double with an unsupported binary format (then scanning that type is a compile-time error)" OFF)
 
 # std::regex and Boost.Regex report errors only by throwing
 if (NOT SCN_USE_EXCEPTIONS AND NOT SCN_DISABLE_REGEX AND NOT SCN_REGEX_BACKEND STREQUAL "re2")

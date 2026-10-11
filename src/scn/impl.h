@@ -70,7 +70,7 @@ SCN_CLANG_POP
 #include <fcntl.h>
 #endif
 
-#if !SCN_DISABLE_FAST_FLOAT
+#if SCN_HAS_FAST_FLOAT
 
 SCN_GCC_PUSH
 SCN_GCC_IGNORE("-Wold-style-cast")
@@ -103,7 +103,7 @@ SCN_CLANG_IGNORE("-Wunsafe-buffer-usage")
 SCN_CLANG_POP
 SCN_GCC_POP
 
-#endif  // !SCN_DISABLE_FAST_FLOAT
+#endif  // SCN_HAS_FAST_FLOAT
 
 #if !SCN_DISABLE_EKNAN
 #include <eknan/eknan.hpp>
@@ -2457,45 +2457,6 @@ const Facet& get_or_add_facet(std::locale& stdloc)
     return std::use_facet<Facet>(stdloc);
 }
 
-class clocale_restorer {
-public:
-    clocale_restorer(int cat) : m_category(cat)
-    {
-        const auto loc = std::setlocale(cat, nullptr);
-        std::strcpy(m_locbuf, loc);
-    }
-    ~clocale_restorer()
-    {
-        // Restore locale to what it was before
-        std::setlocale(m_category, m_locbuf);
-    }
-
-    clocale_restorer(const clocale_restorer&) = delete;
-    clocale_restorer(clocale_restorer&&) = delete;
-    clocale_restorer& operator=(const clocale_restorer&) = delete;
-    clocale_restorer& operator=(clocale_restorer&&) = delete;
-
-private:
-    // For whatever reason, this cannot be stored in the heap if
-    // setlocale hasn't been called before, or msan errors with
-    // 'use-of-unitialized-value' when resetting the locale
-    // back. POSIX specifies that the content of loc may not be
-    // static, so we need to save it ourselves
-    char m_locbuf[64] = {0};
-
-    int m_category;
-};
-
-class set_clocale_classic_guard {
-public:
-    set_clocale_classic_guard(int cat) : m_restorer(cat)
-    {
-        std::setlocale(cat, "C");
-    }
-
-private:
-    clocale_restorer m_restorer;
-};
 }  // namespace impl
 
 namespace impl {
@@ -2530,10 +2491,6 @@ struct localized_number_formatting_options {
 #else
 
 namespace impl {
-struct set_clocale_classic_guard {
-    set_clocale_classic_guard(int) {}
-};
-
 struct classic_with_thsep_tag {};
 
 template <typename CharT>
@@ -4712,13 +4669,13 @@ struct float_traits_impl_f32 {
 
     struct value_repr {
 #if !SCN_IS_BIG_ENDIAN
-        unsigned significand : 23;
-        unsigned exponent : 8;
-        unsigned sign : 1;
+        std::uint32_t significand : 23;
+        std::uint32_t exponent : 8;
+        std::uint32_t sign : 1;
 #else
-        unsigned sign : 1;
-        unsigned exponent : 8;
-        unsigned significand : 23;
+        std::uint32_t sign : 1;
+        std::uint32_t exponent : 8;
+        std::uint32_t significand : 23;
 #endif
 
         void apply_exponent(int e)
@@ -4748,20 +4705,20 @@ struct float_traits_impl_f64 {
 
     struct value_repr {
 #if !SCN_IS_BIG_ENDIAN && !SCN_IS_FLOAT_BIG_ENDIAN
-        unsigned significand1 : 32;
-        unsigned significand0 : 20;
-        unsigned exponent : 11;
-        unsigned sign : 1;
+        std::uint32_t significand1 : 32;
+        std::uint32_t significand0 : 20;
+        std::uint32_t exponent : 11;
+        std::uint32_t sign : 1;
 #elif !SCN_IS_BIG_ENDIAN && SCN_IS_FLOAT_BIG_ENDIAN
-        unsigned significand0 : 20;
-        unsigned exponent : 11;
-        unsigned sign : 1;
-        unsigned significand1 : 32;
+        std::uint32_t significand0 : 20;
+        std::uint32_t exponent : 11;
+        std::uint32_t sign : 1;
+        std::uint32_t significand1 : 32;
 #else
-        unsigned sign : 1;
-        unsigned exponent : 11;
-        unsigned significand0 : 20;
-        unsigned significand1 : 32;
+        std::uint32_t sign : 1;
+        std::uint32_t exponent : 11;
+        std::uint32_t significand0 : 20;
+        std::uint32_t significand1 : 32;
 #endif
 
         void apply_exponent(int e)
@@ -4771,8 +4728,8 @@ struct float_traits_impl_f64 {
 
         void apply_significand(significand_int_type s)
         {
-            significand0 = static_cast<unsigned>(s >> 32);
-            significand1 = static_cast<unsigned>(s);
+            significand0 = static_cast<std::uint32_t>(s >> 32);
+            significand1 = static_cast<std::uint32_t>(s);
         }
 
         void clear_padding() {}
@@ -4802,26 +4759,26 @@ struct float_traits_impl_f80 {
 
     struct value_repr {
 #if !SCN_IS_BIG_ENDIAN && !SCN_IS_FLOAT_BIG_ENDIAN
-        unsigned significand1 : 32;
-        unsigned significand0 : 31;
-        unsigned one : 1;
-        unsigned exponent : 15;
-        unsigned sign : 1;
-        unsigned padding : 16;
+        std::uint32_t significand1 : 32;
+        std::uint32_t significand0 : 31;
+        std::uint32_t one : 1;
+        std::uint32_t exponent : 15;
+        std::uint32_t sign : 1;
+        std::uint32_t padding : 16;
 #elif !SCN_IS_BIG_ENDIAN && SCN_IS_FLOAT_BIG_ENDIAN
-        unsigned exponent : 15;
-        unsigned sign : 1;
-        unsigned padding : 16;
-        unsigned significand0 : 31;
-        unsigned one : 1;
-        unsigned significand1 : 32;
+        std::uint32_t exponent : 15;
+        std::uint32_t sign : 1;
+        std::uint32_t padding : 16;
+        std::uint32_t significand0 : 31;
+        std::uint32_t one : 1;
+        std::uint32_t significand1 : 32;
 #else
-        unsigned sign : 1;
-        unsigned exponent : 15;
-        unsigned padding : 16;
-        unsigned one : 1;
-        unsigned significand0 : 31;
-        unsigned significand1 : 32;
+        std::uint32_t sign : 1;
+        std::uint32_t exponent : 15;
+        std::uint32_t padding : 16;
+        std::uint32_t one : 1;
+        std::uint32_t significand0 : 31;
+        std::uint32_t significand1 : 32;
 #endif
 
         void apply_exponent(int e)
@@ -4835,8 +4792,8 @@ struct float_traits_impl_f80 {
 
         void apply_significand(significand_int_type s)
         {
-            significand0 = static_cast<unsigned>(s >> 32u);
-            significand1 = static_cast<unsigned>(s);
+            significand0 = static_cast<std::uint32_t>(s >> 32u);
+            significand1 = static_cast<std::uint32_t>(s);
         }
 
         void clear_padding()
@@ -4859,26 +4816,26 @@ struct float_traits_impl_f128 {
 
     struct value_repr {
 #if !SCN_IS_BIG_ENDIAN && !SCN_IS_FLOAT_BIG_ENDIAN
-        unsigned significand3 : 32;
-        unsigned significand2 : 32;
-        unsigned significand1 : 32;
-        unsigned significand0 : 16;
-        unsigned exponent : 15;
-        unsigned sign : 1;
+        std::uint32_t significand3 : 32;
+        std::uint32_t significand2 : 32;
+        std::uint32_t significand1 : 32;
+        std::uint32_t significand0 : 16;
+        std::uint32_t exponent : 15;
+        std::uint32_t sign : 1;
 #elif !SCN_IS_BIG_ENDIAN && SCN_IS_FLOAT_BIG_ENDIAN
-        unsigned significand0 : 16;
-        unsigned exponent : 15;
-        unsigned sign : 1;
-        unsigned significand1 : 32;
-        unsigned significand2 : 32;
-        unsigned significand3 : 32;
+        std::uint32_t significand0 : 16;
+        std::uint32_t exponent : 15;
+        std::uint32_t sign : 1;
+        std::uint32_t significand1 : 32;
+        std::uint32_t significand2 : 32;
+        std::uint32_t significand3 : 32;
 #else
-        unsigned sign : 1;
-        unsigned exponent : 15;
-        unsigned significand0 : 16;
-        unsigned significand1 : 32;
-        unsigned significand2 : 32;
-        unsigned significand3 : 32;
+        std::uint32_t sign : 1;
+        std::uint32_t exponent : 15;
+        std::uint32_t significand0 : 16;
+        std::uint32_t significand1 : 32;
+        std::uint32_t significand2 : 32;
+        std::uint32_t significand3 : 32;
 #endif
 
         void apply_exponent(int e)
@@ -4888,10 +4845,10 @@ struct float_traits_impl_f128 {
 
         void apply_significand(significand_int_type s)
         {
-            significand0 = static_cast<unsigned>(s >> 96u);
-            significand1 = static_cast<unsigned>(s >> 64u);
-            significand2 = static_cast<unsigned>(s >> 32u);
-            significand3 = static_cast<unsigned>(s);
+            significand0 = static_cast<std::uint32_t>(s >> 96u);
+            significand1 = static_cast<std::uint32_t>(s >> 64u);
+            significand2 = static_cast<std::uint32_t>(s >> 32u);
+            significand3 = static_cast<std::uint32_t>(s);
         }
 
         void clear_padding() {}
@@ -5128,11 +5085,24 @@ struct float_traits_impl_none {};
 template <typename F>
 struct float_traits;
 
-template <>
-struct float_traits<float> : float_traits_impl_f32<float> {};
+// Picks the traits of a float or a double by its format (see
+// SCN_FLOAT_FORMAT and SCN_DOUBLE_FORMAT in macros.h)
+template <typename F, int Format>
+using float_traits_for_format =
+    detail::mp_cond<detail::mp_bool<Format == SCN_FP_FORMAT_BINARY32>,
+                    detail::mp_defer<float_traits_impl_f32, F>,
+                    detail::mp_bool<Format == SCN_FP_FORMAT_BINARY64>,
+                    detail::mp_defer<float_traits_impl_f64, F>,
+                    std::true_type,
+                    detail::mp_defer<float_traits_impl_none>>;
 
 template <>
-struct float_traits<double> : float_traits_impl_f64<double> {};
+struct float_traits<float>
+    : float_traits_for_format<float, SCN_FLOAT_FORMAT>::type {};
+
+template <>
+struct float_traits<double>
+    : float_traits_for_format<double, SCN_DOUBLE_FORMAT>::type {};
 
 template <int Digits, int MaxExponent>
 inline constexpr bool long_double_has_format =
@@ -5140,9 +5110,15 @@ inline constexpr bool long_double_has_format =
     std::numeric_limits<long double>::digits == Digits &&
     std::numeric_limits<long double>::max_exponent == MaxExponent;
 
+// Keep in sync with SCN_LONG_DOUBLE_FORMAT_SUPPORTED in macros.h
 template <>
 struct float_traits<long double>
     : detail::mp_cond<
+          detail::mp_bool<!SCN_LONG_DOUBLE_FORMAT_SUPPORTED>,
+          detail::mp_defer<float_traits_impl_none>,
+          // long double is equivalent to a float, true on AVR
+          detail::mp_bool<long_double_has_format<24, 128>>,
+          detail::mp_defer<float_traits_impl_f32, long double>,
           // long double is equivalent to a double,
           // true on (non-mingw) Windows, Arm32, and Apple Arm64
           detail::mp_bool<long_double_has_format<53, 1024>>,
@@ -5161,6 +5137,11 @@ struct float_traits<long double>
           // Exotic long double, no custom conversion support
           std::true_type,
           detail::mp_defer<float_traits_impl_none>>::type {};
+
+static_assert(
+    std::is_base_of_v<float_traits_impl_none<>, float_traits<long double>> ==
+        !SCN_LONG_DOUBLE_FORMAT_SUPPORTED,
+    "float_traits<long double> and SCN_LONG_DOUBLE_FORMAT_SUPPORTED disagree");
 
 #if SCN_HAS_STD_F16
 template <>
@@ -6147,9 +6128,12 @@ struct SCN_MAYBE_UNUSED convert_traits_sample {
     static constexpr bool enabled = false;
 };
 
-// Implementation using strtod (and variants) from the C stdlib.
-// Used as the final fallback for standard floating-point types
-// that don't follow IEEE 754.
+// Implementation using strtof, strtod, and strtold (and wcstof, wcstod, and
+// wcstold) from the C stdlib.
+// Only used for a float, double, or long double with a binary format that
+// `convert_custom_traits` doesn't support (see `float_traits`).
+// These depend on the global C locale (LC_NUMERIC), so changing it with
+// `setlocale` concurrently with scanning one of these types is a data race.
 
 struct convert_strtod_traits {
 #if !SCN_DISABLE_STRTOD
@@ -6157,14 +6141,14 @@ private:
     template <typename CharT>
     static constexpr bool enabled_char =
         std::is_same_v<CharT, char> || std::is_same_v<CharT, wchar_t>;
+    // Only for a type with a binary format without a custom conversion:
+    // every other type can always be converted by `convert_custom_traits`,
+    // which never falls back
     template <typename T>
     static constexpr bool enabled_float =
-        std::is_same_v<T, float> || std::is_same_v<T, double> ||
-        std::is_same_v<T, long double>
-#if SCN_HAS_STD_F16 && defined(__HAVE_FLOAT16) && __HAVE_FLOAT16
-        || std::is_same_v<T, std::float16_t>
-#endif
-        ;
+        (std::is_same_v<T, float> || std::is_same_v<T, double> ||
+         std::is_same_v<T, long double>) &&
+        std::is_base_of_v<float_traits_impl_none<>, float_traits<T>>;
 
 public:
     static constexpr bool need_definite_kind = true;
@@ -6248,6 +6232,18 @@ template <>
 inline constexpr bool has_charconv_for<long double, void> = false;
 #endif
 
+#if SCN_FORCE_STRTOD_FALLBACK
+template <>
+inline constexpr bool has_charconv_for<float, void> = false;
+template <>
+inline constexpr bool has_charconv_for<double, void> = false;
+// Unless already specialized for MinGW above
+#if !(SCN_MINGW && !SCN_DISABLE_TYPE_LONG_DOUBLE)
+template <>
+inline constexpr bool has_charconv_for<long double, void> = false;
+#endif
+#endif
+
 #endif
 
 struct convert_from_chars_traits {
@@ -6278,7 +6274,7 @@ struct convert_from_chars_traits {
 // Used if the float type is supported by the library
 // (i.e., float, double, or an extended type, not long double)
 
-#if !SCN_DISABLE_FAST_FLOAT
+#if SCN_HAS_FAST_FLOAT
 // With -ffast-math, GCC converts float to bfloat16 by truncating instead of
 // rounding. fast_float does bfloat16 arithmetic, which goes through float, so
 // its results could be off by one ulp.
@@ -6292,7 +6288,7 @@ inline constexpr bool fast_float_rounds_correctly =
 #endif
 
 struct convert_fast_float_traits {
-#if !SCN_DISABLE_FAST_FLOAT
+#if SCN_HAS_FAST_FLOAT
     static constexpr bool need_definite_kind = false;
     static constexpr bool need_null_termination = false;
     static constexpr bool need_reader_state = false;
@@ -6321,10 +6317,14 @@ template <typename T, typename = void>
 inline constexpr bool supports_nan_payload = false;
 
 #if !SCN_DISABLE_EKNAN
+// eknan checks the binary format of T, so that a type without a custom
+// conversion is usually excluded already, but not with
+// SCN_FORCE_STRTOD_FALLBACK
 template <typename T>
 inline constexpr bool supports_nan_payload<
     T,
-    std::void_t<decltype(eknan::is_nan(SCN_DECLVAL(const T&)))>> = true;
+    std::void_t<decltype(eknan::is_nan(SCN_DECLVAL(const T&)))>> =
+    !std::is_base_of_v<float_traits_impl_none<>, float_traits<T>>;
 
 template <typename T, typename Iterator>
 std::optional<eknan::payload_type<T>> parse_nan_payload(Iterator it,

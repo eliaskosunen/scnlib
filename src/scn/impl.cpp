@@ -19,6 +19,12 @@
 #include <scn/impl.h>
 #include <scn/istream.h>
 
+#include <cerrno>
+#include <clocale>
+#include <cmath>
+#include <cstdlib>
+#include <cstring>
+#include <cwchar>
 #include <mutex>
 
 #if !SCN_DISABLE_LOCALE
@@ -28,52 +34,6 @@
 
 #if !SCN_DISABLE_IOSTREAM
 #include <iostream>
-#endif
-
-SCN_CLANG_PUSH
-SCN_CLANG_IGNORE("-Wunused-macros")
-
-#define SCN_XLOCALE_POSIX 0
-#define SCN_XLOCALE_MSVC  1
-#define SCN_XLOCALE_OTHER 2
-
-SCN_CLANG_POP
-
-#if SCN_DISABLE_LOCALE
-#define SCN_XLOCALE SCN_XLOCALE_OTHER
-#elif (!defined(__ANDROID_API__) || __ANDROID_API__ >= 28) && \
-    !defined(__EMSCRIPTEN__) && defined(__has_include) && __has_include(<xlocale.h>)
-#include <xlocale.h>
-#define SCN_XLOCALE SCN_XLOCALE_POSIX
-
-#elif defined(_MSC_VER)
-#define SCN_XLOCALE SCN_XLOCALE_MSVC
-
-#elif defined(__GLIBC__) && !defined(__ANDROID_API__) && \
-    !defined(__EMSCRIPTEN__)
-// glibc
-
-#include <features.h>
-
-#define SCN_XLOCALE SCN_XLOCALE_POSIX
-
-#if !((__GLIBC__ > 2) || ((__GLIBC__ == 2) && (__GLIBC_MINOR__ > 25)))
-// xlocale.h was removed in glibc 2.26
-#include <xlocale.h>
-#else
-#include <clocale>
-#endif  // __GLIBC__ <= 2.25
-
-#elif defined(__FreeBSD_version) && __FreeBSD_version >= 1000010
-
-// FreeBSD
-#include <xlocale.h>
-#define SCN_XLOCALE SCN_XLOCALE_POSIX
-
-#endif  // SCN_DISABLE_LOCALE, others
-
-#ifndef SCN_XLOCALE
-#define SCN_XLOCALE SCN_XLOCALE_OTHER
 #endif
 
 namespace scn {
@@ -423,10 +383,16 @@ namespace impl::float_conversion {
 
 namespace {
 
-// Detect +0.0, -0.0, +inf, and -inf, despite stuff like -ffast-math
+// Detect +0.0, -0.0, +inf, and -inf, despite stuff like -ffast-math.
+// The bits of a type without a custom conversion (`float_traits_impl_none`)
+// are unknown, so for it, these rely on regular floating-point operations.
 
 SCN_GCC_COMPAT_PUSH
 SCN_GCC_COMPAT_IGNORE("-Wfloat-equal")
+
+template <typename T>
+SCN_MAYBE_UNUSED inline constexpr bool has_value_repr =
+    !std::is_base_of_v<float_traits_impl_none<>, float_traits<T>>;
 
 template <typename T>
 SCN_NODISCARD bool is_float_any_zero(T value)
@@ -435,36 +401,47 @@ SCN_NODISCARD bool is_float_any_zero(T value)
 }
 
 template <typename T>
-SCN_NODISCARD bool is_float_positive_zero(T value)
+SCN_MAYBE_UNUSED SCN_NODISCARD bool is_float_positive_zero(T value)
 {
 #if defined(__NO_SIGNED_ZEROS__) && __NO_SIGNED_ZEROS__
-    using repr = typename float_traits<T>::value_repr;
+    if constexpr (has_value_repr<T>) {
+        using repr = typename float_traits<T>::value_repr;
 
-    repr expected{};
+        repr expected{};
 
-    repr received{};
-    std::memcpy(&received, &value, sizeof(repr));
-    received.clear_padding();
+        repr received{};
+        std::memcpy(&received, &value, sizeof(repr));
+        received.clear_padding();
 
-    return std::memcmp(&received, &expected, sizeof(repr)) == 0;
+        return std::memcmp(&received, &expected, sizeof(repr)) == 0;
+    }
+    else {
+        return is_float_any_zero(value) && !std::signbit(value);
+    }
 #else
     return value == static_cast<T>(0.0);
 #endif
 }
+
 template <typename T>
-SCN_NODISCARD bool is_float_negative_zero(T value)
+SCN_MAYBE_UNUSED SCN_NODISCARD bool is_float_negative_zero(T value)
 {
 #if defined(__NO_SIGNED_ZEROS__) && __NO_SIGNED_ZEROS__
-    using repr = typename float_traits<T>::value_repr;
+    if constexpr (has_value_repr<T>) {
+        using repr = typename float_traits<T>::value_repr;
 
-    repr expected{};
-    expected.sign = 1;
+        repr expected{};
+        expected.sign = 1;
 
-    repr received{};
-    std::memcpy(&received, &value, sizeof(repr));
-    received.clear_padding();
+        repr received{};
+        std::memcpy(&received, &value, sizeof(repr));
+        received.clear_padding();
 
-    return std::memcmp(&received, &expected, sizeof(repr)) == 0;
+        return std::memcmp(&received, &expected, sizeof(repr)) == 0;
+    }
+    else {
+        return is_float_any_zero(value) && std::signbit(value);
+    }
 #else
     return value == static_cast<T>(-0.0);
 #endif
@@ -475,17 +452,22 @@ SCN_NODISCARD bool is_float_positive_infinity(T value)
 {
     if constexpr (std::numeric_limits<T>::has_infinity) {
 #if defined(__FINITE_MATH_ONLY__) && __FINITE_MATH_ONLY__
-        using repr = typename float_traits<T>::value_repr;
+        if constexpr (has_value_repr<T>) {
+            using repr = typename float_traits<T>::value_repr;
 
-        repr expected{};
-        expected.apply_exponent(float_traits<T>::max_biased_exponent);
-        expected.apply_significand(0u);
+            repr expected{};
+            expected.apply_exponent(float_traits<T>::max_biased_exponent);
+            expected.apply_significand(0u);
 
-        repr received{};
-        std::memcpy(&received, &value, sizeof(repr));
-        received.clear_padding();
+            repr received{};
+            std::memcpy(&received, &value, sizeof(repr));
+            received.clear_padding();
 
-        return std::memcmp(&received, &expected, sizeof(repr)) == 0;
+            return std::memcmp(&received, &expected, sizeof(repr)) == 0;
+        }
+        else {
+            return value == std::numeric_limits<T>::infinity();
+        }
 #else
         return value == std::numeric_limits<T>::infinity();
 #endif
@@ -494,23 +476,29 @@ SCN_NODISCARD bool is_float_positive_infinity(T value)
         return false;
     }
 }
+
 template <typename T>
-SCN_NODISCARD bool is_float_negative_infinity(T value)
+SCN_MAYBE_UNUSED SCN_NODISCARD bool is_float_negative_infinity(T value)
 {
     if constexpr (std::numeric_limits<T>::has_infinity) {
 #if defined(__FINITE_MATH_ONLY__) && __FINITE_MATH_ONLY__
-        using repr = typename float_traits<T>::value_repr;
+        if constexpr (has_value_repr<T>) {
+            using repr = typename float_traits<T>::value_repr;
 
-        repr expected{};
-        expected.apply_exponent(float_traits<T>::max_biased_exponent);
-        expected.apply_significand(0);
-        expected.sign = 1;
+            repr expected{};
+            expected.apply_exponent(float_traits<T>::max_biased_exponent);
+            expected.apply_significand(0);
+            expected.sign = 1;
 
-        repr received{};
-        std::memcpy(&received, &value, sizeof(repr));
-        received.clear_padding();
+            repr received{};
+            std::memcpy(&received, &value, sizeof(repr));
+            received.clear_padding();
 
-        return std::memcmp(&received, &expected, sizeof(repr)) == 0;
+            return std::memcmp(&received, &expected, sizeof(repr)) == 0;
+        }
+        else {
+            return value == -std::numeric_limits<T>::infinity();
+        }
 #else
         return value == -std::numeric_limits<T>::infinity();
 #endif
@@ -526,9 +514,10 @@ SCN_GCC_COMPAT_POP  // -Wfloat-equal
 
 ////////////////////////////////////////////////////////////////////
 // strtod-based implementation
-// Fallback for all CharT and standard FloatT,
-// for FloatT that don't follow IEEE 754
-// (IEEE floats can always be handled by convert_custom)
+// Fallback for a float, double, or long double with a binary format
+// that `convert_custom` doesn't support (exotic non-IEEE floats).
+// Uses the plain `strtof`, `strtod`, and `strtold` (and `wcsto*`),
+// which depend on the global C locale (see `convert_strtod_traits`)
 ////////////////////////////////////////////////////////////////////
 
 #if !SCN_DISABLE_STRTOD
@@ -537,135 +526,135 @@ namespace {
 
 template <typename T>
 struct convert_strtod {
+    static_assert(std::is_same_v<T, float> || std::is_same_v<T, double> ||
+                  std::is_same_v<T, long double>);
+
     convert_strtod(kind_type kind) : m_kind(kind) {}
 
     template <typename CharT>
     scan_expected<void> operator()(const CharT* source, T& value)
     {
+        SCN_TRY(c_source, make_c_source(source));
+
         CharT* end{};
         errno = 0;
-
-        if constexpr (std::is_same_v<CharT, char>) {
-            value = generic_narrow_strtod(source, &end);
-        }
-        else if constexpr (std::is_same_v<CharT, wchar_t>) {
-            value = generic_wide_strtod(source, &end);
-        }
-        else {
-            static_assert(detail::dependent_false<CharT>::value, "");
-        }
-
+        value = call_strtod(c_source.c_str(), &end);
         const auto saved_errno = errno;
-        auto chars_read = end - source;
-        SCN_TRY_DISCARD(check_error(chars_read, saved_errno, value));
+
+        const bool read_all = *end == CharT{0};
+        SCN_TRY_DISCARD(check_error(read_all, saved_errno, value));
 
         return {};
     }
 
 private:
-    SCN_NODISCARD static T generic_narrow_strtod(const char* str,
-                                                 char** str_end)
+    // The decimal point of the global C locale (LC_NUMERIC), as used by strtod.
+    // It may be more than one char.
+    template <typename CharT>
+    static scan_expected<std::basic_string<CharT>> get_c_decimal_point()
     {
-#if SCN_HAS_STD_F16 && defined(__HAVE_FLOAT16) && __HAVE_FLOAT16
-        if constexpr (std::is_same_v<T, std::float16_t>) {
-            set_clocale_classic_guard clocale_guard{LC_NUMERIC};
-            return static_cast<std::float16_t>(::strtof16(str, str_end));
+        const char* narrow = std::localeconv()->decimal_point;
+        if (narrow == nullptr || *narrow == '\0') {
+            return std::basic_string<CharT>(1, CharT{'.'});
         }
-#endif
 
-#if SCN_XLOCALE == SCN_XLOCALE_POSIX
-        static locale_t cloc = ::newlocale(LC_ALL_MASK, "C", nullptr);
-        if constexpr (std::is_same_v<T, float>) {
-            return ::strtof_l(str, str_end, cloc);
+        if constexpr (std::is_same_v<CharT, char>) {
+            return std::string{narrow};
         }
-        else if constexpr (std::is_same_v<T, double>) {
-            return ::strtod_l(str, str_end, cloc);
+        else {
+            std::wstring wide{};
+            std::mbstate_t state{};
+            const char* it = narrow;
+            const char* const end = narrow + std::strlen(narrow);
+            while (it != end) {
+                wchar_t ch{};
+                const auto n = std::mbrtowc(
+                    &ch, it, static_cast<std::size_t>(end - it), &state);
+                if (n == 0 || n == static_cast<std::size_t>(-1) ||
+                    n == static_cast<std::size_t>(-2)) {
+                    return detail::unexpected_scan_error(
+                        scan_error::invalid_scanned_value,
+                        "Can't widen the decimal point of the C locale");
+                }
+                wide.push_back(ch);
+                it += n;
+            }
+            return wide;
         }
-        else if constexpr (std::is_same_v<T, long double>) {
-            return ::strtold_l(str, str_end, cloc);
+    }
+
+    // `source` has '.' as the decimal point,
+    // but strtod expects the one of the C locale.
+    // strtod also only reads a hexfloat with a "0x" prefix.
+    template <typename CharT>
+    scan_expected<std::basic_string<CharT>> make_c_source(
+        const CharT* source) const
+    {
+        SCN_TRY(decimal_point, get_c_decimal_point<CharT>());
+
+        std::basic_string<CharT> result{};
+        if (m_kind == kind_type::hex_without_prefix) {
+            result.push_back(CharT{'0'});
+            result.push_back(CharT{'x'});
         }
-#elif SCN_XLOCALE == SCN_XLOCALE_MSVC
-        static _locale_t cloc = ::_create_locale(LC_ALL, "C");
-        if constexpr (std::is_same_v<T, float>) {
-            return ::_strtof_l(str, str_end, cloc);
+        for (; *source != CharT{0}; ++source) {
+            if (*source == CharT{'.'}) {
+                result.append(decimal_point);
+            }
+            else {
+                result.push_back(*source);
+            }
         }
-        else if constexpr (std::is_same_v<T, double>) {
-            return ::_strtod_l(str, str_end, cloc);
-        }
-        else if constexpr (std::is_same_v<T, long double>) {
-            return ::_strtold_l(str, str_end, cloc);
-        }
-#else
-        set_clocale_classic_guard clocale_guard{LC_NUMERIC};
+        return result;
+    }
+
+    SCN_NODISCARD static T call_strtod(const char* str, char** str_end)
+    {
         if constexpr (std::is_same_v<T, float>) {
             return std::strtof(str, str_end);
         }
         else if constexpr (std::is_same_v<T, double>) {
             return std::strtod(str, str_end);
         }
-        else if constexpr (std::is_same_v<T, long double>) {
+        else {
             return std::strtold(str, str_end);
         }
-#endif
-
-        SCN_EXPECT(false);
-        SCN_UNREACHABLE;
     }
 
-    SCN_NODISCARD static T generic_wide_strtod(const wchar_t* str,
-                                               wchar_t** str_end)
+    SCN_NODISCARD static T call_strtod(const wchar_t* str, wchar_t** str_end)
     {
-#if SCN_HAS_STD_F16 && defined(__HAVE_FLOAT16) && __HAVE_FLOAT16
-        if constexpr (std::is_same_v<T, std::float16_t>) {
-            set_clocale_classic_guard clocale_guard{LC_NUMERIC};
-            return static_cast<std::float16_t>(::wcstof16(str, str_end));
-        }
-#endif
-
-#if SCN_XLOCALE == SCN_XLOCALE_POSIX
-        static locale_t cloc = ::newlocale(LC_ALL_MASK, "C", nullptr);
-        if constexpr (std::is_same_v<T, float>) {
-            return ::wcstof_l(str, str_end, cloc);
-        }
-        else if constexpr (std::is_same_v<T, double>) {
-            return ::wcstod_l(str, str_end, cloc);
-        }
-        else if constexpr (std::is_same_v<T, long double>) {
-            return ::wcstold_l(str, str_end, cloc);
-        }
-#elif SCN_XLOCALE == SCN_XLOCALE_MSVC
-        static _locale_t cloc = ::_create_locale(LC_ALL, "C");
-        if constexpr (std::is_same_v<T, float>) {
-            return ::_wcstof_l(str, str_end, cloc);
-        }
-        else if constexpr (std::is_same_v<T, double>) {
-            return ::_wcstod_l(str, str_end, cloc);
-        }
-        else if constexpr (std::is_same_v<T, long double>) {
-            return ::_wcstold_l(str, str_end, cloc);
-        }
-#else
-        set_clocale_classic_guard clocale_guard{LC_NUMERIC};
         if constexpr (std::is_same_v<T, float>) {
             return std::wcstof(str, str_end);
         }
         else if constexpr (std::is_same_v<T, double>) {
             return std::wcstod(str, str_end);
         }
-        else if constexpr (std::is_same_v<T, long double>) {
+        else {
             return std::wcstold(str, str_end);
         }
-#endif
-
-        SCN_EXPECT(false);
-        SCN_UNREACHABLE;
     }
 
-    SCN_NODISCARD scan_expected<void> check_error(std::ptrdiff_t chars_read,
+    // HUGE_VAL of T, returned by strtod on overflow
+    SCN_NODISCARD static T huge_value()
+    {
+        if constexpr (std::is_same_v<T, float>) {
+            return HUGE_VALF;
+        }
+        else if constexpr (std::is_same_v<T, double>) {
+            return HUGE_VAL;
+        }
+        else {
+            return HUGE_VALL;
+        }
+    }
+
+    SCN_NODISCARD scan_expected<void> check_error(bool read_all,
                                                   int c_errno,
                                                   T value) const
     {
-        if (is_float_any_zero(value) && chars_read == 0) {
+        // The source has already been checked to be a valid float, so it's
+        // an error for strtod not to read all of it
+        if (!read_all) {
             SCN_UNLIKELY_ATTR
             return detail::unexpected_scan_error(
                 scan_error::invalid_scanned_value,
@@ -726,42 +715,24 @@ auto convert_strtod_traits::convert(const CharT* source,
     }
 }
 
+// Only a float, double, or long double can be enabled
+// (see `convert_strtod_traits`)
 #define SCN_DEFINE_STRTOD_CONVERT(T)                               \
     template SCN_PUBLIC auto convert_strtod_traits::convert(       \
         const char*, T&, kind_type, bool&) -> scan_expected<void>; \
     template SCN_PUBLIC auto convert_strtod_traits::convert(       \
         const wchar_t*, T&, kind_type, bool&) -> scan_expected<void>;
 
-#if !SCN_DISABLE_TYPE_FLOAT
+#if SCN_IS_FLOAT_SCANNABLE
 SCN_DEFINE_STRTOD_CONVERT(float)
 #endif
 
-#if !SCN_DISABLE_TYPE_DOUBLE
+#if SCN_IS_DOUBLE_SCANNABLE
 SCN_DEFINE_STRTOD_CONVERT(double)
 #endif
 
-#if !SCN_DISABLE_TYPE_LONG_DOUBLE
+#if SCN_IS_LONG_DOUBLE_SCANNABLE
 SCN_DEFINE_STRTOD_CONVERT(long double)
-#endif
-
-#if SCN_HAS_STD_F16 && !SCN_DISABLE_TYPE_FLOAT16
-SCN_DEFINE_STRTOD_CONVERT(std::float16_t)
-#endif
-
-#if SCN_HAS_STD_F32 && !SCN_DISABLE_TYPE_FLOAT32
-SCN_DEFINE_STRTOD_CONVERT(std::float32_t)
-#endif
-
-#if SCN_HAS_STD_F64 && !SCN_DISABLE_TYPE_FLOAT64
-SCN_DEFINE_STRTOD_CONVERT(std::float64_t)
-#endif
-
-#if SCN_HAS_STD_F128 && !SCN_DISABLE_TYPE_FLOAT128
-SCN_DEFINE_STRTOD_CONVERT(std::float128_t)
-#endif
-
-#if SCN_HAS_STD_BF16 && !SCN_DISABLE_TYPE_BFLOAT16
-SCN_DEFINE_STRTOD_CONVERT(std::bfloat16_t)
 #endif
 
 #undef SCN_DEFINE_STRTOD_CONVERT
@@ -1047,15 +1018,15 @@ scan_expected<void> convert_custom_traits::convert(
         const source_reader<wchar_t>::state_type&, bool&)                      \
         -> scan_expected<void>;
 
-#if !SCN_DISABLE_TYPE_FLOAT
+#if SCN_IS_FLOAT_SCANNABLE
 SCN_DEFINE_CUSTOM_CONVERT(float)
 #endif
 
-#if !SCN_DISABLE_TYPE_DOUBLE
+#if SCN_IS_DOUBLE_SCANNABLE
 SCN_DEFINE_CUSTOM_CONVERT(double)
 #endif
 
-#if !SCN_DISABLE_TYPE_LONG_DOUBLE
+#if SCN_IS_LONG_DOUBLE_SCANNABLE
 SCN_DEFINE_CUSTOM_CONVERT(long double)
 #endif
 
@@ -1185,15 +1156,15 @@ scan_expected<std::string_view::iterator> convert_from_chars_traits::convert(
         std::string_view, T&, kind_type, unsigned, bool&)        \
         -> scan_expected<std::string_view::iterator>;
 
-#if !SCN_DISABLE_TYPE_FLOAT
+#if SCN_IS_FLOAT_SCANNABLE
 SCN_DEFINE_FROM_CHARS_CONVERT(float)
 #endif
 
-#if !SCN_DISABLE_TYPE_DOUBLE
+#if SCN_IS_DOUBLE_SCANNABLE
 SCN_DEFINE_FROM_CHARS_CONVERT(double)
 #endif
 
-#if !SCN_DISABLE_TYPE_LONG_DOUBLE
+#if SCN_IS_LONG_DOUBLE_SCANNABLE
 SCN_DEFINE_FROM_CHARS_CONVERT(long double)
 #endif
 
@@ -1226,7 +1197,7 @@ SCN_DEFINE_FROM_CHARS_CONVERT(std::bfloat16_t)
 // Only for FloatT=(float OR double OR extended-float)
 ////////////////////////////////////////////////////////////////////
 
-#if !SCN_DISABLE_FAST_FLOAT
+#if SCN_HAS_FAST_FLOAT
 
 namespace {
 struct convert_fast_float {
@@ -1342,15 +1313,15 @@ convert_fast_float_traits::convert(std::basic_string_view<CharT> source,
         std::wstring_view, T&, kind_type, unsigned, bool&)       \
         -> scan_expected<std::wstring_view::iterator>;
 
-#if !SCN_DISABLE_TYPE_FLOAT
+#if SCN_IS_FLOAT_SCANNABLE
 SCN_DEFINE_FAST_FLOAT_CONVERT(float)
 #endif
 
-#if !SCN_DISABLE_TYPE_DOUBLE
+#if SCN_IS_DOUBLE_SCANNABLE
 SCN_DEFINE_FAST_FLOAT_CONVERT(double)
 #endif
 
-#if !SCN_DISABLE_TYPE_LONG_DOUBLE
+#if SCN_IS_LONG_DOUBLE_SCANNABLE
 SCN_DEFINE_FAST_FLOAT_CONVERT(long double)
 #endif
 
@@ -1376,7 +1347,7 @@ SCN_DEFINE_FAST_FLOAT_CONVERT(std::bfloat16_t)
 
 #undef SCN_DEFINE_FAST_FLOAT_CONVERT
 
-#endif  // !SCN_DISABLE_FAST_FLOAT
+#endif  // SCN_HAS_FAST_FLOAT
 
 }  // namespace impl::float_conversion
 

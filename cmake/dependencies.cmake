@@ -117,6 +117,20 @@ endif ()
 # fast_float
 
 set(SCN_FAST_FLOAT_BUNDLED OFF)
+if (NOT SCN_DISABLE_FAST_FLOAT)
+    # fast_float requires a binary32 float and a binary64 double.
+    # Otherwise, the library doesn't use it (see SCN_HAS_FAST_FLOAT in macros.h).
+    try_compile(
+            SCN_FAST_FLOAT_FORMATS_SUPPORTED
+            "${CMAKE_CURRENT_BINARY_DIR}"
+            "${CMAKE_CURRENT_SOURCE_DIR}/cmake/float_format_compile_test.cpp"
+            CMAKE_FLAGS "-DINCLUDE_DIRECTORIES=${CMAKE_CURRENT_SOURCE_DIR}/include"
+            CXX_STANDARD 17
+    )
+    if (NOT SCN_FAST_FLOAT_FORMATS_SUPPORTED)
+        message(STATUS "float isn't IEEE binary32, or double isn't binary64: FastFloat won't be used, even though SCN_DISABLE_FAST_FLOAT is OFF")
+    endif ()
+endif ()
 if (SCN_DISABLE_FAST_FLOAT)
     message(STATUS "FastFloat disabled, using <charconv> / std::from_chars instead")
     try_compile(
