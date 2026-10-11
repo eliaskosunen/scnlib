@@ -58,6 +58,21 @@ make_scn_test(scn_tests
 )
 add_test(NAME scn_tests COMMAND scn_tests)
 
+# Exercise the header's exception-free expected assignment implementation.
+get_disable_exceptions_flags(noexceptions_flags)
+if (CMAKE_CXX_COMPILER_ID STREQUAL "AppleClang")
+    set(noexceptions_flags -fno-exceptions)
+endif ()
+if (noexceptions_flags)
+    make_scn_test(scn_noexceptions_error_tests
+            main.cpp
+            error_test.cpp
+    )
+    target_compile_options(scn_noexceptions_error_tests PRIVATE ${noexceptions_flags})
+    target_compile_definitions(scn_noexceptions_error_tests PRIVATE SCN_TEST_NO_EXCEPTIONS=1)
+    add_test(NAME scn_noexceptions_error_tests COMMAND scn_noexceptions_error_tests)
+endif ()
+
 make_scn_test(scn_impl_tests
         main.cpp
 
