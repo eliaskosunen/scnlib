@@ -41,6 +41,8 @@ class basic_range_streambuf
     : public std::basic_streambuf<detail::char_t<SourceRange>> {
     using base = std::basic_streambuf<detail::char_t<SourceRange>>;
 
+    static_assert(ranges::bidirectional_range<SourceRange>);
+
 public:
     using range_type = SourceRange;
     using iterator = ranges::iterator_t<SourceRange>;
@@ -49,7 +51,7 @@ public:
     using int_type = typename base::int_type;
 
     explicit basic_range_streambuf(range_type range)
-        : m_range(range), m_begin(ranges::begin(m_range)), m_begin_prev(m_begin)
+        : m_range(range), m_begin(ranges::begin(m_range))
     {
     }
 
@@ -58,67 +60,55 @@ public:
     {
         return m_begin;
     }
-    iterator begin_prev() const
-        noexcept(std::is_nothrow_copy_constructible_v<iterator>)
-    {
-        return m_begin_prev;
-    }
-    int_type last_char() const noexcept
-    {
-        return m_ch;
-    }
 
 private:
+    // There's no get area: every read goes through these virtual functions,
+    // and `m_begin` always points to the next character to be read
+
     int_type underflow() override
     {
-        // Already read
-        if (!traits_type::eq_int_type(m_ch, traits_type::eof())) {
-            return m_ch;
-        }
-
         if (m_begin == ranges::end(m_range)) {
             return traits_type::eof();
         }
-        m_begin_prev = m_begin;
-        SCN_CLANG_PUSH_IGNORE_UNSAFE_BUFFER_USAGE
-        m_ch = traits_type::to_int_type(*m_begin++);
-        SCN_CLANG_POP_IGNORE_UNSAFE_BUFFER_USAGE
-        return m_ch;
+        return traits_type::to_int_type(*m_begin);
     }
 
     int_type uflow() override
     {
         auto ret = underflow();
-        if (ret != traits_type::eof()) {
-            m_ch = traits_type::eof();
+        if (!traits_type::eq_int_type(ret, traits_type::eof())) {
+            ++m_begin;
         }
         return ret;
     }
 
     std::streamsize showmanyc() override
     {
-        return traits_type::eq_int_type(m_ch, traits_type::eof()) ? 0 : 1;
+        return m_begin == ranges::end(m_range) ? -1 : 1;
     }
 
     int_type pbackfail(int_type c) override
     {
-        SCN_EXPECT(traits_type::eq_int_type(c, traits_type::eof()));
-        SCN_EXPECT(!m_has_put_back);
-        m_has_put_back = true;
-
-        m_begin = m_begin_prev;
-
-        if (m_begin == ranges::end(m_range)) {
+        if (m_begin == ranges::begin(m_range)) {
             return traits_type::eof();
         }
-        return traits_type::to_int_type(0);
+        --m_begin;
+
+        const auto previous = traits_type::to_int_type(*m_begin);
+        if (traits_type::eq_int_type(c, traits_type::eof())) {
+            return traits_type::not_eof(previous);
+        }
+        // The source can't be modified, so only putting back the character
+        // that was there can succeed
+        if (!traits_type::eq_int_type(c, previous)) {
+            ++m_begin;
+            return traits_type::eof();
+        }
+        return c;
     }
 
     range_type m_range;
     iterator m_begin;
-    iterator m_begin_prev;
-    int_type m_ch{traits_type::eof()};
-    bool m_has_put_back{false};
 };
 
 using range_streambuf = basic_range_streambuf<scan_context::range_type>;
@@ -158,8 +148,14 @@ struct basic_istream_scanner {
     {
         detail::basic_range_streambuf<typename Context::range_type> streambuf(
             ctx.range());
-        using traits = typename decltype(streambuf)::traits_type;
         std::basic_istream<CharT> stream(std::addressof(streambuf));
+#if !SCN_DISABLE_LOCALE
+        if (ctx.locale()) {
+            SCN_CLANG_PUSH_IGNORE_UNDEFINED_TEMPLATE
+            stream.imbue(ctx.locale().template get<std::locale>());
+            SCN_CLANG_POP_IGNORE_UNDEFINED_TEMPLATE
+        }
+#endif
 
         if (!(stream >> val)) {
             if (stream.eof()) {
@@ -178,10 +174,7 @@ struct basic_istream_scanner {
                 "Failed to read with std::istream");
         }
 
-        if (traits::eq_int_type(streambuf.last_char(), traits::eof())) {
-            return streambuf.begin();
-        }
-        return streambuf.begin_prev();
+        return streambuf.begin();
     }
 };
 
