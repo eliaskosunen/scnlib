@@ -9605,6 +9605,10 @@ public:
     {
         m_specs.type = type;
     }
+    constexpr void on_arbitrary_base(int base)
+    {
+        m_specs.arbitrary_base = static_cast<unsigned char>(base);
+    }
 
     constexpr void on_charset_single(char32_t cp)
     {
@@ -10182,6 +10186,29 @@ constexpr const CharT* parse_format_specs(const CharT* begin,
             handler.on_error("Invalid type specifier in format string");
             return begin;
         }
+        if (type == presentation_type::int_arbitrary_base) {
+            if (SCN_UNLIKELY(begin == end || *begin < CharT{'0'} ||
+                             *begin > CharT{'9'})) {
+                // clang-format off
+                handler.on_error("Expected a base after 'r'/'R' type specifier in format string");
+                // clang-format on
+                return begin;
+            }
+            if (SCN_UNLIKELY(*begin == CharT{'0'})) {
+                // clang-format off
+                handler.on_error("Invalid base for 'r'/'R' type specifier in format string, must not start with a zero");
+                // clang-format on
+                return begin;
+            }
+            const int base = parse_simple_int(begin, end);
+            if (SCN_UNLIKELY(base < 2 || base > 36)) {
+                // clang-format off
+                handler.on_error("Invalid base for 'r'/'R' type specifier in format string, must be in range [2, 36]");
+                // clang-format on
+                return begin;
+            }
+            handler.on_arbitrary_base(base);
+        }
         handler.on_type(type);
         return begin;
     };
@@ -10460,8 +10487,10 @@ template <typename Handler>
 constexpr void check_int_type_specs(const format_specs& specs,
                                     Handler&& handler)
 {
-    if (SCN_UNLIKELY(specs.type > presentation_type::int_hex)) {
-        return handler.on_error("Invalid type specifier for integer type");
+    if (SCN_UNLIKELY(specs.type > presentation_type::int_arbitrary_base)) {
+        // clang-format off
+        return handler.on_error("Invalid type specifier for an integer type, expected one of: b, B, d, i, u, o, x, X, rNN, RNN");
+        // clang-format on
     }
     if (specs.localized) {
         if (SCN_UNLIKELY(specs.type == presentation_type::int_binary)) {
@@ -10754,9 +10783,11 @@ SCN_CLANG_IGNORE("-Wdocumentation-unknown-command")
  * The `L` flag enables localized scanning.
  * Its effects are different for each type it is used with:
  *
- *  * For integers, it enables locale-specific thousands separators
+ *  * For integers, it enables locale-specific thousands separators.
+ *    Their placement is not validated against the locale's digit grouping.
  *  * For floating-point numbers, it enables locale-specific thousands and
- *    radix (decimal) separators
+ *    radix (decimal) separators.
+ *    The placement of thousands separators is not validated.
  *  * For booleans, it enables locale-specific textual representations (for
  *    `true` and `false`)
  *  * For other types, it has no effect
@@ -10863,7 +10894,7 @@ SCN_CLANG_IGNORE("-Wdocumentation-unknown-command")
  * </td>
  * </tr>
  * <tr>
- * <td>`rXX` (where XX = [2, 36])</td>
+ * <td>`rXX`, `RXX` (where XX = [2, 36])</td>
  * <td>
  * Custom base, without a base prefix (r stands for radix).
  * </td>
@@ -12738,13 +12769,26 @@ SCN_NODISCARD auto prompt(const char* msg,
 }
 
 namespace detail {
+// Only the types instantiated in the compiled library are supported
+template <typename T>
+inline constexpr bool is_scan_int_exhaustive_valid_type =
+    (std::is_same_v<T, signed char> && !SCN_DISABLE_TYPE_SCHAR) ||
+    (std::is_same_v<T, short> && !SCN_DISABLE_TYPE_SHORT) ||
+    (std::is_same_v<T, int> && !SCN_DISABLE_TYPE_INT) ||
+    (std::is_same_v<T, long> && !SCN_DISABLE_TYPE_LONG) ||
+    (std::is_same_v<T, long long> && !SCN_DISABLE_TYPE_LONG_LONG) ||
+    (std::is_same_v<T, unsigned char> && !SCN_DISABLE_TYPE_UCHAR) ||
+    (std::is_same_v<T, unsigned short> && !SCN_DISABLE_TYPE_USHORT) ||
+    (std::is_same_v<T, unsigned int> && !SCN_DISABLE_TYPE_UINT) ||
+    (std::is_same_v<T, unsigned long> && !SCN_DISABLE_TYPE_ULONG) ||
+    (std::is_same_v<T, unsigned long long> && !SCN_DISABLE_TYPE_ULONG_LONG);
+
 template <typename T>
 inline constexpr bool is_scan_int_type =
-    (std::is_integral_v<T> && !std::is_same_v<T, char> &&
-     !std::is_same_v<T, wchar_t> && !std::is_same_v<T, char32_t> &&
-     !std::is_same_v<T, bool>)
+    is_scan_int_exhaustive_valid_type<T>
 #if SCN_HAS_INT128
-    || std::is_same_v<T, int128> || std::is_same_v<T, uint128>
+    || (std::is_same_v<T, int128> && !SCN_DISABLE_TYPE_INT128) ||
+    (std::is_same_v<T, uint128> && !SCN_DISABLE_TYPE_UINT128)
 #endif
     ;
 }  // namespace detail
@@ -12757,7 +12801,8 @@ inline constexpr bool is_scan_int_type =
  *
  * Reads in the specified base,
  * allowing a base prefix. Set `base` to `0` to detect the base from the
- * input. `base` must either be `0`, or in range `[2, 36]`.
+ * input. `base` must either be `0`, or in range `[2, 36]`:
+ * otherwise, returns an error with code `scan_error::invalid_format_string`.
  *
  * \ingroup scan
  */
@@ -12775,11 +12820,6 @@ SCN_NODISCARD auto scan_int(std::string_view source, int base = 10)
         result = unexpected(r.error());
     }
     return result;
-}
-
-namespace detail {
-template <bool Val, typename T>
-inline constexpr bool dependent_bool = Val;
 }
 
 /**
@@ -12800,12 +12840,11 @@ inline constexpr bool dependent_bool = Val;
  *
  * \ingroup scan
  */
-template <typename T, std::enable_if_t<detail::is_scan_int_type<T>>* = nullptr>
+template <
+    typename T,
+    std::enable_if_t<detail::is_scan_int_exhaustive_valid_type<T>>* = nullptr>
 SCN_NODISCARD auto scan_int_exhaustive_valid(std::string_view source) -> T
 {
-    static_assert(
-        detail::dependent_bool<!SCN_IS_BIG_ENDIAN, T>,
-        "scan_int_exhaustive_valid requires a little endian environment");
     return detail::scan_int_exhaustive_valid_impl<T>(source);
 }
 

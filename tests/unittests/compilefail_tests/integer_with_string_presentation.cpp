@@ -19,7 +19,7 @@
 
 int main()
 {
-    // build error: Invalid type specifier for integer type
+    // build error: Invalid type specifier for an integer type
     auto result = scn::scan<int>("42", SCN_STRING("{:s}"));
     return result && result->value() == 42;
 }

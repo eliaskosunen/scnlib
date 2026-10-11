@@ -84,11 +84,12 @@ scn::scan<...>(strm, ...);
  * Building as a shared library (with `BUILD_SHARED_LIBS`) is now supported, with the exported symbols marked explicitly
  * More optimized reading for source ranges that are both `bidirectional_range`s and `sized_range`s.
  * Regular expressions can now be scanned from non-contiguous sources, with the `std` and `Boost` regex backends
- * Compile-time format string checking now also runs `scanner::parse` for user-defined types,
-   and rejects scanning a `string_view` or a regex from a source that can't support it
-   * `scn::basic_scan_parse_context` exposes this information with `is_source_contiguous()` and `is_source_borrowed()`
- * `std::views::istream` and other C++20 views whose `iterator_concept` is stronger than their `iterator_category`
-   (like `std::views::transform`) can now be scanned from, instead of being treated as input ranges or rejected
+ * `scn::basic_scan_parse_context` now tells whether the source is contiguous or borrowed,
+   with `is_source_contiguous()` and `is_source_borrowed()`, so that `scanner::parse` can check them
+ * C++20 views whose `iterator_concept` is stronger than their `iterator_category` (like `std::views::transform`)
+   can now be scanned from, with the range category given by their `iterator_concept`
+ * Ranges that can only be iterated over when non-const (like `std::views::filter`) can now be scanned from
+ * The `rNN` and `RNN` integer type specifiers are now supported, for an arbitrary base `NN` from 2 to 36 (without a base prefix)
 
 ### Fixes
 
@@ -111,11 +112,10 @@ scn::scan<...>(strm, ...);
    and assigning a value over an error swallowed an exception thrown while constructing it
  * `scn::expected` is no longer marked `[[clang::trivial_abi]]` when `T` or `E` isn't trivially copyable,
    which made Clang relocate them with a bitwise copy
- * Fix scanning from ranges that can only be iterated over when non-const (like `std::views::filter`),
-   and from sized bidirectional ranges that aren't random access (like `std::list`)
  * Fix multi-byte whitespace (like U+2028) not being recognized when it's split between two chunks of a non-contiguous source
  * Fix `putback()` and repeated `unget()` in an `operator>>` used through `scn::basic_istream_scanner`
    failing an assertion, and `unget()` at the beginning of the input not failing
+ * `scn::scan_int` returns an error for an invalid base, and `scn::scan_int_exhaustive_valid` works on big-endian platforms
  * Fix the locale not being passed on when scanning a single argument with the default format string (`"{}"`)
  * Scanning from a character pointer (like `const char*`) is now a call to a deleted function,
    with an explanation in C++26, instead of an unexplained "no matching function"
