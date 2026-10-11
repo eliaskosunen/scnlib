@@ -2289,7 +2289,7 @@ scan_expected<std::ptrdiff_t> vscan_internal(
     const auto argcount = args.size();
     if (is_simple_single_argument_format_string(format) && argcount == 1) {
         auto arg = args.get(0);
-        return scan_simple_single_argument(source, SCN_MOVE(args), arg);
+        return scan_simple_single_argument(source, SCN_MOVE(args), arg, loc);
     }
 
     auto handler = format_handler<true, CharT>{
@@ -2350,7 +2350,8 @@ scan_expected<std::ptrdiff_t> vscan_internal(
         const auto argcount = args.size();
         if (is_simple_single_argument_format_string(format) && argcount == 1) {
             auto arg = args.get(0);
-            return scan_simple_single_argument(source, SCN_MOVE(args), arg);
+            return scan_simple_single_argument(source, SCN_MOVE(args), arg,
+                                               loc);
         }
 
         auto handler = format_handler<false, CharT>{

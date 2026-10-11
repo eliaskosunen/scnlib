@@ -20,6 +20,7 @@
 #include <scn/scan.h>
 
 #include <deque>
+#include <locale>
 
 // Simple wrapper over a `char`, doesn't allow a custom format string
 struct char_wrapper {
@@ -68,6 +69,52 @@ TEST(CustomTypeTest, CharWrapperWithCustomFormatString)
     auto result = scn::scan<char_wrapper>("c", scn::runtime_format("{:c}"));
     ASSERT_THAT(result, Failed());
 }
+
+#if !SCN_DISABLE_LOCALE
+// Records whether it was scanned with a locale, without consuming anything
+struct locale_probe {
+    bool has_locale{};
+};
+
+template <>
+struct scn::scanner<locale_probe, char> {
+    template <typename ParseCtx>
+    constexpr auto parse(ParseCtx& pctx) -> typename ParseCtx::iterator
+    {
+        return pctx.begin();
+    }
+
+    template <typename Context>
+    auto scan(locale_probe& val, Context& ctx) const
+        -> scn::scan_expected<typename Context::iterator>
+    {
+        val.has_locale = static_cast<bool>(ctx.locale());
+        return ctx.begin();
+    }
+};
+
+TEST(CustomTypeTest, LocaleWithSingleArgument)
+{
+    auto result = scn::scan<locale_probe>(std::locale::classic(), "abc", "{}");
+    ASSERT_THAT(result, Succeeded());
+    EXPECT_TRUE(result->value().has_locale);
+}
+
+TEST(CustomTypeTest, LocaleWithSingleArgumentFromNonContiguousSource)
+{
+    auto src = std::deque<char>{'a', 'b', 'c'};
+    auto result = scn::scan<locale_probe>(std::locale::classic(), src, "{}");
+    ASSERT_THAT(result, Succeeded());
+    EXPECT_TRUE(result->value().has_locale);
+}
+
+TEST(CustomTypeTest, NoLocaleWithSingleArgument)
+{
+    auto result = scn::scan<locale_probe>("abc", "{}");
+    ASSERT_THAT(result, Succeeded());
+    EXPECT_FALSE(result->value().has_locale);
+}
+#endif
 
 // Simple wrapper over an `int`, inherits all its scanning properties
 struct integer_wrapper {
