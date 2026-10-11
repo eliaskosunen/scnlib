@@ -233,6 +233,112 @@ TEST_F(HighPrecisionDecimalTest, RoundedSignificand)
     EXPECT_THAT(hpd.rounded_significand<double>(), FieldsAre(77472u, false));
 }
 
+TEST(SaturatingExponentTest, Parse)
+{
+    using scn::impl::max_exponent_magnitude;
+    using scn::impl::parse_saturating_exponent;
+
+    EXPECT_EQ(parse_saturating_exponent("0"sv, true), 0);
+    EXPECT_EQ(parse_saturating_exponent("123"sv, true), 123);
+    EXPECT_EQ(parse_saturating_exponent("123"sv, false), -123);
+    EXPECT_EQ(parse_saturating_exponent(L"123"sv, true), 123);
+
+    // max_exponent_magnitude is 2^59
+    EXPECT_EQ(parse_saturating_exponent("576460752303423487"sv, true),
+              max_exponent_magnitude - 1);
+    EXPECT_EQ(parse_saturating_exponent("576460752303423488"sv, true),
+              max_exponent_magnitude);
+    EXPECT_EQ(parse_saturating_exponent("99999999999999999999"sv, true),
+              max_exponent_magnitude);
+    EXPECT_EQ(parse_saturating_exponent("99999999999999999999"sv, false),
+              -max_exponent_magnitude);
+    EXPECT_EQ(parse_saturating_exponent(std::string_view{std::string(400, '9')},
+                                        true),
+              max_exponent_magnitude);
+}
+
+// A long run of digits mustn't cancel out a saturated exponent.
+// The digit offsets below stand for inputs like
+// "0." + (2^30 - 5 zeroes) + "1e99999999999",
+// which would be too large to test with.
+TEST(SaturatingExponentTest, AdjustedBySignificandDigits)
+{
+    using scn::impl::adjusted_exponent;
+    using scn::impl::max_exponent_magnitude;
+    // Way beyond the exponent range of any floating-point type
+    constexpr auto out_of_range = std::int64_t{1} << 30;
+
+    const auto make_parts = [](std::string_view exponent, bool positive) {
+        scn::impl::float_parts<char> parts{};
+        parts.exponent = exponent;
+        parts.exponent_positive = positive;
+        return parts;
+    };
+
+    EXPECT_EQ(adjusted_exponent(make_parts("10", true), -3), 7);
+    EXPECT_EQ(adjusted_exponent(make_parts("10", false), 3), -7);
+
+    // Decimal: `digit_offset` is the number of digits before the radix point,
+    // or minus the number of zeroes right after it
+    const auto many_digits = (std::int64_t{1} << 30) - 5;
+    EXPECT_EQ(adjusted_exponent(make_parts("99999999999", true), -many_digits),
+              99999999999 - many_digits);
+    EXPECT_EQ(adjusted_exponent(make_parts("99999999999", false), many_digits),
+              -99999999999 + many_digits);
+    EXPECT_GT(adjusted_exponent(make_parts("99999999999", true), -many_digits),
+              out_of_range);
+    EXPECT_EQ(adjusted_exponent(make_parts("99999999999999999999", true),
+                                -many_digits),
+              max_exponent_magnitude - many_digits);
+    EXPECT_EQ(adjusted_exponent(make_parts("99999999999999999999", false),
+                                many_digits),
+              -max_exponent_magnitude + many_digits);
+
+    // Hex: `digit_offset` is 4 times the (negated) number of digits after the
+    // radix point
+    const auto many_hex_digits = (std::int64_t{1} << 28) - 1;
+    EXPECT_EQ(adjusted_exponent(make_parts("99999999999", true),
+                                -4 * many_hex_digits),
+              99999999999 - 4 * many_hex_digits);
+    EXPECT_GT(adjusted_exponent(make_parts("99999999999", true),
+                                -4 * many_hex_digits),
+              out_of_range);
+    EXPECT_EQ(adjusted_exponent(make_parts("99999999999999999999", false),
+                                4 * many_hex_digits),
+              -max_exponent_magnitude + 4 * many_hex_digits);
+}
+
+TEST_F(HighPrecisionDecimalTest, PopulateClampsDecimalPoint)
+{
+    using hpd_type = scn::impl::high_precision_decimal;
+    constexpr auto max = hpd_type::max_decimal_point_magnitude;
+
+    scn::impl::float_parts<char> parts{};
+    parts.before_radix_point = "12";
+    parts.after_radix_point = "5";
+    parts.exponent = "3";
+    {
+        hpd_type hpd{};
+        hpd_type::populate(hpd, parts);
+        EXPECT_EQ(hpd.num_digits, 3);
+        EXPECT_EQ(hpd.decimal_point, 5);
+    }
+
+    parts.exponent = "99999999999";
+    {
+        hpd_type hpd{};
+        hpd_type::populate(hpd, parts);
+        EXPECT_EQ(hpd.decimal_point, max);
+    }
+
+    parts.exponent_positive = false;
+    {
+        hpd_type hpd{};
+        hpd_type::populate(hpd, parts);
+        EXPECT_EQ(hpd.decimal_point, -max);
+    }
+}
+
 struct SimpleDecimalConversionTest : testing::Test {
     scn::impl::float_rounding_guard rounding_guard{};
 };

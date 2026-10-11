@@ -165,6 +165,16 @@ TEST(FloatTest, VeryLargeNumber)
     EXPECT_GT(result->value(), 1.7e308);
 }
 
+TEST(FloatTest, LongDoubleExponentOutOfIntRange)
+{
+    auto overflow = scn::scan<long double>("1e2147483647", "{}");
+    ASSERT_THAT(overflow, FailedWith(scn::scan_error::value_positive_overflow));
+
+    auto underflow = scn::scan<long double>("1e-2147483648", "{}");
+    ASSERT_THAT(underflow,
+                FailedWith(scn::scan_error::value_positive_underflow));
+}
+
 TEST(FloatTest, VerySmallNumber)
 {
     auto result = scn::scan<double>("2.2250738585072014e-308", "{}");
