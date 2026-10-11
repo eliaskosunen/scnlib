@@ -31,32 +31,6 @@ namespace scn {
 SCN_BEGIN_NAMESPACE
 
 namespace detail {
-template <typename T, typename CharT, typename Enable = void>
-struct is_streamable_impl : std::false_type {};
-
-template <typename T, typename CharT>
-struct is_streamable_impl<
-    T,
-    CharT,
-    std::enable_if_t<sizeof(SCN_DECLVAL(std::basic_istream<CharT>&)
-                            << std::declval<T>()) != 0>> : std::true_type {};
-
-template <typename CharT>
-struct dummy_context_for_is_streamamble {
-    using char_type = CharT;
-};
-
-template <typename T, typename CharT>
-struct is_streamable
-    : std::conditional_t<
-          std::is_convertible_v<
-              std::add_lvalue_reference_t<
-                  decltype(arg_mapper<dummy_context_for_is_streamamble<CharT>>::
-                               map(SCN_DECLVAL(T&)))>,
-              unscannable&>,
-          is_streamable_impl<T, CharT>,
-          std::false_type> {};
-
 /**
  * Wraps `SourceRange`, and makes it a `std::basic_streambuf`.
  *
@@ -261,8 +235,7 @@ public:
 
         friend bool operator==(const iterator& x, default_sentinel_t)
         {
-            SCN_EXPECT(x.m_parent);
-            return !x.m_parent->m_current.has_value();
+            return x.at_end();
         }
         friend bool operator!=(const iterator& x, default_sentinel_t)
         {
@@ -284,6 +257,14 @@ public:
         explicit iterator(const basic_istreambuf_view& parent) noexcept
             : m_parent(&parent)
         {
+        }
+
+        // A friend of a nested class can't access the private members of the
+        // enclosing class, but a member can
+        bool at_end() const
+        {
+            SCN_EXPECT(m_parent);
+            return !m_parent->m_current.has_value();
         }
 
         const basic_istreambuf_view* m_parent{nullptr};
@@ -375,17 +356,18 @@ private:
 
     std::basic_istream<CharT>* m_stream;
     std::basic_string<CharT> m_buf;
+    bool m_view_is_peeked{false};
 };
 
 extern template SCN_PUBLIC basic_scan_istream_buffer<
     char>::basic_scan_istream_buffer(std::istream&) noexcept;
-extern template SCN_PUBLIC  basic_scan_istream_buffer<
+extern template SCN_PUBLIC basic_scan_istream_buffer<
     wchar_t>::basic_scan_istream_buffer(std::wistream&) noexcept;
 
-extern template SCN_PUBLIC basic_scan_istream_buffer<
-    char>::~basic_scan_istream_buffer();
-extern template SCN_PUBLIC basic_scan_istream_buffer<
-    wchar_t>::~basic_scan_istream_buffer();
+extern template SCN_PUBLIC
+    basic_scan_istream_buffer<char>::~basic_scan_istream_buffer();
+extern template SCN_PUBLIC
+    basic_scan_istream_buffer<wchar_t>::~basic_scan_istream_buffer();
 
 inline scan_istream_buffer make_scan_buffer(std::istream& stream,
                                             make_scan_buffer_tag) noexcept
@@ -426,7 +408,7 @@ public:
         SCN_EXPECT(s);
     }
 
-    SCN_NODISCARD source_type& stream()
+    SCN_NODISCARD source_type& stream() const
     {
         SCN_EXPECT(m_stream);
         return *m_stream;

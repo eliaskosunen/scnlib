@@ -187,6 +187,8 @@ If the synchronization succeeds, the same `FILE` contained in the `scn::scan_fil
 can be used elsewhere transparently.
 
 If `<scn/istream.h>` is included, `scn::scan` can also be used with `std::istream`s.
+Scanning from a `std::istream` requires its stream buffer to support putback (`sputbackc`) of the characters it has returned, if a scan fails.
+See \ref scannable for details.
 Plain C `FILE`s can also be used, but the support for them is deprecated,
 for the aforementioned reasons about the possibility for a synchronization failure.
 
