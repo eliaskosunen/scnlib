@@ -1678,7 +1678,7 @@ std::size_t contiguous_beginning_size(Range r)
         }
     }
     else {
-        return false;
+        return 0;
     }
 }
 
@@ -2246,7 +2246,7 @@ public:
     string_type&& get_allocated_string() &&
     {
         SCN_EXPECT(stores_allocated_string());
-        return *m_storage;
+        return SCN_MOVE(*m_storage);
     }
 
     string_type& make_into_allocated_string()
