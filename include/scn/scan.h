@@ -6324,7 +6324,10 @@ public:
     }
     scan_file& operator=(scan_file&& other) noexcept
     {
-        m_prelude = std::move(other.m_prelude);
+        if (this == &other) {
+            return *this;
+        }
+        m_prelude = SCN_MOVE(other.m_prelude);
         m_file = other.m_file;
         other.m_prelude = {};
         other.m_file = nullptr;
@@ -6336,11 +6339,14 @@ public:
      * If `*this` is not completely synced with the underlying file
      * (i.e., its putback buffer is full), returns `std::nullopt`.
      * The unsynced parts can be retrieved with `prelude()`.
+     * If `*this` has a null handle (e.g., it was constructed from a null
+     * pointer, or it has been moved from), returns a null pointer.
+     * Scanning from such a `scan_file` fails with
+     * `scan_error::invalid_source_state`.
      */
     SCN_NODISCARD std::optional<std::FILE*> handle() const
     {
         if (m_prelude.empty()) {
-            SCN_EXPECT(m_file);
             return m_file;
         }
         return std::nullopt;
@@ -6372,7 +6378,6 @@ namespace detail {
 struct scan_file_access {
     static std::FILE* get_handle(scan_file& f)
     {
-        SCN_EXPECT(f.m_file != nullptr);
         return f.m_file;
     }
 
@@ -7207,7 +7212,6 @@ inline auto impl(std::FILE* file, priority_tag<3>)
 
 inline auto impl(scan_file& file, priority_tag<3>)
 {
-    SCN_EXPECT(scan_file_access::get_handle(file) != nullptr);
     return scan_file_buffer{file};
 }
 auto impl(scan_file&&, priority_tag<3>) = delete;
@@ -12446,8 +12450,9 @@ template <typename Source, typename... Args>
 auto make_scan_result(std::tuple<Args...>&& initial_values)
 {
     using type = scan_result_type<Source, Args...>;
-    using subrange_type = typename type::value_type::range_type;
-    return type{std::in_place, subrange_type{}, SCN_MOVE(initial_values)};
+    using source_storage = detail::scan_result_source_storage<
+        detail::scan_result_value_type<Source>>;
+    return type{std::in_place, source_storage{}, SCN_MOVE(initial_values)};
 }
 
 /**
