@@ -34,7 +34,7 @@ if (SCN_TESTS)
         FetchContent_Declare(
                 googletest
                 GIT_REPOSITORY https://github.com/google/googletest.git
-                GIT_TAG main
+                GIT_TAG v1.18.0
                 GIT_SHALLOW TRUE
                 SYSTEM
                 EXCLUDE_FROM_ALL
@@ -54,7 +54,7 @@ if (SCN_TESTS)
         FetchContent_Declare(
                 googletest
                 GIT_REPOSITORY https://github.com/google/googletest.git
-                GIT_TAG main
+                GIT_TAG v1.18.0
                 GIT_SHALLOW TRUE
         )
 
@@ -116,6 +116,7 @@ endif ()
 
 # fast_float
 
+set(SCN_FAST_FLOAT_BUNDLED OFF)
 if (SCN_DISABLE_FAST_FLOAT)
     message(STATUS "FastFloat disabled, using <charconv> / std::from_chars instead")
     try_compile(
@@ -132,8 +133,8 @@ if (SCN_DISABLE_FAST_FLOAT)
 elseif (SCN_USE_EXTERNAL_FAST_FLOAT)
     if (NOT TARGET FastFloat::fast_float)
         find_package(FastFloat CONFIG REQUIRED)
-        if (FastFloat_VERSION VERSION_LESS "5.0.0")
-            message(FATAL_ERROR "Incompatible version of FastFloat: at least 5.0.0 required, found ${FastFloat_VERSION}")
+        if (FastFloat_VERSION VERSION_LESS "6.0.0")
+            message(FATAL_ERROR "Incompatible version of FastFloat: at least 6.0.0 required, found ${FastFloat_VERSION}")
         endif ()
     else ()
         message(STATUS "Target FastFloat::fast_float already defined, not doing find_package(FastFloat) (SCN_USE_EXTERNAL_FAST_FLOAT is ON)")
@@ -141,6 +142,7 @@ elseif (SCN_USE_EXTERNAL_FAST_FLOAT)
     set(SCN_FAST_FLOAT_TARGET FastFloat::fast_float)
 elseif (TARGET FastFloat::fast_float)
     message(WARNING "Target FastFloat::fast_float already defined, not doing FetchContent(fast_float), even though SCN_USE_EXTERNAL_FAST_FLOAT is OFF")
+    set(SCN_FAST_FLOAT_TARGET FastFloat::fast_float)
 elseif (CMAKE_VERSION VERSION_GREATER_EQUAL "3.30.0")
     FetchContent_Declare(
             fast_float
@@ -153,6 +155,7 @@ elseif (CMAKE_VERSION VERSION_GREATER_EQUAL "3.30.0")
 
     set(FASTFLOAT_INSTALL OFF CACHE INTERNAL "")
     list(APPEND SCN_DEPENDENCIES_TO_MAKE_AVAILABLE "fast_float")
+    set(SCN_FAST_FLOAT_BUNDLED ON)
     set(SCN_FAST_FLOAT_TARGET FastFloat::fast_float)
 else ()
     FetchContent_Declare(
@@ -172,12 +175,15 @@ else ()
         add_subdirectory(${fast_float_SOURCE_DIR} ${fast_float_BINARY_DIR} EXCLUDE_FROM_ALL)
     endif ()
 
+    set(SCN_FAST_FLOAT_BUNDLED ON)
     set(SCN_FAST_FLOAT_TARGET FastFloat::fast_float)
 endif ()
 
 # std::regex
 
-if (SCN_REGEX_BACKEND STREQUAL "std")
+set(SCN_REGEX_BACKEND_TARGET)
+
+if (NOT SCN_DISABLE_REGEX AND SCN_REGEX_BACKEND STREQUAL "std")
     if (NOT SCN_USE_EXTERNAL_REGEX_BACKEND)
         message(FATAL_ERROR "SCN_USE_EXTERNAL_REGEX_BACKEND=OFF isn't supported when SCN_REGEX_BACKEND is std")
     endif ()
@@ -190,7 +196,7 @@ endif ()
 
 # Boost.Regex
 
-if (SCN_REGEX_BACKEND STREQUAL "Boost")
+if (NOT SCN_DISABLE_REGEX AND SCN_REGEX_BACKEND STREQUAL "Boost")
     if (NOT SCN_USE_EXTERNAL_REGEX_BACKEND)
         message(FATAL_ERROR "SCN_USE_EXTERNAL_REGEX_BACKEND=OFF isn't supported when SCN_REGEX_BACKEND is Boost")
     endif ()
@@ -235,7 +241,7 @@ endif ()
 
 # re2
 
-if (SCN_REGEX_BACKEND STREQUAL "re2")
+if (NOT SCN_DISABLE_REGEX AND SCN_REGEX_BACKEND STREQUAL "re2")
     if (NOT SCN_USE_EXTERNAL_REGEX_BACKEND)
         message(FATAL_ERROR "SCN_USE_EXTERNAL_REGEX_BACKEND=OFF isn't supported when SCN_REGEX_BACKEND is re2")
     endif ()

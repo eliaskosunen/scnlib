@@ -849,7 +849,7 @@ jobs:
             enable_tests: 1
           - key: regex
             flags: "-DSCN_DISABLE_REGEX=ON"
-            enable_tests: 0 # todo
+            enable_tests: 1
           - key: chrono
             flags: "-DSCN_DISABLE_CHRONO=ON"
             enable_tests: 1
@@ -868,6 +868,9 @@ jobs:
           - key: fast-float
             flags: "-DSCN_DISABLE_FAST_FLOAT=ON"
             enable_tests: 0
+          - key: exceptions
+            flags: "-DSCN_USE_EXCEPTIONS=OFF"
+            enable_tests: 1
 
     env:
       CXX: g++-14

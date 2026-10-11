@@ -8,7 +8,7 @@ project(
         LANGUAGES CXX
 )
 
-option(SCN_DISABLE_TOP_PROJECT OFF)
+option(SCN_DISABLE_TOP_PROJECT "Treat scnlib as a subproject, even when it is the top-level project" OFF)
 
 if (CMAKE_VERSION VERSION_LESS 3.21)
     get_property(not_top DIRECTORY PROPERTY PARENT_DIRECTORY)
@@ -113,7 +113,6 @@ set_target_properties(
         scn PROPERTIES
         VERSION 4.0.1
         SOVERSION 4.0.1
-        PUBLIC_HEADER "${SCN_PUBLIC_HEADERS};${SCN_EXPORT_HEADER}"
 )
 add_library(scn::scn ALIAS scn)
 

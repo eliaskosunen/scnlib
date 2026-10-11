@@ -140,8 +140,13 @@ struct scn::scanner<variant_wrapper, char> {
     constexpr typename ParseContext::iterator parse(ParseContext& pctx)
     {
         if (pctx.begin() == pctx.end() || *pctx.begin() == '}') {
+#if SCN_HAS_EXCEPTIONS
             throw scn::scan_format_string_error(
                 "Invalid format string: format specifier required");
+#else
+            pctx.on_error("Invalid format string: format specifier required");
+            return pctx.begin();
+#endif
         }
 
         auto it = pctx.begin();

@@ -12,8 +12,7 @@ target_compile_options(scn_benchmark_runtime_common INTERFACE
         -Wno-exit-time-destructors
         -Wno-weak-vtables
         >)
-get_disable_msvc_secure_definitions(msvc_sec_defs)
-target_compile_definitions(scn_benchmark_runtime_common INTERFACE ${msvc_sec_defs})
+target_compile_definitions(scn_benchmark_runtime_common INTERFACE ${SCN_MSVC_SECURE_DEFINITIONS})
 
 function(scn_make_runtime_benchmark target)
     add_executable(${target} ${ARGN})

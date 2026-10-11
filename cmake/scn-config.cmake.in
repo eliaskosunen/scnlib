@@ -2,19 +2,19 @@
 
 include(CMakeFindDependencyMacro)
 
-if (@SCN_USE_EXTERNAL_FAST_FLOAT@)
+if (NOT @SCN_FAST_FLOAT_BUNDLED@ AND NOT @SCN_DISABLE_FAST_FLOAT@)
     find_dependency(FastFloat)
 endif ()
 
-if ((@SCN_REGEX_BACKEND@ STREQUAL "Boost") AND @SCN_USE_EXTERNAL_REGEX_BACKEND@)
+if (NOT @SCN_DISABLE_REGEX@ AND (@SCN_REGEX_BACKEND@ STREQUAL "Boost") AND @SCN_USE_EXTERNAL_REGEX_BACKEND@)
     find_dependency(Boost COMPONENTS regex)
 
-    if (@SCN_REGEX_USE_ICU@)
+    if (@SCN_REGEX_BOOST_USE_ICU@)
         find_dependency(ICU COMPONENTS data i18n uc)
     endif ()
 endif ()
 
-if ((@SCN_REGEX_BACKEND@ STREQUAL "re2") AND @SCN_USE_EXTERNAL_REGEX_BACKEND@)
+if (NOT @SCN_DISABLE_REGEX@ AND (@SCN_REGEX_BACKEND@ STREQUAL "re2") AND @SCN_USE_EXTERNAL_REGEX_BACKEND@)
     find_dependency(re2)
 endif ()
 

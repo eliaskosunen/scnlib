@@ -40,12 +40,19 @@ function (add_module_library target)
         return()
     endif ()
 
-    if (CMAKE_COMPILER_IS_GNUCXX)
+    if (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
         target_compile_options(${target} PUBLIC -fmodules-ts)
     endif ()
 
     if (CMAKE_CXX_COMPILER_ID MATCHES "Clang")
         get_target_property(std ${target} CXX_STANDARD)
+        if (NOT std)
+            set(std ${CMAKE_CXX_STANDARD})
+        endif ()
+        # Modules require at least C++20, which target_compile_features sets above
+        if (NOT std OR std LESS 20)
+            set(std 20)
+        endif ()
         target_uses_extensions(${target} stdext)
         if (stdext)
             set(std_flag "gnu++${std}")
@@ -53,14 +60,19 @@ function (add_module_library target)
             set(std_flag "c++${std}")
         endif ()
 
+        list(TRANSFORM SCN_CONFIG_DEFINITIONS PREPEND "-D" OUTPUT_VARIABLE definition_flags)
+        # Importers don't get SCN_DISABLE_EXCEPTIONS_FLAGS, and clang rejects
+        # importing a module file built with a different exception setting
+        set(private_flags ${SCN_LIBRARY_PRIVATE_FLAGS})
+        list(REMOVE_ITEM private_flags ${SCN_DISABLE_EXCEPTIONS_FLAGS})
+        target_link_options(${target} PUBLIC ${SCN_LIBRARY_LINK_FLAGS})
+
         set(pcms)
         foreach (src ${sources})
             get_filename_component(pcm_name ${src} NAME_WE)
             set(pcm ${pcm_name}.pcm)
 
-            get_library_flags(private_flags public_flags public_definitions public_link_flags)
             target_compile_options(${target} PUBLIC -fmodule-file=${pcm_name}=${CMAKE_CURRENT_BINARY_DIR}/${pcm})
-            target_link_options(${target} PUBLIC ${public_link_flags})
 
             set(pcms ${pcms} ${CMAKE_CURRENT_BINARY_DIR}/${pcm})
             add_custom_command(
@@ -69,7 +81,7 @@ function (add_module_library target)
                             --std=${std_flag} -x c++-module --precompile
                             -o ${pcm} ${CMAKE_CURRENT_SOURCE_DIR}/${src}
                             "-I$<JOIN:$<TARGET_PROPERTY:${target},INCLUDE_DIRECTORIES>,;-I>"
-                            "${public_flags}" "${private_flags}" "${public_definitions}"
+                            "${SCN_LIBRARY_PUBLIC_FLAGS}" "${private_flags}" "${definition_flags}"
                     COMMAND_EXPAND_LISTS
                     DEPENDS ${src}
             )

@@ -44,6 +44,8 @@ scn::scan<...>(strm, ...);
  * Charset scanning (`{:[...]}` with strings) now accepts an empty string as a valid result.
    Previously, at least a single character must've matched for scanning to succeed.
  * A read error from a C `FILE` now fails the scan, instead of being treated as the end of the input
+ * Regex support is disabled with `SCN_USE_EXCEPTIONS=OFF`, unless `SCN_REGEX_BACKEND` is `re2`,
+   since `std::regex` and Boost.Regex report errors only by throwing
  * Textual boolean representations are now case-insensitive, so both `true` and `True` (and so on) are accepted.
  * IEEE 754 floating-point values are now parsed with a custom built-in implementation
    when fast_float and `std::from_chars` can't be used, instead of falling back on `std::strtod`.
@@ -85,6 +87,11 @@ scn::scan<...>(strm, ...);
  * Fix the last character of a character array source being dropped when it isn't a null terminator
  * Fix compilation with GCC 8 in debug mode
  * Fix CMake deprecation warnings caused by `FetchContent_Populate` and `CMAKE_FIND_PACKAGE_SORT_ORDER`
+ * Fix the check for `SCN_REGEX_BOOST_USE_ICU` in the installed CMake package config
+ * Fix the CMake option `SCN_DISABLE_CHRONO` having no effect,
+   and fix the build errors with it and with `SCN_USE_EXCEPTIONS=OFF`
+ * `SCN_INSTALL` now defaults to `ON` whenever scnlib is the top-level CMake project,
+   even with `SCN_DISABLE_TOP_PROJECT`, so that package managers don't need to set it
 
 ## 4.0.1
 

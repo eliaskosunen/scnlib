@@ -23,18 +23,32 @@
 
 #include <scn/chrono.h>
 
+#include <clocale>
+
 namespace {
 
 using namespace std::string_view_literals;
 
 std::optional<std::locale> make_locale(const std::string& name)
 {
+#if SCN_HAS_EXCEPTIONS
     try {
         return std::locale(name);
     }
     catch (...) {
         return std::nullopt;
     }
+#else
+    // Without exceptions, std::locale terminates with an unknown name,
+    // so check it with the C library first
+    const std::string previous = std::setlocale(LC_ALL, nullptr);
+    const bool exists = std::setlocale(LC_ALL, name.c_str()) != nullptr;
+    std::setlocale(LC_ALL, previous.c_str());
+    if (!exists) {
+        return std::nullopt;
+    }
+    return std::locale(name);
+#endif
 }
 
 std::locale make_one_of_locale(const std::vector<std::string>& names)

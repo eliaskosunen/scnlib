@@ -77,8 +77,8 @@
 /////////////////////////////////////////////////////////////////
 
 // SCN_USE_EXCEPTIONS
-// If 0, removes all `noexcept` annotations,
-// and exception handling around stdlib facilities.
+// If 0, the library behaves as if exceptions were disabled
+// (SCN_HAS_EXCEPTIONS is 0), even if the compiler supports them.
 #ifndef SCN_USE_EXCEPTIONS
 #define SCN_USE_EXCEPTIONS 1
 #endif
@@ -599,7 +599,11 @@
 #endif
 
 // Detect exceptions
-#ifdef __cpp_exceptions
+#if !SCN_USE_EXCEPTIONS
+#define SCN_HAS_EXCEPTIONS 0
+#endif
+
+#if !defined(SCN_HAS_EXCEPTIONS) && defined(__cpp_exceptions)
 #define SCN_HAS_EXCEPTIONS 1
 #endif
 

@@ -1067,10 +1067,10 @@ private:
     }
 #else
     template <typename Other>
-    void assing_value_over_unexpected(Other&& other) noexcept
+    void assign_value_over_unexpected(Other&& other) noexcept
     {
         this->destroy_unexpected();
-        this->construct_value(std::forward<Other>(other).get_value());
+        this->construct(std::forward<Other>(other).get_value());
     }
 #endif
 
@@ -7315,7 +7315,7 @@ scan_expected<void> parse_custom_arg(T&, Scanner& s, ParseCtx& pctx)
         SCN_CLANG_POP
     }
 #else
-    auto fmt_it = s.parse(pctx_ref);
+    auto fmt_it = s.parse(pctx);
 #endif
     if (auto e = pctx.get_error(); SCN_UNLIKELY(!e)) {
         return e;
@@ -8102,7 +8102,8 @@ public:
     /// Advance the beginning of the format string to `it`
     constexpr void advance_to(iterator it)
     {
-        m_format.remove_prefix(static_cast<std::size_t>(std::distance(begin(), it)));
+        m_format.remove_prefix(
+            static_cast<std::size_t>(std::distance(begin(), it)));
     }
 
     constexpr size_t next_arg_id()

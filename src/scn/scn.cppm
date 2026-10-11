@@ -126,7 +126,9 @@ using scn::scan_error;
 using scn::operator==;
 using scn::operator!=;
 using scn::scan_expected;
+#if SCN_HAS_EXCEPTIONS
 using scn::scan_format_string_error;
+#endif
 
 using scn::custom_char_traits;
 using scn::insufficient_range;
@@ -171,6 +173,7 @@ using scn::scan_value;
 
 // chrono.h
 
+#if !SCN_DISABLE_CHRONO
 using scn::day;
 using scn::month;
 using scn::weekday;
@@ -203,6 +206,7 @@ using scn::September;
 
 using scn::datetime_components;
 using scn::tm_with_tz;
+#endif
 
 // ranges.h
 

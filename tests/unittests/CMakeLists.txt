@@ -117,7 +117,7 @@ if (SCN_MODULES)
     target_uses_extensions(scn_module use_stdext)
     set_target_properties(
             scn_module_tests PROPERTIES
-            CXX_SCAN_FOR_MODULES ON
+            CXX_SCAN_FOR_MODULES ${SCN_USE_CMAKE_MODULES}
             CXX_EXTENSIONS ${use_stdext}
     )
 
@@ -144,6 +144,13 @@ make_scn_test(scn_stdin_test
 make_scn_test(scn_stdin_parameterized_test
         stdin_parameterized_test.cpp
 )
+# Tests the deprecated C FILE* sources on purpose. MSVC and clang-cl report the
+# deprecation inside scn/scan.h, where the pragmas in the test can't disable it.
+if (MSVC)
+    target_compile_options(scn_stdin_parameterized_test PRIVATE
+            $<IF:$<CXX_COMPILER_ID:MSVC>,/wd4996,-Wno-deprecated-declarations>
+    )
+endif ()
 
 add_custom_target(scn_stdin_test_prepare ALL
         COMMAND ${CMAKE_COMMAND} -E copy
