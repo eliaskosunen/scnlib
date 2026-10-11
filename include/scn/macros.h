@@ -79,6 +79,8 @@
 // SCN_USE_EXCEPTIONS
 // If 0, the library behaves as if exceptions were disabled
 // (SCN_HAS_EXCEPTIONS is 0), even if the compiler supports them.
+// Then, `scn::expected::value()` aborts instead of throwing
+// `scn::bad_expected_access` when it contains an error.
 #ifndef SCN_USE_EXCEPTIONS
 #define SCN_USE_EXCEPTIONS 1
 #endif

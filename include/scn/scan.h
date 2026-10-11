@@ -25,7 +25,9 @@ import std;
 #else
 #include <array>
 #include <cstdio>
+#include <cstdlib>
 #include <cstring>
+#include <exception>
 #include <iterator>
 #include <limits>
 #include <new>
@@ -421,6 +423,83 @@ unexpected(E) -> unexpected<E>;
 struct unexpect_t {};
 inline constexpr unexpect_t unexpect{};
 
+template <typename E>
+class bad_expected_access;
+
+// The vtable is intentionally emitted in every translation unit,
+// to keep the types header-only.
+SCN_CLANG_PUSH
+SCN_CLANG_IGNORE("-Wweak-vtables")
+
+/**
+ * Base class of the exceptions thrown by `expected::value()` when it contains
+ * an error and exceptions are enabled (`SCN_HAS_EXCEPTIONS`).
+ * Without exceptions, `expected::value()` aborts instead of throwing.
+ *
+ * \see `std::bad_expected_access`
+ */
+template <>
+class bad_expected_access<void> : public std::exception {
+protected:
+    bad_expected_access() noexcept = default;
+    bad_expected_access(const bad_expected_access&) noexcept = default;
+    bad_expected_access& operator=(const bad_expected_access&) noexcept =
+        default;
+
+public:
+    const char* what() const noexcept override
+    {
+        return "bad expected access";
+    }
+};
+
+/**
+ * The exception thrown by `expected<T, E>::value()` when it contains an error.
+ * Holds a copy of the error.
+ *
+ * \see `std::bad_expected_access`
+ */
+template <typename E>
+class bad_expected_access : public bad_expected_access<void> {
+public:
+    explicit bad_expected_access(E err) : m_error(SCN_MOVE(err)) {}
+
+    E& error() & noexcept
+    {
+        return m_error;
+    }
+    const E& error() const& noexcept
+    {
+        return m_error;
+    }
+    E&& error() && noexcept
+    {
+        return SCN_MOVE(m_error);
+    }
+    const E&& error() const&& noexcept
+    {
+        return SCN_MOVE(m_error);
+    }
+
+private:
+    E m_error;
+};
+
+SCN_CLANG_POP
+
+namespace detail {
+template <typename E>
+[[noreturn]] void throw_bad_expected_access(E&& err)
+{
+#if SCN_HAS_EXCEPTIONS
+    throw bad_expected_access<remove_cvref_t<E>>(SCN_FWD(err));
+#else
+    SCN_UNUSED(err);
+    std::abort();
+#endif
+}
+}  // namespace detail
+
 namespace detail {
 template <typename T, typename... Args>
 T* construct_at(T* p, Args&&... args) noexcept(
@@ -639,8 +718,10 @@ constexpr T max(T a, T b) noexcept
 }
 
 template <typename T, typename E>
-struct SCN_TRIVIAL_ABI expected_storage_base<T, E, false> {
-    constexpr expected_storage_base() noexcept : m_has_value(true)
+struct expected_storage_base<T, E, false> {
+    constexpr expected_storage_base() noexcept(
+        std::is_nothrow_default_constructible_v<T>)
+        : m_has_value(true)
     {
         construct();
     }
@@ -781,7 +862,7 @@ private:
 };
 
 template <typename E>
-struct SCN_TRIVIAL_ABI expected_storage_base<void, E, false> {
+struct expected_storage_base<void, E, false> {
     constexpr expected_storage_base() noexcept : m_has_value(true) {}
 
     explicit constexpr expected_storage_base(deferred_init_tag_t) noexcept
@@ -894,7 +975,7 @@ struct SCN_TRIVIAL_ABI expected_operations_base<
 };
 
 template <typename T, typename E>
-struct SCN_TRIVIAL_ABI expected_operations_base<
+struct expected_operations_base<
     T,
     E,
     std::enable_if_t<!std::is_void_v<T> && (!std::is_trivially_copyable_v<T> ||
@@ -917,25 +998,22 @@ struct SCN_TRIVIAL_ABI expected_operations_base<
         construct_common(std::move(other));
     }
 
-    expected_operations_base& operator=(const expected_operations_base& other)
-    // gcc 11 and lower evaluate noexcept in a weird context
-#if SCN_GCC && SCN_GCC < SCN_COMPILER(12, 0, 0)
-        noexcept(noexcept(
-            SCN_DECLVAL(expected_operations_base&).assign_common(other)))
-#else
-        noexcept(noexcept(assign_common(other)))
-#endif
+    expected_operations_base&
+    operator=(const expected_operations_base& other) noexcept(
+        std::is_nothrow_copy_constructible_v<T> &&
+        std::is_nothrow_copy_assignable_v<T> &&
+        std::is_nothrow_copy_constructible_v<E> &&
+        std::is_nothrow_copy_assignable_v<E>)
     {
         assign_common(other);
         return *this;
     }
-    expected_operations_base& operator=(expected_operations_base&& other)
-#if SCN_GCC && SCN_GCC < SCN_COMPILER(12, 0, 0)
-        noexcept(noexcept(SCN_DECLVAL(expected_operations_base&)
-                              .assign_common(std::move(other))))
-#else
-        noexcept(noexcept(assign_common(std::move(other))))
-#endif
+    expected_operations_base&
+    operator=(expected_operations_base&& other) noexcept(
+        std::is_nothrow_move_constructible_v<T> &&
+        std::is_nothrow_move_assignable_v<T> &&
+        std::is_nothrow_move_constructible_v<E> &&
+        std::is_nothrow_move_assignable_v<E>)
     {
         assign_common(std::move(other));
         return *this;
@@ -963,26 +1041,6 @@ private:
 
     template <typename Other>
     void assign_common(Other&& other)
-#if SCN_GCC && SCN_GCC < SCN_COMPILER(12, 0, 0)
-        noexcept(
-            noexcept(SCN_DECLVAL(expected_operations_base&)
-                         .reassign_value(std::forward<Other>(other))) &&
-            noexcept(SCN_DECLVAL(expected_operations_base&)
-                         .reassign_unexpected(std::forward<Other>(other))) &&
-            noexcept(SCN_DECLVAL(expected_operations_base&)
-                         .assign_value_over_unexpected(
-                             std::forward<Other>(other))) &&
-            noexcept(
-                SCN_DECLVAL(expected_operations_base&)
-                    .assign_unexpected_over_value(std::forward<Other>(other))))
-#else
-        noexcept(
-            noexcept(reassign_value(std::forward<Other>(other))) &&
-            noexcept(reassign_unexpected(std::forward<Other>(other))) &&
-            noexcept(
-                assign_value_over_unexpected(std::forward<Other>(other))) &&
-            noexcept(assign_unexpected_over_value(std::forward<Other>(other))))
-#endif
     {
         if (this->has_value()) {
             if (other.has_value()) {
@@ -999,27 +1057,24 @@ private:
 
     template <typename Other>
     void reassign_value(Other&& other) noexcept(
-        std::is_nothrow_assignable_v<
-            T,
-            decltype(std::forward<Other>(other).get_value())>)
+        std::is_nothrow_assignable_v<T&, decltype(SCN_FWD(other).get_value())>)
     {
-        this->get_value() = std::forward<Other>(other).get_value();
+        this->get_value() = SCN_FWD(other).get_value();
     }
 
     template <typename Other>
     void reassign_unexpected(Other&& other) noexcept(
         std::is_nothrow_assignable_v<
-            E,
-            decltype(std::forward<Other>(other).get_unexpected())>)
+            E&,
+            decltype(SCN_FWD(other).get_unexpected().error())>)
     {
-        this->get_unexpected() = std::forward<Other>(other).get_unexpected();
+        this->get_unexpected() = SCN_FWD(other).get_unexpected();
     }
 
 #if SCN_HAS_EXCEPTIONS
     void assign_value_over_unexpected(
         const expected_operations_base&
-            other) noexcept(std::is_nothrow_copy_constructible_v<T> ||
-                            std::is_nothrow_move_constructible_v<T>)
+            other) noexcept(std::is_nothrow_copy_constructible_v<T>)
     {
         if constexpr (std::is_nothrow_copy_constructible_v<T>) {
             this->destroy_unexpected();
@@ -1031,11 +1086,11 @@ private:
             this->construct(std::move(tmp));
         }
         else {
-            auto tmp = std::move(this->get_unexpecetd());
+            auto tmp = std::move(this->get_unexpected());
             this->destroy_unexpected();
 
             try {
-                this->construct(other.get());
+                this->construct(other.get_value());
             }
             catch (...) {
                 this->construct_unexpected(std::move(tmp));
@@ -1078,7 +1133,7 @@ private:
     void assign_unexpected_over_value(Other&& other) noexcept(
         std::is_nothrow_constructible_v<
             E,
-            decltype(std::forward<Other>(other).get_unexpected())>)
+            decltype(std::forward<Other>(other).get_unexpected().error())>)
     {
         this->destroy_value();
         this->construct_unexpected(std::forward<Other>(other).get_unexpected());
@@ -1086,10 +1141,10 @@ private:
 };
 
 template <typename E>
-struct SCN_TRIVIAL_ABI
-    expected_operations_base<void,
-                             E,
-                             std::enable_if_t<!std::is_trivially_copyable_v<E>>>
+struct expected_operations_base<
+    void,
+    E,
+    std::enable_if_t<!std::is_trivially_copyable_v<E>>>
     : expected_storage_base<void, E> {
     using expected_storage_base<void, E>::expected_storage_base;
 
@@ -1106,25 +1161,18 @@ struct SCN_TRIVIAL_ABI
         construct_common(std::move(other));
     }
 
-    expected_operations_base& operator=(const expected_operations_base& other)
-    // gcc 11 and lower evaluate noexcept in a weird context
-#if SCN_GCC && SCN_GCC < SCN_COMPILER(12, 0, 0)
-        noexcept(noexcept(
-            SCN_DECLVAL(expected_operations_base&).assign_common(other)))
-#else
-        noexcept(noexcept(assign_common(other)))
-#endif
+    expected_operations_base&
+    operator=(const expected_operations_base& other) noexcept(
+        std::is_nothrow_copy_constructible_v<E> &&
+        std::is_nothrow_copy_assignable_v<E>)
     {
         assign_common(other);
         return *this;
     }
-    expected_operations_base& operator=(expected_operations_base&& other)
-#if SCN_GCC && SCN_GCC < SCN_COMPILER(12, 0, 0)
-        noexcept(noexcept(SCN_DECLVAL(expected_operations_base&)
-                              .assign_common(std::move(other))))
-#else
-        noexcept(noexcept(assign_common(std::move(other))))
-#endif
+    expected_operations_base&
+    operator=(expected_operations_base&& other) noexcept(
+        std::is_nothrow_move_constructible_v<E> &&
+        std::is_nothrow_move_assignable_v<E>)
     {
         assign_common(std::move(other));
         return *this;
@@ -1149,18 +1197,6 @@ private:
 
     template <typename Other>
     void assign_common(Other&& other)
-#if SCN_GCC && SCN_GCC < SCN_COMPILER(12, 0, 0)
-        noexcept(
-            noexcept(SCN_DECLVAL(expected_operations_base&)
-                         .reassign_unexpected(std::forward<Other>(other))) &&
-            noexcept(
-                SCN_DECLVAL(expected_operations_base&)
-                    .assign_unexpected_over_value(std::forward<Other>(other))))
-#else
-        noexcept(
-            noexcept(reassign_unexpected(std::forward<Other>(other))) &&
-            noexcept(assign_unexpected_over_value(std::forward<Other>(other))))
-#endif
     {
         if (this->has_value()) {
             if (other.has_value()) {
@@ -1180,10 +1216,10 @@ private:
     template <typename Other>
     void reassign_unexpected(Other&& other) noexcept(
         std::is_nothrow_assignable_v<
-            E,
-            decltype(std::forward<Other>(other).get_unexpected())>)
+            E&,
+            decltype(SCN_FWD(other).get_unexpected().error())>)
     {
-        this->get_unexpected() = std::forward<Other>(other).get_unexpected();
+        this->get_unexpected() = SCN_FWD(other).get_unexpected();
     }
 
     void assign_value_over_unexpected() noexcept
@@ -1196,7 +1232,7 @@ private:
     void assign_unexpected_over_value(Other&& other) noexcept(
         std::is_nothrow_constructible_v<
             E,
-            decltype(std::forward<Other>(other).get_unexpected())>)
+            decltype(std::forward<Other>(other).get_unexpected().error())>)
     {
         this->destroy_value();
         this->construct_unexpected(std::forward<Other>(other).get_unexpected());
@@ -1600,7 +1636,17 @@ public:
      * value as transparent as possible.
      */
     template <typename U = value_type,
-              typename = std::enable_if_t<std::is_convertible_v<U, value_type>>>
+              typename = std::enable_if_t<
+                  !std::is_same_v<detail::remove_cvref_t<U>, std::in_place_t> &&
+                  !std::is_same_v<detail::remove_cvref_t<U>, unexpect_t> &&
+                  !std::is_same_v<detail::remove_cvref_t<U>, expected> &&
+                  !detail::is_specialization_of_v<U, unexpected> &&
+                  std::is_constructible_v<value_type, U> &&
+                  std::is_convertible_v<U, value_type> &&
+                  // Qualified: GCC 10 doesn't accept the injected-class-name
+                  // as a template template argument, and drops this ctor
+                  (!std::is_same_v<std::remove_cv_t<value_type>, bool> ||
+                   !detail::is_specialization_of_v<U, ::scn::expected>)>>
     SCN_IMPLICIT constexpr expected(U&& val) noexcept(
         std::is_nothrow_constructible_v<base, std::in_place_t, U&&>)
         : base(std::in_place, std::forward<U>(val)),
@@ -1673,7 +1719,8 @@ public:
     explicit constexpr expected(const expected<U, G>& other) noexcept(
         std::is_nothrow_constructible_v<T, const U&> &&
         std::is_nothrow_constructible_v<E, const G&>)
-        : base(), ctor_base(detail::non_default_ctor_tag_t{})
+        : base(detail::deferred_init_tag),
+          ctor_base(detail::non_default_ctor_tag_t{})
     {
         if (other.has_value()) {
             this->construct(*other);
@@ -1691,7 +1738,8 @@ public:
     constexpr expected(const expected<U, G>& other) noexcept(
         std::is_nothrow_constructible_v<T, const U&> &&
         std::is_nothrow_constructible_v<E, const G&>)
-        : base(), ctor_base(detail::non_default_ctor_tag_t{})
+        : base(detail::deferred_init_tag),
+          ctor_base(detail::non_default_ctor_tag_t{})
     {
         if (other.has_value()) {
             this->construct(*other);
@@ -1709,7 +1757,8 @@ public:
     explicit constexpr expected(expected<U, G>&& other) noexcept(
         std::is_nothrow_constructible_v<T, U&&> &&
         std::is_nothrow_constructible_v<E, G&&>)
-        : base(), ctor_base(detail::non_default_ctor_tag_t{})
+        : base(detail::deferred_init_tag),
+          ctor_base(detail::non_default_ctor_tag_t{})
     {
         if (other.has_value()) {
             this->construct(std::move(*other));
@@ -1726,7 +1775,8 @@ public:
     constexpr expected(expected<U, G>&& other) noexcept(
         std::is_nothrow_constructible_v<T, U&&> &&
         std::is_nothrow_constructible_v<E, G&&>)
-        : base(), ctor_base(detail::non_default_ctor_tag_t{})
+        : base(detail::deferred_init_tag),
+          ctor_base(detail::non_default_ctor_tag_t{})
     {
         if (other.has_value()) {
             this->construct(std::move(*other));
@@ -1736,25 +1786,38 @@ public:
         }
     }
 
-    template <typename U = value_type,
-              typename = std::enable_if_t<std::is_convertible_v<U, value_type>>>
+    template <
+        typename U = value_type,
+        // conjunction to stop at the first false condition: with U = expected,
+        // is_constructible<std::any, expected&> is a hard error with gcc 7
+        typename = std::enable_if_t<std::conjunction_v<
+            std::negation<std::is_same<detail::remove_cvref_t<U>, expected>>,
+            std::negation<detail::is_specialization_of<U, unexpected>>,
+            std::is_constructible<value_type, U>,
+            std::is_assignable<std::add_lvalue_reference_t<value_type>, U>,
+            std::disjunction<std::is_nothrow_constructible<value_type, U>,
+                             std::is_nothrow_move_constructible<value_type>,
+                             std::is_nothrow_move_constructible<error_type>>>>>
     expected& operator=(U&& val) noexcept(
-        noexcept(assign_value(std::forward<U>(val))))
+        std::is_nothrow_constructible_v<T, U&&> &&
+        std::is_nothrow_assignable_v<T&, U&&>)
     {
-        assign_value(std::forward<U>(val));
+        assign_value(SCN_FWD(val));
         return *this;
     }
 
     expected& operator=(const unexpected_type& unex) noexcept(
-        noexcept(assign_unexpected(unex)))
+        std::is_nothrow_copy_constructible_v<E> &&
+        std::is_nothrow_copy_assignable_v<E>)
     {
         assign_unexpected(unex);
         return *this;
     }
     expected& operator=(unexpected_type&& unex) noexcept(
-        noexcept(assign_unexpected(std::move(unex))))
+        std::is_nothrow_move_constructible_v<E> &&
+        std::is_nothrow_move_assignable_v<E>)
     {
-        assign_unexpected(std::move(unex));
+        assign_unexpected(SCN_MOVE(unex));
         return *this;
     }
 
@@ -1801,27 +1864,37 @@ public:
 
     /// Get the expected value, if one is contained in *this
     template <typename U = T, std::enable_if_t<!std::is_void_v<U>>* = nullptr>
-    SCN_NODISCARD constexpr U& value() & noexcept
+    SCN_NODISCARD constexpr U& value() &
     {
-        SCN_EXPECT(has_value());
+        if (SCN_UNLIKELY(!has_value())) {
+            detail::throw_bad_expected_access(this->get_unexpected().error());
+        }
         return this->get_value();
     }
     template <typename U = T, std::enable_if_t<!std::is_void_v<U>>* = nullptr>
-    SCN_NODISCARD constexpr const U& value() const& noexcept
+    SCN_NODISCARD constexpr const U& value() const&
     {
-        SCN_EXPECT(has_value());
+        if (SCN_UNLIKELY(!has_value())) {
+            detail::throw_bad_expected_access(this->get_unexpected().error());
+        }
         return this->get_value();
     }
     template <typename U = T, std::enable_if_t<!std::is_void_v<U>>* = nullptr>
-    SCN_NODISCARD constexpr U&& value() && noexcept
+    SCN_NODISCARD constexpr U&& value() &&
     {
-        SCN_EXPECT(has_value());
+        if (SCN_UNLIKELY(!has_value())) {
+            detail::throw_bad_expected_access(
+                std::move(this->get_unexpected().error()));
+        }
         return std::move(this->get_value());
     }
     template <typename U = T, std::enable_if_t<!std::is_void_v<U>>* = nullptr>
-    SCN_NODISCARD constexpr const U&& value() const&& noexcept
+    SCN_NODISCARD constexpr const U&& value() const&&
     {
-        SCN_EXPECT(has_value());
+        if (SCN_UNLIKELY(!has_value())) {
+            detail::throw_bad_expected_access(
+                std::move(this->get_unexpected().error()));
+        }
         return std::move(this->get_value());
     }
 
@@ -1829,31 +1902,37 @@ public:
     template <typename U = T, std::enable_if_t<!std::is_void_v<U>>* = nullptr>
     SCN_NODISCARD constexpr U& operator*() & noexcept
     {
-        return value();
+        SCN_EXPECT(has_value());
+        return this->get_value();
     }
     template <typename U = T, std::enable_if_t<!std::is_void_v<U>>* = nullptr>
     SCN_NODISCARD constexpr const U& operator*() const& noexcept
     {
-        return value();
+        SCN_EXPECT(has_value());
+        return this->get_value();
     }
     template <typename U = T, std::enable_if_t<!std::is_void_v<U>>* = nullptr>
     SCN_NODISCARD constexpr U&& operator*() && noexcept
     {
-        return std::move(value());
+        SCN_EXPECT(has_value());
+        return std::move(this->get_value());
     }
     template <typename U = T, std::enable_if_t<!std::is_void_v<U>>* = nullptr>
     SCN_NODISCARD constexpr const U&& operator*() const&& noexcept
     {
-        return std::move(value());
+        SCN_EXPECT(has_value());
+        return std::move(this->get_value());
     }
 
     SCN_NODISCARD constexpr value_type* operator->() noexcept
     {
-        return &value();
+        SCN_EXPECT(has_value());
+        return &this->get_value();
     }
     SCN_NODISCARD constexpr const value_type* operator->() const noexcept
     {
-        return &value();
+        SCN_EXPECT(has_value());
+        return &this->get_value();
     }
 
     /// Returns the expected value if *this contains one, otherwise
@@ -1866,7 +1945,7 @@ public:
         std::is_nothrow_constructible_v<T, U&&>)
     {
         if (has_value()) {
-            return value();
+            return this->get_value();
         }
         return std::forward<U>(default_value);
     }
@@ -1878,7 +1957,7 @@ public:
         std::is_nothrow_constructible_v<T, U&&>)
     {
         if (has_value()) {
-            return std::move(value());
+            return std::move(this->get_value());
         }
         return std::forward<U>(default_value);
     }
@@ -2037,6 +2116,10 @@ private:
         else {
 #if SCN_HAS_EXCEPTIONS
             if constexpr (std::is_nothrow_constructible_v<T, Args&&...>) {
+                this->destroy_unexpected();
+                this->construct(std::forward<Args>(args)...);
+            }
+            else {
                 auto tmp = std::move(error());
                 this->destroy_unexpected();
 
@@ -2048,9 +2131,6 @@ private:
                     throw;
                 }
             }
-            else {
-                this->construct(std::forward<Args>(args)...);
-            }
 #else
             this->destroy_unexpected();
             this->construct(std::forward<Args>(args)...);
@@ -2060,9 +2140,8 @@ private:
 
     template <typename Value>
     void assign_value(Value&& val) noexcept(
-        std::is_nothrow_constructible_v<detail::remove_cvref_t<Value>,
-                                        Value&&> &&
-        std::is_nothrow_assignable_v<T, Value&&>)
+        std::is_nothrow_constructible_v<T, Value&&> &&
+        std::is_nothrow_assignable_v<T&, Value&&>)
     {
         if (has_value()) {
             this->get_value() = std::forward<Value>(val);
@@ -2083,6 +2162,7 @@ private:
             }
             catch (...) {
                 this->construct_unexpected(std::move(tmp));
+                throw;
             }
         }
 #else
