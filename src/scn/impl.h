@@ -602,9 +602,9 @@ int count_leading_zeroes(T val)
 #else
     // Polyfill with a custom loop
     int ret{};
-    std::uint64_t mask{1};
+    std::uint64_t mask = std::uint64_t{1} << (sizeof(T) * 8 - 1);
     while ((val & mask) == 0u) {
-        mask <<= 1ull;
+        mask >>= 1u;
         ++ret;
     }
     return ret;
@@ -3990,9 +3990,14 @@ auto parse_integer_base_prefix_for_detection(Range range)
 }
 
 template <typename Range>
-auto parse_integer_base_prefix(Range range, int base)
+auto parse_integer_base_prefix(Range range, int base, bool allow_base_prefix)
     -> std::tuple<ranges::iterator_t<Range>, int, bool>
 {
+    if (!allow_base_prefix) {
+        SCN_EXPECT(base != 0);
+        return {range.begin(), base, false};
+    }
+
     switch (base) {
         case 2:
             // allow 0b/0B
@@ -4023,7 +4028,7 @@ auto parse_integer_base_prefix(Range range, int base)
 }
 
 template <typename Range>
-auto parse_integer_prefix(Range range, int base)
+auto parse_integer_prefix(Range range, int base, bool allow_base_prefix = true)
     -> eof_expected<parse_integer_prefix_result<ranges::iterator_t<Range>>>
 {
     SCN_TRY(sign_result, parse_numeric_sign(range));
@@ -4031,7 +4036,8 @@ auto parse_integer_prefix(Range range, int base)
 
     auto [digits_begin_it, parsed_base, parsed_zero] =
         parse_integer_base_prefix(
-            ranges::subrange{base_prefix_begin_it, range.end()}, base);
+            ranges::subrange{base_prefix_begin_it, range.end()}, base,
+            allow_base_prefix);
 
     if (parsed_zero) {
         if (digits_begin_it == range.end() ||
@@ -4089,16 +4095,22 @@ auto parse_integer_digits_with_thsep(
     const localized_number_formatting_options<CharT>& locale_options)
     -> scan_expected<std::tuple<ranges::iterator_t<Range>,
                                 std::basic_string<CharT>,
-                                std::string>>
+                                std::ptrdiff_t>>
 {
     std::basic_string<CharT> output;
-    std::string thsep_indices;
+    std::ptrdiff_t thsep_count = 0;
+    // A thousands separator is only consumed if a digit follows it
+    std::ptrdiff_t thsep_count_before_digit = 0;
     auto it = range.begin();
+    auto end_of_digits = it;
     bool digit_matched = false;
     for (; it != range.end(); ++it) {
+        // Digit grouping isn't validated
         if (*it == locale_options.thousands_sep) {
-            thsep_indices.push_back(
-                static_cast<char>(ranges::distance(range.begin(), it)));
+            if (!digit_matched) {
+                break;
+            }
+            ++thsep_count;
         }
         else if (char_to_int(*it) >= base) {
             break;
@@ -4106,6 +4118,8 @@ auto parse_integer_digits_with_thsep(
         else {
             output.push_back(*it);
             digit_matched = true;
+            end_of_digits = ranges::next(it);
+            thsep_count_before_digit = thsep_count;
         }
     }
     if (SCN_UNLIKELY(!digit_matched)) {
@@ -4113,7 +4127,7 @@ auto parse_integer_digits_with_thsep(
             scan_error::invalid_scanned_value,
             "Failed to parse integer: No digits found");
     }
-    return std::tuple{it, output, thsep_indices};
+    return std::tuple{end_of_digits, output, thsep_count_before_digit};
 }
 
 template <typename CharT, typename T>
@@ -4249,8 +4263,13 @@ public:
                     detail::locale_ref loc)
         -> scan_expected<ranges::iterator_t<Range>>
     {
-        SCN_TRY(prefix_result, parse_integer_prefix(range, specs.get_base())
-                                   .transform_error(make_eof_scan_error));
+        // `rNN` never allows a base prefix
+        SCN_TRY(prefix_result,
+                parse_integer_prefix(
+                    range, specs.get_base(),
+                    specs.type !=
+                        detail::presentation_type::int_arbitrary_base)
+                    .transform_error(make_eof_scan_error));
 
         if (prefix_result.sign == sign_type::minus_sign) {
             if constexpr (!std::is_signed_v<T>) {
@@ -4269,7 +4288,9 @@ public:
             }
         }
 
-        if (prefix_result.is_zero) {
+        // When localized, the zero is parsed as a digit,
+        // so that a thousands separator after it is handled
+        if (prefix_result.is_zero && !specs.localized) {
             value = T{0};
             return std::next(prefix_result.iterator);
         }
@@ -4303,7 +4324,7 @@ public:
                 parse_integer_digits_with_thsep(
                     ranges::subrange{prefix_result.iterator, range.end()},
                     prefix_result.parsed_base, locale_options));
-        const auto& [after_digits_it, nothsep_source, thsep_indices] =
+        const auto& [after_digits_it, nothsep_source, thsep_count] =
             parse_digits_result;
         SCN_UNUSED(after_digits_it);
 
@@ -4317,7 +4338,7 @@ public:
         return ranges::next(
             prefix_result.iterator,
             ranges::distance(nothsep_source_view.begin(), nothsep_source_it) +
-                ranges::ssize(thsep_indices));
+                thsep_count);
     }
 };
 

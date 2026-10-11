@@ -13,6 +13,8 @@ set(buildfail_sources
         locale_flag_with_string.cpp
         negative_argument_id.cpp
         regex_disabled.cpp
+        scan_int_exhaustive_valid_unsupported_type.cpp
+        scan_int_unsupported_type.cpp
         string_view_non_contiguous_source.cpp
         unterminated_argument_id.cpp
         unterminated_format_specifier.cpp

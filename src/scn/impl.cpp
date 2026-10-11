@@ -1436,72 +1436,56 @@ SCN_FORCE_INLINE constexpr size_t maxdigits_u64(int base)
     return maxdigits_u64_table[static_cast<size_t>(base)];
 }
 
-constexpr uint64_t min_safe_u64_table[] = {0,
-                                           0,
-                                           9223372036854775808ull,
-                                           12157665459056928801ull,
-                                           4611686018427387904,
-                                           7450580596923828125,
-                                           4738381338321616896,
-                                           3909821048582988049,
-                                           9223372036854775808ull,
-                                           12157665459056928801ull,
-                                           10000000000000000000ull,
-                                           5559917313492231481,
-                                           2218611106740436992,
-                                           8650415919381337933,
-                                           2177953337809371136,
-                                           6568408355712890625,
-                                           1152921504606846976,
-                                           2862423051509815793,
-                                           6746640616477458432,
-                                           15181127029874798299ull,
-                                           1638400000000000000,
-                                           3243919932521508681,
-                                           6221821273427820544,
-                                           11592836324538749809ull,
-                                           876488338465357824,
-                                           1490116119384765625,
-                                           2481152873203736576,
-                                           4052555153018976267,
-                                           6502111422497947648,
-                                           10260628712958602189ull,
-                                           15943230000000000000ull,
-                                           787662783788549761,
-                                           1152921504606846976,
-                                           1667889514952984961,
-                                           2386420683693101056,
-                                           3379220508056640625,
-                                           4738381338321616896};
-
-SCN_FORCE_INLINE constexpr uint64_t min_safe_u64(int base)
+// `digits` must not have leading zeroes, and must have exactly
+// `maxdigits_u64(base)` digits
+template <typename CharT>
+constexpr bool does_max_length_integer_overflow_u64(const CharT* digits,
+                                                    int base)
 {
-    SCN_EXPECT(base >= 2 && base <= 36);
-    return min_safe_u64_table[static_cast<size_t>(base)];
+    // `max_digits - 1` digits always fit in an uint64_t
+    const auto max_digits = maxdigits_u64(base);
+    uint64_t high{};
+    for (size_t i = 0; i + 1 < max_digits; ++i) {
+        high = static_cast<uint64_t>(base) * high +
+               static_cast<uint64_t>(char_to_int(digits[i]));
+    }
+    const auto last =
+        static_cast<uint64_t>(char_to_int(digits[max_digits - 1]));
+    return high > (std::numeric_limits<uint64_t>::max() - last) /
+                      static_cast<uint64_t>(base);
 }
 
-template <typename T>
+// `val` is the value of the `digits_count` digits starting at `digits`,
+// accumulated into an uint64_t without checking for wraparound.
+// `digits` must not have leading zeroes.
+template <typename T, typename CharT>
 constexpr bool check_integer_overflow(uint64_t val,
+                                      const CharT* digits,
                                       size_t digits_count,
                                       int base,
                                       bool is_negative)
 {
     static_assert(sizeof(T) <= sizeof(uint64_t));
-    SCN_UNUSED(is_negative);  // not really
 
-    auto max_digits = maxdigits_u64(base);
+    const auto max_digits = maxdigits_u64(base);
     if (digits_count > max_digits) {
         return true;
     }
-    if (digits_count == max_digits && val < min_safe_u64(base)) {
+    if (SCN_UNLIKELY(digits_count == max_digits) &&
+        does_max_length_integer_overflow_u64(digits, base)) {
         return true;
     }
-    if constexpr (!std::is_same_v<T, uint64_t>) {
+
+    // `val` is now known to be exact
+    if constexpr (std::is_signed_v<T> || sizeof(T) < sizeof(uint64_t)) {
         if (val > static_cast<uint64_t>(std::numeric_limits<T>::max()) +
                       static_cast<uint64_t>(is_negative)) {
             SCN_UNLIKELY_ATTR
             return true;
         }
+    }
+    else {
+        SCN_UNUSED(is_negative);
     }
 
     return false;
@@ -1539,8 +1523,8 @@ auto parse_decimal_integer_fast(std::string_view input,
         input.data(), input.data() + input.size(), u64val);
 
     auto digits_count = static_cast<size_t>(ptr - input.data());
-    if (SCN_UNLIKELY(
-            check_integer_overflow<T>(u64val, digits_count, 10, is_negative))) {
+    if (SCN_UNLIKELY(check_integer_overflow<T>(
+            u64val, input.data(), digits_count, 10, is_negative))) {
         return detail::unexpected_scan_error(
             is_negative ? scan_error::value_negative_overflow
                         : scan_error::value_positive_overflow,
@@ -1572,8 +1556,8 @@ auto parse_regular_integer(std::basic_string_view<CharT> input,
     }
 
     auto digits_count = static_cast<size_t>(begin - input.data());
-    if (SCN_UNLIKELY(check_integer_overflow<T>(u64val, digits_count, base,
-                                               is_negative))) {
+    if (SCN_UNLIKELY(check_integer_overflow<T>(
+            u64val, input.data(), digits_count, base, is_negative))) {
         return detail::unexpected_scan_error(
             is_negative ? scan_error::value_negative_overflow
                         : scan_error::value_positive_overflow,
@@ -1750,9 +1734,12 @@ void parse_integer_value_exhaustive_valid(std::string_view source, T& value)
     SCN_EXPECT(p == end);
 
     {
-        auto digits_count = static_cast<size_t>(p - source.data());
-        SCN_UNUSED(digits_count);
-        SCN_EXPECT(check_integer_overflow<T>(u64val, digits_count, 10,
+        // Unlike parse_integer_value, leading zeroes aren't skipped above
+        const auto significant_digits = source.substr(
+            std::min(source.find_first_not_of('0'), source.size()));
+        SCN_UNUSED(significant_digits);
+        SCN_EXPECT(check_integer_overflow<T>(u64val, significant_digits.data(),
+                                             significant_digits.size(), 10,
                                              negative_sign) == false);
     }
 
@@ -2388,6 +2375,11 @@ template <typename T>
 auto scan_int_impl(std::string_view source, T& value, int base)
     -> scan_expected<std::string_view::iterator>
 {
+    if (SCN_UNLIKELY(base != 0 && (base < 2 || base > 36))) {
+        return detail::unexpected_scan_error(scan_error::invalid_format_string,
+                                             "Invalid base for scan_int");
+    }
+
     SCN_TRY(beg, impl::skip_classic_whitespace(source).transform_error(
                      impl::make_eof_scan_error));
     auto reader = impl::reader_impl_for_int<char>{};

@@ -671,6 +671,33 @@ TYPED_TEST_P(IntValueReaderTest, Underflow)
         result, val, scn::scan_error::value_negative_overflow));
 }
 
+TYPED_TEST_P(IntValueReaderTest, WrappingOverflow)
+{
+    // Max-length value for a uint64_t, that wraps around it
+    const auto [result, val] = this->simple_test("30000000000000000000"sv);
+    EXPECT_TRUE(this->check_failure_with_code(
+        result, val, scn::scan_error::value_positive_overflow));
+}
+TYPED_TEST_P(IntValueReaderTest, WrappingUnderflow)
+{
+    if (!std::is_signed_v<typename TestFixture::int_type>) {
+        return SUCCEED() << "No WrappingUnderflow-test for unsigned types";
+    }
+
+    const auto [result, val] = this->simple_test("-30000000000000000000"sv);
+    EXPECT_TRUE(this->check_failure_with_code(
+        result, val, scn::scan_error::value_negative_overflow));
+}
+TYPED_TEST_P(IntValueReaderTest, WrappingOverflowInBase3)
+{
+    const auto [result, val] = this->simple_specs_test(
+        std::string(41, '2'),
+        this->make_format_specs_with_presentation_and_base(
+            scn::detail::presentation_type::int_arbitrary_base, 3));
+    EXPECT_TRUE(this->check_failure_with_code(
+        result, val, scn::scan_error::value_positive_overflow));
+}
+
 TYPED_TEST_P(IntValueReaderTest, FourDigits)
 {
     EXPECT_TRUE(this->template digits_test<TestFixture::has_four_digits()>(
@@ -890,6 +917,36 @@ TYPED_TEST_P(IntValueReaderTest, ExoticThousandsSeparatorsWithInvalidGrouping)
     EXPECT_TRUE(a);
     EXPECT_EQ(val, this->get_thsep_value());
 }
+
+TYPED_TEST_P(IntValueReaderTest, LeadingThousandsSeparator)
+{
+    if constexpr (!TestFixture::is_localized) {
+        return SUCCEED() << "This test requires a localized reader";
+    }
+
+    auto state = thsep_test_state<typename TestFixture::char_type>{"\3"};
+
+    auto [result, val] =
+        this->simple_specs_and_locale_test(",,,5", state.specs, state.locref);
+    EXPECT_TRUE(this->check_failure_with_code(
+        result, val, scn::scan_error::invalid_scanned_value));
+}
+
+TYPED_TEST_P(IntValueReaderTest, ZeroPrefixFollowedByThousandsSeparator)
+{
+    if constexpr (!TestFixture::is_localized) {
+        return SUCCEED() << "This test requires a localized reader";
+    }
+
+    auto state = thsep_test_state<typename TestFixture::char_type>{"\3"};
+    state.specs = this->make_format_specs_with_presentation_and_base(
+        scn::detail::presentation_type::int_octal, 0, true);
+
+    auto [a, _, val] = this->simple_success_specs_and_locale_test(
+        "0,10", state.specs, state.locref);
+    EXPECT_TRUE(a);
+    EXPECT_EQ(val, 8);
+}
 #else
 TYPED_TEST_P(IntValueReaderTest, ThousandsSeparators) {}
 TYPED_TEST_P(IntValueReaderTest, ThousandsSeparatorsWithInvalidGrouping) {}
@@ -897,6 +954,8 @@ TYPED_TEST_P(IntValueReaderTest, ExoticThousandsSeparators) {}
 TYPED_TEST_P(IntValueReaderTest, ExoticThousandsSeparatorsWithInvalidGrouping)
 {
 }
+TYPED_TEST_P(IntValueReaderTest, LeadingThousandsSeparator) {}
+TYPED_TEST_P(IntValueReaderTest, ZeroPrefixFollowedByThousandsSeparator) {}
 
 #endif
 
@@ -920,6 +979,9 @@ REGISTER_TYPED_TEST_SUITE_P(IntValueReaderTest,
                             Max,
                             Overflow,
                             Underflow,
+                            WrappingOverflow,
+                            WrappingUnderflow,
+                            WrappingOverflowInBase3,
                             FourDigits,
                             EightDigits,
                             NineDigits,
@@ -939,4 +1001,6 @@ REGISTER_TYPED_TEST_SUITE_P(IntValueReaderTest,
                             ThousandsSeparators,
                             ThousandsSeparatorsWithInvalidGrouping,
                             ExoticThousandsSeparators,
-                            ExoticThousandsSeparatorsWithInvalidGrouping);
+                            ExoticThousandsSeparatorsWithInvalidGrouping,
+                            LeadingThousandsSeparator,
+                            ZeroPrefixFollowedByThousandsSeparator);
