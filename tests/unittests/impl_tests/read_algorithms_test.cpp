@@ -460,3 +460,16 @@ TEST(ReadWhileClassicSpace, RepeatedNonContiguous)
         scn::ranges::subrange{it, src.end()});
     EXPECT_EQ(it, src.end());
 }
+
+TEST(ReadWhileClassicSpace, MultiByteSplitAcrossChunksNonContiguous)
+{
+    // Longer than the first contiguous segment of the buffer
+    const auto src = std::string(40, ' ') + "\xe2\x80\xa8 x";
+    auto deque = std::deque<char>(src.begin(), src.end());
+    auto buf = scn::detail::make_range_scan_buffer(deque);
+
+    auto it = scn::impl::read_while_classic_space(buf.get());
+    EXPECT_EQ(*it, 'x');
+    EXPECT_EQ(scn::ranges::distance(buf.get().begin(), it),
+              static_cast<std::ptrdiff_t>(src.size() - 1));
+}

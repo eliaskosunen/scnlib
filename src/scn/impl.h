@@ -2802,6 +2802,25 @@ auto read_while_code_point(Range range, function_ref<bool(char32_t)> pred)
     return read_until_code_point(range, std::not_fn(pred));
 }
 
+// `segment` without its last code point, if that's incomplete:
+// a segment of a non-contiguous source can end in the middle of one
+inline std::string_view drop_incomplete_last_code_point(
+    std::string_view segment)
+{
+    const auto max_lookback = std::min(segment.size(), std::size_t{4});
+    for (std::size_t n = 1; n <= max_lookback; ++n) {
+        const auto start = segment.size() - n;
+        const auto len = detail::utf8_code_point_length_by_starting_code_unit(
+            segment[start]);
+        if (len == 0) {
+            // Continuation byte
+            continue;
+        }
+        return len > n ? segment.substr(0, start) : segment;
+    }
+    return segment;
+}
+
 template <typename Range>
 auto read_until_classic_space(Range range) -> ranges::iterator_t<Range>
 {
@@ -2817,7 +2836,8 @@ auto read_until_classic_space(Range range) -> ranges::iterator_t<Range>
         auto it = range.begin();
 
         if constexpr (std::is_same_v<detail::char_t<Range>, char>) {
-            auto seg = get_contiguous_beginning(range);
+            auto seg = drop_incomplete_last_code_point(
+                get_contiguous_beginning(range));
             if (auto seg_it = find_classic_space_narrow_fast(seg);
                 seg_it != seg.end()) {
                 return ranges::next(it, ranges::distance(seg.begin(), seg_it));
@@ -2846,7 +2866,8 @@ auto read_while_classic_space(Range range) -> ranges::iterator_t<Range>
         auto it = range.begin();
 
         if constexpr (std::is_same_v<detail::char_t<Range>, char>) {
-            auto seg = get_contiguous_beginning(range);
+            auto seg = drop_incomplete_last_code_point(
+                get_contiguous_beginning(range));
             if (auto seg_it = find_classic_nonspace_narrow_fast(seg);
                 seg_it != seg.end()) {
                 return ranges::next(it, ranges::distance(seg.begin(), seg_it));
@@ -2854,10 +2875,21 @@ auto read_while_classic_space(Range range) -> ranges::iterator_t<Range>
             ranges::advance(it, static_cast<std::ptrdiff_t>(seg.size()));
         }
 
-        SCN_UNUSED(it);
-        return read_while_code_point(range, [](char32_t cp) noexcept {
-            return detail::is_cp_space(cp);
-        });
+        // An invalid code point is not a space, like in the fast path above
+        // and for contiguous ranges.
+        // `read_while_code_point` would skip it, so it can't be used here.
+        while (it != range.end()) {
+            const auto val =
+                read_code_point_into(ranges::subrange{it, range.end()});
+            if (!val.is_valid() ||
+                !detail::is_cp_space(detail::decode_code_point_exhaustive(
+                    std::basic_string_view<detail::char_t<Range>>{
+                        val.codepoint.data(), val.codepoint.size()}))) {
+                return it;
+            }
+            it = val.iterator;
+        }
+        return it;
     }
 }
 

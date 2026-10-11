@@ -19,12 +19,14 @@
 
 #include <scn/impl.h>
 
+#include <string>
+
 namespace {
-    std::ptrdiff_t PositionOfFirstNonSpace(std::string_view src)
-    {
-        auto it = scn::impl::skip_classic_whitespace(src, true);
-        return scn::detail::to_address(*it) - src.data();
-    }
+std::ptrdiff_t PositionOfFirstNonSpace(std::string_view src)
+{
+    auto it = scn::impl::skip_classic_whitespace(src, true);
+    return scn::detail::to_address(*it) - src.data();
+}
 }  // namespace
 
 TEST(WhitespaceSkipTest, AllSpace)
