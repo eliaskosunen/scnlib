@@ -177,6 +177,71 @@ TEST(FormatStringTest, InvalidRangeSet)
     ASSERT_THAT(result, Failed());
 }
 
+TEST(FormatStringTest, InvalidEncodingInFillCharacter)
+{
+    EXPECT_THAT(
+        scn::scan<std::string>("abcd", scn::runtime_format("{:\xc3\x28>4}")),
+        FailedWith(scn::scan_error::invalid_format_string));
+    EXPECT_THAT(
+        scn::scan<std::string>("abcd", scn::runtime_format("{:\xe4\xb8")),
+        FailedWith(scn::scan_error::invalid_format_string));
+}
+
+TEST(FormatStringTest, MultibyteFillCharacter)
+{
+    // Split in two, because `\xa4a` would be read as one escape sequence
+    auto result = scn::scan<std::string>(
+        "\xc3\xa4\xc3\xa4"
+        "ab",
+        scn::runtime_format("{:\xc3\xa4>4}"));
+    ASSERT_THAT(result, Succeeded());
+    EXPECT_EQ(result->value(), "ab");
+    EXPECT_THAT(result->range(), IsEmptyRange());
+}
+
+TEST(FormatStringTest, CharacterSetClassesAndEscapesRejected)
+{
+    constexpr std::array<const char*, 7> formats{
+        "{:[:alpha:]}", "{:[[:alpha:]]}", "{:[a[:digit:]]}", "{:[^[:digit:]]}",
+        "{:[\\d]}",     "{:[\\w]}",       "{:[a-\\d]}"};
+    for (auto fmt : formats) {
+        EXPECT_THAT(scn::scan<std::string>("abc1", scn::runtime_format(fmt)),
+                    FailedWith(scn::scan_error::invalid_format_string))
+            << fmt;
+        EXPECT_THAT(
+            scn::scan<std::string_view>("abc1", scn::runtime_format(fmt)),
+            FailedWith(scn::scan_error::invalid_format_string))
+            << fmt;
+    }
+}
+
+TEST(FormatStringTest, CharacterSetLiteralColon)
+{
+    auto result =
+        scn::scan<std::string>("a:b:c", scn::runtime_format("{:[a:b]}"));
+    ASSERT_THAT(result, Succeeded());
+    EXPECT_EQ(result->value(), "a:b:");
+    EXPECT_STREQ(result->begin(), "c");
+}
+
+TEST(FormatStringTest, CharacterSetOnlyColon)
+{
+    auto result = scn::scan<std::string>("::a", "{:[:]}");
+    ASSERT_THAT(result, Succeeded());
+    EXPECT_EQ(result->value(), "::");
+    EXPECT_STREQ(result->begin(), "a");
+}
+
+TEST(FormatStringTest, CharacterSetLiteralBackslash)
+{
+    // Backslash is a literal: [a\-z] is 'a' and the range '\' to 'z'
+    auto result =
+        scn::scan<std::string>("a\\q-", scn::runtime_format("{:[a\\-z]}"));
+    ASSERT_THAT(result, Succeeded());
+    EXPECT_EQ(result->value(), "a\\q");
+    EXPECT_STREQ(result->begin(), "-");
+}
+
 TEST(FormatStringTest, ExtraArgInFormatString)
 {
     auto result =

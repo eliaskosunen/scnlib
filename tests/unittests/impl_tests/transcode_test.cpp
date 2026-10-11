@@ -106,3 +106,32 @@ TEST(TranscodeTest, Unicode)
 
     EXPECT_EQ(narrowed, in);
 }
+
+TEST(TranscodeTest, Utf16SurrogatePair)
+{
+    // U+1F600 GRINNING FACE: D83D DE00 in UTF-16
+    const auto utf8 = "a\xf0\x9f\x98\x80z"sv;
+    const auto utf16 = u"a\U0001F600z"sv;
+    const auto utf32 = U"a\U0001F600z"sv;
+
+    std::u16string to16{};
+    scn::impl::transcode_to_string(utf8, to16);
+    EXPECT_EQ(to16, utf16);
+    to16.clear();
+    scn::impl::transcode_valid_to_string(utf8, to16);
+    EXPECT_EQ(to16, utf16);
+    to16.clear();
+    scn::impl::transcode_to_string(utf32, to16);
+    EXPECT_EQ(to16, utf16);
+
+    std::u32string to32{};
+    scn::impl::transcode_to_string(utf16, to32);
+    EXPECT_EQ(to32, utf32);
+    to32.clear();
+    scn::impl::transcode_valid_to_string(utf16, to32);
+    EXPECT_EQ(to32, utf32);
+
+    std::string to8{};
+    scn::impl::transcode_to_string(utf16, to8);
+    EXPECT_EQ(to8, utf8);
+}

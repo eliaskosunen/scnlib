@@ -147,6 +147,39 @@ TEST(StringTest, CharacterSetPresentationWideStringFromNarrowSource)
     EXPECT_EQ(result->value(), L"abc");
 }
 
+// ü (U+00FC) is not in [a-ä] (U+0061..U+00E4)
+TEST(StringTest, CharacterSetRangeAcrossAsciiBoundaryNarrow)
+{
+    auto result =
+        scn::scan<std::string>("bcd\xc3\xa4\xc3\xbcz", "{:[a-\xc3\xa4]}");
+    ASSERT_THAT(result, Succeeded());
+    EXPECT_EQ(result->value(), "bcd\xc3\xa4");
+    EXPECT_STREQ(result->begin(), "\xc3\xbcz");
+}
+
+TEST(StringTest, CharacterSetRangeAcrossAsciiBoundaryWide)
+{
+    auto result =
+        scn::scan<std::wstring>(L"bcd\u00e4\u00fcz", L"{:[a-\u00e4]}");
+    ASSERT_THAT(result, Succeeded());
+    EXPECT_EQ(result->value(), L"bcd\u00e4");
+    EXPECT_STREQ(result->begin(), L"\u00fcz");
+}
+
+TEST(StringTest, CharacterSetRangeAcrossAsciiBoundaryInverted)
+{
+    // Split in two, because `\xa4b` would be read as one escape sequence
+    auto result = scn::scan<std::string>(
+        "XY\xc3\xa4"
+        "b",
+        "{:[^a-\xc3\xa4]}");
+    ASSERT_THAT(result, Succeeded());
+    EXPECT_EQ(result->value(), "XY");
+    EXPECT_STREQ(result->begin(),
+                 "\xc3\xa4"
+                 "b");
+}
+
 TEST(StringTest, WonkyInput)
 {
     const char source[] = {'o', ' ', '\x0f', '\n', '\n', '\xc3'};

@@ -115,6 +115,9 @@ scn::scan<...>(strm, ...);
  * Fix multi-byte whitespace (like U+2028) not being recognized when it's split between two chunks of a non-contiguous source
  * Fix `putback()` and repeated `unget()` in an `operator>>` used through `scn::basic_istream_scanner`
    failing an assertion, and `unget()` at the beginning of the input not failing
+ * Overlong UTF-8 sequences and encoded surrogate code points are now treated as invalid
+ * Fix non-ASCII fill characters on big-endian platforms, fill characters encoded as a UTF-16 surrogate pair,
+   and character set ranges crossing the ASCII boundary
  * `scn::scan_int` returns an error for an invalid base, and `scn::scan_int_exhaustive_valid` works on big-endian platforms
  * Fix the locale not being passed on when scanning a single argument with the default format string (`"{}"`)
  * Scanning from a character pointer (like `const char*`) is now a call to a deleted function,

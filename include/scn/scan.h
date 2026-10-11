@@ -6079,6 +6079,11 @@ inline constexpr char32_t decode_utf8_code_point_exhaustive(
         char32_t cp{};
         cp |= (static_cast<char32_t>(input[0]) & 0x1f) << 6;
         cp |= (static_cast<char32_t>(input[1]) & 0x3f) << 0;
+        if (cp < 0x80) {
+            // Overlong encoding
+            SCN_UNLIKELY_ATTR
+            return invalid_code_point;
+        }
         return cp;
     }
 
@@ -6097,6 +6102,11 @@ inline constexpr char32_t decode_utf8_code_point_exhaustive(
         cp |= (static_cast<char32_t>(input[0]) & 0x0f) << 12;
         cp |= (static_cast<char32_t>(input[1]) & 0x3f) << 6;
         cp |= (static_cast<char32_t>(input[2]) & 0x3f) << 0;
+        if (cp < 0x800 || (cp >= 0xd800 && cp <= 0xdfff)) {
+            // Overlong encoding, or a surrogate
+            SCN_UNLIKELY_ATTR
+            return invalid_code_point;
+        }
         return cp;
     }
 
@@ -6121,6 +6131,11 @@ inline constexpr char32_t decode_utf8_code_point_exhaustive(
         cp |= (static_cast<char32_t>(input[1]) & 0x3f) << 12;
         cp |= (static_cast<char32_t>(input[2]) & 0x3f) << 6;
         cp |= (static_cast<char32_t>(input[3]) & 0x3f) << 0;
+        if (cp < 0x10000 || cp >= invalid_code_point) {
+            // Overlong encoding, or out of range
+            SCN_UNLIKELY_ATTR
+            return invalid_code_point;
+        }
         return cp;
     }
 
@@ -6202,7 +6217,13 @@ inline constexpr char32_t decode_utf16_code_point_exhaustive(
     SCN_EXPECT(!input.empty() && input.size() <= 2);
 
     if (input.size() == 1) {
-        return static_cast<char32_t>(input[0]);
+        const auto cp = static_cast<char32_t>(input[0]);
+        if (cp >= 0xd800 && cp <= 0xdfff) {
+            // Unpaired surrogate
+            SCN_UNLIKELY_ATTR
+            return invalid_code_point;
+        }
+        return cp;
     }
 
     const auto lead = static_cast<uint32_t>(input[0]);
@@ -6252,7 +6273,8 @@ inline constexpr char32_t decode_code_point_exhaustive(
     else {
         SCN_EXPECT(input.size() == 1);
         auto cp = static_cast<char32_t>(input.front());
-        if (SCN_UNLIKELY(cp >= invalid_code_point)) {
+        if (SCN_UNLIKELY(cp >= invalid_code_point ||
+                         (cp >= 0xd800 && cp <= 0xdfff))) {
             return invalid_code_point;
         }
         return cp;
@@ -9420,24 +9442,21 @@ public:
             m_size = static_cast<unsigned char>(s.size());
         }
         else if constexpr (sizeof(CharT) == 2) {
-            m_data[0] = static_cast<char>(static_cast<unsigned>(s.front()));
-            m_data[1] =
-                static_cast<char>(static_cast<unsigned>(s.front()) >> 8);
+            store_code_unit<2>(0, static_cast<unsigned>(s.front()));
+            m_size = 2;
             if (s.size() == 1) {
                 return;
             }
-            m_data[2] = static_cast<char>(static_cast<unsigned>(s[1]));
-            m_data[3] = static_cast<char>(static_cast<unsigned>(s[1]) >> 8);
+            store_code_unit<2>(2, static_cast<unsigned>(s[1]));
+            m_size = 4;
         }
         else {
-            const auto front = static_cast<unsigned>(s.front());
-            m_data[0] = static_cast<char>(front);
-            m_data[1] = static_cast<char>(front >> 8);
-            m_data[2] = static_cast<char>(front >> 16);
-            m_data[3] = static_cast<char>(front >> 24);
+            store_code_unit<4>(0, static_cast<unsigned>(s.front()));
+            m_size = 4;
         }
     }
 
+    /// Size in bytes
     constexpr size_t size() const
     {
         return m_size;
@@ -9447,6 +9466,10 @@ public:
     CharT get_code_unit() const
     {
         SCN_EXPECT(m_size <= sizeof(CharT));
+        if (m_size == 1) {
+            // Set with `operator=(char)`, or from a narrow string
+            return static_cast<CharT>(static_cast<unsigned char>(m_data[0]));
+        }
         CharT r{};
         std::memcpy(&r, m_data, m_size);
         return r;
@@ -9457,10 +9480,21 @@ public:
     {
         return {reinterpret_cast<const CharT*>(
                     SCN_ASSUME_ALIGNED(m_data, alignof(CharT))),
-                m_size};
+                m_size / sizeof(CharT)};
     }
 
 private:
+    // Stores `value` into `m_data` in native byte order,
+    // so that it can be read back with `memcpy`
+    template <size_t Width>
+    constexpr void store_code_unit(size_t offset, unsigned value)
+    {
+        for (size_t i = 0; i < Width; ++i) {
+            const auto shift = SCN_IS_BIG_ENDIAN ? (Width - 1 - i) * 8 : i * 8;
+            m_data[offset + i] = static_cast<char>(value >> shift);
+        }
+    }
+
     static constexpr size_t max_size = 4;
     alignas(char32_t) char m_data[max_size] = {' '};
     unsigned char m_size{1};
@@ -9638,6 +9672,13 @@ public:
             }
         }
         else {
+            // The non-ASCII part is handled at scan time,
+            // but ASCII code points are only looked up from
+            // `charset_literals`
+            for (auto v = begin_value; v < 128; ++v) {
+                m_specs.charset_literals[v / 8] |=
+                    static_cast<unsigned char>(1ul << (v % 8));
+            }
             m_specs.charset_has_nonascii = true;
         }
     }
@@ -9817,22 +9858,6 @@ constexpr bool is_ascii_letter(CharT ch)
            (ch >= CharT{'A'} && ch <= CharT{'Z'});
 }
 
-template <typename CharT>
-constexpr int code_point_length(const CharT* begin, const CharT* end)
-{
-    SCN_EXPECT(begin != end);
-    if constexpr (sizeof(CharT) != 1) {
-        return 1;
-    }
-    else {
-        const auto lengths =
-            "\1\1\1\1\1\1\1\1\1\1\1\1\1\1\1\1\0\0\0\0\0\0\0\0\2\2\2\2\3"
-            "\3\4";
-        const int len = lengths[static_cast<unsigned char>(*begin) >> 3];
-        return len;
-    }
-}
-
 template <typename CharT, typename Handler>
 constexpr const CharT* parse_align(const CharT* begin,
                                    const CharT* end,
@@ -9853,17 +9878,24 @@ constexpr const CharT* parse_align(const CharT* begin,
         }
     };
 
-    auto potential_fill_len = code_point_length(begin, end);
+    const auto potential_fill_len = static_cast<std::ptrdiff_t>(
+        code_point_length_by_starting_code_unit(*begin));
     if (SCN_UNLIKELY(potential_fill_len == 0 ||
                      std::distance(begin, end) < potential_fill_len)) {
         handler.on_error("Invalid encoding in fill character");
         return begin;
     }
 
-    auto potential_align_on_fill = check_align(static_cast<wchar_t>(*begin));
-
     auto potential_fill = std::basic_string_view<CharT>{
         begin, static_cast<size_t>(potential_fill_len)};
+    if (SCN_UNLIKELY(decode_code_point_exhaustive(potential_fill) >=
+                     invalid_code_point)) {
+        handler.on_error("Invalid encoding in fill character");
+        return begin;
+    }
+
+    auto potential_align_on_fill = check_align(static_cast<wchar_t>(*begin));
+
     const auto begin_before_fill = begin;
     begin += potential_fill_len;
 
@@ -9997,6 +10029,42 @@ constexpr void parse_presentation_set_literal(const CharT*& begin,
     handler.on_charset_single(cp_first);
 }
 
+template <typename CharT>
+constexpr bool presentation_set_has_backslash_escape(
+    std::basic_string_view<CharT> set)
+{
+    for (size_t i = 0; i + 1 < set.size(); ++i) {
+        if (set[i] == CharT{'\\'} && is_ascii_letter(set[i + 1])) {
+            return true;
+        }
+    }
+    return false;
+}
+
+template <typename CharT>
+constexpr bool presentation_set_has_character_class(
+    std::basic_string_view<CharT> set)
+{
+    for (size_t i = 0; i < set.size(); ++i) {
+        if (set[i] != CharT{'['}) {
+            continue;
+        }
+        size_t colon = i + 1;
+        if (i == 0 && colon < set.size() && set[colon] == CharT{'^'}) {
+            ++colon;
+        }
+        if (colon >= set.size() || set[colon] != CharT{':'}) {
+            continue;
+        }
+        for (size_t j = colon + 1; j + 1 < set.size(); ++j) {
+            if (set[j] == CharT{':'} && set[j + 1] == CharT{']'}) {
+                return true;
+            }
+        }
+    }
+    return false;
+}
+
 template <typename CharT, typename SpecHandler>
 constexpr std::basic_string_view<CharT> parse_presentation_set(
     const CharT*& begin,
@@ -10039,7 +10107,21 @@ constexpr std::basic_string_view<CharT> parse_presentation_set(
         }
 
         if (*begin == CharT{']'}) {
-            return {start, static_cast<size_t>(std::distance(start, ++begin))};
+            const std::basic_string_view<CharT> set{
+                start, static_cast<size_t>(std::distance(start, ++begin))};
+            if (SCN_UNLIKELY(presentation_set_has_backslash_escape(set))) {
+                // clang-format off
+                handler.on_error("Backslash escapes are not supported in [character set]");
+                // clang-format on
+                return {};
+            }
+            if (SCN_UNLIKELY(presentation_set_has_character_class(set))) {
+                // clang-format off
+                handler.on_error("Character classes are not supported in [character set]; use a regex or explicit ranges");
+                // clang-format on
+                return {};
+            }
+            return set;
         }
 
         parse_presentation_set_literal(begin, end, handler);
