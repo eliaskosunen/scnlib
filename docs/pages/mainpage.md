@@ -240,7 +240,7 @@ scnlib configuration options
 <td>✅</td>
 <td>✅</td>
 <td>`OFF`</td>
-<td>Disable external dependency on FastFloat.<br>Using `ON` requires standard library support for floating-point `std::from_chars`.<sup>1</sup></td>
+<td>Disable external dependency on FastFloat.<br>Using `ON` requires standard library support for floating-point `std::from_chars`.<sup>1</sup><br>FastFloat is never used if `float` isn't IEEE 754 binary32, or `double` isn't binary64.</td>
 </tr>
 
 <tr>
@@ -304,7 +304,7 @@ scnlib configuration options
 <td>✅</td>
 <td>✅</td>
 <td>`OFF`</td>
-<td>Disable usage of (falling back on) `std::strtod` when scanning floating-point values</td>
+<td>Disable usage of (falling back on) `strtof`, `strtod`, and `strtold` when scanning floating-point values. They're only used for a `float`, `double`, or `long double` with a binary format that scnlib can't convert itself.<sup>3</sup></td>
 </tr>
 
 <tr>

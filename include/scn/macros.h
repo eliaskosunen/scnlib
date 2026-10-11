@@ -163,6 +163,7 @@
 // If 1, doesn't use fast_float for parsing floats.
 // Together with SCN_DISABLE_EKNAN, makes the library free of
 // external dependencies.
+// fast_float is never used if float isn't binary32 or double isn't binary64.
 #ifndef SCN_DISABLE_FAST_FLOAT
 #define SCN_DISABLE_FAST_FLOAT 0
 #endif
@@ -182,8 +183,12 @@
 #endif
 
 // SCN_DISABLE_STRTOD
-// If 1, disallows the float scanner from falling back on std::strtod,
-// even if it were available
+// If 1, disallows the float scanner from falling back on strtof, strtod,
+// and strtold (and wcstof, wcstod, and wcstold).
+// They're only used for a float, double, or long double with a binary format
+// without a custom conversion, i.e. not binary32 or binary64 (or, for long
+// double, x87 or m68k extended, binary128, or double-double).
+// With SCN_DISABLE_STRTOD, scanning such a type is a compile-time error.
 #ifndef SCN_DISABLE_STRTOD
 #define SCN_DISABLE_STRTOD 0
 #endif
@@ -276,6 +281,97 @@
 #endif
 #ifndef SCN_DISABLE_TYPE_CUSTOM
 #define SCN_DISABLE_TYPE_CUSTOM 0
+#endif
+
+/////////////////////////////////////////////////////////////////
+// Detect the binary formats of float, double, and long double
+/////////////////////////////////////////////////////////////////
+
+#include <cfloat>
+
+// SCN_FORCE_STRTOD_FALLBACK
+// Internal, for testing: if 1, the binary formats of float, double, and
+// long double are treated as unsupported, like on a platform with exotic
+// floating-point types, so that they're scanned with the strtod fallback.
+// std::from_chars isn't used for them either.
+#ifndef SCN_FORCE_STRTOD_FALLBACK
+#define SCN_FORCE_STRTOD_FALLBACK 0
+#endif
+
+#define SCN_FP_FORMAT_UNSUPPORTED 0
+#define SCN_FP_FORMAT_BINARY32    1
+#define SCN_FP_FORMAT_BINARY64    2
+
+// The exponent range rules out formats with the same number of digits but no
+// infinities or subnormals, like VAX G_FLOAT
+#if SCN_FORCE_STRTOD_FALLBACK || FLT_RADIX != 2
+#define SCN_FLOAT_FORMAT  SCN_FP_FORMAT_UNSUPPORTED
+#define SCN_DOUBLE_FORMAT SCN_FP_FORMAT_UNSUPPORTED
+#else
+
+#if FLT_MANT_DIG == 24 && FLT_MAX_EXP == 128 && FLT_MIN_EXP == -125
+#define SCN_FLOAT_FORMAT SCN_FP_FORMAT_BINARY32
+#elif FLT_MANT_DIG == 53 && FLT_MAX_EXP == 1024 && FLT_MIN_EXP == -1021
+#define SCN_FLOAT_FORMAT SCN_FP_FORMAT_BINARY64
+#else
+#define SCN_FLOAT_FORMAT SCN_FP_FORMAT_UNSUPPORTED
+#endif
+
+#if DBL_MANT_DIG == 24 && DBL_MAX_EXP == 128 && DBL_MIN_EXP == -125
+#define SCN_DOUBLE_FORMAT SCN_FP_FORMAT_BINARY32
+#elif DBL_MANT_DIG == 53 && DBL_MAX_EXP == 1024 && DBL_MIN_EXP == -1021
+#define SCN_DOUBLE_FORMAT SCN_FP_FORMAT_BINARY64
+#else
+#define SCN_DOUBLE_FORMAT SCN_FP_FORMAT_UNSUPPORTED
+#endif
+
+#endif  // SCN_FORCE_STRTOD_FALLBACK || FLT_RADIX != 2
+
+// The formats that `float_traits<long double>` (in impl.h) supports:
+// binary32, binary64, x87 or m68k extended, binary128, and double-double
+#if !SCN_FORCE_STRTOD_FALLBACK && FLT_RADIX == 2 &&     \
+    ((LDBL_MANT_DIG == 24 && LDBL_MAX_EXP == 128) ||    \
+     (LDBL_MANT_DIG == 53 && LDBL_MAX_EXP == 1024) ||   \
+     (LDBL_MANT_DIG == 64 && LDBL_MAX_EXP == 16384) ||  \
+     (LDBL_MANT_DIG == 113 && LDBL_MAX_EXP == 16384) || \
+     (LDBL_MANT_DIG == 106 && LDBL_MAX_EXP == 1024))
+#define SCN_LONG_DOUBLE_FORMAT_SUPPORTED 1
+#else
+#define SCN_LONG_DOUBLE_FORMAT_SUPPORTED 0
+#endif
+
+// fast_float requires a binary32 float and a binary64 double
+#if !SCN_DISABLE_FAST_FLOAT && SCN_FLOAT_FORMAT == SCN_FP_FORMAT_BINARY32 && \
+    SCN_DOUBLE_FORMAT == SCN_FP_FORMAT_BINARY64
+#define SCN_HAS_FAST_FLOAT 1
+#else
+#define SCN_HAS_FAST_FLOAT 0
+#endif
+
+// SCN_IS_FLOAT_SCANNABLE, SCN_IS_DOUBLE_SCANNABLE,
+// SCN_IS_LONG_DOUBLE_SCANNABLE
+// Internal: 1 if the type isn't disabled with SCN_DISABLE_TYPE_*, and can be
+// converted: either it has a supported format, or the strtod fallback is
+// allowed (not SCN_DISABLE_STRTOD)
+#if !SCN_DISABLE_TYPE_FLOAT && \
+    (SCN_FLOAT_FORMAT != SCN_FP_FORMAT_UNSUPPORTED || !SCN_DISABLE_STRTOD)
+#define SCN_IS_FLOAT_SCANNABLE 1
+#else
+#define SCN_IS_FLOAT_SCANNABLE 0
+#endif
+
+#if !SCN_DISABLE_TYPE_DOUBLE && \
+    (SCN_DOUBLE_FORMAT != SCN_FP_FORMAT_UNSUPPORTED || !SCN_DISABLE_STRTOD)
+#define SCN_IS_DOUBLE_SCANNABLE 1
+#else
+#define SCN_IS_DOUBLE_SCANNABLE 0
+#endif
+
+#if !SCN_DISABLE_TYPE_LONG_DOUBLE && \
+    (SCN_LONG_DOUBLE_FORMAT_SUPPORTED || !SCN_DISABLE_STRTOD)
+#define SCN_IS_LONG_DOUBLE_SCANNABLE 1
+#else
+#define SCN_IS_LONG_DOUBLE_SCANNABLE 0
 #endif
 
 /////////////////////////////////////////////////////////////////

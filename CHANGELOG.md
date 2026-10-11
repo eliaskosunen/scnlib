@@ -52,6 +52,8 @@ scn::scan<...>(strm, ...);
    are now parsed with a custom built-in implementation, instead of `std::strtod`.
    This covers every type with a known binary format: the regular IEEE 754 types (binary16/32/64/128),
    bfloat16, and x87, m68k, and double-double `long double`.
+ * `std::strtod` is now only used for a `long double` of an unknown format, and only through `strtold_l` (`_strtold_l` on Windows).
+   Previously, without those, the C locale was set temporarily with `setlocale`, which isn't thread-safe.
  * The configuration macros are now in a separate header, `<scn/macros.h>`
  * When scnlib is the top-level CMake project (and `SCN_DISABLE_TOP_PROJECT` is `OFF`), symbols are hidden by default
    (`CMAKE_CXX_VISIBILITY_PRESET` and `CMAKE_VISIBILITY_INLINES_HIDDEN`)
