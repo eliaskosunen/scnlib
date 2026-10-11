@@ -114,6 +114,8 @@ scn::scan<...>(strm, ...);
  * Fix scanning from ranges that can only be iterated over when non-const (like `std::views::filter`),
    and from sized bidirectional ranges that aren't random access (like `std::list`)
  * Fix multi-byte whitespace (like U+2028) not being recognized when it's split between two chunks of a non-contiguous source
+ * Fix `putback()` and repeated `unget()` in an `operator>>` used through `scn::basic_istream_scanner`
+   failing an assertion, and `unget()` at the beginning of the input not failing
  * Fix the locale not being passed on when scanning a single argument with the default format string (`"{}"`)
  * Scanning from a character pointer (like `const char*`) is now a call to a deleted function,
    with an explanation in C++26, instead of an unexplained "no matching function"
