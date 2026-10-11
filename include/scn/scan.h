@@ -7091,6 +7091,20 @@ auto make_range_scan_buffer(Range&& range)
  *     (std::same_as<CharT, char> || std::same_as<CharT, wchar_t>);
  * \endcode
  *
+ * When scanning from a `std::basic_istream`, characters may be read from its
+ * `std::basic_streambuf` ahead of what is scanned.
+ * Those that weren't scanned are returned with `sputbackc`.
+ * If a scan fails, all the characters it has read are returned that way.
+ * Therefore, the stream buffer must support putback of the characters
+ * it has returned (`std::stringbuf` and `std::filebuf` do).
+ * If it doesn't, a failed scan loses the characters it has read,
+ * and reports a "Failed to sync with underlying source" error,
+ * instead of the actual error.
+ * A successful scan only needs putback if the stream buffer has characters
+ * available to read in bulk (see `std::basic_streambuf::in_avail`).
+ * A `std::istream` without a stream buffer (`rdbuf() == nullptr`) is
+ * treated as being at the end of input.
+ *
  * Additionally, files (`scn::scan_file`) can be scanned from,
  * and if `<scn/istream.h>` is included, `std::basic_istream`s, too.
  * The support for reading from C `FILE` is deprecated.

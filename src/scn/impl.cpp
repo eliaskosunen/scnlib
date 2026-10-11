@@ -4259,40 +4259,56 @@ SCN_PUBLIC bool basic_scan_istream_buffer<CharT>::do_fill()
 {
     SCN_EXPECT(m_stream);
 
+    auto* const streambuf = m_stream->rdbuf();
+    if (streambuf == nullptr) {
+        return false;
+    }
+
+    // Everything in the current view has been scanned.
+    // A character that was only peeked at is now consumed from the stream.
+    if (m_view_is_peeked) {
+        m_view_is_peeked = false;
+        (void)streambuf->sbumpc();
+    }
     if (!this->m_current_view.empty()) {
         this->m_putback_buffer.append(this->m_current_view.begin(),
                                       this->m_current_view.end());
     }
     this->m_current_view = {};
 
-    auto& streambuf = *m_stream->rdbuf();
-    const auto peek_result = streambuf.sgetc();
+    const auto peek_result = streambuf->sgetc();
     if (traits::eq_int_type(peek_result, traits::eof())) {
         return false;
     }
 
-    const auto n_avail = streambuf.in_avail();
-    if (n_avail == 0) {
-        // Zero characters available, but we got one with `sgetc`.
-        // Use that, and advance the sequence.
-        const auto bump_result = streambuf.sbumpc();
-        SCN_ENSURE(bump_result == peek_result);
-        m_buf.resize(1);
-        m_buf[0] = traits::to_char_type(peek_result);
-        this->m_current_view = std::basic_string_view<CharT>{m_buf.data(), 1};
-        return true;
+    // Reading in bulk consumes characters from the stream,
+    // so it relies on the stream supporting putback.
+    // Without a get area, putback is not generally possible.
+    const auto n_avail = streambuf->in_avail();
+    if (n_avail > 0) {
+        // in_avail() is a promise made by the stream, which we can't verify
+        // (and may be arbitrarily large), so only read a limited amount
+        // at a time, and handle reading fewer characters.
+        constexpr std::streamsize max_bulk_read = 4096;
+        const auto n_to_read = std::min(n_avail, max_bulk_read);
+        m_buf.resize(static_cast<std::size_t>(n_to_read));
+        const auto n_read =
+            static_cast<std::size_t>(streambuf->sgetn(m_buf.data(), n_to_read));
+        if (n_read != 0) {
+            this->m_current_view =
+                std::basic_string_view<CharT>{m_buf.data(), n_read};
+            return true;
+        }
     }
-    if (n_avail < 0) {
-        // EOF or error
-        return false;
-    }
-    const auto n_avail_u = static_cast<std::size_t>(n_avail);
-    m_buf.resize(n_avail_u);
 
-    const auto n_read =
-        static_cast<std::size_t>(streambuf.sgetn(m_buf.data(), n_avail));
-    SCN_EXPECT(n_read == n_avail_u);
-    this->m_current_view = std::basic_string_view<CharT>{m_buf.data(), n_read};
+    // Nothing could be read in bulk. Use the character we got with `sgetc`,
+    // but don't advance the sequence until it's been scanned:
+    // that way, a stream without putback support can be scanned
+    // from, as long as no scan fails.
+    m_buf.resize(1);
+    m_buf[0] = traits::to_char_type(peek_result);
+    this->m_current_view = std::basic_string_view<CharT>{m_buf.data(), 1};
+    m_view_is_peeked = true;
     return true;
 }
 
@@ -4301,22 +4317,41 @@ SCN_PUBLIC bool basic_scan_istream_buffer<CharT>::do_sync(
     std::ptrdiff_t position)
 {
     SCN_EXPECT(m_stream);
-    auto& streambuf = *m_stream->rdbuf();
+    auto* const streambuf = m_stream->rdbuf();
+    if (streambuf == nullptr) {
+        return true;
+    }
+
+    if (m_view_is_peeked) {
+        m_view_is_peeked = false;
+        if (position ==
+            static_cast<std::ptrdiff_t>(this->m_current_view.size() +
+                                        this->m_putback_buffer.size())) {
+            (void)streambuf->sbumpc();
+        }
+        else {
+            // The peeked character wasn't consumed from the stream
+            this->m_current_view = {};
+        }
+    }
+
     return impl::buffer_sync_helper(position, this->m_current_view,
                                     this->m_putback_buffer, [&](CharT ch) {
                                         return !traits::eq_int_type(
-                                            streambuf.sputbackc(ch),
+                                            streambuf->sputbackc(ch),
                                             traits::eof());
                                     }) == position;
 }
 
-template basic_scan_istream_buffer<char>::basic_scan_istream_buffer(
+template SCN_PUBLIC basic_scan_istream_buffer<char>::basic_scan_istream_buffer(
     std::istream&) noexcept;
-template basic_scan_istream_buffer<wchar_t>::basic_scan_istream_buffer(
-    std::wistream&) noexcept;
+template SCN_PUBLIC basic_scan_istream_buffer<
+    wchar_t>::basic_scan_istream_buffer(std::wistream&) noexcept;
 
-template basic_scan_istream_buffer<char>::~basic_scan_istream_buffer();
-template basic_scan_istream_buffer<wchar_t>::~basic_scan_istream_buffer();
+template SCN_PUBLIC
+    basic_scan_istream_buffer<char>::~basic_scan_istream_buffer();
+template SCN_PUBLIC
+    basic_scan_istream_buffer<wchar_t>::~basic_scan_istream_buffer();
 
 }  // namespace detail
 
