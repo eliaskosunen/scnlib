@@ -21,6 +21,9 @@ on:
       - '**/CMakeLists.txt'
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref_name }}-${{ github.ref_type == 'branch' && github.sha }}-${{ github.event_name == 'workflow_dispatch' }}-${{ github.event_name == 'schedule' }}-${{ github.event.schedule }}
   cancel-in-progress: true
@@ -29,7 +32,7 @@ env:
   APT_INSTALL: |
     sudo apt-get install
       -yq --no-install-suggests --no-install-recommends
-      --allow-unauthenticated --allow-downgrades --allow-change-held-packages
+      --allow-downgrades --allow-change-held-packages
   CCACHE_ABSSTDERR: true
   CCACHE_COMPRESS: true
   CCACHE_COMPRESSLEVEL: 6
@@ -49,7 +52,7 @@ jobs:
 
     steps:
       - name: Setup CMake and Ninja
-        uses: lukka/get-cmake@latest
+        uses: lukka/get-cmake@v4.4.4
 
       - name: Create Build Environment
         run: |
@@ -137,7 +140,7 @@ jobs:
           cp coverage-filtered.info ${{ runner.workspace }}/report/coverage.info
 
       - name: Upload Coverage Report
-        uses: codecov/codecov-action@v3
+        uses: codecov/codecov-action@v7
         with:
           directory: ${{ runner.workspace }}/report
           fail_ci_if_error: true

@@ -16,6 +16,9 @@ on:
   #    - '**/docs/**'
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 jobs:
   clang-tidy:
     runs-on: ubuntu-latest
