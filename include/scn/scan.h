@@ -262,12 +262,22 @@ struct wrapped_pointer_iterator<
 };
 #endif
 #if SCN_STDLIB_LIBCPP
+template <typename It>
+using apply_member_base = decltype(SCN_DECLVAL(const It&).base());
+
 template <typename Elem>
 struct wrapped_pointer_iterator<std::__wrap_iter<Elem*>> {
     SCN_FORCE_INLINE static constexpr auto to_address(
         const std::__wrap_iter<Elem*>& it) noexcept
     {
-        return it.base();
+        if constexpr (mp_valid_v<apply_member_base, std::__wrap_iter<Elem*>>) {
+            return it.base();
+        }
+        else {
+            // libc++ 23 removed base(), but its operator-> doesn't
+            // dereference, unlike in some older versions
+            return it.operator->();
+        }
     }
 };
 #endif
