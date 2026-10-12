@@ -668,37 +668,61 @@ private:
             SCN_UNLIKELY_ATTR
             return detail::unexpected_scan_error(
                 scan_error::invalid_scanned_value,
-                "strtod failed: No conversion");
+                "Invalid floating-point value");
         }
 
         if (c_errno == ERANGE && is_float_positive_zero(value)) {
             SCN_UNLIKELY_ATTR
             return detail::unexpected_scan_error(
                 scan_error::value_positive_underflow,
-                "strtod failed: Value too small");
+                "Floating-point value too small");
         }
         if (c_errno == ERANGE && is_float_negative_zero(value)) {
             SCN_UNLIKELY_ATTR
             return detail::unexpected_scan_error(
                 scan_error::value_negative_underflow,
-                "strtod failed: Value too small");
+                "Floating-point value too small");
         }
 
-        // Infinities are handled separately up the call stack,
-        // so getting an infinity here always means overflow
-        // (no need to even check errno,
-        // which actually isn't even set on all C stdlib implementations)
-        if (is_float_positive_infinity(value)) {
-            SCN_UNLIKELY_ATTR
-            return detail::unexpected_scan_error(
-                scan_error::value_positive_overflow,
-                "strtod failed: Value too large");
+        if constexpr (std::numeric_limits<T>::has_infinity) {
+            // Infinities are handled separately up the call stack,
+            // so getting an infinity here always means overflow
+            // (no need to even check errno,
+            // which actually isn't even set on all C stdlib implementations)
+            if (is_float_positive_infinity(value)) {
+                SCN_UNLIKELY_ATTR
+                return detail::unexpected_scan_error(
+                    scan_error::value_positive_overflow,
+                    "Floating-point value too large");
+            }
+            if (is_float_negative_infinity(value)) {
+                SCN_UNLIKELY_ATTR
+                return detail::unexpected_scan_error(
+                    scan_error::value_negative_overflow,
+                    "Floating-point value too large");
+            }
         }
-        if (is_float_negative_infinity(value)) {
-            SCN_UNLIKELY_ATTR
-            return detail::unexpected_scan_error(
-                scan_error::value_negative_overflow,
-                "strtod failed: Value too large");
+        else {
+            // Without infinities (like IBM hex float or VAX G_FLOAT),
+            // HUGE_VAL is the largest finite value, so an overflow is only
+            // told apart by errno. Comparing with HUGE_VAL, not just checking
+            // for a nonzero value, because some C stdlibs set ERANGE for
+            // a (nonzero) result that's too small to be normal.
+            SCN_GCC_COMPAT_PUSH
+            SCN_GCC_COMPAT_IGNORE("-Wfloat-equal")
+            if (c_errno == ERANGE && value == huge_value()) {
+                SCN_UNLIKELY_ATTR
+                return detail::unexpected_scan_error(
+                    scan_error::value_positive_overflow,
+                    "Floating-point value too large");
+            }
+            if (c_errno == ERANGE && value == -huge_value()) {
+                SCN_UNLIKELY_ATTR
+                return detail::unexpected_scan_error(
+                    scan_error::value_negative_overflow,
+                    "Floating-point value too large");
+            }
+            SCN_GCC_COMPAT_POP
         }
 
         return {};
@@ -892,7 +916,7 @@ struct convert_custom_hex {
         if (biased_exp >= max_biased_exp) {
             return detail::unexpected_scan_error(
                 scan_error::value_positive_overflow,
-                "Hexfloat value too large");
+                "Floating-point value too large");
         }
 
         // Step 5: Truncate and/or round the fraction to fit in the value.
@@ -931,7 +955,7 @@ struct convert_custom_hex {
                     if (++biased_exp >= max_biased_exp) {
                         return detail::unexpected_scan_error(
                             scan_error::value_positive_overflow,
-                            "Hexfloat value too large after rounding");
+                            "Floating-point value too large");
                     }
                 }
             }
@@ -953,7 +977,7 @@ struct convert_custom_hex {
                     // Less than half of the smallest subnormal
                     return detail::unexpected_scan_error(
                         scan_error::value_positive_underflow,
-                        "Hexfloat value too small");
+                        "Floating-point value too small");
                 }
                 auto shift = static_cast<unsigned>(-e_shift);
                 if (shift == static_cast<unsigned>(total_bits)) {
@@ -979,7 +1003,7 @@ struct convert_custom_hex {
             if (significand == significand_int_type{0u} && biased_exp == 0) {
                 return detail::unexpected_scan_error(
                     scan_error::value_positive_underflow,
-                    "Hexfloat value rounds to zero");
+                    "Floating-point value too small");
             }
         }
 
@@ -1106,7 +1130,7 @@ struct convert_from_chars {
             can_fallback = false;
             return detail::unexpected_scan_error(
                 scan_error::invalid_scanned_value,
-                "std::from_chars: invalid_argument");
+                "Invalid floating-point value");
         }
         if (SCN_UNLIKELY(result.ec == std::errc::result_out_of_range)) {
             // std::from_chars doesn't give us a way to distinguish between
@@ -1117,7 +1141,7 @@ struct convert_from_chars {
             can_fallback = true;
             return detail::unexpected_scan_error(
                 scan_error::invalid_scanned_value,
-                "std::from_chars: Unknown result_out_of_range error");
+                "Floating-point value out of range");
         }
         if (SCN_UNLIKELY(is_float_positive_infinity(value))) {
             // We got infinity,
@@ -1130,7 +1154,7 @@ struct convert_from_chars {
             can_fallback = true;
             return detail::unexpected_scan_error(
                 scan_error::value_positive_overflow,
-                "std::from_chars: Got infinity, but no out-of-range error");
+                "Floating-point value too large");
         }
 
         return detail::make_string_view_iterator_from_pointer(source,
@@ -1242,7 +1266,7 @@ struct convert_fast_float {
         if (SCN_UNLIKELY(result.ec == std::errc::invalid_argument)) {
             return detail::unexpected_scan_error(
                 scan_error::invalid_scanned_value,
-                "fast_float: invalid_argument");
+                "Invalid floating-point value");
         }
         if (SCN_UNLIKELY(is_float_positive_infinity(value))) {
             // Infinity, but input couldn't've been infinity
@@ -1250,19 +1274,19 @@ struct convert_fast_float {
             can_fallback = false;
             return detail::unexpected_scan_error(
                 scan_error::value_positive_overflow,
-                "fast_float: value too large");
+                "Floating-point value too large");
         }
         if (SCN_UNLIKELY(result.ec == std::errc::result_out_of_range)) {
             if (SCN_UNLIKELY(is_float_any_zero(value))) {
                 can_fallback = false;
                 return detail::unexpected_scan_error(
                     scan_error::value_positive_underflow,
-                    "fast_float: value too small");
+                    "Floating-point value too small");
             }
             can_fallback = true;
             return detail::unexpected_scan_error(
                 scan_error::invalid_scanned_value,
-                "fast_float: Unknown result_out_of_range error");
+                "Floating-point value out of range");
         }
 
         return detail::make_string_view_iterator_from_pointer(

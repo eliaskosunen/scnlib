@@ -19,6 +19,7 @@
 #include "test_common.h"
 
 #include <scn/scan.h>
+#include <scn/xchar.h>
 
 #include <deque>
 
@@ -261,4 +262,62 @@ TEST(FloatTest, SignedFloat)
     result = scn::scan<double>("-789.012", "{}");
     ASSERT_THAT(result, Succeeded());
     EXPECT_DOUBLE_EQ(result->value(), -789.012);
+}
+
+TEST(FloatTest, ErrorMessagesDontNameBackend)
+{
+    const auto expect_neutral = [](const scn::scan_error& error) {
+        const std::string_view msg = error.msg();
+        EXPECT_EQ(msg.find("fast_float"), std::string_view::npos) << msg;
+        EXPECT_EQ(msg.find("from_chars"), std::string_view::npos) << msg;
+        EXPECT_EQ(msg.find("strtod"), std::string_view::npos) << msg;
+    };
+
+    auto too_large = scn::scan<double>("1e999999999999", "{}");
+    ASSERT_THAT(too_large,
+                FailedWith(scn::scan_error::value_positive_overflow));
+    expect_neutral(too_large.error());
+
+    auto too_small = scn::scan<double>("1e-999999999999", "{}");
+    ASSERT_THAT(too_small,
+                FailedWith(scn::scan_error::value_positive_underflow));
+    expect_neutral(too_small.error());
+
+    auto invalid = scn::scan<double>(".", "{}");
+    ASSERT_THAT(invalid, Failed());
+    expect_neutral(invalid.error());
+
+    auto no_exponent = scn::scan<double>("1.5", scn::runtime_format("{:e}"));
+    ASSERT_THAT(no_exponent, Failed());
+    expect_neutral(no_exponent.error());
+}
+
+// Different backends parse these (fast_float, std::from_chars, the custom
+// parser, or strtold), depending on the character and float type
+TEST(FloatTest, ErrorMessagesAreTheSameForEveryBackend)
+{
+    const auto check = [](std::string_view input,
+                          scn::scan_error::code_t expected_code) {
+        const auto wide_input = std::wstring(input.begin(), input.end());
+        const auto reference = scn::scan<double>(input, "{}");
+        ASSERT_THAT(reference, FailedWith(expected_code)) << input;
+        const std::string_view expected_msg = reference.error().msg();
+
+        const auto expect_same = [&](const auto& result, const char* label) {
+            ASSERT_THAT(result, FailedWith(expected_code))
+                << input << " (" << label << ")";
+            EXPECT_EQ(std::string_view{result.error().msg()}, expected_msg)
+                << input << " (" << label << ")";
+        };
+        expect_same(scn::scan<float>(input, "{}"), "float");
+        expect_same(scn::scan<long double>(input, "{}"), "long double");
+        expect_same(scn::scan<double>(wide_input, L"{}"), "wchar_t double");
+        expect_same(scn::scan<long double>(wide_input, L"{}"),
+                    "wchar_t long double");
+    };
+
+    check("1e999999999", scn::scan_error::value_positive_overflow);
+    check("0x1p999999999", scn::scan_error::value_positive_overflow);
+    check("1e-999999999", scn::scan_error::value_positive_underflow);
+    check("0x1p-999999999", scn::scan_error::value_positive_underflow);
 }
