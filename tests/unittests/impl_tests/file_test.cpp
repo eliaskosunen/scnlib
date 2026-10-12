@@ -325,26 +325,27 @@ std::vector<std::string> chunk_up(const std::string& input,
         }
         case chunking_method::by_word: {
             std::vector<std::string> result;
-            auto input_view = scn::ranges::subrange{input.begin(), input.end()};
-            while (auto r = scn::scan<std::string_view, std::string_view>(
-                       input_view, "{}{:[ \n]}")) {
-                auto [word, spaces] = r->values();
-                result.emplace_back(std::string{word} + std::string{spaces});
-                input_view = r->range();
+            for (std::size_t i = 0; i < input.size();) {
+                const auto word_end = input.find_first_of(" \n", i);
+                const auto chunk_end =
+                    word_end == std::string::npos
+                        ? input.size()
+                        : input.find_first_not_of(" \n", word_end);
+                result.emplace_back(input.substr(
+                    i, chunk_end == std::string::npos ? chunk_end
+                                                      : chunk_end - i));
+                i = chunk_end == std::string::npos ? input.size() : chunk_end;
             }
             return result;
         }
         case chunking_method::by_line: {
             std::vector<std::string> result;
-            auto input_view = scn::ranges::subrange{input.begin(), input.end()};
-            while (auto r = scn::scan<std::string_view, std::string_view>(
-                       input_view, "{:[^\n]}{:[\n]}")) {
-                auto [line, breaks] = r->values();
-                result.emplace_back(std::string{line} + std::string{breaks});
-                input_view = r->range();
-                if (input_view.empty()) {
-                    break;
-                }
+            for (std::size_t i = 0; i < input.size();) {
+                const auto line_end = input.find('\n', i);
+                const auto chunk_end =
+                    line_end == std::string::npos ? input.size() : line_end + 1;
+                result.emplace_back(input.substr(i, chunk_end - i));
+                i = chunk_end;
             }
             return result;
         }

@@ -383,12 +383,24 @@ SCN_CLANG_POP
 
 TYPED_TEST(StringCharacterSetReaderTest, MatchEmpty)
 {
-    auto src = this->set_source(""sv);
+    this->set_source(""sv);
     auto [ret, val] = this->read(this->make_specs_from_set("[a-z]"));
 
-    ASSERT_THAT(ret, Succeeded());
-    EXPECT_EQ(*ret, src.begin());
-    EXPECT_TRUE(this->check_value(val, ""));
+    EXPECT_THAT(ret, FailedWith(scn::scan_error::end_of_input));
+}
+
+TYPED_TEST(StringCharacterSetReaderTest, MatchNothing)
+{
+    this->set_source("123"sv);
+    auto [ret, val] = this->read(this->make_specs_from_set("[a-z]"));
+    EXPECT_THAT(ret, FailedWith(scn::scan_error::invalid_scanned_value));
+}
+
+TYPED_TEST(StringCharacterSetReaderTest, MatchNothingInverted)
+{
+    this->set_source("123"sv);
+    auto [ret, val] = this->read(this->make_specs_from_set("[^0-9]"));
+    EXPECT_THAT(ret, FailedWith(scn::scan_error::invalid_scanned_value));
 }
 
 TYPED_TEST(StringCharacterSetReaderTest, LiteralAbc)

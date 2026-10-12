@@ -10952,9 +10952,10 @@ SCN_CLANG_IGNORE("-Wdocumentation-unknown-command")
  * the entire selection can be inverted with a prefix `^`. Matches and supports
  * arbitrary Unicode code points.
  * Doesn't skip preceding whitespace.
+ * Like `%[` in `scanf`, matching zero characters is an error.
  * Character classes (like `[:alpha:]`) and backslash escapes followed by
- * a letter (like `\d`) are not supported, and are rejected in the format
- * string.
+ * a letter (like `\d`) are not supported, and to catch user errors,
+ * are rejected in the format string.
  * To match a literal backslash, put it last in the set (like `[abc\]`),
  * so that no letter follows it.
  * The set can't contain `]` as the first character, as `[]` is an empty set.
