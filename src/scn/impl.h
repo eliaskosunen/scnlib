@@ -3661,11 +3661,7 @@ public:
     void advance_to(iterator it)
     {
         SCN_EXPECT(it <= end());
-        if constexpr (detail::is_comparable_with_nullptr<iterator>) {
-            if (it == nullptr) {
-                it = end();
-            }
-        }
+        SCN_EXPECT(it != nullptr || end() == nullptr);
         m_current = SCN_MOVE(it);
     }
 
