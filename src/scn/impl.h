@@ -7864,9 +7864,11 @@ private:
             };
 
             if (is_inverted) {
-                return read_until_code_point(range, cb);
+                auto it = read_until_code_point(range, cb);
+                return check_nonempty(it, range);
             }
-            return read_while_code_point(range, cb);
+            auto it = read_while_code_point(range, cb);
+            return check_nonempty(it, range);
         }
 
         const auto cb = [&](SourceCharT ch) {
@@ -7874,9 +7876,27 @@ private:
         };
 
         if (is_inverted) {
-            return read_until_code_unit(range, cb);
+            auto it = read_until_code_unit(range, cb);
+            return check_nonempty(it, range);
         }
-        return read_while_code_unit(range, cb);
+        auto it = read_while_code_unit(range, cb);
+        return check_nonempty(it, range);
+    }
+
+    template <typename Iterator, typename Range>
+    static scan_expected<Iterator> check_nonempty(const Iterator& it,
+                                                  Range range)
+    {
+        if (it == range.begin()) {
+            if (auto e = eof_check(range); SCN_UNLIKELY(!e)) {
+                return unexpected(make_eof_scan_error(e));
+            }
+            return detail::unexpected_scan_error(
+                scan_error::invalid_scanned_value,
+                "No characters matched in [character set]");
+        }
+
+        return it;
     }
 };
 

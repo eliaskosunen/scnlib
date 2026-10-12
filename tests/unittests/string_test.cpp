@@ -20,6 +20,9 @@
 
 #include "test_common.h"
 
+#include <array>
+#include <deque>
+
 TEST(StringTest, DefaultNarrowStringFromNarrowSource)
 {
     auto result = scn::scan<std::string>("abc def", "{}");
@@ -178,6 +181,52 @@ TEST(StringTest, CharacterSetRangeAcrossAsciiBoundaryInverted)
     EXPECT_STREQ(result->begin(),
                  "\xc3\xa4"
                  "b");
+}
+
+TEST(StringTest, CharacterSetOnEmptyInput)
+{
+    constexpr std::array<const char*, 4> formats{"{:[a-z]}", "{:[^a-z]}",
+                                                 "{:[\xc3\xa4-\xc3\xb6]}",
+                                                 "{:[^\xc3\xa4-\xc3\xb6]}"};
+    for (auto fmt : formats) {
+        auto result = scn::scan<std::string>("", scn::runtime_format(fmt));
+        EXPECT_THAT(result, FailedWith(scn::scan_error::end_of_input)) << fmt;
+
+        auto deque_source = std::deque<char>{};
+        auto from_deque =
+            scn::scan<std::string>(deque_source, scn::runtime_format(fmt));
+        EXPECT_THAT(from_deque, FailedWith(scn::scan_error::end_of_input))
+            << fmt;
+    }
+}
+
+TEST(StringTest, CharacterSetNonMatchingInputIsNotEndOfInput)
+{
+    auto result = scn::scan<std::string>("\n", "{:[^\n]}");
+    EXPECT_THAT(result, FailedWith(scn::scan_error::invalid_scanned_value));
+}
+
+TEST(StringTest, CharacterSetMatchingNothing)
+{
+    auto result = scn::scan<std::string>("123", "{:[a-z]}");
+    EXPECT_THAT(result, FailedWith(scn::scan_error::invalid_scanned_value));
+
+    auto inverted = scn::scan<std::string>("abc", "{:[^a-z]}");
+    EXPECT_THAT(inverted, FailedWith(scn::scan_error::invalid_scanned_value));
+
+    auto nonascii = scn::scan<std::string>("abc", "{:[\xc3\xa4-\xc3\xb6]}");
+    EXPECT_THAT(nonascii, FailedWith(scn::scan_error::invalid_scanned_value));
+
+    auto nonascii_inverted =
+        scn::scan<std::string>("\xc3\xa4", "{:[^\xc3\xa4-\xc3\xb6]}");
+    EXPECT_THAT(nonascii_inverted,
+                FailedWith(scn::scan_error::invalid_scanned_value));
+}
+
+TEST(StringTest, CharacterSetMatchingNothingStringView)
+{
+    auto result = scn::scan<std::string_view>("123", "{:[a-z]}");
+    EXPECT_THAT(result, FailedWith(scn::scan_error::invalid_scanned_value));
 }
 
 TEST(StringTest, WonkyInput)

@@ -67,10 +67,17 @@ std::string do_run_line_by_line(Source& source,
                     // if the input really was invalid
                     return std::string{expected};
                 }
-                throw std::runtime_error("scan failed with " +
-                                         std::string(res.error().msg()));
+                if (res.error().code() !=
+                    scn::scan_error::invalid_scanned_value) {
+                    throw std::runtime_error("scan failed with " +
+                                             std::string(res.error().msg()));
+                }
+                // An empty line: the scan of the line break below
+                // checks that this was one
             }
-            buffer.append(res->value());
+            else {
+                buffer.append(res->value());
+            }
         }
         {
             auto res = scn::scan<char>(source, "{}");
