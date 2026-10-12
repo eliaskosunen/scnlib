@@ -5557,7 +5557,7 @@ scan_expected<void> compute_float_value(
             // Rounding the high part up overflowed
             return detail::unexpected_scan_error(
                 scan_error::value_positive_overflow,
-                "Parsed float exponent too large");
+                "Floating-point value too large");
         }
 
         // The high double is stored first, regardless of endianness
@@ -5592,12 +5592,12 @@ scan_expected<void> simple_decimal_conversion(T& result,
     if (value.decimal_point < min_decimal_point) {
         return detail::unexpected_scan_error(
             scan_error::value_positive_underflow,
-            "Parsed float rounds to zero, but is non-zero");
+            "Floating-point value too small");
     }
     if (value.decimal_point > max_decimal_point) {
         return detail::unexpected_scan_error(
             scan_error::value_positive_overflow,
-            "Parsed float exponent too large");
+            "Floating-point value too large");
     }
 
     constexpr std::int32_t exp_bias = float_traits<T>::exponent_bias;
@@ -5647,7 +5647,7 @@ scan_expected<void> simple_decimal_conversion(T& result,
         // "If the exponent was too large then the parsed [value] is infinite"
         return detail::unexpected_scan_error(
             scan_error::value_positive_overflow,
-            "Parsed float exponent too large");
+            "Floating-point value too large");
     }
 
     auto biased_exponent = exp2 + exp_bias;
@@ -5690,7 +5690,7 @@ scan_expected<void> simple_decimal_conversion(T& result,
         if (biased_exponent >= max_biased_exponent) {
             return detail::unexpected_scan_error(
                 scan_error::value_positive_overflow,
-                "Parsed float exponent too large");
+                "Floating-point value too large");
         }
     }
 
@@ -5699,7 +5699,7 @@ scan_expected<void> simple_decimal_conversion(T& result,
         //  -> underflow
         return detail::unexpected_scan_error(
             scan_error::value_positive_underflow,
-            "Parsed float rounds to zero, but is non-zero");
+            "Floating-point value too small");
     }
 
     // Build resulting value
