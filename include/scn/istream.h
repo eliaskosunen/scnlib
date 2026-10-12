@@ -456,4 +456,4 @@ auto make_vscan_result(T&& source,
 SCN_END_NAMESPACE
 }  // namespace scn
 
-#endif  // SCN_USE_IOSTREAMS
+#endif  // !SCN_DISABLE_IOSTREAM

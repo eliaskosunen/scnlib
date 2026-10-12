@@ -124,7 +124,7 @@ struct basic_istream_scanner;
 using istream_scanner = basic_istream_scanner<char>;
 ///
 using wistream_scanner = basic_istream_scanner<wchar_t>;
-#endif  // SCN_USE_IOSTREAMS
+#endif  // !SCN_DISABLE_IOSTREAM
 
 template <typename CharT>
 class basic_scan_parse_context;
