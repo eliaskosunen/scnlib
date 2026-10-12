@@ -19,11 +19,41 @@
 
 #include <scn/xchar.h>
 
+#include <cwchar>
+
 TEST(XCharTest, ScanWideInt)
 {
     auto result = scn::scan<int>(L"42", L"{}");
     ASSERT_THAT(result, Succeeded());
     EXPECT_EQ(result->value(), 42);
+}
+
+TEST(XCharTest, ScanWideCharArrayStopsAtFirstNullInPaddedBuffer)
+{
+    wchar_t buffer[16];
+    std::wmemset(buffer, L'X', 16);
+    std::wcscpy(buffer, L"hi");
+
+    auto result = scn::scan<std::wstring>(buffer, L"{}");
+    ASSERT_THAT(result, Succeeded());
+    EXPECT_EQ(result->value(), L"hi");
+    EXPECT_EQ(result->begin(), buffer + 2);
+}
+
+TEST(XCharTest, ScanWideCharArrayWithoutNullTerminator)
+{
+    const wchar_t no_null[3] = {L'1', L'2', L'3'};
+    auto result = scn::scan<int>(no_null, L"{}");
+    ASSERT_THAT(result, Succeeded());
+    EXPECT_EQ(result->value(), 123);
+    EXPECT_EQ(result->begin(), no_null + 3);
+}
+
+TEST(XCharTest, ScanWideLiteralStopsAtEmbeddedNull)
+{
+    auto result = scn::scan<std::wstring>(L"hi\0garbage", L"{}");
+    ASSERT_THAT(result, Succeeded());
+    EXPECT_EQ(result->value(), L"hi");
 }
 
 TEST(XCharTest, ScanWideMultipleValues)

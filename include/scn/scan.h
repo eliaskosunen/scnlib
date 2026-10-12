@@ -7161,6 +7161,8 @@ auto make_range_scan_buffer(Range&& range)
  * Character pointers, like `const char*`, aren't ranges, and can't be scanned
  * from: wrap them in a `std::string_view` instead.
  * String literals and character arrays are ranges, and can be scanned from.
+ * The source is the part of the array before the first null character,
+ * or the entire array, if it contains none.
  */
 
 /**
@@ -7181,6 +7183,13 @@ inline constexpr bool is_valid_char_type =
     std::is_same_v<std::remove_const_t<CharT>, wchar_t>;
 
 struct make_scan_buffer_tag {};
+
+template <typename CharT, std::size_t N>
+std::size_t character_array_length(const CharT (&array)[N]) noexcept
+{
+    const auto first_null = std::char_traits<CharT>::find(array, N, CharT{0});
+    return first_null ? static_cast<std::size_t>(first_null - array) : N;
+}
 
 namespace _make_scan_buffer {
 
@@ -7233,16 +7242,14 @@ auto impl(const std::basic_string<CharT, Traits, Allocator>& r,
 }
 
 // String literals (CharT(&)[N]) -> string_buffer
-// If N != 0, and the last char is null, assume null-termination and drop it
+// The source ends at the first null character, or at the end of the array
+// if there's none
 template <typename CharT,
           std::size_t N,
           std::enable_if_t<is_valid_char_type<CharT>>* = nullptr>
 auto impl(const CharT (&r)[N], priority_tag<3>) noexcept
 {
-    if (N != 0 && r[N - 1] == 0) {
-        return std::basic_string_view<CharT>{r, N - 1};
-    }
-    return std::basic_string_view<CharT>{r, N};
+    return std::basic_string_view<CharT>{r, character_array_length(r)};
 }
 
 // FILE* -> file_buffer
@@ -9172,15 +9179,11 @@ auto make_vscan_result_end(SourceRange& source)
 {
     return ranges::end(source);
 }
-// Must match the handling of string literals in `make_scan_buffer`
 template <typename CharT, size_t N>
 auto make_vscan_result_end(CharT (&source)[N])
     -> ranges::sentinel_t<CharT (&)[N]>
 {
-    if (N != 0 && source[N - 1] == 0) {
-        return source + N - 1;
-    }
-    return source + N;
+    return source + character_array_length(source);
 }
 
 template <typename SourceRange,

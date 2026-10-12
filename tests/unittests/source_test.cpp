@@ -19,6 +19,7 @@
 
 #include <scn/scan.h>
 
+#include <cstring>
 #include <deque>
 #include <list>
 #include <sstream>
@@ -36,6 +37,15 @@ static_assert(scn::detail::is_scannable_source<std::string_view>);
 static_assert(scn::detail::is_scannable_source<scn::scan_file>);
 static_assert(!scn::detail::is_scannable_source<int>);
 static_assert(!scn::detail::is_scannable_source<std::vector<int>>);
+
+template <typename Source>
+using scan_int_result_t =
+    decltype(scn::scan<int>(std::declval<Source>(), "{}"));
+
+static_assert(!scn::detail::mp_valid<scan_int_result_t, const char*>::value);
+static_assert(!scn::detail::mp_valid<scan_int_result_t, char*>::value);
+static_assert(
+    scn::detail::mp_valid<scan_int_result_t, const char (&)[4]>::value);
 
 template <bool, typename>
 struct scan_result_helper_impl;
@@ -94,14 +104,44 @@ TEST(SourceTest, SourceIsCharArrayWithoutNullTerminator)
     EXPECT_EQ(result->end(), source + 3);
 }
 
-template <typename Source>
-using scan_int_result_t =
-    decltype(scn::scan<int>(std::declval<Source>(), "{}"));
+TEST(SourceTest, SourceIsCharArrayStopsAtFirstNull)
+{
+    char buffer[32];
+    std::memset(buffer, 'X', sizeof(buffer));
+    std::strcpy(buffer, "hi");
 
-static_assert(!scn::detail::mp_valid<scan_int_result_t, const char*>::value);
-static_assert(!scn::detail::mp_valid<scan_int_result_t, char*>::value);
-static_assert(
-    scn::detail::mp_valid<scan_int_result_t, const char (&)[4]>::value);
+    auto result = scn::scan<std::string>(buffer, "{}");
+    ASSERT_THAT(result, Succeeded());
+    EXPECT_EQ(result->value(), "hi");
+    EXPECT_EQ(result->begin(), buffer + 2);
+    EXPECT_EQ(result->end(), buffer + 2);
+    EXPECT_THAT(result->range(), IsEmptyRange());
+}
+
+TEST(SourceTest, SourceIsCharArrayTwoValuesBeforeNull)
+{
+    const char source[] = {'4', '2', ' ', '7', '\0', 'g', 'a', 'r'};
+    auto result = scn::scan<int, int>(source, "{} {}");
+    ASSERT_THAT(result, Succeeded());
+    auto [a, b] = result->values();
+    EXPECT_EQ(a, 42);
+    EXPECT_EQ(b, 7);
+    EXPECT_EQ(result->begin(), source + 4);
+}
+
+TEST(SourceTest, SourceIsCharArrayNotEnoughValuesBeforeNull)
+{
+    const char source[] = {'4', '2', ' ', '7', '\0', 'g', 'a', 'r'};
+    auto result = scn::scan<int, int, int>(source, "{} {} {}");
+    EXPECT_THAT(result, FailedWith(scn::scan_error::end_of_input));
+}
+
+TEST(SourceTest, SourceIsCharArrayLeadingNull)
+{
+    char source[] = {'\0', '1', '2'};
+    EXPECT_THAT(scn::scan<int>(source, "{}"),
+                FailedWith(scn::scan_error::end_of_input));
+}
 
 TEST(SourceTest, ResultRvalueAccessors)
 {
