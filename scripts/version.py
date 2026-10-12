@@ -42,25 +42,38 @@ if __name__ == '__main__':
 
     root = Path(__file__).parent.parent.resolve()
 
-    path = root / r'CMakeLists.txt'
-    text = read_text_file(path)
-    text = re.sub(r'''(\s|^)VERSION\s+[0-9](?:[.][0-9]){2}''', rf"\1VERSION {version_str}", text, count=1, flags=re.I)
-    write_text_file(path, text)
+    # (file, pattern, replacement); every pattern must match at least once
+    substitutions = [
+        (r'CMakeLists.txt',
+         r'''(?<![\w])((?<!cmake_minimum_required\()VERSION\s+)[0-9]+[.][0-9]+[.][0-9]+\b''',
+         rf'\g<1>{version_str}'),
+        (r'CMakeLists.txt',
+         r'''(?<![\w])(SOVERSION\s+)[0-9]+[.][0-9]+[.][0-9]+\b''',
+         rf'\g<1>{version_str}'),
+        (r'include/scn/macros.h',
+         r'''(#\s*define\s+SCN_VERSION\s+)SCN_COMPILER\(\s*[0-9]+\s*,\s*[0-9]+\s*,\s*[0-9]+\s*\)''',
+         rf'\g<1>SCN_COMPILER({version[0]}, {version[1]}, {version[2]})'),
+        (r'docs/pages/mainpage.md',
+         r'''(GIT_TAG\s+)(?:v\s*)?[0-9]+[.][0-9]+[.][0-9]+\b''',
+         rf'\g<1>v{version_str}'),
+    ]
 
-    path = root / r'include/scn/fwd.h'
-    text = read_text_file(path)
-    text = re.sub(r'''(\s*#\s*define\s+SCN_VERSION)\s+SCN_COMPILER\([0-9]+,\s*[0-9]+,\s*[0-9]+\)''',
-                  rf"\1 SCN_COMPILER({version[0]}, {version[1]}, {version[2]})", text)
-    write_text_file(path, text)
+    texts = {}
+    failed = False
+    for file, pattern, replacement in substitutions:
+        path = root / file
+        if path not in texts:
+            texts[path] = read_text_file(path)
+        texts[path], count = re.subn(pattern, replacement, texts[path])
+        if count == 0:
+            print(rf"error: {file}: pattern didn't match anything: {pattern}", file=sys.stderr)
+            failed = True
+    if failed:
+        sys.exit(1)
 
-    noop_sub = r'#$%^nbsp^%$#'
-    path = root / r'docs/pages/mainpage.md'
-    text = read_text_file(path)
-    text = re.sub(r'''(GIT_TAG\s+)(?:v\s*)?[0-9](?:[.][0-9]){2}''', rf"\1v{version_str}", text, flags=re.I)
-    text = text.replace(noop_sub, '')
-    write_text_file(path, text)
+    for path, text in texts.items():
+        write_text_file(path, text)
 
     print('Remember to also:')
     print(' - Add an entry to CHANGELOG.md')
     print(' - Update definition of SCN_BEGIN_NAMESPACE, if necessary')
-    print(' - Bump SOVERSION, if necessary')
