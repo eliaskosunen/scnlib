@@ -18,3 +18,37 @@
 #include "wrapped_gtest.h"
 
 #include <scn/scan.h>
+
+#include <string_view>
+
+TEST(ParseContextTest, AdvanceTo)
+{
+    const char storage[] = "abcdef";
+    scn::scan_parse_context ctx{scn::source_tag<std::string_view>,
+                                std::string_view{storage + 1, 3}};
+
+    ctx.advance_to(ctx.begin() + 1);
+    EXPECT_EQ(ctx.begin(), storage + 2);
+    EXPECT_EQ(ctx.end(), storage + 4);
+
+    ctx.advance_to(ctx.end());
+    EXPECT_EQ(ctx.begin(), ctx.end());
+    EXPECT_TRUE(ctx.get_error());
+}
+
+TEST(ParseContextTest, AdvanceToOutOfRange)
+{
+    const char storage[] = "abcdef";
+    scn::scan_parse_context ctx{scn::source_tag<std::string_view>,
+                                std::string_view{storage + 1, 3}};
+
+    ctx.advance_to(storage + 5);
+    EXPECT_EQ(ctx.begin(), storage + 1);
+    EXPECT_FALSE(ctx.get_error());
+
+    scn::scan_parse_context before{scn::source_tag<std::string_view>,
+                                   std::string_view{storage + 1, 3}};
+    before.advance_to(storage);
+    EXPECT_EQ(before.begin(), storage + 1);
+    EXPECT_FALSE(before.get_error());
+}
