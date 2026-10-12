@@ -16,6 +16,9 @@ on:
     types: [published]
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref_name }}-${{ github.ref_type == 'branch' && github.sha }}-${{ github.event_name == 'workflow_dispatch' }}-${{ github.event_name == 'schedule' }}-${{ github.event.schedule }}
   cancel-in-progress: true
@@ -23,13 +26,17 @@ concurrency:
 jobs:
   docs:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    env:
+      REF_NAME: ${{ github.ref_name }}
 
     steps:
       - name: Install dependencies
         run: |
           sudo apt -y update
           sudo apt -y install --no-install-recommends git python3 python3-pip doxygen libgs-dev
-          sudo -H pip3 install --upgrade poxy
+          sudo -H pip3 install poxy==0.27.1
 
       - name: Checkout
         uses: actions/checkout@v7
@@ -39,9 +46,9 @@ jobs:
       - name: Prepare repository (on push)
         if: ${{ github.event_name == 'push' }}
         run: |
-          git fetch origin ${{ github.ref_name }}:refs/remotes/origin/${{ github.ref_name }} --tags --force
+          git fetch origin "$REF_NAME:refs/remotes/origin/$REF_NAME" --tags --force
           git remote set-head origin -a
-          git checkout ${{ github.ref_name }}
+          git checkout "$REF_NAME"
           git pull --force
 
       - name: Prepare repository (on release)
@@ -57,7 +64,7 @@ jobs:
         run: |
           git fetch origin master:refs/remotes/origin/master --tags --force
           git remote set-head origin -a
-          git checkout ${{ github.ref_name }}
+          git checkout "$REF_NAME"
           git pull --force
 
       - name: Generate docs

@@ -29,6 +29,9 @@ on:
       - '**/CMakeLists.txt'
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref_name }}-${{ github.ref_type == 'branch' && github.sha }}-${{ github.event_name == 'workflow_dispatch' }}-${{ github.event_name == 'schedule' }}-${{ github.event.schedule }}
   cancel-in-progress: true
@@ -214,7 +217,7 @@ jobs:
 
     steps:
       - name: Setup CMake and Ninja
-        uses: lukka/get-cmake@latest
+        uses: lukka/get-cmake@v4.4.4
 
       - name: Create Build Environment
         run: |
