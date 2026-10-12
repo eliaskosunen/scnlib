@@ -8378,7 +8378,10 @@ public:
         }
 
         reader_impl_for_int<CharT> reader{};
-        signed char tmp_value{};
+        using integer_type =
+            std::conditional_t<std::is_signed_v<char>, std::make_signed_t<char>,
+                               std::make_unsigned_t<char>>;
+        integer_type tmp_value{};
         auto ret = reader.read_specs(range, specs, tmp_value, loc);
         value = static_cast<char>(tmp_value);
         return ret;
@@ -8414,8 +8417,9 @@ public:
         }
 
         reader_impl_for_int<CharT> reader{};
-        using integer_type =
-            std::conditional_t<sizeof(wchar_t) == 2, int16_t, int32_t>;
+        using integer_type = std::conditional_t<std::is_signed_v<wchar_t>,
+                                                std::make_signed_t<wchar_t>,
+                                                std::make_unsigned_t<wchar_t>>;
         integer_type tmp_value{};
         auto ret = reader.read_specs(range, specs, tmp_value, loc);
         value = static_cast<wchar_t>(tmp_value);

@@ -20,6 +20,43 @@
 #include <scn/scan.h>
 #include <scn/xchar.h>
 
+#include <array>
+#include <limits>
+#include <string>
+
+namespace {
+template <typename CharT>
+void expect_integer_presentation_matches_signedness()
+{
+    // `limits` gives the range of the integer type with the same signedness
+    // and width as the character type
+    using limits = std::numeric_limits<CharT>;
+    const auto max = static_cast<long long>(limits::max());
+    const auto min = static_cast<long long>(limits::min());
+
+    auto max_result = scn::scan<CharT>(std::to_string(max), "{:d}");
+    ASSERT_THAT(max_result, Succeeded());
+    EXPECT_EQ(max_result->value(), limits::max());
+
+    auto min_result = scn::scan<CharT>(std::to_string(min), "{:d}");
+    ASSERT_THAT(min_result, Succeeded());
+    EXPECT_EQ(min_result->value(), limits::min());
+
+    EXPECT_THAT(scn::scan<CharT>(std::to_string(max + 1), "{:d}"),
+                FailedWith(scn::scan_error::value_positive_overflow));
+    EXPECT_THAT(scn::scan<CharT>(std::to_string(min - 1), "{:d}"), Failed());
+
+    auto minus_one = scn::scan<CharT>("-1", "{:d}");
+    if constexpr (std::is_signed_v<CharT>) {
+        ASSERT_THAT(minus_one, Succeeded());
+        EXPECT_EQ(minus_one->value(), static_cast<CharT>(-1));
+    }
+    else {
+        EXPECT_THAT(minus_one, Failed());
+    }
+}
+}  // namespace
+
 TEST(CharTest, CharFromNarrow)
 {
     auto result = scn::scan<char>("abc", "{}");
@@ -182,6 +219,24 @@ TEST(CharTest, CharRejectsArbitraryBasePresentation)
 {
     EXPECT_THAT(scn::scan<char>("1", scn::runtime_format("{:r16}")),
                 FailedWith(scn::scan_error::invalid_format_string));
+}
+
+TEST(CharTest, CharIntegerPresentationUsesSignednessOfChar)
+{
+    expect_integer_presentation_matches_signedness<char>();
+
+    auto result = scn::scan<char>("200", "{:d}");
+    EXPECT_EQ(static_cast<bool>(result), !std::is_signed_v<char>);
+}
+
+TEST(CharTest, WcharIntegerPresentationUsesSignednessOfWchar)
+{
+    expect_integer_presentation_matches_signedness<wchar_t>();
+
+    // Doesn't fit in a signed 16-bit integer
+    auto result = scn::scan<wchar_t>("40000", "{:d}");
+    ASSERT_THAT(result, Succeeded());
+    EXPECT_EQ(result->value(), static_cast<wchar_t>(40000));
 }
 
 TEST(CharTest, CodePointFromNarrowInvalidUtf8)
