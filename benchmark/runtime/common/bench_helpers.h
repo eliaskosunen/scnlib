@@ -26,8 +26,8 @@ SCN_CLANG_IGNORE("-Wunique-object-duplication")
 
 inline std::mt19937_64& get_rng()
 {
-    static std::random_device rd;
-    static std::seed_seq seed{rd(), rd(), rd(), rd(), rd(), rd(), rd(), rd()};
+    // Magic number, fixed to get reproducible results
+    static constexpr std::mt19937_64::result_type seed = 0x5c4e1b2a;
     static std::mt19937_64 rng(seed);
     return rng;
 }
@@ -86,6 +86,7 @@ struct single_state {
     void push(T i)
     {
         benchmark::DoNotOptimize(i);
+        ++it;
     }
 
     static int64_t get_bytes_processed(benchmark::State& state)
