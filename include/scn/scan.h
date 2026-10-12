@@ -11541,12 +11541,6 @@ public:
 /////////////////////////////////////////////////////////////////
 
 namespace detail {
-template <typename I>
-using apply_cmp_with_nullptr = decltype(SCN_DECLVAL(const I&) == nullptr);
-template <typename I>
-inline constexpr bool is_comparable_with_nullptr =
-    mp_valid_v<apply_cmp_with_nullptr, I>;
-
 template <typename Args>
 class scan_context_base {
 public:
