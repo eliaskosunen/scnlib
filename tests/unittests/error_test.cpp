@@ -36,6 +36,29 @@ TEST(ErrorTest, General)
               scn::scan_error::invalid_scanned_value);
 }
 
+TEST(ErrorTest, ToErrc)
+{
+    EXPECT_EQ((scn::scan_error{scn::scan_error::end_of_input, ""}.to_errc()),
+              std::errc::invalid_argument);
+    EXPECT_EQ(
+        (scn::scan_error{scn::scan_error::invalid_source_state, ""}.to_errc()),
+        std::errc::io_error);
+    EXPECT_EQ((scn::scan_error{scn::scan_error::value_positive_overflow, ""}
+                   .to_errc()),
+              std::errc::result_out_of_range);
+}
+
+TEST(ErrorTest, ToErrcUnknownCode)
+{
+    EXPECT_EQ((scn::scan_error{scn::scan_error::max_error, ""}.to_errc()),
+              std::errc::invalid_argument);
+    // Not an enumerator, but within the value range of the enumeration
+    const auto unknown = static_cast<scn::scan_error::code_t>(
+        static_cast<int>(scn::scan_error::max_error) + 1);
+    EXPECT_EQ((scn::scan_error{unknown, ""}.to_errc()),
+              std::errc::invalid_argument);
+}
+
 TEST(ErrorTest, ExpectedVoid)
 {
     const auto good = scn::scan_expected<void>{};

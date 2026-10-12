@@ -5722,6 +5722,8 @@ public:
     }
 
     /// Convert to a `std::errc`.
+    /// An unknown error code (like `max_error`) is mapped to
+    /// `std::errc::invalid_argument`.
     SCN_NODISCARD constexpr std::errc to_errc() const noexcept
     {
         switch (m_code) {
@@ -5744,13 +5746,7 @@ public:
                 SCN_CLANG_PUSH
                 SCN_CLANG_IGNORE("-Wcovered-switch-default")
             default:
-#if !SCN_GCC || SCN_GCC >= SCN_COMPILER(9, 0, 0)
-                // gcc 7 thinks we'll get here, even when we won't.
-                // gcc 8 has a bug in debug mode:
-                // https://gcc.gnu.org/bugzilla/show_bug.cgi?id=86678
-                SCN_EXPECT(false);
-#endif
-                SCN_UNREACHABLE;
+                return std::errc::invalid_argument;
                 SCN_CLANG_POP
         }
     }
@@ -7631,10 +7627,10 @@ scan_expected<void> parse_custom_arg(T&, Scanner& s, ParseCtx& pctx)
 #else
     auto fmt_it = s.parse(pctx);
 #endif
+    pctx.advance_to(fmt_it);
     if (auto e = pctx.get_error(); SCN_UNLIKELY(!e)) {
         return e;
     }
-    pctx.advance_to(fmt_it);
     return {};
 }
 
@@ -8421,9 +8417,17 @@ public:
         return m_format.data() + m_format.size();
     }
 
-    /// Advance the beginning of the format string to `it`
+    /**
+     * Advance the beginning of the format string to `it`.
+     * If `it` is not in the range `[begin(), end()]`, fails format string
+     * parsing with `on_error`, and the context is left unchanged.
+     */
     constexpr void advance_to(iterator it)
     {
+        if (SCN_UNLIKELY(it < begin() || it > end())) {
+            on_error("Iterator passed to advance_to is out of range");
+            return;
+        }
         m_format.remove_prefix(
             static_cast<std::size_t>(std::distance(begin(), it)));
     }

@@ -64,6 +64,32 @@ TEST(CustomTypeTest, CharWrapperWithDefaultFormatStringFromNonContiguousSource)
     EXPECT_EQ(result->value().value, 'c');
 }
 
+// Scanner whose `parse` returns an iterator outside of the format string
+struct bad_parse_type {};
+
+template <>
+struct scn::scanner<bad_parse_type, char> {
+    template <typename ParseCtx>
+    constexpr auto parse(ParseCtx&) -> typename ParseCtx::iterator
+    {
+        return typename ParseCtx::iterator{};
+    }
+
+    template <typename Context>
+    auto scan(bad_parse_type&, Context& ctx) const
+        -> scn::scan_expected<typename Context::iterator>
+    {
+        return ctx.begin();
+    }
+};
+
+TEST(CustomTypeTest, ParseReturningIteratorOutsideOfFormatString)
+{
+    auto result =
+        scn::scan<bad_parse_type, int>("abc 1", scn::runtime_format("{:} {}"));
+    ASSERT_THAT(result, FailedWith(scn::scan_error::invalid_format_string));
+}
+
 TEST(CustomTypeTest, CharWrapperWithCustomFormatString)
 {
     auto result = scn::scan<char_wrapper>("c", scn::runtime_format("{:c}"));
