@@ -35,14 +35,6 @@
 #elif SCN_MSVC
 #include <IntSafe.h>
 #include <intrin.h>
-#elif SCN_POSIX && !SCN_GCC_COMPAT
-
-SCN_CLANG_PUSH
-SCN_CLANG_IGNORE("-Wreserved-id-macro")
-#define _XOPEN_SOURCE 700
-SCN_CLANG_POP
-
-#include <strings.h>
 #endif
 
 // std::regex and Boost.Regex report errors only by throwing

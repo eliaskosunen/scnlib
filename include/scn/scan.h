@@ -2309,13 +2309,6 @@ struct equality_comparable_with_concept {
     template <typename T, typename U>
     static auto test(int)
         -> std::enable_if_t<equality_comparable<T> && equality_comparable<U> &&
-#if 0
-            common_reference_with<const std::remove_reference_t<T>&,
-                                  const std::remove_reference_t<U>&> &&
-            equality_comparable<
-                common_reference_t<const std::remove_reference_t<T>&,
-                                   const std::remove_reference_t<U>&>> &&
-#endif
                                 weakly_equality_comparable_with<T, U>,
                             std::true_type>;
 };
@@ -2358,11 +2351,6 @@ struct totally_ordered_with_concept {
     static auto test(int)
         -> std::enable_if_t<totally_ordered<T> && totally_ordered<U> &&
                                 equality_comparable_with<T, U> &&
-#if 0
-                                totally_ordered<common_reference_t<
-                                    const std::remove_reference_t<T>&,
-                                    const std::remove_reference_t<U>&>> &&
-#endif
                                 partially_ordered_with<T, U>,
                             std::true_type>;
 };
@@ -2802,13 +2790,6 @@ struct readable_concept {
     template <typename In>
     static auto test(int)
         -> std::enable_if_t<detail::requires_<readable_concept, In>,
-#if 0
-            common_reference_with<iter_reference_t<In>&&, iter_value_t<In>&> &&
-            common_reference_with<iter_reference_t<In>&&,
-                                  iter_rvalue_reference_t<In>&&> &&
-            common_reference_with<iter_rvalue_reference_t<In>&&,
-                                  const iter_value_t<In>&>,
-#endif
                             std::true_type>;
 };
 
@@ -3665,44 +3646,6 @@ public:
     {
         return ranges::end(derived()) - ranges::begin(derived());
     }
-
-#if 0
-    template <typename R = D, typename = std::enable_if_t<forward_range<R>>>
-    constexpr decltype(auto) front()
-    {
-        return *ranges::begin(derived());
-    }
-
-    template <typename R = D,
-              typename = std::enable_if_t<forward_range<const R>>>
-    constexpr decltype(auto) front() const
-    {
-        return *ranges::begin(derived());
-    }
-
-    template <
-        typename R = D,
-        typename = std::enable_if_t<bidirectional_range<R> && common_range<R>>>
-    constexpr decltype(auto) back()
-    {
-        return *ranges::prev(ranges::end(derived()));
-    }
-
-    template <typename R = D,
-              typename = std::enable_if_t<bidirectional_range<const R> &&
-                                          common_range<const R>>>
-    constexpr decltype(auto) back() const
-    {
-        return *ranges::prev(ranges::end(derived()));
-    }
-
-    template <typename R = D,
-              typename = std::enable_if_t<random_access_range<R>>>
-    constexpr decltype(auto) operator[](iter_difference_t<iterator_t<R>> n)
-    {
-        return ranges::begin(derived())[n];
-    }
-#endif
 
     template <typename R = D,
               typename = std::enable_if_t<random_access_range<const R>>>
@@ -11450,11 +11393,6 @@ constexpr auto check_format_string(const Str&)
     -> std::enable_if_t<!is_compile_string_v<Str>>
 {
     // TODO: SCN_ENFORCE_COMPILE_STRING?
-#if 0  // SCN_ENFORE_COMPILE_STRING
-    static_assert(dependent_false<Str>::value,
-              "SCN_ENFORCE_COMPILE_STRING requires all format "
-              "strings to use SCN_STRING.");
-#endif
 }
 
 template <typename Source, typename... Args, typename Str>
@@ -12034,7 +11972,6 @@ internal_skip_classic_whitespace(Range r, bool allow_exhaustion);
 #define SCN_DECLARE_EXTERN_SCANNER_SCAN_FOR_CTX(Context)                  \
     SCN_DECLARE_EXTERN_SCANNER_SCAN_FOR_TYPE(char, Context)               \
     SCN_DECLARE_EXTERN_SCANNER_SCAN_FOR_TYPE(wchar_t, Context)            \
-    SCN_DECLARE_EXTERN_SCANNER_SCAN_FOR_TYPE(signed char, Context)        \
     SCN_DECLARE_EXTERN_SCANNER_SCAN_FOR_TYPE(signed char, Context)        \
     SCN_DECLARE_EXTERN_SCANNER_SCAN_FOR_TYPE(short, Context)              \
     SCN_DECLARE_EXTERN_SCANNER_SCAN_FOR_TYPE(int, Context)                \
