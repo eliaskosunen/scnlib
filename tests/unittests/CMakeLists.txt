@@ -22,6 +22,7 @@ function(make_scn_test target)
     target_link_libraries(${target} PRIVATE
             ${SCN_GTEST_LIBRARIES}
             scn_sanitizers
+            scn_coverage
             scn_internal)
     make_scn_test_flags(${target})
 endfunction()
