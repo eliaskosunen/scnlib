@@ -102,20 +102,20 @@ inline int sscanf_integral_n(const char*& ptr, unsigned& i)
 inline bool strtol_integral(const char* ptr, int& i)
 {
     char* endptr{};
-    auto tmp = std::strtol(ptr, &endptr, 0);
+    auto tmp = std::strtol(ptr, &endptr, 10);
     i = static_cast<int>(tmp);
     return endptr != ptr;
 }
 inline bool strtol_integral(const char* ptr, long long& i)
 {
     char* endptr{};
-    i = std::strtoll(ptr, &endptr, 0);
+    i = std::strtoll(ptr, &endptr, 10);
     return endptr != ptr;
 }
 inline bool strtol_integral(const char* ptr, unsigned& i)
 {
     char* endptr{};
-    auto tmp = std::strtoul(ptr, &endptr, 0);
+    auto tmp = std::strtoul(ptr, &endptr, 10);
     i = static_cast<unsigned>(tmp);
     return endptr != ptr;
 }
@@ -123,7 +123,7 @@ inline bool strtol_integral(const char* ptr, unsigned& i)
 inline int strtol_integral_n(const char*& ptr, int& i)
 {
     char* endptr{};
-    auto tmp = std::strtol(ptr, &endptr, 0);
+    auto tmp = std::strtol(ptr, &endptr, 10);
     if (*ptr == '\0') {
         return EOF;
     }
@@ -137,7 +137,7 @@ inline int strtol_integral_n(const char*& ptr, int& i)
 inline int strtol_integral_n(const char*& ptr, long long& i)
 {
     char* endptr{};
-    i = std::strtoll(ptr, &endptr, 0);
+    i = std::strtoll(ptr, &endptr, 10);
     if (*ptr == '\0') {
         return EOF;
     }
@@ -150,7 +150,7 @@ inline int strtol_integral_n(const char*& ptr, long long& i)
 inline int strtol_integral_n(const char*& ptr, unsigned& i)
 {
     char* endptr{};
-    auto tmp = std::strtoul(ptr, &endptr, 0);
+    auto tmp = std::strtoul(ptr, &endptr, 10);
     if (*ptr == '\0') {
         return EOF;
     }

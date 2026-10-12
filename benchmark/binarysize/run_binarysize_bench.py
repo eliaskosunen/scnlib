@@ -42,12 +42,12 @@ def make_plot(results, title):
     plt.suptitle(f'Executable size benchmarks: {title}')
 
     a = plt.subplot(211)
-    a.barh(names, list(map(lambda x: x['size'], results)))
+    a.barh(names, list(map(lambda x: x['sizeKiB'], results)))
     a.set_title('Executable size')
     plt.xlabel('Size in KiB')
 
     b = plt.subplot(212)
-    b.barh(names, list(map(lambda x: x['stripped'], results)))
+    b.barh(names, list(map(lambda x: x['strippedKiB'], results)))
     b.set_title('Stripped size')
     plt.xlabel('Size in KiB')
 
