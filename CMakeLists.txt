@@ -102,6 +102,12 @@ target_link_libraries(scn PRIVATE
         ${SCN_REGEX_BACKEND_TARGET}
 )
 set_library_flags(scn)
+# Linking the scn_sanitizers and scn_coverage targets would break exporting scn
+set(SCN_LIBRARY_INSTRUMENTATION_FLAGS ${SCN_LIBRARY_SANITIZER_FLAGS} ${SCN_COVERAGE_FLAGS})
+if (SCN_LIBRARY_INSTRUMENTATION_FLAGS)
+    target_compile_options(scn PRIVATE ${SCN_LIBRARY_INSTRUMENTATION_FLAGS})
+    target_link_options(scn PUBLIC $<BUILD_INTERFACE:${SCN_LIBRARY_INSTRUMENTATION_FLAGS}>)
+endif ()
 
 include(GenerateExportHeader)
 generate_export_header(

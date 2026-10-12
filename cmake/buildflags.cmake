@@ -229,10 +229,15 @@ if (NOT SCN_USE_RTTI)
     endif ()
 endif ()
 
+# Not part of the public flags, so that it doesn't leak into consumers.
+# The tests link scn_coverage, to also instrument the headers.
+set(SCN_COVERAGE_FLAGS)
 if (SCN_COVERAGE AND CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
-    list(APPEND SCN_LIBRARY_PUBLIC_FLAGS -O0 -g --coverage)
-    list(APPEND SCN_LIBRARY_LINK_FLAGS --coverage)
+    set(SCN_COVERAGE_FLAGS -O0 -g --coverage)
 endif ()
+add_library(scn_coverage INTERFACE)
+target_compile_options(scn_coverage INTERFACE ${SCN_COVERAGE_FLAGS})
+target_link_options(scn_coverage INTERFACE ${SCN_COVERAGE_FLAGS})
 
 function(set_library_flags target)
     target_compile_options(${target}
