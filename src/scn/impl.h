@@ -2043,7 +2043,6 @@ void transcode_valid_to_string(std::basic_string_view<SourceCharT> src,
 {
     static_assert(sizeof(SourceCharT) != sizeof(DestCharT));
 
-    SCN_EXPECT(validate_unicode(src));
     if constexpr (sizeof(SourceCharT) == 1) {
         if constexpr (sizeof(DestCharT) == 2) {
             // TODO: Optimize, remove utf32-step, go direct utf8->utf16
@@ -2503,7 +2502,8 @@ public:
     constexpr codepoint_string(Iterator b, Iterator e)
         : m_size(static_cast<unsigned char>(std::distance(b, e)))
     {
-        SCN_EXPECT(m_size <= max_size);
+        SCN_EXPECT(std::distance(b, e) <=
+                   static_cast<std::ptrdiff_t>(max_size));
         std::copy(b, e, m_data);
     }
 
@@ -7378,7 +7378,6 @@ struct regex_matches_reader
                           reader_error_handler& eh)
     {
         detail::check_regex_type_specs(specs, eh);
-        (void)specs.get_charset_string<SourceCharT>();
     }
 
     template <typename Range, typename DestCharT>
@@ -8638,7 +8637,15 @@ struct default_arg_reader {
             basic_scan_parse_context<char_type> parse_ctx{
                 source_tag<range_type>, {}};
             auto ctx = make_custom_ctx();
+            const auto start_position = ctx.begin().position();
             SCN_TRY_DISCARD(h.scan(parse_ctx, ctx));
+            if (SCN_UNLIKELY(!ctx.begin().is_position_within_source() ||
+                             ctx.begin().position() < start_position)) {
+                return detail::unexpected_scan_error(
+                    scan_error::invalid_source_state,
+                    "Custom scanner returned an iterator outside of the "
+                    "source range");
+            }
 
             if constexpr (is_contiguous_context<Context>) {
                 return range.begin() + ctx.begin().position();
@@ -8978,7 +8985,15 @@ struct custom_reader {
         typename basic_scan_arg<detail::default_context<char_type>>::handle h)
         const
     {
+        const auto start_position = ctx.begin().position();
         SCN_TRY_DISCARD(h.scan(parse_ctx, ctx));
+        if (SCN_UNLIKELY(!ctx.begin().is_position_within_source() ||
+                         ctx.begin().position() < start_position)) {
+            return detail::unexpected_scan_error(
+                scan_error::invalid_source_state,
+                "Custom scanner returned an iterator outside of the source "
+                "range");
+        }
         return {ctx.begin()};
     }
 

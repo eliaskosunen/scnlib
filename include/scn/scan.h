@@ -6555,6 +6555,21 @@ public:
         return m_end == nullptr;
     }
 
+    SCN_NODISCARD bool is_position_within_source() const
+    {
+        if (m_position < 0) {
+            return false;
+        }
+        if (!stores_parent()) {
+            return m_position <= m_end - m_begin;
+        }
+        if (!m_parent) {
+            return m_position == 0;
+        }
+        (void)read_at_position();
+        return m_position <= parent()->chars_available();
+    }
+
     basic_scan_buffer<CharT>* parent()
     {
         SCN_EXPECT(stores_parent());

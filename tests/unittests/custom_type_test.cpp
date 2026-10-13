@@ -17,10 +17,14 @@
 
 #include "test_common.h"
 
+#include <scn/istream.h>
 #include <scn/scan.h>
 
+#include <array>
+#include <cstdio>
 #include <deque>
 #include <locale>
+#include <sstream>
 
 // Simple wrapper over a `char`, doesn't allow a custom format string
 struct char_wrapper {
@@ -494,3 +498,158 @@ TEST(CustomTypeTest, NonMovableType)
     EXPECT_EQ(result->value().val, 123);
 }
 #endif
+
+// Scanner that advances the iterator by `Advance` characters
+// without checking the source
+template <int Advance>
+struct advancing_type {
+    int unused{};
+};
+
+template <int Advance>
+struct scn::scanner<advancing_type<Advance>, char> {
+    template <typename ParseCtx>
+    constexpr auto parse(ParseCtx& pctx) -> typename ParseCtx::iterator
+    {
+        return pctx.begin();
+    }
+
+    template <typename Context>
+    auto scan(advancing_type<Advance>&, Context& ctx) const
+        -> scn::scan_expected<typename Context::iterator>
+    {
+        auto it = ctx.begin();
+        for (int i = 0; i < Advance; ++i) {
+            ++it;
+        }
+        return it;
+    }
+};
+
+using overrunning_type = advancing_type<100>;
+using exact_type = advancing_type<3>;
+
+TEST(CustomTypeTest, OverrunningIteratorContiguous)
+{
+    constexpr std::array<const char*, 2> formats{"{}", "{:}"};
+    for (auto fmt : formats) {
+        auto r = scn::scan<overrunning_type>("abc", scn::runtime_format(fmt));
+        ASSERT_THAT(r, FailedWith(scn::scan_error::invalid_source_state))
+            << fmt;
+    }
+    auto r = scn::scan<overrunning_type, int>("abc 1", "{} {}");
+    ASSERT_THAT(r, FailedWith(scn::scan_error::invalid_source_state));
+}
+
+TEST(CustomTypeTest, OverrunningIteratorNonContiguous)
+{
+    constexpr std::array<const char*, 2> formats{"{}", "{:}"};
+    for (auto fmt : formats) {
+        auto src = std::deque<char>{'a', 'b', 'c'};
+        auto r = scn::scan<overrunning_type>(src, scn::runtime_format(fmt));
+        ASSERT_THAT(r, FailedWith(scn::scan_error::invalid_source_state))
+            << fmt;
+    }
+    auto src = std::deque<char>{'a', 'b', 'c', ' ', '1'};
+    auto r = scn::scan<overrunning_type, int>(src, "{} {}");
+    ASSERT_THAT(r, FailedWith(scn::scan_error::invalid_source_state));
+}
+
+#if !SCN_DISABLE_IOSTREAM
+TEST(CustomTypeTest, OverrunningIteratorIstream)
+{
+    constexpr std::array<const char*, 2> formats{"{}", "{:}"};
+    for (auto fmt : formats) {
+        std::istringstream ss{"abc"};
+        auto r = scn::scan<overrunning_type>(ss, scn::runtime_format(fmt));
+        ASSERT_THAT(r, FailedWith(scn::scan_error::invalid_source_state))
+            << fmt;
+    }
+    std::istringstream ss{"abc 1"};
+    auto r = scn::scan<overrunning_type, int>(ss, "{} {}");
+    ASSERT_THAT(r, FailedWith(scn::scan_error::invalid_source_state));
+}
+#endif
+
+TEST(CustomTypeTest, OverrunningIteratorScanFile)
+{
+    constexpr std::array<const char*, 2> formats{"{}", "{:}"};
+    for (auto fmt : formats) {
+        auto f = std::tmpfile();
+        ASSERT_NE(f, nullptr);
+        std::fputs("abc def", f);
+        std::rewind(f);
+        {
+            scn::scan_file file{f};
+            auto r =
+                scn::scan<overrunning_type>(file, scn::runtime_format(fmt));
+            ASSERT_THAT(r, FailedWith(scn::scan_error::invalid_source_state))
+                << fmt;
+        }
+        std::fclose(f);
+    }
+}
+
+TEST(CustomTypeTest, IteratorAtEndOfSourceIsAcceptedContiguous)
+{
+    constexpr std::array<const char*, 2> formats{"{}", "{:}"};
+    for (auto fmt : formats) {
+        auto r = scn::scan<exact_type>("abc", scn::runtime_format(fmt));
+        ASSERT_THAT(r, Succeeded()) << fmt;
+        EXPECT_EQ(r->begin(), r->end());
+    }
+}
+
+TEST(CustomTypeTest, IteratorAtEndOfSourceIsAcceptedNonContiguous)
+{
+    constexpr std::array<const char*, 2> formats{"{}", "{:}"};
+    for (auto fmt : formats) {
+        auto src = std::deque<char>{'a', 'b', 'c'};
+        auto r = scn::scan<exact_type>(src, scn::runtime_format(fmt));
+        ASSERT_THAT(r, Succeeded()) << fmt;
+        EXPECT_EQ(r->begin(), r->end());
+    }
+}
+
+#if !SCN_DISABLE_IOSTREAM
+TEST(CustomTypeTest, IteratorAtEndOfSourceIsAcceptedIstream)
+{
+    std::istringstream ss{"abc"};
+    auto r = scn::scan<exact_type>(ss, "{}");
+    ASSERT_THAT(r, Succeeded());
+}
+#endif
+
+// Scanner that steps the iterator back before the start of its field
+struct stepping_back_type {};
+
+template <>
+struct scn::scanner<stepping_back_type, char> {
+    template <typename ParseCtx>
+    constexpr auto parse(ParseCtx& pctx) -> typename ParseCtx::iterator
+    {
+        return pctx.begin();
+    }
+
+    template <typename Context>
+    auto scan(stepping_back_type&, Context& ctx) const
+        -> scn::scan_expected<typename Context::iterator>
+    {
+        auto it = ctx.begin();
+        --it;
+        --it;
+        return it;
+    }
+};
+
+TEST(CustomTypeTest, IteratorBeforeStartOfFieldNonContiguous)
+{
+    constexpr std::array<const char*, 2> formats{"{}{}{}", "{}{:}{}"};
+    for (auto fmt : formats) {
+        auto src = std::deque<char>{'1', '2', '3', ' ', '4', '5', '6'};
+        auto r = scn::scan<int, stepping_back_type, int>(
+            src, scn::runtime_format(fmt));
+        ASSERT_THAT(r, FailedWith(scn::scan_error::invalid_source_state))
+            << fmt;
+    }
+}
