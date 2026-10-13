@@ -1015,6 +1015,31 @@ TEST(ChronoScanTest, MonthDayAndYearDayTogether)
                  "mday (%d/%e) and yday (%j) can't be used together");
 }
 
+TEST(ChronoScanTest, IncompatibleFieldCombinations)
+{
+    const auto check = [](std::string_view input, const char* format,
+                          const char* message) {
+        auto result = scn::scan<scn::datetime_components>(
+            input, scn::runtime_format(format));
+        ASSERT_THAT(result, Failed());
+        EXPECT_EQ(result.error().code(),
+                  scn::scan_error::invalid_format_string);
+        EXPECT_STREQ(result.error().msg(), message);
+    };
+    check("13 PM", "{:%H %p}",
+          "AM/PM (%p) can't be used with a 24-hour clock (%H)");
+    check("PM", "{:%p}", "AM/PM (%p) requires a 12-hour clock hour (%I)");
+    check("13 01", "{:%H %I}",
+          "24-hour (%H) and 12-hour (%I) clocks can't both be in use "
+          "simultaneously");
+    check("2024 20", "{:%Y %C}",
+          "full-year (%Y) can't be used together with century (%C) or "
+          "short-year (%y)");
+    check("2024 24", "{:%Y %y}",
+          "full-year (%Y) can't be used together with century (%C) or "
+          "short-year (%y)");
+}
+
 TEST(ChronoScanTest, CalendarTypeWithoutRequiredField)
 {
     auto month = scn::scan<scn::month>("15", scn::runtime_format("{:%d}"));
