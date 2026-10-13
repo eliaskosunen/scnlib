@@ -25,63 +25,6 @@
 
 using ::testing::Test;
 
-#if 0
-namespace {
-    scn::scan_result<std::string_view> mock_vscan(std::string_view input,
-                                                  scan_args)
-    {
-        return scn::scan_result<std::string_view>{input};
-    }
-
-    scn::scan_result<scn::istreambuf_subrange> mock_vscan(
-        scn::istreambuf_subrange input,
-        scan_args)
-    {
-        return scn::scan_result<scn::istreambuf_subrange>{input};
-    }
-}  // namespace
-#endif
-
-// TODO
-#if 0
-TEST(ResultTestMocked, StringView)
-{
-    auto source = std::string_view{"FooBar"};
-    auto input = scn::scan_map_input_range(source);
-    auto args = scn::make_scan_args<std::string_view, int, double>();
-    auto leftovers = mock_vscan(input, args);
-    auto result = scn::make_scan_result(source, SCN_MOVE(leftovers),
-                                              SCN_MOVE(args));
-
-    static_assert(std::is_same_v<
-                  decltype(result),
-                  scan_result_tuple_helper<std::string_view, int, double>>);
-
-    {
-        auto [r, i, d] = std::move(result);
-        EXPECT_EQ(r.range(), "FooBar");
-        EXPECT_EQ(i, 0);
-        EXPECT_DOUBLE_EQ(d, 0.0);
-    }
-}
-
-TEST(ResultTestMocked, IstreamRange)
-{
-    auto ss = std::istringstream{"FooBar"};
-    auto source = scn::istreambuf_view{ss};
-    auto input = scn::scan_map_input_range(source);
-    auto args = scn::make_scan_args<std::string_view, int, double>();
-    auto leftovers = mock_vscan(input, args);
-    auto result = scn::make_scan_result(source, SCN_MOVE(leftovers),
-                                              SCN_MOVE(args));
-
-    static_assert(
-        std::is_same_v<
-            decltype(result),
-            scan_result_tuple_helper<scn::istreambuf_subrange, int, double>>);
-}
-#endif
-
 template <typename It, typename S = It>
 using scan_result_for =
     scn::scan_expected<scn::scan_result<scn::ranges::subrange<It, S>>>;
