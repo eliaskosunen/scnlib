@@ -412,6 +412,64 @@ TEST(FormatStringTest, SingleFieldWithSpecsSameAsIndexedField)
     }
 }
 
+namespace {
+// Without fill, width and precision, the reader skips the fill and width
+// handling. A precision larger than the input goes through it, but must
+// give the same results.
+template <typename T>
+void expect_same_as_with_large_precision(
+    std::string_view source,
+    std::initializer_list<std::string_view> types)
+{
+    for (auto type : types) {
+        const auto format = "{:" + std::string{type} + "}";
+        const auto precision_format = "{:.1000" + std::string{type} + "}";
+        auto plain = scn::scan<T>(source, scn::runtime_format(format));
+        auto with_precision =
+            scn::scan<T>(source, scn::runtime_format(precision_format));
+        ASSERT_EQ(plain.has_value(), with_precision.has_value())
+            << format << " " << source;
+        if (!plain) {
+            // Not the message: with a precision, the reader gets a
+            // non-contiguous range, and some readers' messages differ there
+            EXPECT_EQ(plain.error().code(), with_precision.error().code())
+                << format << " " << source;
+            continue;
+        }
+        EXPECT_EQ(plain->value(), with_precision->value())
+            << format << " " << source;
+        EXPECT_EQ(plain->begin(), with_precision->begin())
+            << format << " " << source;
+    }
+}
+}  // namespace
+
+TEST(FormatStringTest, SpecsWithoutWidthSameAsWithLargePrecision)
+{
+    constexpr std::array<const char*, 8> sources{
+        "  -123abc", "0x1F rest", "101", "", "   ", "+7", "z", "\xc3\xa4"};
+    for (auto source : sources) {
+        expect_same_as_with_large_precision<int>(
+            source, {"d", "x", "b", "o", "i", "u", "r7", "L", "Ld"});
+        expect_same_as_with_large_precision<unsigned>(source,
+                                                      {"d", "x", "i", "u"});
+        expect_same_as_with_large_precision<double>(source,
+                                                    {"f", "e", "g", "a", "L"});
+        expect_same_as_with_large_precision<bool>(source, {"s", "i", "L"});
+    }
+    constexpr std::array<const char*, 4> double_sources{"3.25e2 x", "0x1.8p1",
+                                                        "inf", " -0.5"};
+    for (auto source : double_sources) {
+        expect_same_as_with_large_precision<double>(source,
+                                                    {"f", "e", "g", "a", "L"});
+    }
+    constexpr std::array<const char*, 4> bool_sources{"true", "1", "false x",
+                                                      "  0"};
+    for (auto source : bool_sources) {
+        expect_same_as_with_large_precision<bool>(source, {"s", "i", "L"});
+    }
+}
+
 TEST(FormatStringTest, SingleFieldWithSpecs)
 {
     auto contiguous = scn::scan<int>("  ff rest", scn::runtime_format("{:x}"));

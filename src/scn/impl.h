@@ -8840,6 +8840,23 @@ struct arg_reader {
     auto impl(Reader& rd, Range rng, T& value)
         -> scan_expected<ranges::iterator_t<Range>>
     {
+        if (specs.align == detail::align_type::none && specs.width == 0 &&
+            specs.precision == 0) {
+            // What the general path below reduces to without fill, width,
+            // and precision. Not calling skip_classic_whitespace: another
+            // caller made GCC stop inlining it into the "{}" path.
+            auto it = rng.begin();
+            if (rd.skip_ws_before_read()) {
+                it = read_while_classic_space(rng);
+                if (auto e = eof_check(ranges::subrange{it, rng.end()});
+                    SCN_UNLIKELY(!e)) {
+                    return unexpected(make_eof_scan_error(e));
+                }
+            }
+            return rd.read_specs(ranges::subrange{it, rng.end()}, specs, value,
+                                 loc);
+        }
+
         const bool need_skipped_width =
             specs.width != 0 || specs.precision != 0;
 
