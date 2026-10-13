@@ -22,8 +22,10 @@
 #include <scn/scan.h>
 #include <scn/xchar.h>
 
+#include <algorithm>
 #include <deque>
 #include <fstream>
+#include <optional>
 #include <sstream>
 
 namespace scn::fuzz {
@@ -70,7 +72,8 @@ inline input_views make_input_views(const uint8_t* data, size_t size)
     const auto wreinterpret_size =
         size < sizeof(wchar_t) ? 1 : (size / sizeof(wchar_t));
     std::wstring wreinterpreted(wreinterpret_size, L'\0');
-    std::memcpy(wreinterpreted.data(), data, size);
+    std::memcpy(wreinterpreted.data(), data,
+                std::min(size, wreinterpret_size * sizeof(wchar_t)));
 
     std::wstring wtranscoded{};
     scn::impl::transcode_to_string(std::string_view{narrow}, wtranscoded);
@@ -203,12 +206,26 @@ template <typename CharT>
 void do_basic_run(const std::basic_string<CharT>& data,
                   const format_strings_type<CharT>& format_strings)
 {
-    static constexpr const char* path = "file_fuzz_tmp_file";
+    struct tmpfile_guard {
+        tmpfile_guard() : file(std::tmpfile())
+        {
+            SCN_ENSURE(file);
+        }
 
+        ~tmpfile_guard()
+        {
+            std::fclose(file);
+        }
+
+        std::FILE* file;
+    };
+
+    // Files are only scanned as `char`
+    std::optional<tmpfile_guard> guard{};
     if constexpr (std::is_same_v<CharT, char>) {
-        auto out = std::ofstream{
-            path, std::ios::out | std::ios::binary | std::ios::trunc};
-        out.write(data.data(), static_cast<std::streamsize>(data.size()));
+        guard.emplace();
+        std::fwrite(data.data(), 1, data.size(), guard->file);
+        std::fflush(guard->file);
     }
 
     std::deque<CharT> deque{};
@@ -230,23 +247,8 @@ void do_basic_run(const std::basic_string<CharT>& data,
         }
 
         if constexpr (std::is_same_v<CharT, char>) {
-            struct cfile_guard {
-                cfile_guard()
-                {
-                    file = std::fopen(path, "rb");
-                    SCN_ENSURE(file);
-                }
-
-                ~cfile_guard()
-                {
-                    std::fclose(file);
-                }
-
-                std::FILE* file;
-            };
-
-            const cfile_guard guard{};
-            scn::scan_file file{guard.file};
+            std::rewind(guard->file);
+            scn::scan_file file{guard->file};
             do_basic_run_for_source<char>(file, format_string);
         }
     }

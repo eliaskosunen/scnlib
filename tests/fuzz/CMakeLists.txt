@@ -28,6 +28,7 @@ add_fuzzer(string)
 add_fuzzer(format)
 add_fuzzer(chrono)
 add_fuzzer(string_impl)
+add_fuzzer(char)
 add_fuzzer(file)
 
 add_custom_target(scn_fuzz_prepare ALL

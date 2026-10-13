@@ -61,7 +61,7 @@ void run(const uint8_t* data, size_t size)
 
             uint16_t exponent() const
             {
-                return exponent_and_sign & 0x7ffu;
+                return exponent_and_sign & 0x7fffu;
             }
             bool sign() const
             {
@@ -79,16 +79,12 @@ void run(const uint8_t* data, size_t size)
         x87_long_double repr{};
         std::memcpy(&repr, data, sizeof(x87_long_double));
 
-        if (repr.exponent() == 0x7fffu && !repr.integer_bit()) {
-            // Pseudo-NaN
+        if (repr.exponent() != 0u && !repr.integer_bit()) {
+            // Pseudo-infinity, pseudo-NaN, or unnormal
             return;
         }
         if (repr.exponent() == 0u && repr.integer_bit()) {
             // Pseudo-denormal
-            return;
-        }
-        if (!repr.integer_bit()) {
-            // Unnormal
             return;
         }
     }

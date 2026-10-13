@@ -26,6 +26,7 @@ copy_target() {
 
   zip "$OUT/scn_fuzz_${target}_seed_corpus.zip" "$fuzz_src_dir"/seed-corpora/"$data_to_use"/*
 }
+copy_target char char
 copy_target chrono chrono
 copy_target float float
 copy_target format format
