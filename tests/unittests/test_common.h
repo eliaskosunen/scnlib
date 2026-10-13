@@ -21,6 +21,7 @@
 
 #include <scn/scan.h>
 
+#include <cstdlib>
 #include <ostream>
 #include <string>
 #include <type_traits>
@@ -60,6 +61,25 @@ void print_string(std::basic_string_view<CharT> str, std::ostream* os)
     else {
         *os << ::testing::PrintToString(std::basic_string<CharT>{str});
     }
+}
+
+inline bool is_verbose_test_output()
+{
+    std::string value;
+#if defined(_MSC_VER)
+    char* buffer = nullptr;
+    std::size_t size = 0;
+    if (_dupenv_s(&buffer, &size, "SCN_TEST_VERBOSE") == 0 &&
+        buffer != nullptr) {
+        value = buffer;
+    }
+    std::free(buffer);
+#else
+    if (const char* env = std::getenv("SCN_TEST_VERBOSE")) {
+        value = env;
+    }
+#endif
+    return !value.empty() && value != "0";
 }
 }  // namespace scn_test_detail
 
