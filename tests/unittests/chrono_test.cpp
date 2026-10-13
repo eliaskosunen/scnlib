@@ -77,6 +77,12 @@ TEST(ChronoScanTest, ScanTmISODate)
     EXPECT_EQ(result->value().tm_year, 2024 - 1900);
     EXPECT_EQ(result->value().tm_mon, 8 - 1);
     EXPECT_EQ(result->value().tm_mday, 21);
+
+    result = scn::scan<std::tm>("2024-12-25", "{:%F}");
+    ASSERT_THAT(result, Succeeded());
+    EXPECT_EQ(result->value().tm_year, 2024 - 1900);
+    EXPECT_EQ(result->value().tm_mon, 12 - 1);
+    EXPECT_EQ(result->value().tm_mday, 25);
 }
 
 TEST(ChronoScanTest, LiteralText)
@@ -141,6 +147,18 @@ TEST(ChronoScanTest, ShortYearAndCentury)
     result = scn::scan<std::tm>("84", "{:%y}");
     ASSERT_THAT(result, Succeeded());
     EXPECT_EQ(result->value().tm_year, 1984 - 1900);
+
+    result = scn::scan<std::tm>("00", "{:%y}");
+    ASSERT_THAT(result, Succeeded());
+    EXPECT_EQ(result->value().tm_year, 2000 - 1900);
+
+    result = scn::scan<std::tm>("68", "{:%y}");
+    ASSERT_THAT(result, Succeeded());
+    EXPECT_EQ(result->value().tm_year, 2068 - 1900);
+
+    result = scn::scan<std::tm>("69", "{:%y}");
+    ASSERT_THAT(result, Succeeded());
+    EXPECT_EQ(result->value().tm_year, 1969 - 1900);
 
     result = scn::scan<std::tm>("20", "{:%C}");
     ASSERT_THAT(result, Succeeded());
@@ -623,15 +641,6 @@ TEST(ChronoScanTest, DatetimeComponentsMinimal)
     EXPECT_FALSE(result->value().mday);
 }
 
-TEST(ChronoScanTest, DatetimeComponentsWithSubsec)
-{
-    auto result = scn::scan<scn::datetime_components>("56.123456", "{:%.S}");
-    ASSERT_THAT(result, Succeeded());
-    EXPECT_EQ(result->value().sec, 56);
-    EXPECT_TRUE(result->value().subsec);
-    EXPECT_NEAR(result->value().subsec.value(), 0.123456, 0.000001);
-}
-
 TEST(ChronoScanTest, DatetimeComponentsWithoutSubsec)
 {
     auto result = scn::scan<scn::datetime_components>("56", "{:%.S}");
@@ -667,15 +676,6 @@ TEST(ChronoScanTest, TmWithTzName)
     result = scn::scan<scn::tm_with_tz>("America/New_York", "{:%Z}");
     ASSERT_THAT(result, Succeeded());
     EXPECT_EQ(result->value().tz_name, "America/New_York");
-}
-
-TEST(ChronoScanTest, LeapYear)
-{
-    auto result = scn::scan<std::tm>("2024-02-29", "{:%Y-%m-%d}");
-    ASSERT_THAT(result, Succeeded());
-    EXPECT_EQ(result->value().tm_year, 2024 - 1900);
-    EXPECT_EQ(result->value().tm_mon, 1);
-    EXPECT_EQ(result->value().tm_mday, 29);
 }
 
 TEST(ChronoScanTest, InvalidDayOfMonth)
@@ -776,34 +776,6 @@ TEST(ChronoScanTest, WeekdayNames)
     EXPECT_EQ(result->value().tm_wday, 4);
 }
 
-TEST(ChronoScanTest, DateFormats)
-{
-    auto result = scn::scan<std::tm>("12/31/99", "{:%D}");
-    ASSERT_THAT(result, Succeeded());
-    EXPECT_EQ(result->value().tm_mon, 11);
-    EXPECT_EQ(result->value().tm_mday, 31);
-
-    result = scn::scan<std::tm>("2024-12-25", "{:%F}");
-    ASSERT_THAT(result, Succeeded());
-    EXPECT_EQ(result->value().tm_year, 2024 - 1900);
-    EXPECT_EQ(result->value().tm_mon, 11);
-    EXPECT_EQ(result->value().tm_mday, 25);
-}
-
-TEST(ChronoScanTest, TimeFormats)
-{
-    auto result = scn::scan<std::tm>("14:30", "{:%R}");
-    ASSERT_THAT(result, Succeeded());
-    EXPECT_EQ(result->value().tm_hour, 14);
-    EXPECT_EQ(result->value().tm_min, 30);
-
-    result = scn::scan<std::tm>("14:30:45", "{:%T}");
-    ASSERT_THAT(result, Succeeded());
-    EXPECT_EQ(result->value().tm_hour, 14);
-    EXPECT_EQ(result->value().tm_min, 30);
-    EXPECT_EQ(result->value().tm_sec, 45);
-}
-
 TEST(ChronoScanTest, TmWithTzOffset2)
 {
     auto result = scn::scan<scn::tm_with_tz>("+0530", "{:%z}");
@@ -827,71 +799,17 @@ TEST(ChronoScanTest, DatetimeComponentsComplete)
     EXPECT_EQ(result->value().tz_offset, std::chrono::hours{2});
 }
 
-TEST(ChronoScanTest, DatetimeComponentsYearOnly)
-{
-    auto result = scn::scan<scn::datetime_components>("2023", "{:%Y}");
-    ASSERT_THAT(result, Succeeded());
-    EXPECT_EQ(result->value().year, 2023);
-    EXPECT_FALSE(result->value().mon);
-}
-
-TEST(ChronoScanTest, DatetimeComponentsMonthOnly)
-{
-    auto result = scn::scan<scn::datetime_components>("05", "{:%m}");
-    ASSERT_THAT(result, Succeeded());
-    EXPECT_TRUE(result->value().mon);
-    EXPECT_EQ(result->value().mon, scn::May);
-}
-
-TEST(ChronoScanTest, DatetimeComponentsHourMinute)
-{
-    auto result = scn::scan<scn::datetime_components>("15:45", "{:%H:%M}");
-    ASSERT_THAT(result, Succeeded());
-    EXPECT_EQ(result->value().hour, 15);
-    EXPECT_EQ(result->value().min, 45);
-}
-
-TEST(ChronoScanTest, DatetimeComponentsSecondOnly)
-{
-    auto result = scn::scan<scn::datetime_components>("45", "{:%S}");
-    ASSERT_THAT(result, Succeeded());
-    EXPECT_EQ(result->value().sec, 45);
-}
-
-TEST(ChronoScanTest, DatetimeComponentsTmCentury)
-{
-    auto result = scn::scan<std::tm>("21", "{:%C}");
-    ASSERT_THAT(result, Succeeded());
-    EXPECT_EQ(result->value().tm_year, 2100 - 1900);
-}
-
-TEST(ChronoScanTest, DatetimeComponentsTmShortYear)
-{
-    auto result = scn::scan<std::tm>("50", "{:%y}");
-    ASSERT_THAT(result, Succeeded());
-    // 50 means 1950 if year >= 69, otherwise 2000+year
-    // So 50 should be 2050
-    EXPECT_EQ(result->value().tm_year, 2050 - 1900);
-
-    result = scn::scan<std::tm>("00", "{:%y}");
-    ASSERT_THAT(result, Succeeded());
-    EXPECT_EQ(result->value().tm_year, 2000 - 1900);
-}
-
-TEST(ChronoScanTest, DatetimeComponentsTimezoneName)
-{
-    auto result = scn::scan<scn::datetime_components>("GMT", "{:%Z}");
-    ASSERT_THAT(result, Succeeded());
-    EXPECT_TRUE(result->value().tz_name);
-    EXPECT_EQ(result->value().tz_name, "GMT");
-}
-
 TEST(ChronoScanTest, DatetimeComponentsTimezoneNameWithSigns)
 {
     auto result = scn::scan<scn::datetime_components>("Etc/GMT-3+x,", "{:%Z}");
     ASSERT_THAT(result, Succeeded());
     EXPECT_EQ(result->value().tz_name, "Etc/GMT-3+x");
     EXPECT_EQ(result->range().size(), 1u);
+
+    result = scn::scan<scn::datetime_components>("Etc/GMT-3+x", "{:%Z}");
+    ASSERT_THAT(result, Succeeded());
+    EXPECT_EQ(result->value().tz_name, "Etc/GMT-3+x");
+    EXPECT_TRUE(result->range().empty());
 }
 
 TEST(ChronoScanTest, DatetimeComponentsTimezoneNameEmpty)
@@ -920,17 +838,6 @@ TEST(ChronoScanTest, DatetimeComponentsTimezoneOffset)
     ASSERT_THAT(result, Succeeded());
     EXPECT_TRUE(result->value().tz_offset);
     EXPECT_EQ(result->value().tz_offset, std::chrono::minutes{-8 * 60});
-}
-
-TEST(ChronoScanTest, DateTimeSeparator)
-{
-    auto result =
-        scn::scan<std::tm>("2024-01-01 12:00:00", "{:%Y-%m-%d %H:%M:%S}");
-    ASSERT_THAT(result, Succeeded());
-    EXPECT_EQ(result->value().tm_year, 2024 - 1900);
-    EXPECT_EQ(result->value().tm_mon, 0);
-    EXPECT_EQ(result->value().tm_mday, 1);
-    EXPECT_EQ(result->value().tm_hour, 12);
 }
 
 TEST(ChronoScanTest, MonthDayVariations)

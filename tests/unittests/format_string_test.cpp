@@ -23,6 +23,82 @@
 #include <array>
 #include <deque>
 
+namespace {
+template <typename CharT>
+std::basic_string<CharT> make_single_field_format(std::string_view arg_id,
+                                                  std::string_view specs)
+{
+    std::basic_string<CharT> result{CharT{'{'}};
+    for (char ch : arg_id) {
+        result.push_back(static_cast<CharT>(ch));
+    }
+    result.push_back(CharT{':'});
+    for (char ch : specs) {
+        result.push_back(static_cast<CharT>(ch));
+    }
+    result.push_back(CharT{'}'});
+    return result;
+}
+
+// "{:...}" takes the single-field fast path when its specs are valid, and
+// "{0:...}" never does, so the results must be the same
+template <typename T, typename CharT>
+void expect_same_as_indexed_field(std::basic_string_view<CharT> source,
+                                  std::initializer_list<std::string_view> specs)
+{
+    for (auto spec : specs) {
+        const auto fast_format = make_single_field_format<CharT>("", spec);
+        const auto general_format = make_single_field_format<CharT>("0", spec);
+        auto fast = scn::scan<T>(
+            source,
+            scn::runtime_format(std::basic_string_view<CharT>{fast_format}));
+        auto general = scn::scan<T>(
+            source,
+            scn::runtime_format(std::basic_string_view<CharT>{general_format}));
+        ASSERT_EQ(fast.has_value(), general.has_value()) << spec;
+        if (!fast) {
+            EXPECT_EQ(fast.error().code(), general.error().code()) << spec;
+            EXPECT_STREQ(fast.error().msg(), general.error().msg()) << spec;
+            continue;
+        }
+        EXPECT_EQ(fast->value(), general->value()) << spec;
+        EXPECT_EQ(fast->begin(), general->begin()) << spec;
+    }
+}
+}  // namespace
+
+namespace {
+// Without fill, width and precision, the reader skips the fill and width
+// handling. A precision larger than the input goes through it, but must
+// give the same results.
+template <typename T>
+void expect_same_as_with_large_precision(
+    std::string_view source,
+    std::initializer_list<std::string_view> types)
+{
+    for (auto type : types) {
+        const auto format = "{:" + std::string{type} + "}";
+        const auto precision_format = "{:.1000" + std::string{type} + "}";
+        auto plain = scn::scan<T>(source, scn::runtime_format(format));
+        auto with_precision =
+            scn::scan<T>(source, scn::runtime_format(precision_format));
+        ASSERT_EQ(plain.has_value(), with_precision.has_value())
+            << format << " " << source;
+        if (!plain) {
+            // Not the message: with a precision, the reader gets a
+            // non-contiguous range, and some readers' messages differ there
+            EXPECT_EQ(plain.error().code(), with_precision.error().code())
+                << format << " " << source;
+            continue;
+        }
+        EXPECT_EQ(plain->value(), with_precision->value())
+            << format << " " << source;
+        EXPECT_EQ(plain->begin(), with_precision->begin())
+            << format << " " << source;
+    }
+}
+}  // namespace
+
 TEST(FormatStringTest, ConstructFromLiteral)
 {
     scn::scan_format_string<std::string_view, int> str{"{}"};
@@ -41,14 +117,6 @@ TEST(FormatStringTest, ValidStringCompileTimeCheck)
     ASSERT_THAT(result, Succeeded());
     EXPECT_EQ(std::get<0>(result->values()), 42);
 }
-// Fails to compile, as it should
-#if 0
-TEST(FormatStringTest, InvalidStringCompileTimeCheck)
-{
-    auto result = scn::scan<int>("42", SCN_STRING("{"));
-    EXPECT_THAT(result, Failed());
-}
-#endif
 
 TEST(FormatStringTest, ValidStringRuntimeCheck)
 {
@@ -99,8 +167,8 @@ TEST(FormatStringTest, EscapedBraces)
 
 TEST(FormatStringTest, TooManyArgsInFormatStringRuntime)
 {
-    auto result = scn::scan<int>("42", scn::runtime_format("{} {}"));
-    EXPECT_THAT(result, Failed());
+    auto result = scn::scan<int>("42 43", scn::runtime_format("{} {}"));
+    EXPECT_THAT(result, FailedWith(scn::scan_error::invalid_format_string));
 }
 TEST(FormatStringTest, TooManyArgsInArgListCompileTime)
 {
@@ -302,57 +370,6 @@ TEST(FormatStringTest, CharacterSetLiteralBackslash)
     EXPECT_STREQ(result->begin(), "-");
 }
 
-TEST(FormatStringTest, ExtraArgInFormatString)
-{
-    auto result =
-        scn::scan<std::string>("abc def", scn::runtime_format("{} {}"));
-    EXPECT_THAT(result, Failed());
-}
-
-namespace {
-template <typename CharT>
-std::basic_string<CharT> make_single_field_format(std::string_view arg_id,
-                                                  std::string_view specs)
-{
-    std::basic_string<CharT> result{CharT{'{'}};
-    for (char ch : arg_id) {
-        result.push_back(static_cast<CharT>(ch));
-    }
-    result.push_back(CharT{':'});
-    for (char ch : specs) {
-        result.push_back(static_cast<CharT>(ch));
-    }
-    result.push_back(CharT{'}'});
-    return result;
-}
-
-// "{:...}" takes the single-field fast path when its specs are valid, and
-// "{0:...}" never does, so the results must be the same
-template <typename T, typename CharT>
-void expect_same_as_indexed_field(std::basic_string_view<CharT> source,
-                                  std::initializer_list<std::string_view> specs)
-{
-    for (auto spec : specs) {
-        const auto fast_format = make_single_field_format<CharT>("", spec);
-        const auto general_format = make_single_field_format<CharT>("0", spec);
-        auto fast = scn::scan<T>(
-            source,
-            scn::runtime_format(std::basic_string_view<CharT>{fast_format}));
-        auto general = scn::scan<T>(
-            source,
-            scn::runtime_format(std::basic_string_view<CharT>{general_format}));
-        ASSERT_EQ(fast.has_value(), general.has_value()) << spec;
-        if (!fast) {
-            EXPECT_EQ(fast.error().code(), general.error().code()) << spec;
-            EXPECT_STREQ(fast.error().msg(), general.error().msg()) << spec;
-            continue;
-        }
-        EXPECT_EQ(fast->value(), general->value()) << spec;
-        EXPECT_EQ(fast->begin(), general->begin()) << spec;
-    }
-}
-}  // namespace
-
 TEST(FormatStringTest, SingleFieldWithSpecsSameAsIndexedField)
 {
     const std::initializer_list<std::string_view> int_specs = {
@@ -412,38 +429,6 @@ TEST(FormatStringTest, SingleFieldWithSpecsSameAsIndexedField)
     }
 }
 
-namespace {
-// Without fill, width and precision, the reader skips the fill and width
-// handling. A precision larger than the input goes through it, but must
-// give the same results.
-template <typename T>
-void expect_same_as_with_large_precision(
-    std::string_view source,
-    std::initializer_list<std::string_view> types)
-{
-    for (auto type : types) {
-        const auto format = "{:" + std::string{type} + "}";
-        const auto precision_format = "{:.1000" + std::string{type} + "}";
-        auto plain = scn::scan<T>(source, scn::runtime_format(format));
-        auto with_precision =
-            scn::scan<T>(source, scn::runtime_format(precision_format));
-        ASSERT_EQ(plain.has_value(), with_precision.has_value())
-            << format << " " << source;
-        if (!plain) {
-            // Not the message: with a precision, the reader gets a
-            // non-contiguous range, and some readers' messages differ there
-            EXPECT_EQ(plain.error().code(), with_precision.error().code())
-                << format << " " << source;
-            continue;
-        }
-        EXPECT_EQ(plain->value(), with_precision->value())
-            << format << " " << source;
-        EXPECT_EQ(plain->begin(), with_precision->begin())
-            << format << " " << source;
-    }
-}
-}  // namespace
-
 TEST(FormatStringTest, SpecsWithoutWidthSameAsWithLargePrecision)
 {
     constexpr std::array<const char*, 8> sources{
@@ -470,35 +455,51 @@ TEST(FormatStringTest, SpecsWithoutWidthSameAsWithLargePrecision)
     }
 }
 
-TEST(FormatStringTest, SingleFieldWithSpecs)
+TEST(FormatStringTest, SingleFieldWithSpecsContiguous)
 {
-    auto contiguous = scn::scan<int>("  ff rest", scn::runtime_format("{:x}"));
-    ASSERT_THAT(contiguous, Succeeded());
-    EXPECT_EQ(contiguous->value(), 0xff);
-    EXPECT_EQ(std::string(contiguous->begin(), contiguous->end()), " rest");
+    auto result = scn::scan<int>("  ff rest", scn::runtime_format("{:x}"));
+    ASSERT_THAT(result, Succeeded());
+    EXPECT_EQ(result->value(), 0xff);
+    EXPECT_EQ(std::string(result->begin(), result->end()), " rest");
+}
 
+TEST(FormatStringTest, SingleFieldWithSpecsNonContiguous)
+{
     auto source = std::deque<char>{'1', '2', '3', ' ', 'a'};
-    auto buffered = scn::scan<int>(source, scn::runtime_format("{:.2d}"));
-    ASSERT_THAT(buffered, Succeeded());
-    EXPECT_EQ(buffered->value(), 12);
-    ASSERT_NE(buffered->begin(), source.end());
-    EXPECT_EQ(*buffered->begin(), '3');
+    auto result = scn::scan<int>(source, scn::runtime_format("{:.2d}"));
+    ASSERT_THAT(result, Succeeded());
+    EXPECT_EQ(result->value(), 12);
+    ASSERT_NE(result->begin(), source.end());
+    EXPECT_EQ(*result->begin(), '3');
+}
 
+TEST(FormatStringTest, SingleFieldWithSpecsInvalidInput)
+{
     EXPECT_THAT(scn::scan<int>("abc", scn::runtime_format("{:d}")),
                 FailedWith(scn::scan_error::invalid_scanned_value));
     EXPECT_THAT(
         scn::scan<int>(std::deque<char>{'2'}, scn::runtime_format("{:b}")),
         FailedWith(scn::scan_error::invalid_scanned_value));
+}
 
-    // Not a single field: handled by the general format string parser
-    auto escaped = scn::scan<int>("1}", scn::runtime_format("{:d}}}"));
-    ASSERT_THAT(escaped, Succeeded());
-    EXPECT_EQ(escaped->value(), 1);
+// Not a single field: handled by the general format string parser
+TEST(FormatStringTest, SingleFieldWithSpecsEscapedBrace)
+{
+    auto result = scn::scan<int>("1}", scn::runtime_format("{:d}}}"));
+    ASSERT_THAT(result, Succeeded());
+    EXPECT_EQ(result->value(), 1);
+    EXPECT_THAT(result->range(), IsEmptyRange());
+}
 
-    auto unmatched = scn::scan<int>("1}", scn::runtime_format("{:d}}"));
-    ASSERT_FALSE(unmatched);
-    EXPECT_STREQ(unmatched.error().msg(), "Unmatched '}' in format string");
+TEST(FormatStringTest, SingleFieldWithSpecsUnmatchedBrace)
+{
+    auto result = scn::scan<int>("1}", scn::runtime_format("{:d}}"));
+    ASSERT_FALSE(result);
+    EXPECT_STREQ(result.error().msg(), "Unmatched '}' in format string");
+}
 
+TEST(FormatStringTest, SingleFieldWithSpecsTwoFields)
+{
     EXPECT_THAT(scn::scan<int>("1 2", scn::runtime_format("{:d}{:d}")),
                 FailedWith(scn::scan_error::invalid_format_string));
 }

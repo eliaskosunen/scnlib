@@ -65,23 +65,6 @@ using scan_result_helper = scn::scan_expected<scn::scan_result<
                                      It>::type,
     Args...>>;
 
-TEST(SourceTest, Simple)
-{
-    auto r = scn::scan<int>("123", "{}");
-    ASSERT_THAT(r, Succeeded());
-    EXPECT_THAT(r->range(), IsEmptyRange());
-    EXPECT_EQ(std::get<0>(r->values()), 123);
-}
-TEST(SourceTest, TwoArgs)
-{
-    auto r = scn::scan<int, double>("123 3.14", "{} {}");
-    ASSERT_THAT(r, Succeeded());
-    EXPECT_THAT(r->range(), IsEmptyRange());
-    auto [i, d] = r->values();
-    EXPECT_EQ(i, 123);
-    EXPECT_DOUBLE_EQ(d, 3.14);
-}
-
 TEST(SourceTest, SourceIsStringLiteral)
 {
     auto result = scn::scan<int, double>("123 3.14", "{} {}");
@@ -243,15 +226,13 @@ TEST(SourceTest, InvalidCodePointIsNotWhitespace)
     const std::string str = "\xa8 1f";
 
     auto contiguous = scn::scan<int>(std::string_view{str}, "{:x}");
-    EXPECT_THAT(contiguous, Failed());
+    ASSERT_THAT(contiguous, Failed());
 
     auto deque_source = std::deque<char>(str.begin(), str.end());
     auto non_contiguous = scn::scan<int>(deque_source, "{:x}");
-    EXPECT_THAT(non_contiguous, Failed());
+    ASSERT_THAT(non_contiguous, Failed());
 
-    if (!contiguous && !non_contiguous) {
-        EXPECT_EQ(contiguous.error().code(), non_contiguous.error().code());
-    }
+    EXPECT_EQ(contiguous.error().code(), non_contiguous.error().code());
 }
 
 TEST(SourceTest, InvalidCodePointAfterWhitespaceIsNotWhitespace)

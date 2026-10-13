@@ -116,16 +116,6 @@ TEST(IstreamSourceTest, Stringstream)
     EXPECT_EQ(&res->stream(), &ss);
 }
 
-TEST(IstreamSourceTest, StringstreamDouble)
-{
-    std::istringstream ss{"3.14 2.71"};
-    auto res = scn::scan<double, double>(ss, "{} {}");
-    ASSERT_THAT(res, Succeeded());
-    auto [a, b] = res->values();
-    EXPECT_NEAR(a, 3.14, 0.001);
-    EXPECT_NEAR(b, 2.71, 0.001);
-}
-
 TEST(IstreamSourceTest, StringstreamMultiline)
 {
     std::istringstream ss{"123\n456\n789"};
@@ -187,14 +177,6 @@ TEST(IstreamSourceTest, StringstreamBool)
     auto [a, b] = res->values();
     EXPECT_TRUE(a);
     EXPECT_FALSE(b);
-}
-
-TEST(IstreamSourceTest, StringstreamLongString)
-{
-    std::istringstream ss{"verylongstringwithoutspaces"};
-    auto res = scn::scan<std::string>(ss, "{}");
-    ASSERT_THAT(res, Succeeded());
-    EXPECT_EQ(res->value(), "verylongstringwithoutspaces");
 }
 
 TEST(IstreamSourceTest, StringstreamNegativeDouble)

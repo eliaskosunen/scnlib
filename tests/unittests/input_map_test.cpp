@@ -21,14 +21,6 @@
 
 #include <deque>
 
-#if SCN_HAS_STD_SPAN
-#include <span>
-#endif
-
-using ::testing::Test;
-
-using namespace std::string_view_literals;
-
 namespace {
 template <typename Range>
 std::string collect(Range r)
@@ -40,54 +32,6 @@ std::string collect(Range r)
     return str;
 }
 }  // namespace
-
-#if 0
-TEST(InputMapTest, StringView)
-{
-    auto buf = scn::detail::make_scan_buffer("foobar"sv);
-    static_assert(std::is_same_v<decltype(buf),
-                                 scn::detail::basic_scan_string_buffer<char>>);
-    EXPECT_EQ(collect(buf.get()), "foobar");
-}
-
-TEST(InputMapTest, StringLiteral)
-{
-    auto buf = scn::detail::make_scan_buffer("foobar");
-    static_assert(std::is_same_v<decltype(buf),
-                                 scn::detail::basic_scan_string_buffer<char>>);
-    EXPECT_EQ(collect(buf.get()), "foobar");
-}
-
-TEST(InputMapTest, StdString)
-{
-    auto str = std::string{"foobar"};
-    auto buf = scn::detail::make_scan_buffer(str);
-    static_assert(std::is_same_v<decltype(buf),
-                                 scn::detail::basic_scan_string_buffer<char>>);
-    EXPECT_EQ(collect(buf.get()), "foobar");
-}
-
-#if SCN_HAS_STD_SPAN
-TEST(InputMapTest, Span)
-{
-    auto str = "foobar"sv;
-    auto buf = scn::detail::make_scan_buffer(
-        std::span<const char>{str.data(), str.size()});
-    static_assert(std::is_same_v<decltype(buf),
-                                 scn::detail::basic_scan_string_buffer<char>>);
-    EXPECT_EQ(collect(buf.get()), "foobar");
-}
-#endif
-
-TEST(InputMapTest, StringViewTake)
-{
-    auto buf =
-        scn::detail::make_scan_buffer(scn::ranges::take_view("foobar"sv, 3));
-    static_assert(std::is_same_v<decltype(buf),
-                                 scn::detail::basic_scan_string_buffer<char>>);
-    EXPECT_EQ(collect(buf.get()), "foo");
-}
-#endif
 
 TEST(InputMapTest, Deque)
 {

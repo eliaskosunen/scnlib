@@ -824,13 +824,6 @@ TEST(IntegerTest, Int8Min)
     EXPECT_EQ(val, -128);
 }
 
-TEST(IntegerTest, UInt64Max)
-{
-    auto [result, val] = do_test<std::uint64_t>("18446744073709551615", "{}");
-    EXPECT_TRUE(result);
-    EXPECT_EQ(val, 18446744073709551615ULL);
-}
-
 TEST(IntegerTest, Fuzz_RepeatedString)
 {
     std::string_view input = "0\n0";

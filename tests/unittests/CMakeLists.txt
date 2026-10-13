@@ -186,15 +186,12 @@ add_custom_target(scn_examples_test_prepare ALL
 find_package(Python3 COMPONENTS Interpreter)
 if (Python3_FOUND)
     add_test(NAME scn_stdin_test COMMAND ${Python3_EXECUTABLE} "${CMAKE_CURRENT_BINARY_DIR}/stdin_test_runner.py")
-    set_tests_properties(scn_stdin_test PROPERTIES DEPENDS scn_stdin_test_prepare)
 
     add_test(NAME scn_stdin_parameterized_test COMMAND ${Python3_EXECUTABLE} "${CMAKE_CURRENT_BINARY_DIR}/stdin_parameterized_test_runner.py")
-    set_tests_properties(scn_stdin_parameterized_test PROPERTIES DEPENDS scn_stdin_parameterized_test_prepare)
 
     if (SCN_EXAMPLES)
         get_target_property(examples_bin_dir scn_example_1 BINARY_DIR)
         add_test(NAME scn_examples_test COMMAND ${Python3_EXECUTABLE} "${CMAKE_CURRENT_BINARY_DIR}/examples_test_runner.py" "${examples_bin_dir}")
-        set_tests_properties(scn_examples_test PROPERTIES DEPENDS scn_examples_test_prepare)
     else()
         message(STATUS "scn_examples_test disabled, because SCN_EXAMPLES is OFF")
     endif()
