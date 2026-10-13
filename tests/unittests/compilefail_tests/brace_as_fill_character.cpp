@@ -20,6 +20,7 @@
 int main()
 {
     // build error: Invalid fill character '{' in format string
+    // build error: Invalid fill character \'{\' in format string
     auto result = scn::scan<int>("42", SCN_STRING("{:{^}"));
     return result && result->value() == 42;
 }

@@ -57,6 +57,13 @@ if (SCN_CXX_FRONTEND STREQUAL "GNU" AND
             PREFIX scn-compilefail
             LIBRARIES scn
     )
+    # Look for the messages in the diagnostics themselves,
+    # not in the source code snippets shown with them
+    foreach (source ${buildfail_sources})
+        get_filename_component(source_name ${source} NAME_WE)
+        target_compile_options(scn-compilefail-${source_name}-test PRIVATE
+                $<IF:$<CXX_COMPILER_ID:GNU>,-fno-diagnostics-show-caret,-fno-caret-diagnostics>)
+    endforeach ()
 else ()
     # We expect the error messages to contain the call to on_error("..."),
     # which contains the library error message.

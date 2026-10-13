@@ -1054,15 +1054,14 @@ struct setter_state {
     {
     }
 
-#define SCN_CHRONO_SETTER_STATE_SET(field)                           \
-    template <typename Handler>                                      \
-    constexpr void set_##field(Handler& handler)                     \
-    {                                                                \
-        if (field##_set) {                                           \
-            handler.set_error({scan_error::invalid_format_string,    \
-                               #field "-field set multiple times"}); \
-        }                                                            \
-        field##_set = 1;                                             \
+#define SCN_CHRONO_SETTER_STATE_SET(field)                        \
+    template <typename Handler>                                   \
+    constexpr void set_##field(Handler& handler)                  \
+    {                                                             \
+        if (field##_set) {                                        \
+            handler.on_error(#field "-field set multiple times"); \
+        }                                                         \
+        field##_set = 1;                                          \
     }
 
     SCN_CHRONO_SETTER_STATE_SET(subsec)
@@ -1090,38 +1089,34 @@ struct setter_state {
     constexpr void verify(Handler& handler) const
     {
         if (hour24_set && hour12_set) {
-            return handler.set_error(
-                {scan_error::invalid_format_string,
-                 "24-hour and 12-hour clocks can't both be in use "
-                 "simultaneously"});
+            // clang-format off
+            return handler.on_error("24-hour (%H) and 12-hour (%I) clocks can't both be in use simultaneously");
+            // clang-format on
         }
-        if (am_pm_set) {
-            if (!hour12_set) {
-                return handler.set_error(
-                    {scan_error::invalid_format_string,
-                     "AM/PM specifier can't be set without an hour set"});
-            }
-            if (hour24_set) {
-                return handler.set_error(
-                    {scan_error::invalid_format_string,
-                     "Can't use AM/PM with a 24-hour clock"});
-            }
+        if (am_pm_set && hour24_set) {
+            // clang-format off
+            return handler.on_error("AM/PM (%p) can't be used with a 24-hour clock (%H)");
+            // clang-format on
+        }
+        if (am_pm_set && !hour12_set) {
+            // clang-format off
+            return handler.on_error("AM/PM (%p) requires a 12-hour clock hour (%I)");
+            // clang-format on
         }
         if (full_year_set && (century_set || short_year_set)) {
-            return handler.set_error(
-                {scan_error::invalid_format_string,
-                 "full-year (%Y) can't be used together with "
-                 "century (%C) and short-year (%y)"});
+            // clang-format off
+            return handler.on_error("full-year (%Y) can't be used together with century (%C) or short-year (%y)");
+            // clang-format on
         }
         if (tzoff_set && tzname_set) {
-            return handler.set_error(
-                {scan_error::invalid_format_string,
-                 "tzoff (%z) can't be used together with tzname (%Z)"});
+            // clang-format off
+            return handler.on_error("tzoff (%z) can't be used together with tzname (%Z)");
+            // clang-format on
         }
         if (mday_set && yday_set) {
-            return handler.set_error(
-                {scan_error::invalid_format_string,
-                 "mday (%d/%e) and yday (%j) can't be used together"});
+            // clang-format off
+            return handler.on_error("mday (%d/%e) and yday (%j) can't be used together");
+            // clang-format on
         }
     }
 
@@ -1784,14 +1779,12 @@ struct tm_format_checker {
     {
         return err;
     }
-    void on_error(const char* msg)
-    {
-        set_error({scan_error::invalid_format_string, msg});
-    }
-    void set_error(scan_error e)
+    constexpr void on_error(const char* msg)
     {
         if (err.has_value()) {
-            err = unexpected(detail::handle_error(e));
+            invalid_format_string();
+            err = unexpected(detail::handle_error(
+                scan_error{scan_error::invalid_format_string, msg}));
         }
     }
 

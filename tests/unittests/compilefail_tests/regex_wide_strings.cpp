@@ -23,6 +23,7 @@ int main()
 {
 #if !SCN_REGEX_SUPPORTS_WIDE_STRINGS
     // build error: Regex backend doesn't support wide strings as input
+    // build error: Regex backend doesn\'t support wide strings as input
     auto result = scn::scan<std::wstring>(L"42", SCN_STRING(L"{:/[a-z]+/}"));
     return result && result->value() == L"42";
 #else

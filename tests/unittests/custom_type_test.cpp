@@ -430,6 +430,33 @@ TEST(CustomTypeTest, NonCopyableTypeFromNonContiguousSource)
     EXPECT_EQ(result->value().val, 123);
 }
 
+struct two_errors_type {};
+
+template <>
+struct scn::scanner<two_errors_type> {
+    template <typename ParseContext>
+    constexpr typename ParseContext::iterator parse(ParseContext& pctx)
+    {
+        pctx.on_error("First error");
+        pctx.on_error("Second error");
+        return pctx.begin();
+    }
+
+    template <typename Context>
+    auto scan(two_errors_type&, Context& ctx) const
+        -> scn::scan_expected<typename Context::iterator>
+    {
+        return ctx.begin();
+    }
+};
+
+TEST(CustomTypeTest, ParseContextKeepsFirstError)
+{
+    auto result = scn::scan<two_errors_type>("", scn::runtime_format("{}"));
+    ASSERT_THAT(result, FailedWith(scn::scan_error::invalid_format_string));
+    EXPECT_STREQ(result.error().msg(), "First error");
+}
+
 struct non_movable_type {
     non_movable_type() = default;
     explicit non_movable_type(int v) : val(v) {}

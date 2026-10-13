@@ -8299,6 +8299,21 @@ basic_scan_args(const detail::scan_arg_store<Context, Args...>&)
 // scan_parse_context
 /////////////////////////////////////////////////////////////////
 
+namespace detail {
+/*
+ * Not constexpr: calling it in a constant expression fails compile-time format
+ * string checking.
+ * Call it from an `on_error(const char* msg)`, and only conditionally (for
+ * example, only for the first error), so that compilers treat `on_error` as a
+ * function that could be a constant expression. They then show the call to
+ * `on_error`, with `msg`, in the diagnostic.
+ */
+inline void invalid_format_string()
+{
+    // no-op
+}
+}  // namespace detail
+
 template <typename T>
 struct source_tag_type {
     using type = T;
@@ -8413,12 +8428,15 @@ public:
      * Fail format string parsing with the message `msg`.
      * Calling this member function is not a constant expression,
      * causing a compile-time error, if compile-time format string checking is
-     * enabled.
+     * enabled. The compiler error will contain `msg`.
+     * If parsing has already failed, the first error is kept.
      */
-    scan_error on_error(const char* msg)
+    constexpr scan_error on_error(const char* msg)
     {
-        m_error = unexpected(detail::handle_error(
-            scan_error{scan_error::invalid_format_string, msg}));
+        if (m_error) {
+            detail::invalid_format_string();
+            set_error(msg);
+        }
         return m_error.error();
     }
 
@@ -8441,6 +8459,14 @@ public:
 
 protected:
     constexpr void do_check_arg_id(size_t id);
+
+    // Out of line: when inlined into on_error, it made Clang's code for the
+    // callers of on_error, which run for every replacement field, slower
+    SCN_COLD void set_error(const char* msg)
+    {
+        m_error = unexpected(detail::handle_error(
+            scan_error{scan_error::invalid_format_string, msg}));
+    }
 
     std::basic_string_view<CharT> m_format;
     scan_expected<void> m_error{};
@@ -9690,16 +9716,17 @@ public:
     }
 #endif
 
-    // Intentionally not constexpr to get a compiler-time error when called
-    // Keep the first error: later ones are consequences of it
-    /*not-constexpr*/ void on_error(const char* msg)
+    // Keep the first error: later ones are likely consequences of it
+    constexpr void on_error(const char* msg)
     {
         SCN_UNLIKELY_ATTR
         if (m_error) {
+            invalid_format_string();
             m_error =
                 unexpected_scan_error(scan_error::invalid_format_string, msg);
         }
     }
+    // Intentionally not constexpr to get a compile-time error when called
     /*not-constexpr*/ void on_error(scan_error err)
     {
         SCN_UNLIKELY_ATTR
@@ -11347,7 +11374,7 @@ public:
         }
     }
 
-    void on_error(const char* msg)
+    constexpr void on_error(const char* msg)
     {
         SCN_UNLIKELY_ATTR
         m_parse_context.on_error(msg);
@@ -11355,7 +11382,7 @@ public:
 
     // Only to satisfy the concept and eliminate compiler errors,
     // because errors are reported by failing to compile on_error above
-    // (it's not constexpr)
+    // (it's not a constant expression)
     constexpr scan_expected<void> get_error() const
     {
         return {};
