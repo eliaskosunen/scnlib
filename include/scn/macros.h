@@ -1179,14 +1179,18 @@
 #endif
 
 // SCN_ASSUME
+// Never evaluates `x`: without a non-evaluating builtin, it's a no-op.
+// Use it only for simple conditions on scalar variables:
+// with GCC, an assumption that calls a member function (like `has_value()`)
+// keeps the object in memory, which can make the surrounding code slower.
 #if SCN_HAS_ASSUME
 #define SCN_ASSUME(x) __assume(x)
 #elif SCN_HAS_BUILTIN_ASSUME
 #define SCN_ASSUME(x) __builtin_assume(x)
-#elif SCN_HAS_BUILTIN_UNREACHABLE
-#define SCN_ASSUME(x) ((x) ? static_cast<void>(0) : __builtin_unreachable())
+#elif SCN_GCC >= SCN_COMPILER(13, 0, 0)
+#define SCN_ASSUME(x) __attribute__((assume(x)))
 #else
-#define SCN_ASSUME(x) static_cast<void>(!!(x))
+#define SCN_ASSUME(x) SCN_UNUSED(x)
 #endif
 
 // SCN_UNREACHABLE
@@ -1213,17 +1217,14 @@
     }(x))
 #endif
 
-#define SCN_UNUSED(x) static_cast<void>(sizeof(x))
+#define SCN_UNUSED(x) (void)sizeof(x)
 
 // SCN_ASSERT
+// Not an assumption in release builds: measured, it didn't make anything
+// faster, and a violated condition would be undefined behavior.
+// `!!` makes `sizeof` accept bit-fields.
 #ifdef NDEBUG
-#define SCN_ASSERT(cond, msg)        \
-    do {                             \
-        SCN_CLANG_PUSH               \
-        SCN_CLANG_IGNORE("-Wassume") \
-        SCN_ASSUME(!!(cond));        \
-        SCN_CLANG_POP                \
-    } while (false)
+#define SCN_ASSERT(cond, msg) SCN_UNUSED(!!(cond))
 #else
 #define SCN_ASSERT(cond, msg) assert((cond) && msg)
 #endif
