@@ -1890,6 +1890,15 @@ constexpr bool is_simple_single_argument_format_string(
     return format[0] == CharT{'{'} && format[1] == CharT{'}'};
 }
 
+// Whether `format` may be "{:...}": parse_single_argument_specs checks the rest
+template <typename CharT>
+constexpr bool is_single_argument_with_specs_format_string(
+    std::basic_string_view<CharT> format)
+{
+    return format.size() >= 4 && format[0] == CharT{'{'} &&
+           format[1] == CharT{':'} && format.back() == CharT{'}'};
+}
+
 template <typename CharT>
 scan_expected<std::ptrdiff_t> scan_simple_single_argument(
     std::basic_string_view<CharT> source,
@@ -1927,6 +1936,57 @@ scan_expected<std::ptrdiff_t> scan_simple_single_argument(
     SCN_EXPECT(source.begin().stores_parent());
     auto reader = impl::default_arg_reader<detail::default_context<CharT>>{
         source, SCN_MOVE(args), loc};
+    SCN_TRY(it, arg.visit(SCN_MOVE(reader)));
+    return it.position();
+}
+
+// Parses the specs of a format string that passed
+// is_single_argument_with_specs_format_string into `specs`. Returns false if
+// the format string has more than one replacement field, if parsing fails, or
+// if the argument is missing or custom: the caller then uses format_handler,
+// which reports any error.
+template <typename CharT, typename Context>
+bool parse_single_argument_specs(std::basic_string_view<CharT> format,
+                                 const basic_scan_arg<Context>& arg,
+                                 detail::format_specs& specs)
+{
+    if (!arg || detail::get_arg_type(arg) == detail::arg_type::custom_type) {
+        return false;
+    }
+
+    auto handler = detail::specs_checker<detail::specs_setter>{
+        detail::specs_setter{specs}, detail::get_arg_type(arg)};
+    const auto end = detail::parse_format_specs(
+        format.data() + 2, format.data() + format.size(), handler);
+    return handler.get_error() && end == format.data() + format.size() - 1;
+}
+
+template <typename CharT>
+scan_expected<std::ptrdiff_t> scan_single_argument_with_specs(
+    std::basic_string_view<CharT> source,
+    basic_scan_arg<detail::default_context<CharT>>& arg,
+    const detail::format_specs& specs,
+    detail::locale_ref loc)
+{
+    auto reader = impl::arg_reader<impl::basic_contiguous_scan_context<CharT>>{
+        ranges::subrange<const CharT*>{source.data(),
+                                       source.data() + source.size()},
+        specs, loc};
+    SCN_TRY(it, arg.visit(SCN_MOVE(reader)));
+    return ranges::distance(source.data(), it);
+}
+
+template <typename CharT>
+scan_expected<std::ptrdiff_t> scan_single_argument_with_specs(
+    typename detail::basic_scan_buffer<
+        detail::type_identity_t<CharT>>::range_type source,
+    basic_scan_arg<detail::default_context<CharT>>& arg,
+    const detail::format_specs& specs,
+    detail::locale_ref loc)
+{
+    SCN_EXPECT(source.begin().stores_parent());
+    auto reader =
+        impl::arg_reader<detail::default_context<CharT>>{source, specs, loc};
     SCN_TRY(it, arg.visit(SCN_MOVE(reader)));
     return it.position();
 }
@@ -2328,6 +2388,13 @@ scan_expected<std::ptrdiff_t> vscan_internal(
         auto arg = args.get(0);
         return scan_simple_single_argument(source, args, arg, loc);
     }
+    if (is_single_argument_with_specs_format_string(format) && argcount == 1) {
+        auto arg = args.get(0);
+        if (auto specs = detail::format_specs{};
+            parse_single_argument_specs(format, arg, specs)) {
+            return scan_single_argument_with_specs(source, arg, specs, loc);
+        }
+    }
 
     auto handler = format_handler<true, CharT>{
         ranges::subrange<const CharT*>{source.data(),
@@ -2388,6 +2455,15 @@ scan_expected<std::ptrdiff_t> vscan_internal(
         if (is_simple_single_argument_format_string(format) && argcount == 1) {
             auto arg = args.get(0);
             return scan_simple_single_argument(source, args, arg, loc);
+        }
+        if (is_single_argument_with_specs_format_string(format) &&
+            argcount == 1) {
+            auto arg = args.get(0);
+            if (auto specs = detail::format_specs{};
+                parse_single_argument_specs(format, arg, specs)) {
+                return scan_single_argument_with_specs<CharT>(source, arg,
+                                                              specs, loc);
+            }
         }
 
         auto handler =

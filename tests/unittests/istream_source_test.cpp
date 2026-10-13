@@ -22,6 +22,7 @@
 #if !SCN_DISABLE_IOSTREAM
 
 #include <algorithm>
+#include <array>
 #include <limits>
 #include <sstream>
 #include <string>
@@ -295,6 +296,44 @@ TEST(IstreamSourceTest, StreambufWithoutBulkReads)
     auto [a, b] = result->values();
     EXPECT_EQ(a, 12);
     EXPECT_EQ(b, 34);
+}
+
+TEST(IstreamSourceTest, SequentialSingleFieldsWithSpecs)
+{
+    // "{:...}" takes the single-field fast path, "{0:...}" never does.
+    // Both must leave the stream at the same position after each scan.
+    constexpr std::array<const char*, 2> field_prefixes{"{:", "{0:"};
+    for (auto field_prefix : field_prefixes) {
+        std::istringstream ss{"ff 12abc  777 xyz"};
+        auto format = [&](std::string_view specs) {
+            return std::string{field_prefix} + std::string{specs} + "}";
+        };
+
+        auto hex = scn::scan<int>(ss, scn::runtime_format(format("x")));
+        ASSERT_THAT(hex, Succeeded()) << field_prefix;
+        EXPECT_EQ(hex->value(), 0xff);
+
+        auto dec = scn::scan<int>(ss, scn::runtime_format(format(".3d")));
+        ASSERT_THAT(dec, Succeeded()) << field_prefix;
+        EXPECT_EQ(dec->value(), 12);
+
+        auto str =
+            scn::scan<std::string>(ss, scn::runtime_format(format("[a-c]")));
+        ASSERT_THAT(str, Succeeded()) << field_prefix;
+        EXPECT_EQ(str->value(), "abc");
+
+        auto oct = scn::scan<int>(ss, scn::runtime_format(format("o")));
+        ASSERT_THAT(oct, Succeeded()) << field_prefix;
+        EXPECT_EQ(oct->value(), 0777);
+
+        auto failed = scn::scan<int>(ss, scn::runtime_format(format("d")));
+        EXPECT_THAT(failed, FailedWith(scn::scan_error::invalid_scanned_value))
+            << field_prefix;
+
+        std::string rest;
+        std::getline(ss, rest);
+        EXPECT_EQ(rest, " xyz") << field_prefix;
+    }
 }
 
 #endif
