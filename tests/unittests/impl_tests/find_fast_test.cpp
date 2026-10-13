@@ -131,6 +131,23 @@ TEST(FindClassicSpaceNarrowFastTest, WonkyInput4)
     EXPECT_EQ(scn::impl::find_classic_space_narrow_fast(src), src.end());
 }
 
+TEST(FindClassicSpaceNarrowFastTest, NonAsciiSpaceAtEveryPositionOfShortInput)
+{
+    // U+0085 (NEXT LINE, UTF-8 C2 85) is a space, and is only found if the
+    // non-ASCII bytes are detected
+    for (std::size_t prefix_length = 0; prefix_length < 8; ++prefix_length) {
+        for (std::size_t suffix_length = 0; suffix_length < 8;
+             ++suffix_length) {
+            const auto src = std::string(prefix_length, 'a') + "\xc2\x85" +
+                             std::string(suffix_length, 'b');
+            const auto view = std::string_view{src};
+            EXPECT_EQ(scn::impl::find_classic_space_narrow_fast(view),
+                      view.begin() + static_cast<std::ptrdiff_t>(prefix_length))
+                << src;
+        }
+    }
+}
+
 TEST(FindClassicNonspaceNarrowFastTest, EmojiInput)
 {
     auto input = "😂\n"sv;

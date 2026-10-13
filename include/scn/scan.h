@@ -7596,10 +7596,21 @@ public:
     arg_value() = default;
 #endif
 
-    template <typename T>
+    // Excludes `arg_value` itself, so that copying from a non-const lvalue
+    // selects the copy constructor
+    template <typename T,
+              std::enable_if_t<
+                  !std::is_same_v<std::remove_cv_t<T>, arg_value>>* = nullptr>
     explicit constexpr arg_value(T& val) : ref_value{std::addressof(val)}
     {
     }
+
+    // Stores `ref` itself, unlike the `T&` constructor above, which would store
+    // the address of a `void*` passed to it. Tagged to keep the two apart:
+    // `void*` is also a scannable type, so for a `void*` lvalue, overload
+    // resolution alone can't tell which one is meant.
+    struct ref_tag {};
+    constexpr arg_value(ref_tag, void* ref) : ref_value{ref} {}
 
     template <typename T, typename Context>
     explicit constexpr arg_value(custom_wrapper<T, Context> val)
@@ -8057,6 +8068,12 @@ private:
 
     friend class basic_scan_args<Context>;
 
+    constexpr basic_scan_arg(detail::arg_type type,
+                             const detail::arg_value& value) noexcept
+        : m_value(value), m_type(type)
+    {
+    }
+
     detail::arg_value m_value{};
     detail::arg_type m_type{detail::arg_type::none_type};
 };
@@ -8220,15 +8237,12 @@ public:
             return {};
         }
 
-        basic_scan_arg<Context> arg;
-        arg.m_type = t;
         if (is_only_builtin()) {
-            arg.m_value.ref_value = m_builtin_values[id];
+            return basic_scan_arg<Context>{
+                t, detail::arg_value{detail::arg_value::ref_tag{},
+                                     m_builtin_values[id]}};
         }
-        else {
-            arg.m_value = m_values[id];
-        }
-        return arg;
+        return basic_scan_arg<Context>{t, m_values[id]};
     }
 
     /**
@@ -12255,19 +12269,19 @@ SCN_PUBLIC scan_buffer& make_scan_buffer(stdin_tag_t,
 
 SCN_PUBLIC scan_expected<std::ptrdiff_t> vscan_impl(std::string_view source,
                                                     std::string_view format,
-                                                    scan_args args);
+                                                    const scan_args& args);
 SCN_PUBLIC scan_expected<std::ptrdiff_t> vscan_impl(
     scan_buffer::range_type source,
     std::string_view format,
-    scan_args args);
+    const scan_args& args);
 
 SCN_PUBLIC scan_expected<std::ptrdiff_t> vscan_impl(std::wstring_view source,
                                                     std::wstring_view format,
-                                                    wscan_args args);
+                                                    const wscan_args& args);
 SCN_PUBLIC scan_expected<std::ptrdiff_t> vscan_impl(
     wscan_buffer::range_type source,
     std::wstring_view format,
-    wscan_args args);
+    const wscan_args& args);
 
 #if !SCN_DISABLE_LOCALE
 template <typename Locale>
@@ -12275,41 +12289,41 @@ SCN_PUBLIC scan_expected<std::ptrdiff_t> vscan_localized_impl(
     const Locale& loc,
     std::string_view source,
     std::string_view format,
-    scan_args args);
+    const scan_args& args);
 template <typename Locale>
 SCN_PUBLIC scan_expected<std::ptrdiff_t> vscan_localized_impl(
     const Locale& loc,
     scan_buffer::range_type source,
     std::string_view format,
-    scan_args args);
+    const scan_args& args);
 
 template <typename Locale>
 SCN_PUBLIC scan_expected<std::ptrdiff_t> vscan_localized_impl(
     const Locale& loc,
     std::wstring_view source,
     std::wstring_view format,
-    wscan_args args);
+    const wscan_args& args);
 template <typename Locale>
 SCN_PUBLIC scan_expected<std::ptrdiff_t> vscan_localized_impl(
     const Locale& loc,
     wscan_buffer::range_type source,
     std::wstring_view format,
-    wscan_args args);
+    const wscan_args& args);
 #endif
 
 SCN_PUBLIC scan_expected<std::ptrdiff_t> vscan_value_impl(
     std::string_view source,
-    basic_scan_arg<scan_context> arg);
+    basic_scan_arg<scan_context>& arg);
 SCN_PUBLIC scan_expected<std::ptrdiff_t> vscan_value_impl(
     scan_buffer::range_type source,
-    basic_scan_arg<scan_context> arg);
+    basic_scan_arg<scan_context>& arg);
 
 SCN_PUBLIC scan_expected<std::ptrdiff_t> vscan_value_impl(
     std::wstring_view source,
-    basic_scan_arg<wscan_context> arg);
+    basic_scan_arg<wscan_context>& arg);
 SCN_PUBLIC scan_expected<std::ptrdiff_t> vscan_value_impl(
     wscan_buffer::range_type source,
-    basic_scan_arg<wscan_context> arg);
+    basic_scan_arg<wscan_context>& arg);
 
 template <typename CharT>
 auto vscan_range_type(basic_scan_buffer<CharT>& buffer)
