@@ -54,6 +54,121 @@ SCN_TEST_NOINLINE bool take_self_referencing_by_value(T value)
 {
     return value->self == &*value;
 }
+
+// Counts live instances, checks that only constructed ones are destroyed, and
+// has a potentially-throwing constructor from int
+struct live_counted {
+    static inline int live = 0;
+    static constexpr unsigned constructed = 0xC0FFEE;
+
+    live_counted() noexcept
+    {
+        ++live;
+    }
+    live_counted(int)
+    {
+        ++live;
+    }
+    live_counted(const live_counted&) noexcept
+    {
+        ++live;
+    }
+    live_counted(live_counted&&) noexcept
+    {
+        ++live;
+    }
+    live_counted& operator=(const live_counted&) = default;
+    live_counted& operator=(live_counted&&) = default;
+    ~live_counted()
+    {
+        EXPECT_EQ(magic, constructed);
+        magic = 0;
+        --live;
+    }
+
+    unsigned magic{constructed};
+};
+
+struct nothrow_counted : live_counted {
+    explicit nothrow_counted(int) noexcept {}
+};
+
+template <typename Expected, typename Arg, typename = void>
+struct can_emplace : std::false_type {};
+template <typename Expected, typename Arg>
+struct can_emplace<Expected,
+                   Arg,
+                   std::void_t<decltype(std::declval<Expected&>().emplace(
+                       std::declval<Arg>()))>> : std::true_type {};
+
+template <bool Noexcept>
+struct with_default_constructor {
+    with_default_constructor() noexcept(Noexcept) {}
+    std::string s;
+};
+
+#if SCN_HAS_EXCEPTIONS
+struct throws_on_nonzero_construct {
+    throws_on_nonzero_construct() = default;
+    throws_on_nonzero_construct(int value)
+    {
+        if (value != 0) {
+            throw std::runtime_error{"throws_on_nonzero_construct"};
+        }
+    }
+};
+
+// Constructing from an int throws, copying throws unless `NothrowCopy`, and
+// moving throws unless `NothrowMove`
+SCN_CLANG_PUSH
+SCN_CLANG_IGNORE("-Wmissing-noreturn")
+template <bool NothrowMove, bool NothrowCopy = false>
+struct throwing_counted : live_counted {
+    throwing_counted() = default;
+    explicit throwing_counted(int) : live_counted()
+    {
+        throw std::runtime_error{"throwing_counted(int)"};
+    }
+    throwing_counted(const throwing_counted&) noexcept(NothrowCopy)
+        : live_counted()
+    {
+        if constexpr (!NothrowCopy) {
+            throw std::runtime_error{"throwing_counted copy"};
+        }
+    }
+    throwing_counted(throwing_counted&&) noexcept(NothrowMove) : live_counted()
+    {
+        if constexpr (!NothrowMove) {
+            throw std::runtime_error{"throwing_counted move"};
+        }
+    }
+    throwing_counted& operator=(const throwing_counted&) = default;
+    throwing_counted& operator=(throwing_counted&&) = default;
+};
+SCN_CLANG_POP
+
+// Throws when constructed from a nonzero int, and isn't nothrow move
+// constructible
+struct throwing_from_int : throwing_counted<false> {
+    throwing_from_int(int value)
+    {
+        if (value != 0) {
+            throw std::runtime_error{"throwing_from_int"};
+        }
+    }
+};
+
+template <typename T, typename E>
+constexpr bool is_assignable_from_error_v =
+    std::is_assignable_v<scn::expected<T, E>&, const scn::unexpected<E>&> &&
+    std::is_assignable_v<scn::expected<T, E>&, scn::unexpected<E>>;
+
+template <typename T, typename E>
+constexpr bool is_fully_assignable_v =
+    std::is_copy_assignable_v<scn::expected<T, E>> &&
+    std::is_move_assignable_v<scn::expected<T, E>> &&
+    is_assignable_from_error_v<T, E>;
+#endif
 }  // namespace
 
 // Regression test for [[clang::trivial_abi]] being applied to `expected` with
@@ -70,58 +185,37 @@ TEST(ExpectedTest, PassNonTriviallyRelocatableByValue)
         scn::expected<self_referencing, std::string>{}));
 }
 
-namespace {
-// Counts live objects, and has a potentially-throwing constructor
-struct counted {
-    static inline int live = 0;
-
-    counted()
-    {
-        ++live;
-    }
-    counted(int)
-    {
-        ++live;
-    }
-    counted(const counted&)
-    {
-        ++live;
-    }
-    counted& operator=(const counted&) = default;
-    ~counted()
-    {
-        --live;
-    }
-};
-}  // namespace
-
 TEST(ExpectedTest, EmplaceOverErrorDestroysError)
 {
-    counted::live = 0;
+    // Like std::expected, emplace() requires a nothrow constructor
+    static_assert(!can_emplace<scn::expected<live_counted, int>, int>::value);
+    static_assert(can_emplace<scn::expected<nothrow_counted, int>, int>::value);
+
+    live_counted::live = 0;
     {
-        scn::expected<counted, counted> e{scn::unexpect};
+        scn::expected<nothrow_counted, live_counted> e{scn::unexpect};
         e.emplace(1);
         EXPECT_TRUE(e.has_value());
-        EXPECT_EQ(counted::live, 1);
+        EXPECT_EQ(live_counted::live, 1);
     }
-    EXPECT_EQ(counted::live, 0);
+    EXPECT_EQ(live_counted::live, 0);
 }
 
 TEST(ExpectedTest, ConvertingConstructorDoesNotLeak)
 {
-    counted::live = 0;
+    live_counted::live = 0;
     {
         const scn::expected<int, int> error{scn::unexpect, 1};
-        scn::expected<counted, long> from_error{error};
+        scn::expected<live_counted, long> from_error{error};
         EXPECT_FALSE(from_error.has_value());
-        EXPECT_EQ(counted::live, 0);
+        EXPECT_EQ(live_counted::live, 0);
 
         const scn::expected<int, int> value{1};
-        scn::expected<counted, long> from_value{value};
+        scn::expected<live_counted, long> from_value{value};
         EXPECT_TRUE(from_value.has_value());
-        EXPECT_EQ(counted::live, 1);
+        EXPECT_EQ(live_counted::live, 1);
     }
-    EXPECT_EQ(counted::live, 0);
+    EXPECT_EQ(live_counted::live, 0);
 }
 
 TEST(ExpectedTest, AssignValueAndError)
@@ -173,16 +267,6 @@ TEST(ExpectedTest, ConstructAndAssignAny)
 }
 
 #if SCN_HAS_EXCEPTIONS
-struct throws_on_nonzero_construct {
-    throws_on_nonzero_construct() = default;
-    throws_on_nonzero_construct(int value)
-    {
-        if (value != 0) {
-            throw std::runtime_error{"throws_on_nonzero_construct"};
-        }
-    }
-};
-
 TEST(ExpectedTest, AssignValueOverErrorRethrows)
 {
     scn::expected<throws_on_nonzero_construct, int> e{scn::unexpect, 42};
@@ -204,6 +288,10 @@ TEST(ExpectedTest, AssignmentNoexcept)
         std::is_nothrow_move_assignable_v<scn::expected<void, std::string>>);
     static_assert(
         !std::is_nothrow_copy_assignable_v<scn::expected<std::string, int>>);
+    static_assert(std::is_nothrow_assignable_v<scn::expected<std::string, int>&,
+                                               scn::unexpected<int>>);
+    static_assert(std::is_nothrow_assignable_v<scn::expected<std::string, int>&,
+                                               const scn::unexpected<int>&>);
 }
 
 TEST(ExpectedTest, ValueOnValue)
@@ -279,13 +367,166 @@ TEST(ExpectedTest, ConvertingConstructorConstraints)
     EXPECT_EQ(*copy, 1);
 }
 
-namespace {
-template <bool Noexcept>
-struct with_default_constructor {
-    with_default_constructor() noexcept(Noexcept) {}
-    std::string s;
-};
-}  // namespace
+TEST(ExpectedTest, Triviality)
+{
+    using expected_int = scn::expected<int, scn::scan_error>;
+    using expected_void = scn::expected<void, scn::scan_error>;
+    using expected_string = scn::expected<std::string, scn::scan_error>;
+
+    static_assert(std::is_trivially_copyable_v<expected_int>);
+    static_assert(std::is_trivially_destructible_v<expected_int>);
+    static_assert(std::is_trivially_copyable_v<expected_void>);
+    static_assert(std::is_trivially_destructible_v<expected_void>);
+    static_assert(!std::is_trivially_copyable_v<expected_string>);
+    static_assert(!std::is_trivially_destructible_v<expected_string>);
+}
+
+#if SCN_HAS_EXCEPTIONS
+TEST(ExpectedTest, ThrowingConvertingConstructor)
+{
+    live_counted::live = 0;
+    {
+        using value_throws =
+            scn::expected<throwing_counted<true>, live_counted>;
+        const scn::expected<int, live_counted> value{1};
+        EXPECT_THROW((void)value_throws{value}, std::runtime_error);
+        EXPECT_THROW((void)value_throws{(scn::expected<int, live_counted>{1})},
+                     std::runtime_error);
+        EXPECT_EQ(live_counted::live, 0);
+
+        using error_throws =
+            scn::expected<live_counted, throwing_counted<true>>;
+        const scn::expected<live_counted, int> error{scn::unexpect, 1};
+        EXPECT_THROW((void)error_throws{error}, std::runtime_error);
+        EXPECT_THROW((void)error_throws{(
+                         scn::expected<live_counted, int>{scn::unexpect, 1})},
+                     std::runtime_error);
+        EXPECT_EQ(live_counted::live, 0);
+    }
+    EXPECT_EQ(live_counted::live, 0);
+}
+
+TEST(ExpectedTest, ThrowingCopyAndMoveConstructor)
+{
+    live_counted::live = 0;
+    {
+        using value_throws =
+            scn::expected<throwing_counted<false>, live_counted>;
+        value_throws value{};
+        EXPECT_THROW((void)value_throws{std::as_const(value)},
+                     std::runtime_error);
+        EXPECT_THROW((void)value_throws{std::move(value)}, std::runtime_error);
+        EXPECT_EQ(live_counted::live, 1);
+
+        using error_throws =
+            scn::expected<live_counted, throwing_counted<false>>;
+        error_throws error{scn::unexpect};
+        EXPECT_THROW((void)error_throws{std::as_const(error)},
+                     std::runtime_error);
+        EXPECT_THROW((void)error_throws{std::move(error)}, std::runtime_error);
+        EXPECT_EQ(live_counted::live, 2);
+    }
+    EXPECT_EQ(live_counted::live, 0);
+}
+
+TEST(ExpectedTest, ThrowingErrorAssignmentKeepsValue)
+{
+    live_counted::live = 0;
+    {
+        // The error is constructed into a temporary first
+        scn::expected<live_counted, throwing_counted<true>> e{};
+        const scn::unexpected<throwing_counted<true>> unex{std::in_place};
+        EXPECT_THROW(e = unex, std::runtime_error);
+        EXPECT_TRUE(e.has_value());
+        EXPECT_EQ(live_counted::live, 2);
+    }
+    EXPECT_EQ(live_counted::live, 0);
+    {
+        // The value is moved into a temporary, and moved back
+        scn::expected<live_counted, throwing_counted<false>> e{};
+        scn::unexpected<throwing_counted<false>> unex{std::in_place};
+        EXPECT_THROW(e = std::as_const(unex), std::runtime_error);
+        EXPECT_THROW(e = std::move(unex), std::runtime_error);
+        EXPECT_TRUE(e.has_value());
+        EXPECT_EQ(live_counted::live, 2);
+
+        scn::expected<live_counted, throwing_counted<false>> error{
+            scn::unexpect};
+        EXPECT_THROW(e = std::as_const(error), std::runtime_error);
+        EXPECT_THROW(e = std::move(error), std::runtime_error);
+        EXPECT_TRUE(e.has_value());
+        EXPECT_EQ(live_counted::live, 3);
+    }
+    EXPECT_EQ(live_counted::live, 0);
+    {
+        scn::expected<void, throwing_counted<false>> e{};
+        const scn::unexpected<throwing_counted<false>> unex{std::in_place};
+        EXPECT_THROW(e = unex, std::runtime_error);
+        EXPECT_TRUE(e.has_value());
+        EXPECT_EQ(live_counted::live, 1);
+    }
+    EXPECT_EQ(live_counted::live, 0);
+}
+
+TEST(ExpectedTest, ThrowingValueAssignmentKeepsError)
+{
+    live_counted::live = 0;
+    {
+        // The error is moved into a temporary, and moved back
+        scn::expected<throwing_from_int, live_counted> e{scn::unexpect};
+        EXPECT_THROW(e = 1, std::runtime_error);
+        EXPECT_FALSE(e.has_value());
+        EXPECT_EQ(live_counted::live, 1);
+    }
+    EXPECT_EQ(live_counted::live, 0);
+    {
+        // The value is copied into a temporary first
+        scn::expected<throwing_counted<true>, live_counted> e{scn::unexpect};
+        const scn::expected<throwing_counted<true>, live_counted> value{};
+        EXPECT_THROW(e = value, std::runtime_error);
+        EXPECT_FALSE(e.has_value());
+        EXPECT_EQ(live_counted::live, 2);
+    }
+    EXPECT_EQ(live_counted::live, 0);
+    {
+        // The error is moved into a temporary, and moved back
+        scn::expected<throwing_counted<false>, live_counted> e{scn::unexpect};
+        scn::expected<throwing_counted<false>, live_counted> value{};
+        EXPECT_THROW(e = std::as_const(value), std::runtime_error);
+        EXPECT_THROW(e = std::move(value), std::runtime_error);
+        EXPECT_FALSE(e.has_value());
+        EXPECT_EQ(live_counted::live, 2);
+    }
+    EXPECT_EQ(live_counted::live, 0);
+}
+
+// Like std::expected, assigning over the other alternative needs T or E to be
+// nothrow move constructible, so that a throw can be rolled back
+TEST(ExpectedTest, AssignmentConstraints)
+{
+    using throws = throwing_counted<false>;
+    using throws_on_copy = throwing_counted<true>;
+
+    static_assert(std::is_copy_constructible_v<scn::expected<throws, throws>>);
+    static_assert(!std::is_copy_assignable_v<scn::expected<throws, throws>>);
+    static_assert(!std::is_move_assignable_v<scn::expected<throws, throws>>);
+    static_assert(!is_assignable_from_error_v<throws, throws>);
+
+    static_assert(is_fully_assignable_v<throws, live_counted>);
+    static_assert(is_fully_assignable_v<live_counted, throws>);
+    static_assert(is_fully_assignable_v<throws_on_copy, throws>);
+    static_assert(is_fully_assignable_v<void, throws>);
+
+    // Copying the error doesn't throw, but moving it does. Assigning an
+    // `unexpected` rvalue copies the error, as with std::expected.
+    using throws_on_move = throwing_counted<false, true>;
+    static_assert(
+        !std::is_copy_assignable_v<scn::expected<throws, throws_on_move>>);
+    static_assert(
+        !std::is_move_assignable_v<scn::expected<throws, throws_on_move>>);
+    static_assert(is_assignable_from_error_v<throws, throws_on_move>);
+}
+#endif
 
 TEST(ExpectedTest, DefaultConstructorNoexcept)
 {
