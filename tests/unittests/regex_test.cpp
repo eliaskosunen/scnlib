@@ -21,6 +21,7 @@
 #include <scn/scan.h>
 #include <scn/xchar.h>
 
+#include <array>
 #include <deque>
 
 using namespace std::string_view_literals;
@@ -412,5 +413,15 @@ TEST(RegexTest, NonContiguousSourceWithMatches)
 }
 
 #endif
+
+TEST(RegexTest, RegexMatchesWithRuntimeFormatWithoutRegexFails)
+{
+    constexpr std::array<const char*, 3> formats{"{}", "{:5}", "{:L}"};
+    for (auto fmt : formats) {
+        auto r = scn::scan<scn::regex_matches>("abc", scn::runtime_format(fmt));
+        EXPECT_THAT(r, FailedWith(scn::scan_error::invalid_format_string))
+            << fmt;
+    }
+}
 
 #endif  // !SCN_DISABLE_REGEX
