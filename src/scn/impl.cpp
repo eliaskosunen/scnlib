@@ -50,10 +50,28 @@ bool has_nonascii_char_64(R source)
 {
     static_assert(sizeof(*source.data()) == 1);
     SCN_EXPECT(source.size() <= 8);
-    uint64_t word{};
-    std::memcpy(&word, source.data(), source.size());
-
-    return has_byte_greater(word, 127) != 0;
+    // Fixed-size loads only: GCC copies a variable number of bytes one by one,
+    // and the wider load reading them back stalls
+    const auto* data = source.data();
+    const auto size = source.size();
+    if (size == 8) {
+        uint64_t word{};
+        std::memcpy(&word, data, 8);
+        return has_byte_greater(word, 127) != 0;
+    }
+    if (size >= 4) {
+        // Two overlapping loads cover all 4 to 7 bytes
+        uint32_t first{}, last{};
+        std::memcpy(&first, data, 4);
+        std::memcpy(&last, data + size - 4, 4);
+        return has_byte_greater(uint64_t{first | last}, 127) != 0;
+    }
+    for (std::size_t i = 0; i < size; ++i) {
+        if (static_cast<unsigned char>(data[i]) > 127) {
+            return true;
+        }
+    }
+    return false;
 }
 
 template <typename CuCb, typename CpCb>
@@ -1876,7 +1894,7 @@ template <typename CharT>
 scan_expected<std::ptrdiff_t> scan_simple_single_argument(
     std::basic_string_view<CharT> source,
     basic_scan_args<detail::default_context<CharT>> args,
-    basic_scan_arg<detail::default_context<CharT>> arg,
+    basic_scan_arg<detail::default_context<CharT>>& arg,
     detail::locale_ref loc = {})
 {
     if (SCN_UNLIKELY(!arg)) {
@@ -1898,7 +1916,7 @@ scan_expected<std::ptrdiff_t> scan_simple_single_argument(
     typename detail::basic_scan_buffer<
         detail::type_identity_t<CharT>>::range_type source,
     basic_scan_args<detail::default_context<CharT>> args,
-    basic_scan_arg<detail::default_context<CharT>> arg,
+    basic_scan_arg<detail::default_context<CharT>>& arg,
     detail::locale_ref loc = {})
 {
     if (SCN_UNLIKELY(!arg)) {
@@ -2302,19 +2320,19 @@ template <typename CharT>
 scan_expected<std::ptrdiff_t> vscan_internal(
     std::basic_string_view<CharT> source,
     std::basic_string_view<CharT> format,
-    basic_scan_args<detail::default_context<CharT>> args,
+    const basic_scan_args<detail::default_context<CharT>>& args,
     detail::locale_ref loc = {})
 {
     const auto argcount = args.size();
     if (is_simple_single_argument_format_string(format) && argcount == 1) {
         auto arg = args.get(0);
-        return scan_simple_single_argument(source, SCN_MOVE(args), arg, loc);
+        return scan_simple_single_argument(source, args, arg, loc);
     }
 
     auto handler = format_handler<true, CharT>{
         ranges::subrange<const CharT*>{source.data(),
                                        source.data() + source.size()},
-        format, SCN_MOVE(args), SCN_MOVE(loc), argcount};
+        format, args, SCN_MOVE(loc), argcount};
     return vscan_parse_format_string(format, handler);
 }
 
@@ -2357,7 +2375,7 @@ scan_expected<std::ptrdiff_t> vscan_internal(
     typename detail::basic_scan_buffer<
         detail::type_identity_t<CharT>>::range_type source,
     std::basic_string_view<CharT> format,
-    basic_scan_args<detail::default_context<CharT>> args,
+    const basic_scan_args<detail::default_context<CharT>>& args,
     detail::locale_ref loc = {})
 {
     if (!source.begin().stores_parent()) {
@@ -2369,12 +2387,11 @@ scan_expected<std::ptrdiff_t> vscan_internal(
         const auto argcount = args.size();
         if (is_simple_single_argument_format_string(format) && argcount == 1) {
             auto arg = args.get(0);
-            return scan_simple_single_argument(source, SCN_MOVE(args), arg,
-                                               loc);
+            return scan_simple_single_argument(source, args, arg, loc);
         }
 
-        auto handler = format_handler<false, CharT>{
-            source, format, SCN_MOVE(args), loc, argcount};
+        auto handler =
+            format_handler<false, CharT>{source, format, args, loc, argcount};
         return vscan_parse_format_string(format, handler);
     });
 }
@@ -2382,7 +2399,7 @@ scan_expected<std::ptrdiff_t> vscan_internal(
 template <typename CharT>
 scan_expected<std::ptrdiff_t> vscan_value_internal(
     std::basic_string_view<CharT> source,
-    basic_scan_arg<detail::default_context<CharT>> arg)
+    basic_scan_arg<detail::default_context<CharT>>& arg)
 {
     return scan_simple_single_argument(source, {}, arg);
 }
@@ -2391,7 +2408,7 @@ template <typename CharT>
 scan_expected<std::ptrdiff_t> vscan_value_internal(
     typename detail::basic_scan_buffer<
         detail::type_identity_t<CharT>>::range_type source,
-    basic_scan_arg<detail::default_context<CharT>> arg)
+    basic_scan_arg<detail::default_context<CharT>>& arg)
 {
     if (!source.begin().stores_parent()) {
         return vscan_value_internal(source.begin().contiguous_segment(), arg);
@@ -2448,28 +2465,28 @@ namespace detail {
 
 SCN_PUBLIC scan_expected<std::ptrdiff_t> vscan_impl(std::string_view source,
                                                     std::string_view format,
-                                                    scan_args args)
+                                                    const scan_args& args)
 {
     return vscan_internal(source, format, args);
 }
 SCN_PUBLIC scan_expected<std::ptrdiff_t> vscan_impl(
     scan_buffer::range_type source,
     std::string_view format,
-    scan_args args)
+    const scan_args& args)
 {
     return vscan_internal(source, format, args);
 }
 
 SCN_PUBLIC scan_expected<std::ptrdiff_t> vscan_impl(std::wstring_view source,
                                                     std::wstring_view format,
-                                                    wscan_args args)
+                                                    const wscan_args& args)
 {
     return vscan_internal(source, format, args);
 }
 SCN_PUBLIC scan_expected<std::ptrdiff_t> vscan_impl(
     wscan_buffer::range_type source,
     std::wstring_view format,
-    wscan_args args)
+    const wscan_args& args)
 {
     return vscan_internal(source, format, args);
 }
@@ -2479,7 +2496,7 @@ template <typename Locale>
 scan_expected<std::ptrdiff_t> vscan_localized_impl(const Locale& loc,
                                                    std::string_view source,
                                                    std::string_view format,
-                                                   scan_args args)
+                                                   const scan_args& args)
 {
     return vscan_internal(source, format, args, detail::locale_ref{loc});
 }
@@ -2488,7 +2505,7 @@ scan_expected<std::ptrdiff_t> vscan_localized_impl(
     const Locale& loc,
     scan_buffer::range_type source,
     std::string_view format,
-    scan_args args)
+    const scan_args& args)
 {
     return vscan_internal(source, format, args, detail::locale_ref{loc});
 }
@@ -2497,7 +2514,7 @@ template <typename Locale>
 scan_expected<std::ptrdiff_t> vscan_localized_impl(const Locale& loc,
                                                    std::wstring_view source,
                                                    std::wstring_view format,
-                                                   wscan_args args)
+                                                   const wscan_args& args)
 {
     return vscan_internal(source, format, args, detail::locale_ref{loc});
 }
@@ -2506,7 +2523,7 @@ scan_expected<std::ptrdiff_t> vscan_localized_impl(
     const Locale& loc,
     wscan_buffer::range_type source,
     std::wstring_view format,
-    wscan_args args)
+    const wscan_args& args)
 {
     return vscan_internal(source, format, args, detail::locale_ref{loc});
 }
@@ -2514,47 +2531,47 @@ scan_expected<std::ptrdiff_t> vscan_localized_impl(
 template SCN_PUBLIC auto vscan_localized_impl<std::locale>(const std::locale&,
                                                            std::string_view,
                                                            std::string_view,
-                                                           scan_args)
+                                                           const scan_args&)
     -> scan_expected<std::ptrdiff_t>;
 template SCN_PUBLIC auto vscan_localized_impl<std::locale>(
     const std::locale&,
     scan_buffer::range_type,
     std::string_view,
-    scan_args) -> scan_expected<std::ptrdiff_t>;
+    const scan_args&) -> scan_expected<std::ptrdiff_t>;
 template SCN_PUBLIC auto vscan_localized_impl<std::locale>(const std::locale&,
                                                            std::wstring_view,
                                                            std::wstring_view,
-                                                           wscan_args)
+                                                           const wscan_args&)
     -> scan_expected<std::ptrdiff_t>;
 template SCN_PUBLIC auto vscan_localized_impl<std::locale>(
     const std::locale&,
     wscan_buffer::range_type,
     std::wstring_view,
-    wscan_args) -> scan_expected<std::ptrdiff_t>;
+    const wscan_args&) -> scan_expected<std::ptrdiff_t>;
 #endif
 
 SCN_PUBLIC scan_expected<std::ptrdiff_t> vscan_value_impl(
     std::string_view source,
-    basic_scan_arg<scan_context> arg)
+    basic_scan_arg<scan_context>& arg)
 {
     return vscan_value_internal(source, arg);
 }
 SCN_PUBLIC scan_expected<std::ptrdiff_t> vscan_value_impl(
     scan_buffer::range_type source,
-    basic_scan_arg<scan_context> arg)
+    basic_scan_arg<scan_context>& arg)
 {
     return vscan_value_internal(source, arg);
 }
 
 SCN_PUBLIC scan_expected<std::ptrdiff_t> vscan_value_impl(
     std::wstring_view source,
-    basic_scan_arg<wscan_context> arg)
+    basic_scan_arg<wscan_context>& arg)
 {
     return vscan_value_internal(source, arg);
 }
 SCN_PUBLIC scan_expected<std::ptrdiff_t> vscan_value_impl(
     wscan_buffer::range_type source,
-    basic_scan_arg<wscan_context> arg)
+    basic_scan_arg<wscan_context>& arg)
 {
     return vscan_value_internal(source, arg);
 }
