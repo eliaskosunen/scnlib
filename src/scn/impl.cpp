@@ -1112,6 +1112,22 @@ SCN_DEFINE_CUSTOM_CONVERT(std::bfloat16_t)
 #if SCN_HAS_FLOAT_CHARCONV && !SCN_DISABLE_FROM_CHARS
 
 namespace {
+// Whether the significand in `source` (which ends at the exponent) has a
+// nonzero digit, i.e., whether the value isn't exactly zero
+SCN_MAYBE_UNUSED bool has_nonzero_significand_digit(std::string_view source,
+                                                    bool is_hex)
+{
+    for (const char ch : source) {
+        if (is_hex ? (ch == 'p' || ch == 'P') : (ch == 'e' || ch == 'E')) {
+            break;
+        }
+        if (ch != '0' && char_to_int(ch) < (is_hex ? 16 : 10)) {
+            return true;
+        }
+    }
+    return false;
+}
+
 struct convert_from_chars {
     convert_from_chars(kind_type kind, unsigned options)
         : m_kind(kind), m_options(options)
@@ -1173,6 +1189,37 @@ struct convert_from_chars {
             return detail::unexpected_scan_error(
                 scan_error::value_positive_overflow,
                 "Floating-point value too large");
+        }
+        if (SCN_UNLIKELY(is_float_any_zero(value)) &&
+            has_nonzero_significand_digit(
+                detail::make_string_view_from_pointers(source.data() + offset,
+                                                       result.ptr),
+                flags == std::chars_format::hex)) {
+            // We got zero, even though the input wasn't zero.
+            // This is an underflow, which musl's strtold doesn't report
+            // for hexfloats (and thus neither does std::from_chars).
+            // Fall back to make sure.
+
+            can_fallback = true;
+            return detail::unexpected_scan_error(
+                scan_error::value_positive_underflow,
+                "Floating-point value too small");
+        }
+        if constexpr (std::is_base_of_v<float_traits_impl_doubledouble<T>,
+                                        float_traits<T>>) {
+            if (SCN_UNLIKELY(!is_float_any_zero(value) &&
+                             std::fabs(value) <
+                                 std::numeric_limits<T>::min())) {
+                // glibc's strtold, which libstdc++ uses for a double-double
+                // long double, rounds an exact half of the smallest
+                // subnormal to 2^-970, instead of to zero.
+                // Fall back to the custom parser for the subnormal range.
+
+                can_fallback = true;
+                return detail::unexpected_scan_error(
+                    scan_error::value_positive_underflow,
+                    "Floating-point value too small");
+            }
         }
 
         return detail::make_string_view_iterator_from_pointer(source,
