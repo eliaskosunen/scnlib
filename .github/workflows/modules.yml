@@ -147,6 +147,46 @@ jobs:
           output="$(echo '42' | ./scn-consumer-module)"
           test "$output" -eq 42
 
+  ubuntu-no-exceptions:
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - cmake: "~3.28.0"
+            generator: Ninja
+          - cmake: "~3.27.0"
+            generator: Unix Makefiles
+
+    env:
+      CXX: clang++-18
+
+    steps:
+      - name: Setup CMake and Ninja
+        uses: lukka/get-cmake@v4.4.4
+        with:
+          cmakeVersion: ${{ matrix.cmake }}
+
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Run CMake
+        run: |
+          mkdir ${{ runner.workspace }}/lib-build
+          cd ${{ runner.workspace }}/lib-build
+          cmake -G "${{ matrix.generator }}" -DSCN_MODULES=ON \
+                -DSCN_USE_EXCEPTIONS=OFF $GITHUB_WORKSPACE
+
+      - name: Build
+        working-directory: ${{ runner.workspace }}/lib-build
+        run: |
+          cmake --build . --verbose
+
+      - name: Test
+        working-directory: ${{ runner.workspace }}/lib-build
+        run: |
+          ctest --output-on-failure
+
   windows:
     runs-on: windows-2022
     strategy:
