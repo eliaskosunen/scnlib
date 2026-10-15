@@ -1069,7 +1069,6 @@ SCN_NODISCARD std::ptrdiff_t buffer_sync_helper(
 struct default_file_tag {};
 struct gnu_file_tag {};
 struct bsd_file_tag {};
-struct musl_file_tag {};
 struct win32_file_tag {};
 
 // Non-pretty workaround for MSVC silliness
@@ -1089,14 +1088,6 @@ inline constexpr bool is_bsd_file<
     std::void_t<decltype(SCN_DECLVAL(F)._p), decltype(SCN_DECLVAL(F)._r)>> =
     true;
 
-template <typename F, typename = void>
-inline constexpr bool is_musl_file = false;
-template <typename F>
-inline constexpr bool is_musl_file<
-    F,
-    std::void_t<decltype(SCN_DECLVAL(F).rpos), decltype(SCN_DECLVAL(F).rend)>> =
-    true;
-
 template <typename F>
 inline constexpr bool is_win32_file =
     std::is_same_v<F, std::FILE> && SCN_WINDOWS && !SCN_MINGW;
@@ -1108,9 +1099,6 @@ SCN_MAYBE_UNUSED constexpr auto get_file_tag()
     }
     else if constexpr (is_bsd_file<std::FILE>) {
         return detail::tag_type<bsd_file_tag>{};
-    }
-    else if constexpr (is_musl_file<std::FILE>) {
-        return detail::tag_type<musl_file_tag>{};
     }
     else if constexpr (is_win32_file<std::FILE>) {
         return detail::tag_type<win32_file_tag>{};
@@ -1327,40 +1315,6 @@ struct stdio_file_interface_impl<File, bsd_file_tag>
         if (__srget(this->file) != EOF) {
             --this->file->_p;
             ++this->file->_r;
-            return true;
-        }
-        return false;
-    }
-};
-
-template <typename File>
-struct stdio_file_interface_impl<File, musl_file_tag>
-    : posix_stdio_file_interface<File> {
-    using posix_stdio_file_interface<File>::posix_stdio_file_interface;
-
-    SCN_NODISCARD static constexpr bool has_buffering()
-    {
-        return true;
-    }
-
-    SCN_NODISCARD std::string_view buffer() const
-    {
-        return detail::make_string_view_from_pointers(
-            reinterpret_cast<const char*>(this->file->rpos),
-            reinterpret_cast<const char*>(this->file->rend));
-    }
-    void unsafe_advance_n(std::ptrdiff_t n)
-    {
-        SCN_EXPECT(this->file->rpos != nullptr);
-        SCN_EXPECT(n >= 0);
-        SCN_EXPECT(this->file->rend - this->file->rpos >= n);
-        this->file->rpos += n;
-        clearerr_unlocked(this->file);
-    }
-    SCN_NODISCARD bool fill_buffer()
-    {
-        if (__uflow(this->file) != EOF) {
-            --this->file->rpos;
             return true;
         }
         return false;
