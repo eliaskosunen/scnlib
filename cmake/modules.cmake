@@ -7,6 +7,15 @@ if (CMAKE_VERSION VERSION_GREATER_EQUAL 3.28 AND CMAKE_GENERATOR STREQUAL "Ninja
     set(SCN_USE_CMAKE_MODULES ON)
 endif ()
 
+# CMake can scan clang-cl sources for modules only since 4.4, and the manual
+# module build below only knows the GNU-style clang command line
+if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang" AND CMAKE_CXX_COMPILER_FRONTEND_VARIANT STREQUAL "MSVC" AND
+    (NOT SCN_USE_CMAKE_MODULES OR CMAKE_VERSION VERSION_LESS 4.4))
+    message(FATAL_ERROR
+            "SCN_MODULES with clang-cl requires CMake 4.4 or newer and the Ninja generator "
+            "(found CMake ${CMAKE_VERSION} and the ${CMAKE_GENERATOR} generator)")
+endif ()
+
 function (target_uses_extensions target out)
     get_target_property(target_property ${target} CXX_EXTENSIONS)
     if (target_property AND NOT (target_property STREQUAL "target_property-NOTFOUND"))
