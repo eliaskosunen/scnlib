@@ -8710,6 +8710,24 @@ struct arg_reader {
     using range_type = typename context_type::range_type;
     using iterator = ranges::iterator_t<range_type>;
 
+    // A precision smaller than the width of the next character would make
+    // the readers see an empty range, with input remaining.
+    // They'd either succeed without consuming anything, or report
+    // different errors depending on the reader.
+    template <typename View>
+    static scan_expected<void> check_precision_fits_next_character(
+        const View& max_width_view,
+        bool is_source_empty)
+    {
+        if (SCN_UNLIKELY(!is_source_empty &&
+                         max_width_view.begin() == max_width_view.end())) {
+            return detail::unexpected_scan_error(
+                scan_error::invalid_scanned_value,
+                "Precision is smaller than the width of the next character");
+        }
+        return {};
+    }
+
     template <typename Range>
     auto impl_prefix(Range rng, bool rd_skip_ws_before_read)
         -> scan_expected<skip_fill_result<ranges::iterator_t<Range>>>
@@ -8826,6 +8844,8 @@ struct arg_reader {
         std::ptrdiff_t prefix_width = 0;
         if (specs.precision != 0) {
             auto max_width_view = take_width(rng, specs.precision);
+            SCN_TRY_DISCARD(check_precision_fits_next_character(
+                max_width_view, rng.begin() == rng.end()));
             SCN_TRY(prefix_result,
                     impl_prefix(max_width_view, rd.skip_ws_before_read()));
             it = prefix_result.first.base();
@@ -8850,6 +8870,8 @@ struct arg_reader {
             const auto initial_width = specs.precision - prefix_width;
             auto max_width_view =
                 take_width(ranges::subrange{it, rng.end()}, initial_width);
+            SCN_TRY_DISCARD(check_precision_fits_next_character(
+                max_width_view, it == rng.end()));
             SCN_TRY(w_it, rd.read_specs(max_width_view, specs, value, loc));
             it = w_it.base();
             value_width = initial_width - w_it.count();
