@@ -206,6 +206,80 @@ TEST(StringTest, CharacterSetNonMatchingInputIsNotEndOfInput)
     EXPECT_THAT(result, FailedWith(scn::scan_error::invalid_scanned_value));
 }
 
+// U+4E00 is 3 bytes long in UTF-8, and has a width of 2
+TEST(StringTest, PrecisionSmallerThanNextCharacterWidth)
+{
+    const std::string wide_char = "\xe4\xb8\x80";
+
+    constexpr std::array<const char*, 4> formats{"{:.1c}", "{:.1}", "{:.1[^x]}",
+                                                 "{:.1s}"};
+    for (auto fmt : formats) {
+        auto result =
+            scn::scan<std::string>(wide_char, scn::runtime_format(fmt));
+        EXPECT_THAT(result, FailedWith(scn::scan_error::invalid_scanned_value))
+            << fmt;
+
+        auto deque_source =
+            std::deque<char>(wide_char.begin(), wide_char.end());
+        auto from_deque =
+            scn::scan<std::string>(deque_source, scn::runtime_format(fmt));
+        EXPECT_THAT(from_deque,
+                    FailedWith(scn::scan_error::invalid_scanned_value))
+            << fmt;
+    }
+}
+
+TEST(StringTest, PrecisionSmallerThanNextCharacterWidthStringView)
+{
+    const std::string wide_char = "\xe4\xb8\x80";
+
+    auto result =
+        scn::scan<std::string_view>(wide_char, scn::runtime_format("{:.1c}"));
+    EXPECT_THAT(result, FailedWith(scn::scan_error::invalid_scanned_value));
+}
+
+TEST(StringTest, PrecisionSmallerThanNextCharacterWidthCodePoint)
+{
+    const std::string wide_char = "\xe4\xb8\x80";
+
+    auto result = scn::scan<char32_t>(wide_char, scn::runtime_format("{:.1}"));
+    EXPECT_THAT(result, FailedWith(scn::scan_error::invalid_scanned_value));
+}
+
+// The precision is used up by the fill before the character
+TEST(StringTest, PrecisionSmallerThanNextCharacterWidthAfterFill)
+{
+    const std::string wide_char = "\xe4\xb8\x80";
+
+    auto result =
+        scn::scan<std::string>(" " + wide_char, scn::runtime_format("{:>2.2}"));
+    EXPECT_THAT(result, FailedWith(scn::scan_error::invalid_scanned_value));
+}
+
+TEST(StringTest, PrecisionEqualToNextCharacterWidth)
+{
+    const std::string wide_char = "\xe4\xb8\x80";
+
+    constexpr std::array<const char*, 3> formats{"{:.2c}", "{:.2}",
+                                                 "{:.2[^x]}"};
+    for (auto fmt : formats) {
+        auto result =
+            scn::scan<std::string>(wide_char, scn::runtime_format(fmt));
+        ASSERT_THAT(result, Succeeded()) << fmt;
+        EXPECT_EQ(result->value(), wide_char) << fmt;
+    }
+}
+
+TEST(StringTest, PrecisionEqualToNextCharacterWidthCodePoint)
+{
+    const std::string wide_char = "\xe4\xb8\x80";
+
+    auto result = scn::scan<char32_t>(wide_char, scn::runtime_format("{:.2}"));
+    ASSERT_THAT(result, Succeeded());
+    EXPECT_EQ(result->value(), U'\u4e00');
+    EXPECT_THAT(result->range(), IsEmptyRange());
+}
+
 TEST(StringTest, CharacterSetMatchingNothing)
 {
     auto result = scn::scan<std::string>("123", "{:[a-z]}");
