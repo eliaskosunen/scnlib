@@ -368,31 +368,6 @@ TEST(LocalizedChronoTest, Datetime)
     EXPECT_EQ(result->value().tm_hour, 4);
     EXPECT_EQ(result->value().tm_min, 41);
     EXPECT_EQ(result->value().tm_sec, 13);
-
-    // "%c" doesn't work with non-"C" locales in libc++, either
-#if 0
-    result = scn::scan<std::tm>(fi_locale, "sunnuntai 17 lokakuu 04:41:13 2020",
-                                "{:L%c}");
-    ASSERT_THAT(result, Succeeded());
-    EXPECT_EQ(result->value().tm_year, 2020 - 1900);
-    EXPECT_EQ(result->value().tm_mon, 10 - 1);
-    EXPECT_EQ(result->value().tm_mday, 17);
-    EXPECT_EQ(result->value().tm_wday, 0);
-    EXPECT_EQ(result->value().tm_hour, 4);
-    EXPECT_EQ(result->value().tm_min, 41);
-    EXPECT_EQ(result->value().tm_sec, 13);
-
-    result = scn::scan<std::tm>(fi_locale, "sunnuntai 17 lokakuu 04:41:13 2020",
-                                "{:L%Ec}");
-    ASSERT_THAT(result, Succeeded());
-    EXPECT_EQ(result->value().tm_year, 2020 - 1900);
-    EXPECT_EQ(result->value().tm_mon, 10 - 1);
-    EXPECT_EQ(result->value().tm_mday, 17);
-    EXPECT_EQ(result->value().tm_wday, 0);
-    EXPECT_EQ(result->value().tm_hour, 4);
-    EXPECT_EQ(result->value().tm_min, 41);
-    EXPECT_EQ(result->value().tm_sec, 13);
-#endif
 }
 #endif
 

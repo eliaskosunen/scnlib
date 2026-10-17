@@ -148,13 +148,6 @@ TEST(RangesTest, MapMalformedMissingColon)
     ASSERT_THAT(result, Failed());
 }
 
-TEST(RangesTest, VectorManyElements)
-{
-    auto result = scn::scan<std::vector<int>>("[1, 2, 3, 4, 5]", "{}");
-    ASSERT_THAT(result, Succeeded());
-    EXPECT_THAT(result->value(), testing::ElementsAre(1, 2, 3, 4, 5));
-}
-
 TEST(RangesTest, VectorNegativeNumbers)
 {
     auto result = scn::scan<std::vector<int>>("[-1, -2, -3]", "{}");

@@ -92,11 +92,6 @@ TEST(StringViewTest, InvalidUtf8)
     auto source = std::string_view{"\x82\xf5"};
     auto result = scn::scan<std::string_view>(source, "{:.64c}");
     ASSERT_THAT(result, FailedWith(scn::scan_error::invalid_scanned_value));
-#if 0
-    ASSERT_THAT(result, Succeeded());
-    EXPECT_THAT(result->range(), IsEmptyRange());
-    EXPECT_EQ(result->value(), source);
-#endif
 }
 
 TEST(StringViewTest, WonkyInput)
@@ -121,9 +116,4 @@ TEST(StringViewTest, WonkyInput2)
 
     auto result = scn::scan<std::string_view>(input, "{:.64c}");
     ASSERT_THAT(result, FailedWith(scn::scan_error::invalid_scanned_value));
-#if 0
-    ASSERT_THAT(result, Succeeded());
-    EXPECT_THAT(result->range(), IsEmptyRange());
-    EXPECT_EQ(result->value(), input);
-#endif
 }

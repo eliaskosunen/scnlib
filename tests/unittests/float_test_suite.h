@@ -431,22 +431,6 @@ protected:
     using string_view_type = std::basic_string_view<char_type>;
 
     using pair_type = std::pair<float_type, std::string_view>;
-
-    static std::pair<float_type, std::string> make_negative(pair_type input)
-    {
-        SCN_EXPECT(!input.second.empty() && input.second.front() != '-' &&
-                   input.second.front() != '+');
-        SCN_EXPECT(!classify_float(input.first).signbit());
-        return {std::copysign(input.first, static_cast<float_type>(-1.0)),
-                "-" + std::string{input.second}};
-    }
-
-    static std::string add_leading_plus(std::string_view input)
-    {
-        SCN_EXPECT(!input.empty() && input.front() != '-' &&
-                   input.front() != '+');
-        return "+" + std::string{input};
-    }
 };
 
 template <typename T>

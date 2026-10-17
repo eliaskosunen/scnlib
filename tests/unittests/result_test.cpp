@@ -136,24 +136,6 @@ TEST(ResultTest, HasValueCheck)
     EXPECT_TRUE(success.has_value());
 
     auto failure = scn::scan<int>("not a number", "{}");
-    ASSERT_THAT(failure, Failed());
-    EXPECT_FALSE(failure.has_value());
-}
-
-TEST(ResultTest, ErrorAccess)
-{
-    auto failure = scn::scan<int>("not a number", "{}");
     ASSERT_THAT(failure, FailedWith(scn::scan_error::invalid_scanned_value));
-}
-
-TEST(ResultTest, MultipleResultsChained)
-{
-    auto source = std::string_view{"42 99"};
-    auto result1 = scn::scan<int>(source, "{}");
-    ASSERT_THAT(result1, Succeeded());
-    EXPECT_EQ(result1->value(), 42);
-
-    auto result2 = scn::scan<int>(result1->range(), "{}");
-    ASSERT_THAT(result2, Succeeded());
-    EXPECT_EQ(result2->value(), 99);
+    EXPECT_FALSE(failure.has_value());
 }

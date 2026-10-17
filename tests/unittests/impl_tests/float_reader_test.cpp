@@ -144,7 +144,7 @@ TYPED_TEST_P(FloatValueReaderTest, PresentationScientificValueHexWithPrefix)
 }
 TYPED_TEST_P(FloatValueReaderTest, PresentationScientificValueHexWithoutPrefix)
 {
-    this->set_source("0x1.fp3");
+    this->set_source("1.fp3");
     auto res = this->read_specs(this->make_format_specs_with_presentation(
         scn::detail::presentation_type::float_scientific));
 

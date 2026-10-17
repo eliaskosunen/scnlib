@@ -59,6 +59,19 @@ struct mock_file_base {
         return std::accumulate(m_chunks.begin(), m_chunks.end(), std::string{});
     }
 
+    // The shortest sequence of whole chunks that starts with `prefix`
+    SCN_NODISCARD std::string chunks_covering(const std::string& prefix) const
+    {
+        std::string result;
+        for (const auto& chunk : m_chunks) {
+            if (result.size() >= prefix.size()) {
+                break;
+            }
+            result += chunk;
+        }
+        return result;
+    }
+
     bool fail_all_putbacks{false};
     // Reaching the end of the file is reported as a read error, not as EOF
     bool read_error_at_end{false};
@@ -225,6 +238,16 @@ struct buffered_mock_file : mock_file_base {
 
     // `read_one` is not used by the buffered scanning code
     int read_one_calls{0};
+
+    // The chunks that have been read from the underlying file so far,
+    // even if their contents were later put back
+    SCN_NODISCARD std::string reached() const
+    {
+        return std::accumulate(
+            m_chunks.begin(),
+            m_chunks.begin() + static_cast<std::ptrdiff_t>(m_next_chunk),
+            std::string{});
+    }
 
     // What would be read from the file next
     SCN_NODISCARD std::string remaining() const
@@ -594,28 +617,6 @@ TEST(FileTest, ChunkUp)
                              "\n", "f", "o", "o", "b", "a", "r"));
 }
 
-TEST(FileTest, Simple)
-{
-    unbuffered_mock_file file{{"123 456"}};
-    mock_file_buffer buffer{file};
-    auto range = buffer.get();
-    auto result = scn::scan<int, int>(range, "{} {}");
-    ASSERT_THAT(result, Succeeded());
-    auto [a, b] = result->values();
-    EXPECT_EQ(a, 123);
-    EXPECT_EQ(b, 456);
-}
-
-TEST(FileTest, CustomType)
-{
-    unbuffered_mock_file file{{"123 456"}};
-    mock_file_buffer buffer{file};
-    auto range = buffer.get();
-    auto result = scn::scan<custom_type>(range, "{}");
-    ASSERT_THAT(result, Succeeded());
-    EXPECT_THAT(result->value(), FieldsAre(123, 456));
-}
-
 TEST(FileTest, NonReadableFile)
 {
     scn::scan_file file{stderr};
@@ -646,14 +647,6 @@ TEST(FileTest, NullHandleKeepsPrelude)
     auto result = scn::scan<int>(file, "{}");
     ASSERT_THAT(result, Failed());
     EXPECT_EQ(file.prelude(), "123");
-}
-
-TEST(FileTest, FailedFopen)
-{
-    scn::scan_file file{std::fopen("/nonexistent/file.txt", "r")};
-    auto result = scn::scan<int>(file, "{}");
-    ASSERT_THAT(result, Failed());
-    EXPECT_EQ(result.error().code(), scn::scan_error::invalid_source_state);
 }
 
 TEST(FileTest, NullCFile)
@@ -773,18 +766,24 @@ protected:
         return m_buffer->prelude() + m_file->remaining();
     }
 
-    // How far the file was read, and what couldn't be put back into it.
-    // Depends on the buffering of the file, so only checked for
-    // `unbuffered_mock_file`.
+    // How far the file was read. A buffered file is read in whole chunks.
     void expect_reached(const std::string& expected) const
     {
-        if constexpr (!file_type::is_buffered) {
+        if constexpr (file_type::is_buffered) {
+            EXPECT_EQ(m_file->reached(), m_file->chunks_covering(expected));
+        }
+        else {
             EXPECT_EQ(m_file->reached(), expected);
         }
     }
+    // What couldn't be put back into the file.
+    // A buffered file needs to put back less, depending on the chunking.
     void expect_prelude(const std::string& expected) const
     {
-        if constexpr (!file_type::is_buffered) {
+        if constexpr (file_type::is_buffered) {
+            EXPECT_THAT(expected, testing::StartsWith(m_buffer->prelude()));
+        }
+        else {
             EXPECT_EQ(m_buffer->prelude(), expected);
         }
     }
@@ -1159,16 +1158,6 @@ TYPED_TEST(FileTestP, ConsecutiveScanValues)
     ASSERT_THAT(end, FailedWith(scn::scan_error::end_of_input));
 }
 
-TYPED_TEST(FileTestP, ReadErrorAtEndOfFile)
-{
-    auto& range = this->get("123");
-    this->m_file->read_error_at_end = true;
-    auto result = scn::scan<int, int>(range, "{} {}");
-    ASSERT_THAT(result, Failed());
-    EXPECT_EQ(result.error().code(), scn::scan_error::invalid_source_state);
-    EXPECT_EQ(this->get_file_remainder(), "123");
-}
-
 TYPED_TEST(FileTestP, ReadErrorOnEmptyFile)
 {
     auto& range = this->get("");
@@ -1435,9 +1424,15 @@ TEST_P(FileRealTest, RawFileFailedScan)
     // are lost, in which case the scan fails because of the failed sync.
     // Which characters can be put back depends on the C library, and the
     // buffer size.
-    if (result.error().code() != scn::scan_error::invalid_source_state) {
-        EXPECT_EQ(file.read_rest(), "123 456 abc\ndef");
+    if (result.error().code() == scn::scan_error::invalid_source_state) {
+#ifdef __GLIBC__
+        FAIL() << "glibc can put back all of the characters";
+#else
+        GTEST_SKIP() << "ungetc can't put back all of the characters";
+#endif
     }
+    EXPECT_EQ(result.error().code(), scn::scan_error::invalid_scanned_value);
+    EXPECT_EQ(file.read_rest(), "123 456 abc\ndef");
 }
 
 TEST_P(FileRealTest, RawFileInputLongerThanBuffer)

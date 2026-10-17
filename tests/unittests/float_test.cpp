@@ -43,6 +43,8 @@ TEST(FloatTest, Float16)
 {
     auto result = scn::scan<std::float16_t>("3.14", "{}");
     ASSERT_THAT(result, Succeeded());
+    EXPECT_EQ(result->value(), 3.14f16);
+    EXPECT_THAT(result->range(), IsEmptyRange());
 }
 #endif
 #if SCN_HAS_STD_F32
@@ -50,6 +52,8 @@ TEST(FloatTest, Float32)
 {
     auto result = scn::scan<std::float32_t>("3.14", "{}");
     ASSERT_THAT(result, Succeeded());
+    EXPECT_EQ(result->value(), 3.14f32);
+    EXPECT_THAT(result->range(), IsEmptyRange());
 }
 #endif
 #if SCN_HAS_STD_F64
@@ -57,6 +61,8 @@ TEST(FloatTest, Float64)
 {
     auto result = scn::scan<std::float64_t>("3.14", "{}");
     ASSERT_THAT(result, Succeeded());
+    EXPECT_EQ(result->value(), 3.14f64);
+    EXPECT_THAT(result->range(), IsEmptyRange());
 }
 #endif
 #if SCN_HAS_STD_F128
@@ -64,6 +70,8 @@ TEST(FloatTest, Float128)
 {
     auto result = scn::scan<std::float128_t>("3.14", "{}");
     ASSERT_THAT(result, Succeeded());
+    EXPECT_EQ(result->value(), 3.14f128);
+    EXPECT_THAT(result->range(), IsEmptyRange());
 }
 #endif
 #if SCN_HAS_STD_BF16
@@ -71,6 +79,8 @@ TEST(FloatTest, BFloat16)
 {
     auto result = scn::scan<std::bfloat16_t>("3.14", "{}");
     ASSERT_THAT(result, Succeeded());
+    EXPECT_EQ(result->value(), 3.14bf16);
+    EXPECT_THAT(result->range(), IsEmptyRange());
 }
 #endif
 
@@ -97,6 +107,7 @@ TEST(FloatTest, HexFloat)
 
     result = scn::scan<double>("0X1.FFFp10", "{:a}");
     ASSERT_THAT(result, Succeeded());
+    EXPECT_DOUBLE_EQ(result->value(), 2047.75);
 }
 
 TEST(FloatTest, Infinity)
@@ -166,7 +177,8 @@ TEST(FloatTest, VeryLargeNumber)
 {
     auto result = scn::scan<double>("1.7976931348623157e+308", "{}");
     ASSERT_THAT(result, Succeeded());
-    EXPECT_GT(result->value(), 1.7e308);
+    EXPECT_EQ(result->value(), std::numeric_limits<double>::max());
+    EXPECT_THAT(result->range(), IsEmptyRange());
 }
 
 TEST(FloatTest, LongDoubleExponentOutOfIntRange)

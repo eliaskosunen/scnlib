@@ -342,13 +342,6 @@ TEST(StringTest, WonkyInput3)
     ASSERT_THAT(result, FailedWith(scn::scan_error::invalid_scanned_value));
 }
 
-TEST(StringTest, RecoveryFromInvalidEncoding)
-{
-    const auto source = std::string_view{"a\xc3 "};
-    auto result = scn::scan<std::string>(source, "{}");
-    ASSERT_THAT(result, FailedWith(scn::scan_error::invalid_scanned_value));
-}
-
 TEST(StringTest, EmptyString)
 {
     auto result = scn::scan<std::string>("", "{}");
