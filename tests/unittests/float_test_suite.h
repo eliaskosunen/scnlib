@@ -447,6 +447,10 @@ protected:
     {
         base::SetUpTestSuite();
 
+        if (!scn_test_detail::is_verbose_test_output()) {
+            return;
+        }
+
         using type = typename base::float_type;
         std::cerr << "Float test info dump:\n"
                   << "Type: " << testing::internal::GetTypeName<type>() << '\n'
@@ -488,15 +492,6 @@ protected:
                   << '\n'
                   << "------\n"
                   << std::flush;
-    }
-
-    void SetUp() override
-    {
-        base::SetUp();
-
-        if constexpr (!T::enabled) {
-            GTEST_SKIP() << "Test suite disabled for this type";
-        }
     }
 
     static auto run_test(interface_type& interface,
@@ -1324,40 +1319,85 @@ REGISTER_TYPED_TEST_SUITE_P(FloatTestSuite,
                             FoundWithFuzzing);
 
 template <template <typename, typename> class T>
-using float_test_suite_types = ::testing::Types<T<char, float>,
-                                                T<char, double>,
-                                                T<char, long double>,
-                                                T<wchar_t, float>,
-                                                T<wchar_t, double>,
-                                                T<wchar_t, long double>
+using all_float_test_suite_types = ::testing::Types<T<char, float>,
+                                                    T<char, double>,
+                                                    T<char, long double>,
+                                                    T<wchar_t, float>,
+                                                    T<wchar_t, double>,
+                                                    T<wchar_t, long double>
 
 #if SCN_HAS_STD_F16
-                                                ,
-                                                T<char, std::float16_t>,
-                                                T<wchar_t, std::float16_t>
+                                                    ,
+                                                    T<char, std::float16_t>,
+                                                    T<wchar_t, std::float16_t>
 #endif
 
 #if SCN_HAS_STD_F32
-                                                ,
-                                                T<char, std::float32_t>,
-                                                T<wchar_t, std::float32_t>
+                                                    ,
+                                                    T<char, std::float32_t>,
+                                                    T<wchar_t, std::float32_t>
 #endif
 
 #if SCN_HAS_STD_F64
-                                                ,
-                                                T<char, std::float64_t>,
-                                                T<wchar_t, std::float64_t>
+                                                    ,
+                                                    T<char, std::float64_t>,
+                                                    T<wchar_t, std::float64_t>
 #endif
 
 #if SCN_HAS_STD_F128
-                                                ,
-                                                T<char, std::float128_t>,
-                                                T<wchar_t, std::float128_t>
+                                                    ,
+                                                    T<char, std::float128_t>,
+                                                    T<wchar_t, std::float128_t>
 #endif
 
 #if SCN_HAS_STD_BF16
-                                                ,
-                                                T<char, std::bfloat16_t>,
-                                                T<wchar_t, std::bfloat16_t>
+                                                    ,
+                                                    T<char, std::bfloat16_t>,
+                                                    T<wchar_t, std::bfloat16_t>
 #endif
-                                                >;
+                                                    >;
+
+template <typename Result, typename Candidate, bool Enabled>
+struct append_if_enabled {
+    using type = Result;
+};
+template <typename... Results, typename Candidate>
+struct append_if_enabled<::testing::Types<Results...>, Candidate, true> {
+    using type = ::testing::Types<Results..., Candidate>;
+};
+
+template <typename Remaining, typename Result = ::testing::Types<>>
+struct filter_enabled_types {
+    using type = Result;
+};
+template <typename Head, typename... Tail, typename Result>
+struct filter_enabled_types<::testing::Types<Head, Tail...>, Result>
+    : filter_enabled_types<
+          ::testing::Types<Tail...>,
+          typename append_if_enabled<Result, Head, Head::enabled>::type> {};
+
+// gtest has no support for empty type lists:
+// ProxyTypeList<>::type would be an ill-formed Types<>.
+// Make it the end-of-list marker that gtest uses internally instead.
+namespace testing::internal {
+template <>
+struct ProxyTypeList<> {
+    using type = None;
+};
+}  // namespace testing::internal
+
+template <typename List>
+struct to_gtest_type_list {
+    using type = List;
+};
+template <>
+struct to_gtest_type_list<::testing::Types<>> {
+    using type = ::testing::internal::ProxyTypeList<>;
+};
+
+// Interfaces with enabled == false are left out, so they don't show up as
+// skipped tests. If none are enabled, the result is an empty type list,
+// which instantiates no tests.
+template <template <typename, typename> class T>
+using float_test_suite_types = typename to_gtest_type_list<
+    typename filter_enabled_types<all_float_test_suite_types<T>>::type>::type;

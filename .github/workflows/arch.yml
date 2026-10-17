@@ -44,6 +44,7 @@ env:
   CCACHE_NOHASHDIR: true
   CCACHE_SLOPPINESS: "pch_defines,time_macros"
   CCACHE_UNIFY: true
+  SCN_TEST_VERBOSE: 1
 
 jobs:
   # Cross-compile on x64 host, then run tests on target architectures through QEMU
