@@ -1,0 +1,8 @@
+#!/bin/sh
+
+if ! python3 scripts/format.py --check; then
+  echo >&2
+  echo "Formatting check failed. Run scripts/format.py to fix the staged files" >&2
+  echo "(then re-stage them), or use 'git commit --no-verify' to bypass." >&2
+  exit 1
+fi

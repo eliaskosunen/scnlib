@@ -1,0 +1,6 @@
+definitions:
+  - benchmark
+  - cmake
+  - tests
+indent: 4
+line_length: 80

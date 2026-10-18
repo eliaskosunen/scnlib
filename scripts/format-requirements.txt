@@ -1,0 +1,4 @@
+clang-format==22.1.8
+ruff==0.17.0
+gersemi==0.29.2
+shfmt-py==4.2.0

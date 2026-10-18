@@ -1,0 +1,35 @@
+name: Format
+
+on:
+  push:
+    branches:
+      - master
+      - v*/dev
+      - ci/*
+      - dev/*
+  pull_request:
+    branches:
+      - master
+      - v*/dev
+      - ci/*
+      - dev/*
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref_name }}-${{ github.ref_type == 'branch' && github.sha }}-${{ github.event_name == 'workflow_dispatch' }}-${{ github.event_name == 'schedule' }}-${{ github.event.schedule }}
+  cancel-in-progress: true
+
+jobs:
+  format:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Install formatters
+        run: |
+          python3 -m venv "$RUNNER_TEMP/format-venv"
+          "$RUNNER_TEMP/format-venv/bin/pip" install -r scripts/format-requirements.txt
+          echo "$RUNNER_TEMP/format-venv/bin" >> "$GITHUB_PATH"
+
+      - name: Check formatting
+        run: python3 scripts/format.py --check --all
