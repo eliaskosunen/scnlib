@@ -37,7 +37,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref_name }}-${{ github.ref_type == 'branch' && github.sha }}-${{ github.event_name == 'workflow_dispatch' }}-${{ github.event_name == 'schedule' }}-${{ github.event.schedule }}
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}${{ github.ref == 'refs/heads/master' && format('-{0}', github.sha) || '' }}-${{ github.event_name }}
   cancel-in-progress: true
 
 env:
@@ -148,7 +148,7 @@ jobs:
 
       - name: Build
         working-directory: ${{ runner.workspace }}/build
-        run: cmake --build . --verbose -- -k 0
+        run: cmake --build . -- -k 0
 
       - name: Show ccache stats
         run: |
@@ -206,7 +206,7 @@ jobs:
 
       - name: Build
         working-directory: ${{ runner.workspace }}/build
-        run: cmake --build . --config ${{ matrix.type }} --parallel --verbose
+        run: cmake --build . --config ${{ matrix.type }} --parallel
 
       - name: Show ccache stats
         run: |
@@ -264,7 +264,7 @@ jobs:
 
       - name: Build
         working-directory: ${{ runner.workspace }}/build
-        run: cmake --build . --parallel --verbose -- -k
+        run: cmake --build . --parallel -- -k
 
       - name: Show ccache stats
         run: |

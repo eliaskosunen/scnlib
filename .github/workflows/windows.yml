@@ -37,7 +37,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref_name }}-${{ github.ref_type == 'branch' && github.sha }}-${{ github.event_name == 'workflow_dispatch' }}-${{ github.event_name == 'schedule' }}-${{ github.event.schedule }}
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}${{ github.ref == 'refs/heads/master' && format('-{0}', github.sha) || '' }}-${{ github.event_name }}
   cancel-in-progress: true
 
 env:
@@ -134,7 +134,7 @@ jobs:
 
       - name: Build
         working-directory: ${{ runner.workspace }}/build
-        run: cmake --build . --config ${{ matrix.type }} --parallel --verbose
+        run: cmake --build . --config ${{ matrix.type }} --parallel
 
       - name: Show ccache stats
         run: |
@@ -173,11 +173,11 @@ jobs:
         uses: actions/cache@v6
         with:
           path: ${{ env.CCACHE_DIR }}
-          key: ccache-${{ github.workflow }}-win${{ matrix.os }}-clangcl${{ matrix.platform }}-std${{ matrix.std }}-${{ matrix.type }}-${{ github.sha }}
+          key: ccache-${{ github.workflow }}-win${{ matrix.os }}-clangcl${{ matrix.platform }}-std${{ matrix.std }}-${{ github.sha }}
           restore-keys: |
-            ccache-${{ github.workflow }}-win${{ matrix.os }}-clangcl${{ matrix.platform }}-std${{ matrix.std }}-${{ matrix.type }}-${{ github.ref }}
-            ccache-${{ github.workflow }}-win${{ matrix.os }}-clangcl${{ matrix.platform }}-std${{ matrix.std }}-${{ matrix.type }}-${{ github.base_ref }}
-            ccache-${{ github.workflow }}-win${{ matrix.os }}-clangcl${{ matrix.platform }}-std${{ matrix.std }}-${{ matrix.type }}
+            ccache-${{ github.workflow }}-win${{ matrix.os }}-clangcl${{ matrix.platform }}-std${{ matrix.std }}-${{ github.ref }}
+            ccache-${{ github.workflow }}-win${{ matrix.os }}-clangcl${{ matrix.platform }}-std${{ matrix.std }}-${{ github.base_ref }}
+            ccache-${{ github.workflow }}-win${{ matrix.os }}-clangcl${{ matrix.platform }}-std${{ matrix.std }}
 
       - name: Setup ccache
         run: |
@@ -195,7 +195,7 @@ jobs:
 
       - name: Build
         working-directory: ${{ runner.workspace }}/build
-        run: cmake --build . --config Debug --parallel --verbose
+        run: cmake --build . --config Debug --parallel
 
       - name: Show ccache stats
         run: |
@@ -233,8 +233,6 @@ jobs:
           # Doesn't have the `toolchain` pacboy package
           # (which contains the compiler)
           - sys: msys
-          # not available
-          - sys: clang32
 
     steps:
       - uses: msys2/setup-msys2@v2
@@ -277,7 +275,7 @@ jobs:
           cd build
           cmake -G Ninja -DCMAKE_BUILD_TYPE=Debug \
             -DSCN_DISABLE_TOP_PROJECT=ON -DSCN_PEDANTIC=ON -DSCN_TESTS=ON -DSCN_EXAMPLES=ON ..
-          cmake --build . --parallel --verbose -- -k 0
+          cmake --build . --parallel -- -k 0
           ctest --output-on-failure
 
       - name: Show ccache stats
@@ -333,7 +331,7 @@ jobs:
 
       - name: Build
         working-directory: ${{ runner.workspace }}/build
-        run: cmake --build . --config Debug --parallel --verbose
+        run: cmake --build . --config Debug --parallel
 
       - name: Test
         working-directory: ${{ runner.workspace }}/build
@@ -357,7 +355,7 @@ jobs:
         shell: bash
         run: |
           cmake -A x64 -DCMAKE_CXX_STANDARD=17 -DBUILD_SHARED_LIBS=${{ matrix.shared_libs }} $GITHUB_WORKSPACE/tests/consumer-test/library
-          cmake --build . --config Debug --parallel --verbose
+          cmake --build . --config Debug --parallel
 
       - name: Show ccache stats
         run: |
@@ -415,7 +413,7 @@ jobs:
 
       - name: Build
         working-directory: ${{ runner.workspace }}/build
-        run: cmake --build . --config Debug --parallel --verbose
+        run: cmake --build . --config Debug --parallel
 
       - name: Show ccache stats
         run: |
