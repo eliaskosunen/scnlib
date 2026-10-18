@@ -5120,9 +5120,12 @@ class pair_concat_view : view_interface<pair_concat_view<First, Second>> {
 
         iterator() = default;
 
+        // C: MSVC 19.29 (VS 2019) rejects a condition that's false
+        // regardless of Other at class instantiation
         template <
             bool Other,
-            std::enable_if_t<Const && !Other &&
+            bool C = Const,
+            std::enable_if_t<C && !Other &&
                              std::is_convertible_v<iterator_t<First>,
                                                    const_iterator_t<First>> &&
                              std::is_convertible_v<iterator_t<Second>,

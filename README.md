@@ -192,7 +192,7 @@ CI:
 
 * GCC 7 and newer
 * Clang 8 and newer
-* Visual Studio 2022
+* Visual Studio 2019 (16.11, the v142 toolset), 2022, and 2026
 
 Including the following environments:
 
@@ -200,10 +200,10 @@ Including the following environments:
 * libc++ on Linux
 * gcc on Alpine Linux
 * AppleClang and Homebrew Clang on macOS 15 and 26 (arm64 and x86-64), and gcc on arm64 macOS
-* clang-cl with Visual Studio 2022
+* clang-cl with Visual Studio 2022 and 2026
 * MinGW and MSys2
 * Emscripten
-* GCC and Clang on aarch64 Linux, and Visual Studio on arm64 Windows
+* GCC and Clang on aarch64 Linux, and Visual Studio 2026 on arm64 Windows
 * GCC on i686, armv5, armv6, armv7, aarch64, hppa, loongarch64, m68k,
   mips, mips64el, mips64r6el, powerpc, ppc64, ppc64le, riscv64, s390x, and sparc64
 * Visual Studio 2022, cross-compiling to arm64
