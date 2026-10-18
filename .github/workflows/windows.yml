@@ -37,7 +37,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref_name }}-${{ github.ref_type == 'branch' && github.sha }}-${{ github.event_name == 'workflow_dispatch' }}-${{ github.event_name == 'schedule' }}-${{ github.event.schedule }}
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}${{ github.ref == 'refs/heads/master' && format('-{0}', github.sha) || '' }}-${{ github.event_name }}
   cancel-in-progress: true
 
 env:
@@ -173,11 +173,11 @@ jobs:
         uses: actions/cache@v6
         with:
           path: ${{ env.CCACHE_DIR }}
-          key: ccache-${{ github.workflow }}-win${{ matrix.os }}-clangcl${{ matrix.platform }}-std${{ matrix.std }}-${{ matrix.type }}-${{ github.sha }}
+          key: ccache-${{ github.workflow }}-win${{ matrix.os }}-clangcl${{ matrix.platform }}-std${{ matrix.std }}-${{ github.sha }}
           restore-keys: |
-            ccache-${{ github.workflow }}-win${{ matrix.os }}-clangcl${{ matrix.platform }}-std${{ matrix.std }}-${{ matrix.type }}-${{ github.ref }}
-            ccache-${{ github.workflow }}-win${{ matrix.os }}-clangcl${{ matrix.platform }}-std${{ matrix.std }}-${{ matrix.type }}-${{ github.base_ref }}
-            ccache-${{ github.workflow }}-win${{ matrix.os }}-clangcl${{ matrix.platform }}-std${{ matrix.std }}-${{ matrix.type }}
+            ccache-${{ github.workflow }}-win${{ matrix.os }}-clangcl${{ matrix.platform }}-std${{ matrix.std }}-${{ github.ref }}
+            ccache-${{ github.workflow }}-win${{ matrix.os }}-clangcl${{ matrix.platform }}-std${{ matrix.std }}-${{ github.base_ref }}
+            ccache-${{ github.workflow }}-win${{ matrix.os }}-clangcl${{ matrix.platform }}-std${{ matrix.std }}
 
       - name: Setup ccache
         run: |
@@ -233,8 +233,6 @@ jobs:
           # Doesn't have the `toolchain` pacboy package
           # (which contains the compiler)
           - sys: msys
-          # not available
-          - sys: clang32
 
     steps:
       - uses: msys2/setup-msys2@v2
