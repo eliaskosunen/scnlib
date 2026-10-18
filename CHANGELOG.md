@@ -64,6 +64,9 @@ scn::scan<...>(strm, ...);
  * `scn::expected::emplace()` now requires `T` (or `E`, for `scn::unexpected`) to be nothrow constructible
    from the arguments, like `std::expected`.
    The assignment operators of `scn::expected` are now deleted or constrained like those of `std::expected`.
+ * The CMake option `SCN_USE_32BIT` was removed.
+   To build for 32-bit x86, use a toolchain file, or add `-m32` to `CMAKE_CXX_FLAGS`,
+   `CMAKE_EXE_LINKER_FLAGS`, and `CMAKE_SHARED_LINKER_FLAGS`.
 
 ### Changes
 

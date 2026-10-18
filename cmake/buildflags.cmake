@@ -226,12 +226,6 @@ set(SCN_LIBRARY_PRIVATE_FLAGS
     ${SCN_WERROR_FLAGS}
     ${SCN_BIGOBJ_FLAGS}
 )
-set(SCN_LIBRARY_LINK_FLAGS)
-
-if(SCN_USE_32BIT)
-    list(APPEND SCN_LIBRARY_PUBLIC_FLAGS -m32)
-    list(APPEND SCN_LIBRARY_LINK_FLAGS -m32)
-endif()
 
 if(SCN_USE_NATIVE_ARCH)
     list(APPEND SCN_LIBRARY_PRIVATE_FLAGS -march=native)
@@ -284,7 +278,6 @@ function(set_library_flags target)
             PRIVATE ${SCN_DISABLE_EXCEPTIONS_DEFINITIONS}
         )
     endif()
-    target_link_options(${target} PUBLIC ${SCN_LIBRARY_LINK_FLAGS})
     target_compile_features(${target} PUBLIC cxx_std_17)
 endfunction()
 

@@ -89,7 +89,6 @@ function(add_module_library target)
         # importing a module file built with a different exception setting
         set(private_flags ${SCN_LIBRARY_PRIVATE_FLAGS})
         list(REMOVE_ITEM private_flags ${SCN_DISABLE_EXCEPTIONS_FLAGS})
-        target_link_options(${target} PUBLIC ${SCN_LIBRARY_LINK_FLAGS})
 
         set(pcms)
         foreach(src ${sources})

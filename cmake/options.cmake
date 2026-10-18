@@ -103,7 +103,6 @@ option(
     ON
 )
 
-option(SCN_USE_32BIT "Compile as 32-bit (gcc or clang only)" OFF)
 option(
     SCN_USE_EXCEPTIONS
     "Compile with exception support (disabling also disables regex support, unless SCN_REGEX_BACKEND is re2)"
