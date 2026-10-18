@@ -1,97 +1,122 @@
-if (SCN_USE_MSAN AND NOT CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
-    message(FATAL_ERROR "SCN_USE_MSAN requires Clang (found ${CMAKE_CXX_COMPILER_ID})")
-endif ()
-if (SCN_USE_UBSAN AND CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
+if(SCN_USE_MSAN AND NOT CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
+    message(
+        FATAL_ERROR
+        "SCN_USE_MSAN requires Clang (found ${CMAKE_CXX_COMPILER_ID})"
+    )
+endif()
+if(SCN_USE_UBSAN AND CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
     message(FATAL_ERROR "SCN_USE_UBSAN is not supported with MSVC")
-endif ()
+endif()
 
 add_library(scn_sanitizer_asan INTERFACE)
-if ((CMAKE_CXX_COMPILER_ID STREQUAL "GNU") OR (CMAKE_CXX_COMPILER_ID STREQUAL "Clang"))
+if(
+    (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+    OR (CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
+)
     set(ASAN_FLAG -g -fsanitize=address -fno-omit-frame-pointer)
-elseif (CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
+elseif(CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
     set(ASAN_FLAG /fsanitize=address)
 else()
     set(ASAN_FLAG)
-endif ()
+endif()
 target_compile_options(scn_sanitizer_asan INTERFACE ${ASAN_FLAG})
 target_link_options(scn_sanitizer_asan INTERFACE ${ASAN_FLAG})
 
 add_library(scn_sanitizer_ubsan INTERFACE)
-if (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
     set(UBSAN_FLAG -g -fsanitize=undefined)
-elseif (CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
-    set(UBSAN_FLAG -g -fsanitize=undefined,float-divide-by-zero,local-bounds,vptr,nullability)
+elseif(CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
+    set(UBSAN_FLAG
+        -g
+        -fsanitize=undefined,float-divide-by-zero,local-bounds,vptr,nullability
+    )
 else()
     set(UBSAN_FLAG)
-endif ()
+endif()
 target_compile_options(scn_sanitizer_ubsan INTERFACE ${UBSAN_FLAG})
 target_link_options(scn_sanitizer_ubsan INTERFACE ${UBSAN_FLAG})
 
 add_library(scn_sanitizer_msan INTERFACE)
-if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
+if(CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
     set(MSAN_FLAG -g -fsanitize=memory)
 else()
     set(MSAN_FLAG)
-endif ()
+endif()
 target_compile_options(scn_sanitizer_msan INTERFACE ${MSAN_FLAG})
 target_link_options(scn_sanitizer_msan INTERFACE ${MSAN_FLAG})
 
 add_library(scn_sanitizer_fuzzer INTERFACE)
-if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
+if(CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
     set(FUZZER_FLAG -g -fsanitize=fuzzer -fno-omit-frame-pointer)
     target_compile_options(scn_sanitizer_fuzzer INTERFACE ${FUZZER_FLAG})
     target_link_options(scn_sanitizer_fuzzer INTERFACE ${FUZZER_FLAG})
 endif()
 
 add_library(scn_sanitizer_stackprotect INTERFACE)
-if (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
     set(STACKPROTECT_FLAG -g -fstack-protector-all)
-elseif (CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
-    set(STACKPROTECT_FLAG -g -fstack-protector-all -flto -fvisibility=hidden -fsanitize=cfi)
-    if (SCN_USE_SAFESTACK)
+elseif(CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
+    set(STACKPROTECT_FLAG
+        -g
+        -fstack-protector-all
+        -flto
+        -fvisibility=hidden
+        -fsanitize=cfi
+    )
+    if(SCN_USE_SAFESTACK)
         set(STACKPROTECT_FLAG ${STACKPROTECT_FLAG} -fsanitize=safe-stack)
     endif()
 else()
     set(STACKPROTECT_FLAG)
 endif()
-target_compile_options(scn_sanitizer_stackprotect INTERFACE ${STACKPROTECT_FLAG})
+target_compile_options(
+    scn_sanitizer_stackprotect
+    INTERFACE ${STACKPROTECT_FLAG}
+)
 target_link_options(scn_sanitizer_stackprotect INTERFACE ${STACKPROTECT_FLAG})
 
 add_library(scn_sanitizers INTERFACE)
 set(SCN_LIBRARY_SANITIZER_FLAGS)
 
-if (SCN_USE_ASAN)
+if(SCN_USE_ASAN)
     target_link_libraries(scn_sanitizers INTERFACE scn_sanitizer_asan)
     list(APPEND SCN_LIBRARY_SANITIZER_FLAGS ${ASAN_FLAG})
 endif()
-if (SCN_USE_UBSAN)
+if(SCN_USE_UBSAN)
     target_link_libraries(scn_sanitizers INTERFACE scn_sanitizer_ubsan)
     list(APPEND SCN_LIBRARY_SANITIZER_FLAGS ${UBSAN_FLAG})
 endif()
-if (SCN_USE_MSAN)
+if(SCN_USE_MSAN)
     target_link_libraries(scn_sanitizers INTERFACE scn_sanitizer_msan)
     list(APPEND SCN_LIBRARY_SANITIZER_FLAGS ${MSAN_FLAG})
 endif()
-if (SCN_USE_STACK_PROTECT)
+if(SCN_USE_STACK_PROTECT)
     target_link_libraries(scn_sanitizers INTERFACE scn_sanitizer_stackprotect)
     list(APPEND SCN_LIBRARY_SANITIZER_FLAGS ${STACKPROTECT_FLAG})
 endif()
 
-if (SCN_USE_ASAN OR SCN_USE_UBSAN OR SCN_USE_MSAN OR SCN_USE_STACK_PROTECT)
-    if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
+if(SCN_USE_ASAN OR SCN_USE_UBSAN OR SCN_USE_MSAN OR SCN_USE_STACK_PROTECT)
+    if(CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
         set(SANITIZER_IGNORELIST_FLAG
-                "-fsanitize-ignorelist=${CMAKE_CURRENT_LIST_DIR}/sanitizers-ignorelist.txt")
-        target_compile_options(scn_sanitizers INTERFACE ${SANITIZER_IGNORELIST_FLAG})
+            "-fsanitize-ignorelist=${CMAKE_CURRENT_LIST_DIR}/sanitizers-ignorelist.txt"
+        )
+        target_compile_options(
+            scn_sanitizers
+            INTERFACE ${SANITIZER_IGNORELIST_FLAG}
+        )
         list(APPEND SCN_LIBRARY_SANITIZER_FLAGS ${SANITIZER_IGNORELIST_FLAG})
     endif()
 endif()
 
-if (SCN_FUZZING)
+if(SCN_FUZZING)
     add_library(scn_fuzzer INTERFACE)
-    target_link_libraries(scn_fuzzer INTERFACE scn_sanitizers scn_sanitizer_fuzzer)
+    target_link_libraries(
+        scn_fuzzer
+        INTERFACE scn_sanitizers scn_sanitizer_fuzzer
+    )
 
     # The library gets coverage instrumentation, but not libFuzzer's main
-    if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
+    if(CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
         list(APPEND SCN_LIBRARY_SANITIZER_FLAGS -fsanitize=fuzzer-no-link)
     endif()
 endif()

@@ -2,221 +2,269 @@ include(FetchContent)
 
 set(SCN_DEPENDENCIES_TO_MAKE_AVAILABLE "")
 
-if (CMAKE_FIND_PACKAGE_SORT_ORDER)
+if(CMAKE_FIND_PACKAGE_SORT_ORDER)
     set(OLD_CMAKE_FIND_PACKAGE_SORT_ORDER "${CMAKE_FIND_PACKAGE_SORT_ORDER}")
-endif ()
+endif()
 set(CMAKE_FIND_PACKAGE_SORT_ORDER NATURAL)
 
-if (SCN_TESTS)
+if(SCN_TESTS)
     # GTest
 
-    if (SCN_USE_EXTERNAL_GTEST)
-        if ((NOT TARGET GTest::gtest_main) OR (NOT TARGET GTest::gmock_main))
+    if(SCN_USE_EXTERNAL_GTEST)
+        if((NOT TARGET GTest::gtest_main) OR (NOT TARGET GTest::gmock_main))
             find_package(GTest CONFIG REQUIRED)
-        else ()
-            message(STATUS "GTest targets already defined, not doing find_package(GTest) (SCN_USE_EXTERNAL_GTEST is ON)")
-        endif ()
+        else()
+            message(
+                STATUS
+                "GTest targets already defined, not doing find_package(GTest) (SCN_USE_EXTERNAL_GTEST is ON)"
+            )
+        endif()
 
-        set(SCN_GTEST_LIBRARIES
-                GTest::gtest_main
-                GTest::gmock_main
+        set(SCN_GTEST_LIBRARIES GTest::gtest_main GTest::gmock_main)
+    elseif(TARGET GTest::gtest_main AND TARGET GTest::gmock_main)
+        message(
+            WARNING
+            "GTest targets already defined, not doing FetchContent(googletest), even though SCN_USE_EXTERNAL_GTEST is OFF"
         )
-    elseif (TARGET GTest::gtest_main AND TARGET GTest::gmock_main)
-        message(WARNING "GTest targets already defined, not doing FetchContent(googletest), even though SCN_USE_EXTERNAL_GTEST is OFF")
-        set(SCN_GTEST_LIBRARIES
-                GTest::gtest_main
-                GTest::gmock_main
-        )
-    elseif (CMAKE_VERSION VERSION_GREATER_EQUAL "3.30.0")
+        set(SCN_GTEST_LIBRARIES GTest::gtest_main GTest::gmock_main)
+    elseif(CMAKE_VERSION VERSION_GREATER_EQUAL "3.30.0")
         # FetchContent_Populate(<name>) deprecated,
         # use MakeAvailable instead
 
         FetchContent_Declare(
-                googletest
-                GIT_REPOSITORY https://github.com/google/googletest.git
-                GIT_TAG v1.18.0
-                GIT_SHALLOW TRUE
-                SYSTEM
-                EXCLUDE_FROM_ALL
+            googletest
+            GIT_REPOSITORY https://github.com/google/googletest.git
+            GIT_TAG v1.18.0
+            GIT_SHALLOW TRUE
+            SYSTEM
+            EXCLUDE_FROM_ALL
         )
 
         set(gtest_force_shared_crt ON CACHE INTERNAL "")
         set(INSTALL_GTEST OFF CACHE INTERNAL "")
         list(APPEND SCN_DEPENDENCIES_TO_MAKE_AVAILABLE "googletest")
-        set(SCN_GTEST_LIBRARIES
-                GTest::gtest_main
-                GTest::gmock_main
-        )
-    else ()
+        set(SCN_GTEST_LIBRARIES GTest::gtest_main GTest::gmock_main)
+    else()
         # gtest CMake does some flag overriding we don't want, and it's also quite heavy
         # Do it manually
 
         FetchContent_Declare(
-                googletest
-                GIT_REPOSITORY https://github.com/google/googletest.git
-                GIT_TAG v1.18.0
-                GIT_SHALLOW TRUE
+            googletest
+            GIT_REPOSITORY https://github.com/google/googletest.git
+            GIT_TAG v1.18.0
+            GIT_SHALLOW TRUE
         )
 
         set(gtest_force_shared_crt ON CACHE INTERNAL "")
         set(INSTALL_GTEST OFF CACHE INTERNAL "")
 
         FetchContent_GetProperties(googletest)
-        if (NOT googletest)
+        if(NOT googletest)
             FetchContent_Populate(googletest)
-        endif ()
+        endif()
 
-        if (NOT TARGET Threads::Threads)
+        if(NOT TARGET Threads::Threads)
             find_package(Threads)
-        endif ()
+        endif()
 
-        add_library(scn_gtest
-                "${googletest_SOURCE_DIR}/googletest/src/gtest-all.cc"
-                "${googletest_SOURCE_DIR}/googlemock/src/gmock-all.cc"
+        add_library(
+            scn_gtest
+            "${googletest_SOURCE_DIR}/googletest/src/gtest-all.cc"
+            "${googletest_SOURCE_DIR}/googlemock/src/gmock-all.cc"
         )
-        target_include_directories(scn_gtest SYSTEM
-                PUBLIC
+        target_include_directories(
+            scn_gtest
+            SYSTEM
+            PUBLIC
                 "${googletest_SOURCE_DIR}/googletest/include"
                 "${googletest_SOURCE_DIR}/googlemock/include"
-                PRIVATE
+            PRIVATE
                 "${googletest_SOURCE_DIR}/googletest"
                 "${googletest_SOURCE_DIR}/googlemock"
         )
         target_link_libraries(scn_gtest PRIVATE Threads::Threads)
         target_compile_features(scn_gtest PUBLIC cxx_std_17)
-        target_compile_options(scn_gtest PRIVATE $<$<CXX_COMPILER_ID:GNU>: -Wno-psabi>)
+        target_compile_options(
+            scn_gtest
+            PRIVATE $<$<CXX_COMPILER_ID:GNU>: -Wno-psabi>
+        )
         set(SCN_GTEST_LIBRARIES scn_gtest)
-    endif ()
-endif ()
+    endif()
+endif()
 
-if (SCN_BENCHMARKS)
+if(SCN_BENCHMARKS)
     # Google Benchmark
 
-    if (SCN_USE_EXTERNAL_BENCHMARK)
-        if (NOT TARGET benchmark::benchmark)
+    if(SCN_USE_EXTERNAL_BENCHMARK)
+        if(NOT TARGET benchmark::benchmark)
             find_package(benchmark CONFIG REQUIRED)
-        else ()
-            message(STATUS "Target benchmark::benchmark already defined, not doing find_package(benchmark) (SCN_USE_EXTERNAL_BENCHMARK is ON)")
-        endif ()
-    elseif (TARGET benchmark::benchmark)
-        message(WARNING "Target benchmark::benchmark already defined, not doing FetchContent(benchmark), even though SCN_USE_EXTERNAL_BENCHMARK is OFF")
-    else ()
-        set(BENCHMARK_ENABLE_TESTING OFF CACHE INTERNAL "Turn off google benchmark tests")
-        set(BENCHMARK_ENABLE_INSTALL OFF CACHE INTERNAL "Turn off google benchmark install")
-        set(BENCHMARK_ENABLE_WERROR OFF CACHE INTERNAL "Turn off -Werror inside google benchmark")
+        else()
+            message(
+                STATUS
+                "Target benchmark::benchmark already defined, not doing find_package(benchmark) (SCN_USE_EXTERNAL_BENCHMARK is ON)"
+            )
+        endif()
+    elseif(TARGET benchmark::benchmark)
+        message(
+            WARNING
+            "Target benchmark::benchmark already defined, not doing FetchContent(benchmark), even though SCN_USE_EXTERNAL_BENCHMARK is OFF"
+        )
+    else()
+        set(BENCHMARK_ENABLE_TESTING
+            OFF
+            CACHE INTERNAL
+            "Turn off google benchmark tests"
+        )
+        set(BENCHMARK_ENABLE_INSTALL
+            OFF
+            CACHE INTERNAL
+            "Turn off google benchmark install"
+        )
+        set(BENCHMARK_ENABLE_WERROR
+            OFF
+            CACHE INTERNAL
+            "Turn off -Werror inside google benchmark"
+        )
         FetchContent_Declare(
-                google-benchmark
-                GIT_REPOSITORY https://github.com/google/benchmark.git
-                GIT_TAG v1.9.5
-                GIT_SHALLOW TRUE
+            google-benchmark
+            GIT_REPOSITORY https://github.com/google/benchmark.git
+            GIT_TAG v1.9.5
+            GIT_SHALLOW TRUE
         )
         list(APPEND SCN_DEPENDENCIES_TO_MAKE_AVAILABLE "google-benchmark")
-    endif ()
-endif ()
+    endif()
+endif()
 
 # fast_float
 
 set(SCN_FAST_FLOAT_BUNDLED OFF)
-if (NOT SCN_DISABLE_FAST_FLOAT)
+if(NOT SCN_DISABLE_FAST_FLOAT)
     # fast_float requires a binary32 float and a binary64 double.
     # Otherwise, the library doesn't use it (see SCN_HAS_FAST_FLOAT in macros.h).
     try_compile(
-            SCN_FAST_FLOAT_FORMATS_SUPPORTED
-            "${CMAKE_CURRENT_BINARY_DIR}"
-            "${CMAKE_CURRENT_SOURCE_DIR}/cmake/float_format_compile_test.cpp"
-            CMAKE_FLAGS "-DINCLUDE_DIRECTORIES=${CMAKE_CURRENT_SOURCE_DIR}/include"
-            CXX_STANDARD 17
+        SCN_FAST_FLOAT_FORMATS_SUPPORTED
+        "${CMAKE_CURRENT_BINARY_DIR}"
+        "${CMAKE_CURRENT_SOURCE_DIR}/cmake/float_format_compile_test.cpp"
+        CMAKE_FLAGS "-DINCLUDE_DIRECTORIES=${CMAKE_CURRENT_SOURCE_DIR}/include"
+        CXX_STANDARD 17
     )
-    if (NOT SCN_FAST_FLOAT_FORMATS_SUPPORTED)
-        message(STATUS "float isn't IEEE binary32, or double isn't binary64: FastFloat won't be used, even though SCN_DISABLE_FAST_FLOAT is OFF")
-    endif ()
-endif ()
-if (SCN_DISABLE_FAST_FLOAT)
-    message(STATUS "FastFloat disabled, using <charconv> / std::from_chars instead")
+    if(NOT SCN_FAST_FLOAT_FORMATS_SUPPORTED)
+        message(
+            STATUS
+            "float isn't IEEE binary32, or double isn't binary64: FastFloat won't be used, even though SCN_DISABLE_FAST_FLOAT is OFF"
+        )
+    endif()
+endif()
+if(SCN_DISABLE_FAST_FLOAT)
+    message(
+        STATUS
+        "FastFloat disabled, using <charconv> / std::from_chars instead"
+    )
     try_compile(
-            SCN_CHARCONV_SUCCESS
-            "${CMAKE_CURRENT_BINARY_DIR}"
-            "${CMAKE_CURRENT_SOURCE_DIR}/cmake/charconv_compile_test.cpp"
-            CXX_STANDARD_REQUIRED 17
+        SCN_CHARCONV_SUCCESS
+        "${CMAKE_CURRENT_BINARY_DIR}"
+        "${CMAKE_CURRENT_SOURCE_DIR}/cmake/charconv_compile_test.cpp"
+        CXX_STANDARD_REQUIRED 17
     )
-    if (NOT SCN_CHARCONV_SUCCESS)
-        message(FATAL_ERROR
-                "FastFloat is disabled, but your stdlib doesn't support std::from_chars with floating-point values")
-    endif ()
+    if(NOT SCN_CHARCONV_SUCCESS)
+        message(
+            FATAL_ERROR
+            "FastFloat is disabled, but your stdlib doesn't support std::from_chars with floating-point values"
+        )
+    endif()
     set(SCN_FAST_FLOAT_TARGET)
-elseif (SCN_USE_EXTERNAL_FAST_FLOAT)
-    if (NOT TARGET FastFloat::fast_float)
+elseif(SCN_USE_EXTERNAL_FAST_FLOAT)
+    if(NOT TARGET FastFloat::fast_float)
         find_package(FastFloat CONFIG REQUIRED)
-        if (FastFloat_VERSION VERSION_LESS "6.0.0")
-            message(FATAL_ERROR "Incompatible version of FastFloat: at least 6.0.0 required, found ${FastFloat_VERSION}")
-        endif ()
-    else ()
-        message(STATUS "Target FastFloat::fast_float already defined, not doing find_package(FastFloat) (SCN_USE_EXTERNAL_FAST_FLOAT is ON)")
-    endif ()
+        if(FastFloat_VERSION VERSION_LESS "6.0.0")
+            message(
+                FATAL_ERROR
+                "Incompatible version of FastFloat: at least 6.0.0 required, found ${FastFloat_VERSION}"
+            )
+        endif()
+    else()
+        message(
+            STATUS
+            "Target FastFloat::fast_float already defined, not doing find_package(FastFloat) (SCN_USE_EXTERNAL_FAST_FLOAT is ON)"
+        )
+    endif()
     set(SCN_FAST_FLOAT_TARGET FastFloat::fast_float)
-elseif (TARGET FastFloat::fast_float)
-    message(WARNING "Target FastFloat::fast_float already defined, not doing FetchContent(fast_float), even though SCN_USE_EXTERNAL_FAST_FLOAT is OFF")
+elseif(TARGET FastFloat::fast_float)
+    message(
+        WARNING
+        "Target FastFloat::fast_float already defined, not doing FetchContent(fast_float), even though SCN_USE_EXTERNAL_FAST_FLOAT is OFF"
+    )
     set(SCN_FAST_FLOAT_TARGET FastFloat::fast_float)
-elseif (CMAKE_VERSION VERSION_GREATER_EQUAL "3.30.0")
+elseif(CMAKE_VERSION VERSION_GREATER_EQUAL "3.30.0")
     FetchContent_Declare(
-            fast_float
-            GIT_REPOSITORY https://github.com/fastfloat/fast_float.git
-            GIT_TAG v8.0.2
-            GIT_SHALLOW TRUE
-            SYSTEM
-            EXCLUDE_FROM_ALL
+        fast_float
+        GIT_REPOSITORY https://github.com/fastfloat/fast_float.git
+        GIT_TAG v8.0.2
+        GIT_SHALLOW TRUE
+        SYSTEM
+        EXCLUDE_FROM_ALL
     )
 
     set(FASTFLOAT_INSTALL OFF CACHE INTERNAL "")
     list(APPEND SCN_DEPENDENCIES_TO_MAKE_AVAILABLE "fast_float")
     set(SCN_FAST_FLOAT_BUNDLED ON)
     set(SCN_FAST_FLOAT_TARGET FastFloat::fast_float)
-else ()
+else()
     FetchContent_Declare(
-            fast_float
-            GIT_REPOSITORY https://github.com/fastfloat/fast_float.git
-            GIT_TAG v8.0.2
-            GIT_SHALLOW TRUE
+        fast_float
+        GIT_REPOSITORY https://github.com/fastfloat/fast_float.git
+        GIT_TAG v8.0.2
+        GIT_SHALLOW TRUE
     )
 
     cmake_policy(SET CMP0077 NEW)
     set(FASTFLOAT_INSTALL OFF CACHE INTERNAL "")
 
     FetchContent_GetProperties(fast_float)
-    if (NOT fast_float_POPULATED)
+    if(NOT fast_float_POPULATED)
         FetchContent_Populate(fast_float)
 
-        add_subdirectory(${fast_float_SOURCE_DIR} ${fast_float_BINARY_DIR} EXCLUDE_FROM_ALL)
-    endif ()
+        add_subdirectory(
+            ${fast_float_SOURCE_DIR}
+            ${fast_float_BINARY_DIR}
+            EXCLUDE_FROM_ALL
+        )
+    endif()
 
     set(SCN_FAST_FLOAT_BUNDLED ON)
     set(SCN_FAST_FLOAT_TARGET FastFloat::fast_float)
-endif ()
+endif()
 
 # eknan
 
 set(SCN_EKNAN_BUNDLED OFF)
-if (SCN_DISABLE_EKNAN)
+if(SCN_DISABLE_EKNAN)
     message(STATUS "eknan disabled, NaN payloads won't be parsed")
     set(SCN_EKNAN_TARGET)
-elseif (SCN_USE_EXTERNAL_EKNAN)
-    if (NOT TARGET eknan::eknan)
+elseif(SCN_USE_EXTERNAL_EKNAN)
+    if(NOT TARGET eknan::eknan)
         find_package(eknan 0.1.0 CONFIG REQUIRED)
-    else ()
-        message(STATUS "Target eknan::eknan already defined, not doing find_package(eknan) (SCN_USE_EXTERNAL_EKNAN is ON)")
-    endif ()
+    else()
+        message(
+            STATUS
+            "Target eknan::eknan already defined, not doing find_package(eknan) (SCN_USE_EXTERNAL_EKNAN is ON)"
+        )
+    endif()
     set(SCN_EKNAN_TARGET eknan::eknan)
-elseif (TARGET eknan::eknan)
-    message(WARNING "Target eknan::eknan already defined, not doing FetchContent(eknan), even though SCN_USE_EXTERNAL_EKNAN is OFF")
+elseif(TARGET eknan::eknan)
+    message(
+        WARNING
+        "Target eknan::eknan already defined, not doing FetchContent(eknan), even though SCN_USE_EXTERNAL_EKNAN is OFF"
+    )
     set(SCN_EKNAN_TARGET eknan::eknan)
-elseif (CMAKE_VERSION VERSION_GREATER_EQUAL "3.30.0")
+elseif(CMAKE_VERSION VERSION_GREATER_EQUAL "3.30.0")
     FetchContent_Declare(
-            eknan
-            GIT_REPOSITORY https://github.com/eliaskosunen/eknan.git
-            GIT_TAG v0.1.0
-            GIT_SHALLOW TRUE
-            SYSTEM
-            EXCLUDE_FROM_ALL
+        eknan
+        GIT_REPOSITORY https://github.com/eliaskosunen/eknan.git
+        GIT_TAG v0.1.0
+        GIT_SHALLOW TRUE
+        SYSTEM
+        EXCLUDE_FROM_ALL
     )
 
     set(EKNAN_INSTALL OFF CACHE INTERNAL "")
@@ -224,12 +272,12 @@ elseif (CMAKE_VERSION VERSION_GREATER_EQUAL "3.30.0")
     list(APPEND SCN_DEPENDENCIES_TO_MAKE_AVAILABLE "eknan")
     set(SCN_EKNAN_BUNDLED ON)
     set(SCN_EKNAN_TARGET eknan::eknan)
-else ()
+else()
     FetchContent_Declare(
-            eknan
-            GIT_REPOSITORY https://github.com/eliaskosunen/eknan.git
-            GIT_TAG v0.1.0
-            GIT_SHALLOW TRUE
+        eknan
+        GIT_REPOSITORY https://github.com/eliaskosunen/eknan.git
+        GIT_TAG v0.1.0
+        GIT_SHALLOW TRUE
     )
 
     cmake_policy(SET CMP0077 NEW)
@@ -237,41 +285,54 @@ else ()
     set(EKNAN_BUILD_TESTS OFF CACHE INTERNAL "")
 
     FetchContent_GetProperties(eknan)
-    if (NOT eknan_POPULATED)
+    if(NOT eknan_POPULATED)
         FetchContent_Populate(eknan)
 
-        add_subdirectory(${eknan_SOURCE_DIR} ${eknan_BINARY_DIR} EXCLUDE_FROM_ALL)
-    endif ()
+        add_subdirectory(
+            ${eknan_SOURCE_DIR}
+            ${eknan_BINARY_DIR}
+            EXCLUDE_FROM_ALL
+        )
+    endif()
 
     set(SCN_EKNAN_BUNDLED ON)
     set(SCN_EKNAN_TARGET eknan::eknan)
-endif ()
+endif()
 
 # std::regex
 
 set(SCN_REGEX_BACKEND_TARGET)
 
-if (NOT SCN_DISABLE_REGEX AND SCN_REGEX_BACKEND STREQUAL "std")
-    if (NOT SCN_USE_EXTERNAL_REGEX_BACKEND)
-        message(FATAL_ERROR "SCN_USE_EXTERNAL_REGEX_BACKEND=OFF isn't supported when SCN_REGEX_BACKEND is std")
-    endif ()
-    if (SCN_REGEX_BOOST_USE_ICU)
-        message(FATAL_ERROR "SCN_REGEX_BOOST_USE_ICU isn't supported when SCN_REGEX_BACKEND is std")
-    endif ()
+if(NOT SCN_DISABLE_REGEX AND SCN_REGEX_BACKEND STREQUAL "std")
+    if(NOT SCN_USE_EXTERNAL_REGEX_BACKEND)
+        message(
+            FATAL_ERROR
+            "SCN_USE_EXTERNAL_REGEX_BACKEND=OFF isn't supported when SCN_REGEX_BACKEND is std"
+        )
+    endif()
+    if(SCN_REGEX_BOOST_USE_ICU)
+        message(
+            FATAL_ERROR
+            "SCN_REGEX_BOOST_USE_ICU isn't supported when SCN_REGEX_BACKEND is std"
+        )
+    endif()
 
     set(SCN_REGEX_BACKEND_TARGET)
-endif ()
+endif()
 
 # Boost.Regex
 
-if (NOT SCN_DISABLE_REGEX AND SCN_REGEX_BACKEND STREQUAL "Boost")
-    if (NOT SCN_USE_EXTERNAL_REGEX_BACKEND)
-        message(FATAL_ERROR "SCN_USE_EXTERNAL_REGEX_BACKEND=OFF isn't supported when SCN_REGEX_BACKEND is Boost")
-    endif ()
+if(NOT SCN_DISABLE_REGEX AND SCN_REGEX_BACKEND STREQUAL "Boost")
+    if(NOT SCN_USE_EXTERNAL_REGEX_BACKEND)
+        message(
+            FATAL_ERROR
+            "SCN_USE_EXTERNAL_REGEX_BACKEND=OFF isn't supported when SCN_REGEX_BACKEND is Boost"
+        )
+    endif()
 
-    if (NOT TARGET Boost::regex)
+    if(NOT TARGET Boost::regex)
         cmake_policy(PUSH)
-        if (CMAKE_VERSION VERSION_GREATER_EQUAL "3.30")
+        if(CMAKE_VERSION VERSION_GREATER_EQUAL "3.30")
             # CMake v3.30 has deprecated find_package(Boost) (using a built-in FindBoost.cmake),
             # instead preferring find_package(Boost CONFIG),
             # which would use the BoostConfig.cmake file shipped with Boost.
@@ -280,63 +341,86 @@ if (NOT SCN_DISABLE_REGEX AND SCN_REGEX_BACKEND STREQUAL "Boost")
             # For that reason, we're explicitly opting-in to not using that,
             # while it's still possible.
             cmake_policy(SET CMP0167 OLD)
-        endif ()
+        endif()
         find_package(Boost REQUIRED COMPONENTS regex)
         cmake_policy(POP)
-    else ()
-        message(STATUS "Target Boost::regex already defined, not doing find_package(Boost COMPONENTS regex)")
-    endif ()
+    else()
+        message(
+            STATUS
+            "Target Boost::regex already defined, not doing find_package(Boost COMPONENTS regex)"
+        )
+    endif()
 
-    if (NOT SCN_REGEX_BOOST_USE_ICU)
+    if(NOT SCN_REGEX_BOOST_USE_ICU)
         set(SCN_REGEX_BACKEND_TARGET Boost::regex)
-    else ()
-        if (TARGET Boost::regex_icu)
+    else()
+        if(TARGET Boost::regex_icu)
             set(SCN_REGEX_BACKEND_TARGET Boost::regex_icu)
-        else ()
+        else()
             # Boost::regex_icu not defined, do it manually
-            if ((NOT TARGET ICU::data) OR (NOT TARGET ICU::i18n) OR (NOT TARGET ICU::uc))
+            if(
+                (NOT TARGET ICU::data)
+                OR (NOT TARGET ICU::i18n)
+                OR (NOT TARGET ICU::uc)
+            )
                 find_package(ICU REQUIRED COMPONENTS data i18n uc)
-            else ()
-                message(STATUS "ICU targets already defined, not doing find_package(ICU)")
-            endif ()
+            else()
+                message(
+                    STATUS
+                    "ICU targets already defined, not doing find_package(ICU)"
+                )
+            endif()
 
             set(SCN_REGEX_BACKEND_TARGET
-                    Boost::regex ICU::data ICU::i18n ICU::uc
+                Boost::regex
+                ICU::data
+                ICU::i18n
+                ICU::uc
             )
-        endif ()
-    endif ()
-endif ()
+        endif()
+    endif()
+endif()
 
 # re2
 
-if (NOT SCN_DISABLE_REGEX AND SCN_REGEX_BACKEND STREQUAL "re2")
-    if (NOT SCN_USE_EXTERNAL_REGEX_BACKEND)
-        message(FATAL_ERROR "SCN_USE_EXTERNAL_REGEX_BACKEND=OFF isn't supported when SCN_REGEX_BACKEND is re2")
-    endif ()
-    if (SCN_REGEX_BOOST_USE_ICU)
-        message(FATAL_ERROR "SCN_REGEX_BOOST_USE_ICU isn't supported when SCN_REGEX_BACKEND is re2")
-    endif ()
+if(NOT SCN_DISABLE_REGEX AND SCN_REGEX_BACKEND STREQUAL "re2")
+    if(NOT SCN_USE_EXTERNAL_REGEX_BACKEND)
+        message(
+            FATAL_ERROR
+            "SCN_USE_EXTERNAL_REGEX_BACKEND=OFF isn't supported when SCN_REGEX_BACKEND is re2"
+        )
+    endif()
+    if(SCN_REGEX_BOOST_USE_ICU)
+        message(
+            FATAL_ERROR
+            "SCN_REGEX_BOOST_USE_ICU isn't supported when SCN_REGEX_BACKEND is re2"
+        )
+    endif()
 
-    if (NOT TARGET re2::re2)
+    if(NOT TARGET re2::re2)
         find_package(re2 REQUIRED)
-        if (re2_VERSION VERSION_LESS 11.0.0)
-            message(FATAL_ERROR "Incompatible version of re2: at least 11.0.0 required, found ${re2_VERSION}")
-        endif ()
-    else ()
-        message(STATUS "Target re2::re2 already defined, not doing find_package(re2)")
-    endif ()
+        if(re2_VERSION VERSION_LESS 11.0.0)
+            message(
+                FATAL_ERROR
+                "Incompatible version of re2: at least 11.0.0 required, found ${re2_VERSION}"
+            )
+        endif()
+    else()
+        message(
+            STATUS
+            "Target re2::re2 already defined, not doing find_package(re2)"
+        )
+    endif()
 
     set(SCN_REGEX_BACKEND_TARGET re2::re2)
-endif ()
+endif()
 
 # make available
 
-FetchContent_MakeAvailable(
-        ${SCN_DEPENDENCIES_TO_MAKE_AVAILABLE}
-)
+FetchContent_MakeAvailable(${SCN_DEPENDENCIES_TO_MAKE_AVAILABLE})
 
-if (OLD_CMAKE_FIND_PACKAGE_SORT_ORDER)
+if(OLD_CMAKE_FIND_PACKAGE_SORT_ORDER)
     set(CMAKE_FIND_PACKAGE_SORT_ORDER "${OLD_CMAKE_FIND_PACKAGE_SORT_ORDER}")
-else ()
+else()
     set(CMAKE_FIND_PACKAGE_SORT_ORDER NONE) # default value
-endif ()
+endif()

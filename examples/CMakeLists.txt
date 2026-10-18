@@ -1,4 +1,4 @@
-if (NOT SCN_EXAMPLES)
+if(NOT SCN_EXAMPLES)
     return()
 endif()
 

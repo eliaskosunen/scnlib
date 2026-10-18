@@ -38,7 +38,8 @@ void run_single(
         }
         SCN_GCC_COMPAT_PUSH
         SCN_GCC_COMPAT_IGNORE("-Wfloat-equal")
-        else if (*parsed != expected) {
+        else if (*parsed != expected)
+        {
             throw std::runtime_error("Non-roundtrip parse with input: " + str);
         }
         SCN_GCC_COMPAT_POP

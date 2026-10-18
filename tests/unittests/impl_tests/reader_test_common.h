@@ -24,8 +24,7 @@
 template <bool Localized,
           typename CharT,
           typename ValueT,
-          template <class>
-          class Reader>
+          template <class> class Reader>
 class reader_wrapper {
 public:
     using char_type = CharT;

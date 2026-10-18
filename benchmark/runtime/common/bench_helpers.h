@@ -33,11 +33,11 @@ inline std::mt19937_64& get_rng()
 }
 
 #if SCN_CLANG >= SCN_COMPILER(21, 0, 0)
-SCN_CLANG_POP // -Wunique-object-duplication
+SCN_CLANG_POP  // -Wunique-object-duplication
 #endif
 
-// Stolen from ascii_ctype.h
-inline bool is_classic_ascii_space(char ch)
+    // Stolen from ascii_ctype.h
+    inline bool is_classic_ascii_space(char ch)
 {
     static constexpr std::array<bool, 256> lookup = {
         {false, false, false, false, false, false, false, false, false, true,
@@ -72,7 +72,8 @@ inline bool is_classic_ascii_space(char ch)
 
 template <typename T>
 struct single_state {
-    single_state(const std::vector<std::string>& src) : source(src), it(source.begin())
+    single_state(const std::vector<std::string>& src)
+        : source(src), it(source.begin())
     {
     }
 

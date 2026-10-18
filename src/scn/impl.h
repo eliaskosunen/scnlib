@@ -4192,8 +4192,7 @@ public:
         SCN_TRY(prefix_result,
                 parse_integer_prefix(
                     range, specs.get_base(),
-                    specs.type !=
-                        detail::presentation_type::int_arbitrary_base)
+                    specs.type != detail::presentation_type::int_arbitrary_base)
                     .transform_error(make_eof_scan_error));
 
         if (prefix_result.sign == sign_type::minus_sign) {

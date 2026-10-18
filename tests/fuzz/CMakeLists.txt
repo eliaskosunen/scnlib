@@ -1,24 +1,22 @@
-if (NOT SCN_FUZZING)
+if(NOT SCN_FUZZING)
     return()
-endif ()
+endif()
 
 add_library(scn_fuzz_base INTERFACE)
 target_link_libraries(scn_fuzz_base INTERFACE scn scn_fuzzer scn_internal)
 
 function(add_fuzzer name)
-    add_executable(scn_fuzz_${name}
-            fuzz.h
-            ${name}_fuzz.cpp)
+    add_executable(scn_fuzz_${name} fuzz.h ${name}_fuzz.cpp)
     target_link_libraries(scn_fuzz_${name} PRIVATE scn scn_internal)
-    if (SCN_FUZZING_LDFLAGS)
+    if(SCN_FUZZING_LDFLAGS)
         target_link_options(scn_fuzz_${name} PRIVATE ${SCN_FUZZING_LDFLAGS})
-    else ()
+    else()
         target_link_libraries(scn_fuzz_${name} PRIVATE scn_fuzzer)
-    endif ()
+    endif()
 
-    if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
+    if(CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
         target_compile_options(scn_fuzz_${name} PRIVATE -Wno-missing-prototypes)
-    endif ()
+    endif()
 endfunction()
 
 add_fuzzer(int)
@@ -31,8 +29,11 @@ add_fuzzer(string_impl)
 add_fuzzer(char)
 add_fuzzer(file)
 
-add_custom_target(scn_fuzz_prepare ALL
-        COMMAND ${CMAKE_COMMAND} -E copy
-        "${CMAKE_CURRENT_LIST_DIR}/run-fuzz.sh"
+add_custom_target(
+    scn_fuzz_prepare
+    ALL
+    COMMAND
+        ${CMAKE_COMMAND} -E copy "${CMAKE_CURRENT_LIST_DIR}/run-fuzz.sh"
         "${CMAKE_BINARY_DIR}/tests/fuzz"
-        COMMENT "Copying fuzzer scripts")
+    COMMENT "Copying fuzzer scripts"
+)

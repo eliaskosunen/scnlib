@@ -4,7 +4,7 @@
 script_dir="$(cd "$(dirname "$0")" && pwd)"
 include_dir="${SCN_INCLUDE_DIR:-${script_dir}/../../include}"
 
-run () {
+run() {
   file=$1
   shift
 
@@ -12,7 +12,7 @@ run () {
   /usr/bin/time c++ -x c++ -I"${include_dir}" -Iinclude -L. "${script_dir}/${file}" -w "$@"
 }
 
-run_benchmarks () {
+run_benchmarks() {
   run empty.cpp "$@"
   run cstdio.cpp "$@"
   run iostream.cpp "$@"
