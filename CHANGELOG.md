@@ -44,6 +44,10 @@ scn::scan<...>(strm, ...);
  * In a character set (`{:[...]}`), a backslash followed by a letter (like `\d`),
    or something that looks like a character class (like `[:alpha:]`), is now a format string error.
    Previously, they were matched as literal characters.
+ * In an inverted character set, `]` after `^` now starts a range if followed by `-` and another character:
+   `{:[^]-a]}` is everything except the characters from `]` to `a`. Previously, it was everything except `]`, `-`, and `a`.
+ * `{:[]}` is now a format string error (an unterminated character set, like `{:[^]}` already was).
+   Previously, it was an empty set.
  * `std::chrono::time_point`s are now scanned as UTC, applying an offset scanned with `%z`,
    instead of as local time with `std::mktime`, which depended on the `TZ` environment variable.
    Unset fields default to 1970-01-01 00:00:00.
@@ -106,6 +110,8 @@ scn::scan<...>(strm, ...);
 
 ### Features
 
+ * A character set (`{:[...]}`) can now contain `]`, by putting it first, like in `scanf`:
+   `{:[]abc]}`. This already worked in inverted sets (`{:[^]abc]}`).
  * `ranges::input_range`s can now be used as sources for `scn::scan`
    (previous requirement was `ranges::forward_range`)
    * When the source range is an `input_range`, the range type returned from `scn::scan` isn't a `subrange` anymore,

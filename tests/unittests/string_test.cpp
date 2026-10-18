@@ -183,6 +183,107 @@ TEST(StringTest, CharacterSetRangeAcrossAsciiBoundaryInverted)
                  "b");
 }
 
+TEST(StringTest, CharacterSetLeadingBracket)
+{
+    auto result = scn::scan<std::string>("a]bc]d", "{:[]abc]}");
+    ASSERT_THAT(result, Succeeded());
+    EXPECT_EQ(result->value(), "a]bc]");
+    EXPECT_STREQ(result->begin(), "d");
+}
+TEST(StringTest, CharacterSetLeadingBracketRuntime)
+{
+    auto result =
+        scn::scan<std::string>("a]bc]d", scn::runtime_format("{:[]abc]}"));
+    ASSERT_THAT(result, Succeeded());
+    EXPECT_EQ(result->value(), "a]bc]");
+    EXPECT_STREQ(result->begin(), "d");
+}
+TEST(StringTest, CharacterSetLeadingBracketOnly)
+{
+    auto result = scn::scan<std::string>("]]a", "{:[]]}");
+    ASSERT_THAT(result, Succeeded());
+    EXPECT_EQ(result->value(), "]]");
+    EXPECT_STREQ(result->begin(), "a");
+}
+TEST(StringTest, CharacterSetLeadingBracketInverted)
+{
+    auto result = scn::scan<std::string>("xyz]abc", "{:[^]abc]}");
+    ASSERT_THAT(result, Succeeded());
+    EXPECT_EQ(result->value(), "xyz");
+    EXPECT_STREQ(result->begin(), "]abc");
+}
+TEST(StringTest, CharacterSetLeadingBracketInvertedRuntime)
+{
+    auto result =
+        scn::scan<std::string>("xyz]abc", scn::runtime_format("{:[^]abc]}"));
+    ASSERT_THAT(result, Succeeded());
+    EXPECT_EQ(result->value(), "xyz");
+    EXPECT_STREQ(result->begin(), "]abc");
+}
+TEST(StringTest, CharacterSetLeadingBracketInvertedOnly)
+{
+    auto result = scn::scan<std::string>("ab]c", "{:[^]]}");
+    ASSERT_THAT(result, Succeeded());
+    EXPECT_EQ(result->value(), "ab");
+    EXPECT_STREQ(result->begin(), "]c");
+}
+TEST(StringTest, CharacterSetLeadingBracketStartsRange)
+{
+    // ']' (0x5d) .. 'a' (0x61) includes ^ _ `
+    auto result = scn::scan<std::string>("]^_`a-b", "{:[]-a]}");
+    ASSERT_THAT(result, Succeeded());
+    EXPECT_EQ(result->value(), "]^_`a");
+    EXPECT_STREQ(result->begin(), "-b");
+}
+TEST(StringTest, CharacterSetLeadingBracketStartsRangeRuntime)
+{
+    auto result =
+        scn::scan<std::string>("]^_`a-b", scn::runtime_format("{:[]-a]}"));
+    ASSERT_THAT(result, Succeeded());
+    EXPECT_EQ(result->value(), "]^_`a");
+    EXPECT_STREQ(result->begin(), "-b");
+}
+TEST(StringTest, CharacterSetLeadingBracketStartsRangeInverted)
+{
+    auto result = scn::scan<std::string>("-b_c", "{:[^]-a]}");
+    ASSERT_THAT(result, Succeeded());
+    EXPECT_EQ(result->value(), "-b");
+    EXPECT_STREQ(result->begin(), "_c");
+}
+TEST(StringTest, CharacterSetLeadingBracketTrailingDash)
+{
+    auto result = scn::scan<std::string>("]-^", "{:[]-]}");
+    ASSERT_THAT(result, Succeeded());
+    EXPECT_EQ(result->value(), "]-");
+    EXPECT_STREQ(result->begin(), "^");
+}
+TEST(StringTest, CharacterSetLeadingBracketNonAsciiMember)
+{
+    auto result = scn::scan<std::string>("\xc3\xa4]\xc3\xb6", "{:[]\xc3\xa4]}");
+    ASSERT_THAT(result, Succeeded());
+    EXPECT_EQ(result->value(), "\xc3\xa4]");
+    EXPECT_STREQ(result->begin(), "\xc3\xb6");
+}
+TEST(StringTest, CharacterSetLeadingBracketNonAsciiMemberWide)
+{
+    auto result = scn::scan<std::wstring>(L"\u00e4]\u00f6", L"{:[]\u00e4]}");
+    ASSERT_THAT(result, Succeeded());
+    EXPECT_EQ(result->value(), L"\u00e4]");
+    EXPECT_STREQ(result->begin(), L"\u00f6");
+}
+TEST(StringTest, CharacterSetLeadingBracketNotClosed)
+{
+    for (auto fmt : {"{:[]}", "{:[^]}"}) {
+        auto result = scn::scan<std::string>("]a", scn::runtime_format(fmt));
+        EXPECT_THAT(result, Failed()) << fmt;
+    }
+}
+TEST(StringTest, CharacterSetStrayBracketAfterSet)
+{
+    auto result = scn::scan<std::string>("a]", scn::runtime_format("{:[a]]}"));
+    EXPECT_THAT(result, Failed());
+}
+
 TEST(StringTest, CharacterSetOnEmptyInput)
 {
     constexpr std::array<const char*, 4> formats{"{:[a-z]}", "{:[^a-z]}",
