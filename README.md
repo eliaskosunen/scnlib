@@ -457,6 +457,26 @@ $ cmake --build .
 $ ./benchmark/buildtime/run-buildtime-benchmarks.sh
 ```
 
+## Development
+
+C++, Python, CMake and shell files are formatted with pinned formatter versions, and CI checks the formatting.
+
+```sh
+# Install the formatters
+$ python3 -m venv .venv
+$ .venv/bin/pip install -r scripts/format-requirements.txt
+$ export PATH="$PWD/.venv/bin:$PATH"
+
+$ python3 scripts/format.py           # format the staged files
+$ python3 scripts/format.py --check   # check them without changing anything
+$ python3 scripts/format.py --all     # format every tracked file
+
+# Check the formatting before every commit
+$ git config core.hooksPath .githooks
+# Skip the codebase-wide reformat commits in git blame
+$ git config blame.ignoreRevsFile .git-blame-ignore-revs
+```
+
 ## Acknowledgements
 
 The contents of this library are heavily influenced by {fmt} and its derivative
