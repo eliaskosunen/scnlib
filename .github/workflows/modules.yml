@@ -122,7 +122,7 @@ jobs:
       - name: Build
         working-directory: ${{ runner.workspace }}/lib-build
         run: |
-          cmake --build . --verbose
+          cmake --build .
 
       - name: Test
         working-directory: ${{ runner.workspace }}/lib-build
@@ -139,7 +139,7 @@ jobs:
           mkdir ${{ runner.workspace }}/consumer-build
           cd ${{ runner.workspace }}/consumer-build
           cmake -G "${{ matrix.generator }}" $GITHUB_WORKSPACE/tests/consumer-test/module
-          cmake --build . --verbose
+          cmake --build .
 
       - name: Test consumer
         working-directory: ${{ runner.workspace }}/consumer-build
@@ -180,7 +180,7 @@ jobs:
       - name: Build
         working-directory: ${{ runner.workspace }}/lib-build
         run: |
-          cmake --build . --verbose
+          cmake --build .
 
       - name: Test
         working-directory: ${{ runner.workspace }}/lib-build
@@ -227,7 +227,7 @@ jobs:
       - name: Build
         working-directory: ${{ runner.workspace }}/lib-build
         run: |
-          cmake --build . --config Debug --parallel --verbose
+          cmake --build . --config Debug --parallel
 
       - name: Test
         working-directory: ${{ runner.workspace }}/lib-build
@@ -245,7 +245,7 @@ jobs:
         run: |
           call "C:\Program Files\Microsoft Visual Studio\2022\Enterprise\VC\Auxiliary\Build\vcvars64.bat"
           cmake -G "${{ matrix.generator }}" ${{ github.workspace }}/tests/consumer-test/module
-          cmake --build . --config Debug --parallel --verbose
+          cmake --build . --config Debug --parallel
 
       - name: Test consumer
         working-directory: ${{ runner.workspace }}/consumer-build

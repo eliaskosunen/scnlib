@@ -139,7 +139,7 @@ jobs:
             -DCMAKE_BUILD_TYPE=Debug \
             -DSCN_WERROR=OFF \
             ..
-          cmake --build . --verbose -- -k 0
+          cmake --build . -- -k 0
 
       - name: Show ccache stats
         run: ccache --show-stats
@@ -193,7 +193,7 @@ jobs:
 
       - name: Build
         working-directory: ${{ runner.workspace }}/build
-        run: cmake --build . --parallel --verbose
+        run: cmake --build . --parallel
 
   # Build and run test on native arm64 Ubuntu
 
@@ -235,7 +235,7 @@ jobs:
       - name: Build
         working-directory: ${{ runner.workspace }}/build
         run: |
-          cmake --build . --verbose -- -k 0
+          cmake --build . -- -k 0
 
       - name: Test
         working-directory: ${{ runner.workspace }}/build

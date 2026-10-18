@@ -137,7 +137,7 @@ jobs:
 
       - name: Build
         working-directory: ${{ runner.workspace }}/build
-        run: cmake --build . --parallel --verbose -- -k
+        run: cmake --build . --parallel -- -k
 
       - name: Show ccache stats
         run: |

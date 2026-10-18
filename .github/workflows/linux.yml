@@ -192,7 +192,7 @@ jobs:
 
       - name: Build
         working-directory: ${{ runner.workspace }}/build
-        run: cmake --build . --verbose -- -k 0
+        run: cmake --build . -- -k 0
 
       - name: Show ccache stats
         run: |
@@ -288,7 +288,7 @@ jobs:
       - name: Build
         run: |
           cd $GITHUB_WORKSPACE/build
-          $GITHUB_WORKSPACE/bin/cmake --build . --verbose -- -k 0
+          $GITHUB_WORKSPACE/bin/cmake --build . -- -k 0
 
       - name: Show ccache stats
         run: |
@@ -427,7 +427,7 @@ jobs:
       - name: Build
         run: |
           cd $GITHUB_WORKSPACE/build
-          cmake --build . --verbose -- -k 0
+          cmake --build . -- -k 0
 
       - name: Show ccache stats
         run: |
@@ -500,7 +500,7 @@ jobs:
 
       - name: Build
         working-directory: ${{ runner.workspace }}/build
-        run: cmake --build . --verbose -- -k 0
+        run: cmake --build . -- -k 0
 
       - name: Show ccache stats
         run: |
@@ -567,7 +567,7 @@ jobs:
 
       - name: Build
         run: |
-          ./alpine-run.sh cmake --build build --verbose -- -k 0
+          ./alpine-run.sh cmake --build build -- -k 0
           ./alpine-run.sh ccache --show-stats
 
       - name: Test
@@ -640,7 +640,7 @@ jobs:
         run: |
           cmake -G "${{ matrix.generator }}" -DSCN_CI=ON -DCMAKE_BUILD_TYPE=Debug -DCMAKE_CXX_STANDARD=17 \
             $GITHUB_WORKSPACE
-          cmake --build . --parallel --verbose
+          cmake --build . --parallel
           ctest --output-on-failure
 
       - name: Run CMake, Build, Test (multi-config)
@@ -649,7 +649,7 @@ jobs:
         run: |
           cmake -G "${{ matrix.generator }}" -DSCN_CI=ON -DCMAKE_CXX_STANDARD=17 \
             $GITHUB_WORKSPACE
-          cmake --build . --config Debug --parallel --verbose
+          cmake --build . --config Debug --parallel
           ctest -C Debug --output-on-failure
 
       - name: Show ccache stats
@@ -724,7 +724,7 @@ jobs:
       - name: Build
         working-directory: ${{ runner.workspace }}/build
         run: |
-          cmake --build . --verbose -- -k 0
+          cmake --build . -- -k 0
 
       - name: Show ccache stats
         run: |
@@ -833,7 +833,7 @@ jobs:
             cmake -G Ninja -DSCN_INSTALL=ON -DSCN_ENABLE_EXTRAS=OFF -DBUILD_SHARED_LIBS=${{ matrix.shared_libs }} \
               $GITHUB_WORKSPACE
           fi
-          cmake --build . --verbose --target scn
+          cmake --build . --target scn
           sudo cmake --build . --target install
 
       - name: Build consumer
@@ -841,7 +841,7 @@ jobs:
           mkdir ${{ runner.workspace }}/consumer-build
           cd ${{ runner.workspace }}/consumer-build
           cmake -DBUILD_SHARED_LIBS=${{ matrix.shared_libs }} $GITHUB_WORKSPACE/tests/consumer-test/library
-          cmake --build . --verbose
+          cmake --build .
 
       - name: Show ccache stats
         run: |
@@ -951,12 +951,12 @@ jobs:
 
       - name: Build library
         working-directory: ${{ runner.workspace }}/build
-        run: cmake --build . --target scn --verbose -- -k 0
+        run: cmake --build . --target scn -- -k 0
 
       - name: Build tests
         working-directory: ${{ runner.workspace }}/build
         if: matrix.enable_tests == 1
-        run: cmake --build . --verbose -- -k 0
+        run: cmake --build . -- -k 0
 
       - name: Show ccache stats
         run: |
@@ -1025,7 +1025,7 @@ jobs:
 
       - name: Build
         working-directory: ${{ runner.workspace }}/build
-        run: cmake --build . --target scn --verbose -- -k 0
+        run: cmake --build . --target scn -- -k 0
 
       - name: Show ccache stats
         run: |
@@ -1128,7 +1128,7 @@ jobs:
 
       - name: Build
         working-directory: ${{ runner.workspace }}/build
-        run: cmake --build . --verbose -- -k 0
+        run: cmake --build . -- -k 0
 
       - name: Show ccache stats
         run: |
@@ -1188,4 +1188,4 @@ jobs:
       - name: Build
         working-directory: ${{ runner.workspace }}/build
         run: |
-          emmake cmake --build . --parallel --verbose
+          emmake cmake --build . --parallel
