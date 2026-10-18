@@ -58,14 +58,15 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
+        # windows-2022 has VS 2022, windows-2025 has VS 2026
         os:
-          # Deleted in June 2025, where we also lost VS2019 :(
-          # - 2019
           - 2022
           - 2025
         platform: [ x64 ]
         type: [ Debug ]
         std: [ 17 ]
+        # v142 is the VS 2019 toolset (MSVC 19.29), installed alongside VS 2026
+        toolset: [ default ]
 
         include:
           # Release build on 2025 (C++17)
@@ -100,6 +101,23 @@ jobs:
             type: Debug
             std: 17
 
+          # VS 2019 toolset, x64 C++17 and C++20, Win32 C++17
+          - os: 2025
+            platform: x64
+            type: Debug
+            std: 17
+            toolset: v142
+          - os: 2025
+            platform: x64
+            type: Debug
+            std: 20
+            toolset: v142
+          - os: 2025
+            platform: Win32
+            type: Debug
+            std: 17
+            toolset: v142
+
     steps:
       - name: Checkout
         uses: actions/checkout@v7
@@ -113,11 +131,11 @@ jobs:
         uses: actions/cache@v6
         with:
           path: ${{ env.CCACHE_DIR }}
-          key: ccache-${{ github.workflow }}-win${{ matrix.os }}-msvc${{ matrix.platform }}-std${{ matrix.std }}-${{ matrix.type }}-${{ github.sha }}
+          key: ccache-${{ github.workflow }}-win${{ matrix.os }}-msvc${{ matrix.toolset }}${{ matrix.platform }}-std${{ matrix.std }}-${{ matrix.type }}-${{ github.sha }}
           restore-keys: |
-            ccache-${{ github.workflow }}-win${{ matrix.os }}-msvc${{ matrix.platform }}-std${{ matrix.std }}-${{ matrix.type }}-${{ github.ref }}
-            ccache-${{ github.workflow }}-win${{ matrix.os }}-msvc${{ matrix.platform }}-std${{ matrix.std }}-${{ matrix.type }}-${{ github.base_ref }}
-            ccache-${{ github.workflow }}-win${{ matrix.os }}-msvc${{ matrix.platform }}-std${{ matrix.std }}-${{ matrix.type }}
+            ccache-${{ github.workflow }}-win${{ matrix.os }}-msvc${{ matrix.toolset }}${{ matrix.platform }}-std${{ matrix.std }}-${{ matrix.type }}-${{ github.ref }}
+            ccache-${{ github.workflow }}-win${{ matrix.os }}-msvc${{ matrix.toolset }}${{ matrix.platform }}-std${{ matrix.std }}-${{ matrix.type }}-${{ github.base_ref }}
+            ccache-${{ github.workflow }}-win${{ matrix.os }}-msvc${{ matrix.toolset }}${{ matrix.platform }}-std${{ matrix.std }}-${{ matrix.type }}
 
       - name: Setup ccache
         run: |
@@ -130,7 +148,8 @@ jobs:
         working-directory: ${{ runner.workspace }}/build
         shell: bash
         run: |
-          cmake -A ${{ matrix.platform }} -DCMAKE_CXX_STANDARD=${{ matrix.std }} -DSCN_CI=ON $GITHUB_WORKSPACE
+          cmake -A ${{ matrix.platform }} ${{ matrix.toolset != 'default' && format('-T {0}', matrix.toolset) || '' }} \
+            -DCMAKE_CXX_STANDARD=${{ matrix.std }} -DSCN_CI=ON $GITHUB_WORKSPACE
 
       - name: Build
         working-directory: ${{ runner.workspace }}/build
