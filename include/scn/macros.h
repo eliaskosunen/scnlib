@@ -1194,10 +1194,19 @@
 #endif
 
 // SCN_UNREACHABLE
+// Asserts in debug builds, except on gcc 7 and 8, which reject an assert in a
+// constexpr function even when it's not reached:
+// https://gcc.gnu.org/bugzilla/show_bug.cgi?id=86678
 #if SCN_HAS_BUILTIN_UNREACHABLE
-#define SCN_UNREACHABLE __builtin_unreachable()
+#define SCN_UNREACHABLE_IMPL __builtin_unreachable()
 #else
-#define SCN_UNREACHABLE SCN_ASSUME(0)
+#define SCN_UNREACHABLE_IMPL SCN_ASSUME(0)
+#endif
+#if SCN_GCC && SCN_GCC < SCN_COMPILER(9, 0, 0)
+#define SCN_UNREACHABLE SCN_UNREACHABLE_IMPL
+#else
+#define SCN_UNREACHABLE \
+    (SCN_ASSERT_IMPL(false, "Unreachable"), SCN_UNREACHABLE_IMPL)
 #endif
 
 // SCN_ASSUME_ALIGNED

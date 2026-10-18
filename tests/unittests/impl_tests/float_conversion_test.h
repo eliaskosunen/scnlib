@@ -72,7 +72,6 @@ struct float_conversion_interface_base {
             }
         }
         else {
-            SCN_EXPECT(false);
             SCN_UNREACHABLE;
         }
     }

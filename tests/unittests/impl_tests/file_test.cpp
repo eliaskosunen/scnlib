@@ -108,17 +108,14 @@ struct unbuffered_mock_file : mock_file_base {
     }
     [[noreturn]] static void unsafe_advance_n(std::ptrdiff_t)
     {
-        SCN_EXPECT(false);
         SCN_UNREACHABLE;
     }
     [[noreturn]] static bool fill_buffer()
     {
-        SCN_EXPECT(false);
         SCN_UNREACHABLE;
     }
     [[noreturn]] static bool has_error()
     {
-        SCN_EXPECT(false);
         SCN_UNREACHABLE;
     }
 
@@ -393,7 +390,6 @@ std::vector<std::string> chunk_up(const std::string& input,
     SCN_CLANG_POP
     SCN_GCC_POP
 
-    SCN_EXPECT(false);
     SCN_UNREACHABLE;
 }
 

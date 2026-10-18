@@ -189,7 +189,6 @@ scanner_scan_for_builtin_type(T& val, Context& ctx, const format_specs& specs)
         return impl::arg_reader<Context>{ctx.range(), specs, {}}(val);
     }
     else {
-        SCN_ASSERT(false);
         SCN_UNREACHABLE;
     }
 }
@@ -763,7 +762,6 @@ auto convert_strtod_traits::convert(std::basic_string_view<CharT> source,
         return convert_strtod<T>{kind}(source, value);
     }
     else {
-        SCN_ASSERT(false);
         SCN_UNREACHABLE;
     }
 }
@@ -1056,7 +1054,6 @@ scan_expected<void> convert_custom_traits::convert(
         return convert_custom_dec{kind}(parts, value);
     }
     else {
-        SCN_ASSERT(false);
         SCN_UNREACHABLE;
     }
 }
@@ -1245,7 +1242,6 @@ scan_expected<std::string_view::iterator> convert_from_chars_traits::convert(
         return convert_from_chars{kind, options}(source, value, can_fallback);
     }
     else {
-        SCN_ASSERT(false);
         SCN_UNREACHABLE;
     }
 }
@@ -1399,7 +1395,6 @@ convert_fast_float_traits::convert(std::basic_string_view<CharT> source,
         SCN_UNUSED(kind);
         SCN_UNUSED(options);
         SCN_UNUSED(can_fallback);
-        SCN_ASSERT(false);
         SCN_UNREACHABLE;
     }
 }

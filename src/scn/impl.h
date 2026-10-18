@@ -1157,22 +1157,18 @@ struct stdio_file_interface_impl<File, default_file_tag>
     }
     static bool is_buffer_readable()
     {
-        SCN_ASSERT(false);
         SCN_UNREACHABLE;
     }
     static void unsafe_advance_n(std::ptrdiff_t)
     {
-        SCN_ASSERT(false);
         SCN_UNREACHABLE;
     }
     static bool fill_buffer()
     {
-        SCN_ASSERT(false);
         SCN_UNREACHABLE;
     }
     static bool has_error()
     {
-        SCN_ASSERT(false);
         SCN_UNREACHABLE;
     }
 
@@ -1351,17 +1347,14 @@ struct stdio_file_interface_impl<File, win32_file_tag>
     static void unsafe_advance_n(std::ptrdiff_t n)
     {
         SCN_UNUSED(n);
-        SCN_ASSERT(false);
         SCN_UNREACHABLE;
     }
     SCN_NODISCARD static bool fill_buffer()
     {
-        SCN_ASSERT(false);
         SCN_UNREACHABLE;
     }
     SCN_NODISCARD static bool has_error()
     {
-        SCN_ASSERT(false);
         SCN_UNREACHABLE;
     }
 
@@ -1680,7 +1673,6 @@ auto get_as_contiguous(Range r)
         }
     }
     else {
-        SCN_ASSERT(false);
         SCN_UNREACHABLE;
         SCN_UNUSED(r);
         // for return type deduction
@@ -1988,7 +1980,6 @@ void transcode_to_string(std::basic_string_view<SourceCharT> src,
         }
     }
 
-    SCN_ASSERT(false);
     SCN_UNREACHABLE;
 }
 template <typename SourceCharT, typename DestCharT>
@@ -2029,7 +2020,6 @@ void transcode_valid_to_string(std::basic_string_view<SourceCharT> src,
         }
     }
 
-    SCN_ASSERT(false);
     SCN_UNREACHABLE;
 }
 
@@ -2104,7 +2094,6 @@ struct string_view_wrapper {
 
     [[noreturn]] string_type get_allocated_string() const
     {
-        SCN_ASSERT(false);
         SCN_UNREACHABLE;
     }
 
@@ -3776,7 +3765,6 @@ public:
 
     static scan_expected<void> check_specs(const detail::format_specs&)
     {
-        SCN_ASSERT(false);
         SCN_UNREACHABLE;
     }
 
@@ -3784,7 +3772,6 @@ public:
     auto read_default(Range, monostate&, detail::locale_ref)
         -> scan_expected<ranges::iterator_t<Range>>
     {
-        SCN_ASSERT(false);
         SCN_UNREACHABLE;
     }
 
@@ -3795,7 +3782,6 @@ public:
                     detail::locale_ref)
         -> scan_expected<ranges::iterator_t<Range>>
     {
-        SCN_ASSERT(false);
         SCN_UNREACHABLE;
     }
 };
@@ -6410,7 +6396,6 @@ struct basic_convert_float {
                 break;
 
             default:
-                SCN_ASSERT(false);
                 SCN_UNREACHABLE;
         }
 
@@ -7365,7 +7350,6 @@ private:
     {
         if constexpr (detail::is_type_disabled<
                           basic_regex_matches<DestCharT>>) {
-            SCN_ASSERT(false);
             SCN_UNREACHABLE;
         }
         else {
@@ -7954,7 +7938,6 @@ protected:
 #endif
 
             default:
-                SCN_ASSERT(false);
                 SCN_UNREACHABLE;
         }
 
@@ -8292,7 +8275,6 @@ public:
         }
         else {
             SCN_UNUSED(range);
-            SCN_ASSERT(false);
             SCN_UNREACHABLE;
         }
     }
@@ -8549,7 +8531,6 @@ struct default_arg_reader {
                                 ranges::distance(crange.begin(), it));
         }
         else {
-            SCN_ASSERT(false);
             SCN_UNREACHABLE;
         }
     }
@@ -8592,7 +8573,6 @@ struct default_arg_reader {
             }
         }
         else {
-            SCN_ASSERT(false);
             SCN_UNREACHABLE;
         }
     }
@@ -8908,7 +8888,6 @@ struct arg_reader {
                                 ranges::distance(crange.begin(), it));
         }
         else {
-            SCN_ASSERT(false);
             SCN_UNREACHABLE;
         }
     }
@@ -8917,7 +8896,6 @@ struct arg_reader {
         typename basic_scan_arg<detail::default_context<char_type>>::handle)
         const
     {
-        SCN_ASSERT(false);
         SCN_UNREACHABLE;
     }
 
@@ -8936,7 +8914,6 @@ struct custom_reader {
     template <typename T>
     scan_expected<iterator> operator()(T&) const
     {
-        SCN_ASSERT(false);
         SCN_UNREACHABLE;
     }
 

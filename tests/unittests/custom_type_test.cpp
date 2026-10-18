@@ -269,7 +269,6 @@ struct scn::scanner<variant_wrapper, char> {
                 SCN_CLANG_PUSH
                 SCN_CLANG_IGNORE("-Wcovered-switch-default")
             default:
-                SCN_EXPECT(false);
                 SCN_UNREACHABLE;
                 SCN_CLANG_POP
         }
