@@ -1954,7 +1954,7 @@ void transcode_to_string(std::basic_string_view<SourceCharT> src,
             std::u32string tmp;
             transcode_to_string_impl_to32(src, tmp);
             return transcode_to_string_impl_32to16<false>(
-                std::u32string_view{tmp}, dest);
+                std::u32string_view(tmp), dest);
         }
         else if constexpr (sizeof(DestCharT) == 4) {
             return transcode_to_string_impl_to32(src, dest);
@@ -1965,7 +1965,7 @@ void transcode_to_string(std::basic_string_view<SourceCharT> src,
             std::u32string tmp;
             transcode_to_string_impl_to32(src, tmp);
             return transcode_to_string_impl_32to8<false>(
-                std::u32string_view{tmp}, dest);
+                std::u32string_view(tmp), dest);
         }
         else if constexpr (sizeof(DestCharT) == 4) {
             return transcode_to_string_impl_to32(src, dest);
@@ -1994,7 +1994,7 @@ void transcode_valid_to_string(std::basic_string_view<SourceCharT> src,
             std::u32string tmp;
             transcode_valid_to_string_impl_to32(src, tmp);
             return transcode_to_string_impl_32to16<true>(
-                std::u32string_view{tmp}, dest);
+                std::u32string_view(tmp), dest);
         }
         else if constexpr (sizeof(DestCharT) == 4) {
             return transcode_valid_to_string_impl_to32(src, dest);
@@ -2005,7 +2005,7 @@ void transcode_valid_to_string(std::basic_string_view<SourceCharT> src,
             std::u32string tmp;
             transcode_valid_to_string_impl_to32(src, tmp);
             return transcode_to_string_impl_32to8<true>(
-                std::u32string_view{tmp}, dest);
+                std::u32string_view(tmp), dest);
         }
         else if constexpr (sizeof(DestCharT) == 4) {
             return transcode_valid_to_string_impl_to32(src, dest);

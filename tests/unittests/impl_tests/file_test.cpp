@@ -177,7 +177,7 @@ struct buffered_mock_file : mock_file_base {
         if (!m_backup.empty()) {
             return m_backup;
         }
-        return std::string_view{m_buffer}.substr(m_buffer_position);
+        return std::string_view(m_buffer).substr(m_buffer_position);
     }
 
     void unsafe_advance_n(std::ptrdiff_t n)

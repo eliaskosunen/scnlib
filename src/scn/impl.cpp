@@ -762,6 +762,8 @@ auto convert_strtod_traits::convert(std::basic_string_view<CharT> source,
         return convert_strtod<T>{kind}(source, value);
     }
     else {
+        SCN_UNUSED(source);
+        SCN_UNUSED(kind);
         SCN_UNREACHABLE;
     }
 }
@@ -1528,15 +1530,15 @@ constexpr bool does_max_length_integer_overflow_u64(const CharT* digits,
 {
     // `max_digits - 1` digits always fit in an uint64_t
     const auto max_digits = maxdigits_u64(base);
+    const auto unsigned_base = static_cast<uint64_t>(base);
     uint64_t high{};
     for (size_t i = 0; i + 1 < max_digits; ++i) {
-        high = static_cast<uint64_t>(base) * high +
+        high = unsigned_base * high +
                static_cast<uint64_t>(char_to_int(digits[i]));
     }
     const auto last =
         static_cast<uint64_t>(char_to_int(digits[max_digits - 1]));
-    return high > (std::numeric_limits<uint64_t>::max() - last) /
-                      static_cast<uint64_t>(base);
+    return high > (std::numeric_limits<uint64_t>::max() - last) / unsigned_base;
 }
 
 // `val` is the value of the `digits_count` digits starting at `digits`,

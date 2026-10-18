@@ -225,7 +225,7 @@ TEST(SourceTest, InvalidCodePointIsNotWhitespace)
 {
     const std::string str = "\xa8 1f";
 
-    auto contiguous = scn::scan<int>(std::string_view{str}, "{:x}");
+    auto contiguous = scn::scan<int>(std::string_view(str), "{:x}");
     ASSERT_THAT(contiguous, Failed());
 
     auto deque_source = std::deque<char>(str.begin(), str.end());
@@ -239,7 +239,7 @@ TEST(SourceTest, InvalidCodePointAfterWhitespaceIsNotWhitespace)
 {
     const std::string str = " \xa8 1f";
 
-    auto contiguous = scn::scan<int>(std::string_view{str}, "{:x}");
+    auto contiguous = scn::scan<int>(std::string_view(str), "{:x}");
     EXPECT_THAT(contiguous, Failed());
 
     auto deque_source = std::deque<char>(str.begin(), str.end());

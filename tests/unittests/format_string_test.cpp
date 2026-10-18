@@ -51,10 +51,10 @@ void expect_same_as_indexed_field(std::basic_string_view<CharT> source,
         const auto general_format = make_single_field_format<CharT>("0", spec);
         auto fast = scn::scan<T>(
             source,
-            scn::runtime_format(std::basic_string_view<CharT>{fast_format}));
+            scn::runtime_format(std::basic_string_view<CharT>(fast_format)));
         auto general = scn::scan<T>(
             source,
-            scn::runtime_format(std::basic_string_view<CharT>{general_format}));
+            scn::runtime_format(std::basic_string_view<CharT>(general_format)));
         ASSERT_EQ(fast.has_value(), general.has_value()) << spec;
         if (!fast) {
             EXPECT_EQ(fast.error().code(), general.error().code()) << spec;

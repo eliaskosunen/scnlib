@@ -140,7 +140,7 @@ TEST(FindClassicSpaceNarrowFastTest, NonAsciiSpaceAtEveryPositionOfShortInput)
              ++suffix_length) {
             const auto src = std::string(prefix_length, 'a') + "\xc2\x85" +
                              std::string(suffix_length, 'b');
-            const auto view = std::string_view{src};
+            const auto view = std::string_view(src);
             EXPECT_EQ(scn::impl::find_classic_space_narrow_fast(view),
                       view.begin() + static_cast<std::ptrdiff_t>(prefix_length))
                 << src;
