@@ -20,8 +20,8 @@
 
 int main()
 {
-    // build error: 'L' flag invalid when SCN_DISABLE_LOCALE is on
-    // build error: \'L\' flag invalid when SCN_DISABLE_LOCALE is on
+    // build error: 'L' specifier invalid when SCN_DISABLE_LOCALE is on
+    // build error: \'L\' specifier invalid when SCN_DISABLE_LOCALE is on
     auto result = scn::scan<int>("42", SCN_STRING("{:L}"));
     return result && result->value() == 42;
 }

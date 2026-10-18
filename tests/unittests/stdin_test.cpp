@@ -57,7 +57,7 @@ static std::optional<T> read_scanf()
         return SCN_MOVE(val);
     }
     else {
-        static_assert(scn::detail::dependent_false<T>::value, "");
+        static_assert(scn::detail::dependent_false<T>::value);
     }
 }
 

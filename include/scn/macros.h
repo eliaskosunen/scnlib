@@ -1224,13 +1224,14 @@
 // faster, and a violated condition would be undefined behavior.
 // `!!` makes `sizeof` accept bit-fields.
 #ifdef NDEBUG
-#define SCN_ASSERT(cond, msg) SCN_UNUSED(!!(cond))
+#define SCN_ASSERT_IMPL(cond, msg) SCN_UNUSED(!!(cond))
 #else
-#define SCN_ASSERT(cond, msg) assert((cond) && msg)
+#define SCN_ASSERT_IMPL(cond, msg) assert((cond) && msg)
 #endif
 
-#define SCN_EXPECT(cond) SCN_ASSERT(cond, "Precondition violation")
-#define SCN_ENSURE(cond) SCN_ASSERT(cond, "Postcondition violation")
+#define SCN_ASSERT(cond) SCN_ASSERT_IMPL(cond, "Invariant violation")
+#define SCN_EXPECT(cond) SCN_ASSERT_IMPL(cond, "Precondition violation")
+#define SCN_ENSURE(cond) SCN_ASSERT_IMPL(cond, "Postcondition violation")
 
 // `decltype((x))` and not `decltype(x)`, to keep the constness of `x`,
 // when it's a member accessed in a const member function

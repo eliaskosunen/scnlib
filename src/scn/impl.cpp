@@ -105,7 +105,7 @@ std::string_view::iterator find_classic_impl(std::string_view source,
             i += static_cast<std::size_t>(
                 ranges::distance(tmp.data(), detail::to_address(res.iterator)));
             it = detail::make_string_view_iterator(source, res.iterator);
-            SCN_ENSURE(it <= source.end());
+            SCN_ASSERT(it <= source.end());
         }
     }
 
@@ -189,7 +189,7 @@ scanner_scan_for_builtin_type(T& val, Context& ctx, const format_specs& specs)
         return impl::arg_reader<Context>{ctx.range(), specs, {}}(val);
     }
     else {
-        SCN_EXPECT(false);
+        SCN_ASSERT(false);
         SCN_UNREACHABLE;
     }
 }
@@ -361,8 +361,8 @@ SCN_PUBLIC void stdin_release() SCN_THREADSAFETY_NO_ANALYSIS
 SCN_PUBLIC scan_buffer& make_scan_buffer(stdin_tag_t,
                                          make_scan_buffer_tag) noexcept
 {
-    SCN_ASSERT(get_stdin_buffer(),
-               "stdin not locked, stdin_buffer not created");
+    // stdin must be locked, so that stdin_buffer has been created
+    SCN_EXPECT(get_stdin_buffer());
     return *get_stdin_buffer();
 }
 
@@ -560,7 +560,8 @@ struct convert_strtod {
     convert_strtod(kind_type kind) : m_kind(kind) {}
 
     template <typename CharT>
-    scan_expected<void> operator()(const CharT* source, T& value)
+    scan_expected<void> operator()(std::basic_string_view<CharT> source,
+                                   T& value)
     {
         SCN_TRY(c_source, make_c_source(source));
 
@@ -569,7 +570,7 @@ struct convert_strtod {
         value = call_strtod(c_source.c_str(), &end);
         const auto saved_errno = errno;
 
-        const bool read_all = *end == CharT{0};
+        const bool read_all = end == c_source.c_str() + c_source.size();
         SCN_TRY_DISCARD(check_error(read_all, saved_errno, value));
 
         return {};
@@ -616,7 +617,7 @@ private:
     // strtod also only reads a hexfloat with a "0x" prefix.
     template <typename CharT>
     scan_expected<std::basic_string<CharT>> make_c_source(
-        const CharT* source) const
+        std::basic_string_view<CharT> source) const
     {
         SCN_TRY(decimal_point, get_c_decimal_point<CharT>());
 
@@ -625,12 +626,12 @@ private:
             result.push_back(CharT{'0'});
             result.push_back(CharT{'x'});
         }
-        for (; *source != CharT{0}; ++source) {
-            if (*source == CharT{'.'}) {
+        for (const CharT ch : source) {
+            if (ch == CharT{'.'}) {
                 result.append(decimal_point);
             }
             else {
-                result.push_back(*source);
+                result.push_back(ch);
             }
         }
         return result;
@@ -752,7 +753,7 @@ private:
 }  // namespace
 
 template <typename CharT, typename T>
-auto convert_strtod_traits::convert(const CharT* source,
+auto convert_strtod_traits::convert(std::basic_string_view<CharT> source,
                                     T& value,
                                     kind_type kind,
                                     bool& can_fallback) -> scan_expected<void>
@@ -762,18 +763,18 @@ auto convert_strtod_traits::convert(const CharT* source,
         return convert_strtod<T>{kind}(source, value);
     }
     else {
-        SCN_EXPECT(false);
+        SCN_ASSERT(false);
         SCN_UNREACHABLE;
     }
 }
 
 // Only a float, double, or long double can be enabled
 // (see `convert_strtod_traits`)
-#define SCN_DEFINE_STRTOD_CONVERT(T)                               \
-    template SCN_PUBLIC auto convert_strtod_traits::convert(       \
-        const char*, T&, kind_type, bool&) -> scan_expected<void>; \
-    template SCN_PUBLIC auto convert_strtod_traits::convert(       \
-        const wchar_t*, T&, kind_type, bool&) -> scan_expected<void>;
+#define SCN_DEFINE_STRTOD_CONVERT(T)                                    \
+    template SCN_PUBLIC auto convert_strtod_traits::convert(            \
+        std::string_view, T&, kind_type, bool&) -> scan_expected<void>; \
+    template SCN_PUBLIC auto convert_strtod_traits::convert(            \
+        std::wstring_view, T&, kind_type, bool&) -> scan_expected<void>;
 
 #if SCN_IS_FLOAT_SCANNABLE
 SCN_DEFINE_STRTOD_CONVERT(float)
@@ -865,8 +866,7 @@ struct convert_custom_hex {
         // The entire significand, including a leading "1.",
         // must be storable in `significand_int_type`
         static_assert(float_traits<T>::fraction_bits + 1 <=
-                          sizeof(significand_int_type) * 8,
-                      "");
+                      sizeof(significand_int_type) * 8);
 
         // Parse all hex digits (before and after the radix point) into
         // hex_sig, an integer in significand_int_type, maintaining the
@@ -1025,7 +1025,7 @@ struct convert_custom_hex {
             }
         }
 
-        SCN_ENSURE(biased_exp >= 0);
+        SCN_ASSERT(biased_exp >= 0);
         return compute_float_value(value, static_cast<int>(biased_exp),
                                    significand);
     }
@@ -1056,7 +1056,7 @@ scan_expected<void> convert_custom_traits::convert(
         return convert_custom_dec{kind}(parts, value);
     }
     else {
-        SCN_EXPECT(false);
+        SCN_ASSERT(false);
         SCN_UNREACHABLE;
     }
 }
@@ -1168,8 +1168,8 @@ struct convert_from_chars {
         }
         if (SCN_UNLIKELY(result.ec == std::errc::result_out_of_range)) {
             // std::from_chars doesn't give us a way to distinguish between
-            // different kinds of over-/underflow:
-            // per the standard, `value` is unmodified.
+            // different kinds of over-/underflow,
+            // and `value` is left unmodified.
             // Fall back to try to determine what's up.
 
             can_fallback = true;
@@ -1245,7 +1245,7 @@ scan_expected<std::string_view::iterator> convert_from_chars_traits::convert(
         return convert_from_chars{kind, options}(source, value, can_fallback);
     }
     else {
-        SCN_EXPECT(false);
+        SCN_ASSERT(false);
         SCN_UNREACHABLE;
     }
 }
@@ -1399,7 +1399,7 @@ convert_fast_float_traits::convert(std::basic_string_view<CharT> source,
         SCN_UNUSED(kind);
         SCN_UNUSED(options);
         SCN_UNUSED(can_fallback);
-        SCN_EXPECT(false);
+        SCN_ASSERT(false);
         SCN_UNREACHABLE;
     }
 }
@@ -1798,15 +1798,15 @@ void parse_integer_value_exhaustive_valid(std::string_view source, T& value)
             negative_sign = true;
         }
     }
-    SCN_EXPECT(!source.empty());
-    SCN_EXPECT(char_to_int(source.front()) < 10);
+    SCN_ASSERT(!source.empty());
+    SCN_ASSERT(char_to_int(source.front()) < 10);
 
     const char* p = source.data();
     const char* const end = source.data() + source.size();
 
     uint64_t u64val{};
     while (std::distance(p, end) >= 8) {
-        SCN_EXPECT(is_word_made_of_eight_decimal_digits_fast(
+        SCN_ASSERT(is_word_made_of_eight_decimal_digits_fast(
             get_eight_digits_word(p)));
         u64val =
             u64val * 100'000'000 +
@@ -1816,18 +1816,18 @@ void parse_integer_value_exhaustive_valid(std::string_view source, T& value)
 
     while (p != end) {
         const auto digit = char_to_int(*p);
-        SCN_EXPECT(digit < 10);
+        SCN_ASSERT(digit < 10);
         u64val = 10ull * u64val + static_cast<uint64_t>(digit);
         ++p;
     }
-    SCN_EXPECT(p == end);
+    SCN_ASSERT(p == end);
 
     {
         // Unlike parse_integer_value, leading zeroes aren't skipped above
         const auto significant_digits = source.substr(
             std::min(source.find_first_not_of('0'), source.size()));
         SCN_UNUSED(significant_digits);
-        SCN_EXPECT(check_integer_overflow<T>(u64val, significant_digits.data(),
+        SCN_ASSERT(check_integer_overflow<T>(u64val, significant_digits.data(),
                                              significant_digits.size(), 10,
                                              negative_sign) == false);
     }
@@ -2043,7 +2043,7 @@ auto get_arg(Context& ctx, ID id, Handler& handler)
 {
     auto arg = ctx.arg(id);
     if (SCN_UNLIKELY(!arg)) {
-        handler.on_error("Failed to find argument with ID");
+        handler.on_error("Argument ID out of range");
     }
     return arg;
 }
@@ -2139,7 +2139,7 @@ struct format_handler_base {
     {
         if (SCN_UNLIKELY(id >= args_count)) {
             on_error({scan_error::invalid_format_string,
-                      "Argument ID out-of-range"});
+                      "Argument ID out of range"});
             return false;
         }
 
@@ -2155,7 +2155,7 @@ struct format_handler_base {
     {
         if (SCN_UNLIKELY(id >= args_count)) {
             on_error({scan_error::invalid_format_string,
-                      "Argument ID out-of-range"});
+                      "Argument ID out of range"});
             return;
         }
 
@@ -2798,8 +2798,8 @@ struct datetime_setter<std::tm> {
     static void set_sec(Handler& h, std::tm& t, setter_state& st, int s)
     {
         if (SCN_UNLIKELY(s < 0 || s > 60)) {
-            return h.set_error({scan_error::invalid_scanned_value,
-                                "Invalid value for tm_sec"});
+            return h.set_error(
+                {scan_error::invalid_scanned_value, "Invalid value for %S"});
         }
         t.tm_sec = s;
         st.set_sec(h);
@@ -2808,8 +2808,8 @@ struct datetime_setter<std::tm> {
     static void set_min(Handler& h, std::tm& t, setter_state& st, int m)
     {
         if (SCN_UNLIKELY(m < 0 || m > 59)) {
-            return h.set_error({scan_error::invalid_scanned_value,
-                                "Invalid value for tm_min"});
+            return h.set_error(
+                {scan_error::invalid_scanned_value, "Invalid value for %M"});
         }
         t.tm_min = m;
         st.set_min(h);
@@ -2818,8 +2818,8 @@ struct datetime_setter<std::tm> {
     static void set_hour24(Handler& hdl, std::tm& t, setter_state& st, int h)
     {
         if (SCN_UNLIKELY(h < 0 || h > 23)) {
-            return hdl.set_error({scan_error::invalid_scanned_value,
-                                  "Invalid value for tm_hour"});
+            return hdl.set_error(
+                {scan_error::invalid_scanned_value, "Invalid value for %H"});
         }
         t.tm_hour = h;
         st.set_hour24(hdl);
@@ -2828,8 +2828,8 @@ struct datetime_setter<std::tm> {
     static void set_hour12(Handler& hdl, std::tm& t, setter_state& st, int h)
     {
         if (SCN_UNLIKELY(h < 1 || h > 12)) {
-            return hdl.set_error({scan_error::invalid_scanned_value,
-                                  "Invalid value for 12-hour tm_hour"});
+            return hdl.set_error(
+                {scan_error::invalid_scanned_value, "Invalid value for %I"});
         }
         t.tm_hour = h;
         st.set_hour12(hdl);
@@ -2838,8 +2838,8 @@ struct datetime_setter<std::tm> {
     static void set_mday(Handler& h, std::tm& t, setter_state& st, int d)
     {
         if (SCN_UNLIKELY(d < 1 || d > 31)) {
-            return h.set_error({scan_error::invalid_scanned_value,
-                                "Invalid value for tm_mday"});
+            return h.set_error(
+                {scan_error::invalid_scanned_value, "Invalid value for %d"});
         }
         t.tm_mday = d;
         st.set_mday(h);
@@ -2848,8 +2848,8 @@ struct datetime_setter<std::tm> {
     static void set_mon(Handler& h, std::tm& t, setter_state& st, int m)
     {
         if (SCN_UNLIKELY(m < 1 || m > 12)) {
-            return h.set_error({scan_error::invalid_scanned_value,
-                                "Invalid value for tm_mon"});
+            return h.set_error(
+                {scan_error::invalid_scanned_value, "Invalid value for %m"});
         }
         t.tm_mon = m - 1;
         st.set_mon(h);
@@ -2858,8 +2858,8 @@ struct datetime_setter<std::tm> {
     static void set_full_year(Handler& h, std::tm& t, setter_state& st, int y)
     {
         if (SCN_UNLIKELY(y < std::numeric_limits<int>::min() + 1900)) {
-            return h.set_error({scan_error::invalid_scanned_value,
-                                "Invalid value for tm_year"});
+            return h.set_error(
+                {scan_error::invalid_scanned_value, "Invalid value for %Y"});
         }
         t.tm_year = y - 1900;
         st.set_full_year(h);
@@ -2868,8 +2868,8 @@ struct datetime_setter<std::tm> {
     static void set_century(Handler& h, std::tm&, setter_state& st, int c)
     {
         if (SCN_UNLIKELY(c < 0 || c > 99)) {
-            return h.set_error({scan_error::invalid_scanned_value,
-                                "Invalid value for %C"});
+            return h.set_error(
+                {scan_error::invalid_scanned_value, "Invalid value for %C"});
         }
         st.century_value = static_cast<unsigned char>(c);
         st.set_century(h);
@@ -2878,8 +2878,8 @@ struct datetime_setter<std::tm> {
     static void set_short_year(Handler& h, std::tm&, setter_state& st, int y)
     {
         if (SCN_UNLIKELY(y < 0 || y > 99)) {
-            return h.set_error({scan_error::invalid_scanned_value,
-                                "Invalid value for tm_year"});
+            return h.set_error(
+                {scan_error::invalid_scanned_value, "Invalid value for %y"});
         }
         st.short_year_value = static_cast<unsigned char>(y);
         st.set_short_year(h);
@@ -2888,8 +2888,8 @@ struct datetime_setter<std::tm> {
     static void set_wday(Handler& h, std::tm& t, setter_state& st, int d)
     {
         if (SCN_UNLIKELY(d < 0 || d > 6)) {
-            return h.set_error({scan_error::invalid_scanned_value,
-                                "Invalid value for tm_wday"});
+            return h.set_error(
+                {scan_error::invalid_scanned_value, "Invalid value for %w"});
         }
         t.tm_wday = d;
         st.set_wday(h);
@@ -2898,8 +2898,8 @@ struct datetime_setter<std::tm> {
     static void set_yday(Handler& h, std::tm& t, setter_state& st, int d)
     {
         if (SCN_UNLIKELY(d < 0 || d > 365)) {
-            return h.set_error({scan_error::invalid_scanned_value,
-                                "Invalid value for tm_yday"});
+            return h.set_error(
+                {scan_error::invalid_scanned_value, "Invalid value for %j"});
         }
         t.tm_yday = d;
         st.set_yday(h);
@@ -2961,8 +2961,8 @@ struct datetime_setter<datetime_components> {
                         int s)
     {
         if (SCN_UNLIKELY(s < 0 || s > 60)) {
-            return h.set_error({scan_error::invalid_scanned_value,
-                                "Invalid value for seconds"});
+            return h.set_error(
+                {scan_error::invalid_scanned_value, "Invalid value for %S"});
         }
         t.sec = s;
         st.set_sec(h);
@@ -2974,8 +2974,8 @@ struct datetime_setter<datetime_components> {
                         int m)
     {
         if (SCN_UNLIKELY(m < 0 || m > 59)) {
-            return h.set_error({scan_error::invalid_scanned_value,
-                                "Invalid value for minutes"});
+            return h.set_error(
+                {scan_error::invalid_scanned_value, "Invalid value for %M"});
         }
         t.min = m;
         st.set_min(h);
@@ -2988,7 +2988,7 @@ struct datetime_setter<datetime_components> {
     {
         if (SCN_UNLIKELY(h < 0 || h > 23)) {
             return hdl.set_error(
-                {scan_error::invalid_scanned_value, "Invalid value for hours"});
+                {scan_error::invalid_scanned_value, "Invalid value for %H"});
         }
         t.hour = h;
         st.set_hour24(hdl);
@@ -3000,8 +3000,8 @@ struct datetime_setter<datetime_components> {
                            int h)
     {
         if (SCN_UNLIKELY(h < 1 || h > 12)) {
-            return hdl.set_error({scan_error::invalid_scanned_value,
-                                  "Invalid value for hours (12-hour clock)"});
+            return hdl.set_error(
+                {scan_error::invalid_scanned_value, "Invalid value for %I"});
         }
         t.hour = h;
         st.set_hour12(hdl);
@@ -3014,7 +3014,7 @@ struct datetime_setter<datetime_components> {
     {
         if (SCN_UNLIKELY(d < 1 || d > 31)) {
             return h.set_error(
-                {scan_error::invalid_scanned_value, "Invalid value for mday"});
+                {scan_error::invalid_scanned_value, "Invalid value for %d"});
         }
         t.mday = d;
         st.set_mday(h);
@@ -3027,7 +3027,7 @@ struct datetime_setter<datetime_components> {
     {
         if (SCN_UNLIKELY(m < 1 || m > 12)) {
             return h.set_error(
-                {scan_error::invalid_scanned_value, "Invalid value for mon"});
+                {scan_error::invalid_scanned_value, "Invalid value for %m"});
         }
         t.mon = month{static_cast<unsigned>(m)};
         st.set_mon(h);
@@ -3048,8 +3048,8 @@ struct datetime_setter<datetime_components> {
                             int c)
     {
         if (SCN_UNLIKELY(c < 0 || c > 99)) {
-            return h.set_error({scan_error::invalid_scanned_value,
-                                "Invalid value for %C"});
+            return h.set_error(
+                {scan_error::invalid_scanned_value, "Invalid value for %C"});
         }
         st.century_value = static_cast<unsigned char>(c);
         st.set_century(h);
@@ -3061,8 +3061,8 @@ struct datetime_setter<datetime_components> {
                                int y)
     {
         if (SCN_UNLIKELY(y < 0 || y > 99)) {
-            return h.set_error({scan_error::invalid_scanned_value,
-                                "Invalid value for %y"});
+            return h.set_error(
+                {scan_error::invalid_scanned_value, "Invalid value for %y"});
         }
         st.short_year_value = static_cast<unsigned char>(y);
         st.set_short_year(h);
@@ -3075,7 +3075,7 @@ struct datetime_setter<datetime_components> {
     {
         if (SCN_UNLIKELY(d < 0 || d > 6)) {
             return h.set_error(
-                {scan_error::invalid_scanned_value, "Invalid value for wday"});
+                {scan_error::invalid_scanned_value, "Invalid value for %w"});
         }
         t.wday = weekday{static_cast<unsigned>(d)};
         st.set_wday(h);
@@ -3110,7 +3110,7 @@ struct datetime_setter<datetime_components> {
                             setter_state& st,
                             std::string n)
     {
-        t.tz_name = std::move(n);
+        t.tz_name = SCN_MOVE(n);
         return st.set_tzname(h);
     }
 
@@ -3153,7 +3153,7 @@ struct datetime_setter<tm_with_tz> : datetime_setter<std::tm> {
                             setter_state& st,
                             std::string n)
     {
-        t.tz_name = std::move(n);
+        t.tz_name = SCN_MOVE(n);
         return st.set_tzname(h);
     }
 };

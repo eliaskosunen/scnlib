@@ -237,7 +237,7 @@ private:
     static constexpr auto impl_i_s(I& i, S bound, priority_tag<2>)
         -> std::enable_if_t<std::is_assignable_v<I&, S>>
     {
-        i = std::move(bound);
+        i = SCN_MOVE(bound);
     }
 
     template <typename I, typename S>
@@ -1157,22 +1157,22 @@ struct stdio_file_interface_impl<File, default_file_tag>
     }
     static bool is_buffer_readable()
     {
-        SCN_EXPECT(false);
+        SCN_ASSERT(false);
         SCN_UNREACHABLE;
     }
     static void unsafe_advance_n(std::ptrdiff_t)
     {
-        SCN_EXPECT(false);
+        SCN_ASSERT(false);
         SCN_UNREACHABLE;
     }
     static bool fill_buffer()
     {
-        SCN_EXPECT(false);
+        SCN_ASSERT(false);
         SCN_UNREACHABLE;
     }
     static bool has_error()
     {
-        SCN_EXPECT(false);
+        SCN_ASSERT(false);
         SCN_UNREACHABLE;
     }
 
@@ -1351,17 +1351,17 @@ struct stdio_file_interface_impl<File, win32_file_tag>
     static void unsafe_advance_n(std::ptrdiff_t n)
     {
         SCN_UNUSED(n);
-        SCN_EXPECT(false);
+        SCN_ASSERT(false);
         SCN_UNREACHABLE;
     }
     SCN_NODISCARD static bool fill_buffer()
     {
-        SCN_EXPECT(false);
+        SCN_ASSERT(false);
         SCN_UNREACHABLE;
     }
     SCN_NODISCARD static bool has_error()
     {
-        SCN_EXPECT(false);
+        SCN_ASSERT(false);
         SCN_UNREACHABLE;
     }
 
@@ -1680,7 +1680,7 @@ auto get_as_contiguous(Range r)
         }
     }
     else {
-        SCN_EXPECT(false);
+        SCN_ASSERT(false);
         SCN_UNREACHABLE;
         SCN_UNUSED(r);
         // for return type deduction
@@ -1736,7 +1736,7 @@ constexpr bool validate_unicode(std::basic_string_view<CharT> src)
     while (it != src.end()) {
         const auto len = static_cast<std::ptrdiff_t>(
             detail::code_point_length_by_starting_code_unit(*it));
-        SCN_EXPECT(len >= 0);
+        SCN_ASSERT(len >= 0);
         if (len == 0) {
             return false;
         }
@@ -1875,7 +1875,7 @@ void transcode_valid_to_string_impl_to32(
         auto res = get_next_code_point_valid(
             detail::make_string_view_from_iterators<SourceCharT>(it,
                                                                  src.end()));
-        SCN_EXPECT(res.value < detail::invalid_code_point);
+        SCN_ASSERT(res.value < detail::invalid_code_point);
         dest.push_back(static_cast<DestCharT>(res.value));
         it = detail::make_string_view_iterator(src, res.iterator);
     }
@@ -1988,7 +1988,7 @@ void transcode_to_string(std::basic_string_view<SourceCharT> src,
         }
     }
 
-    SCN_EXPECT(false);
+    SCN_ASSERT(false);
     SCN_UNREACHABLE;
 }
 template <typename SourceCharT, typename DestCharT>
@@ -2029,7 +2029,7 @@ void transcode_valid_to_string(std::basic_string_view<SourceCharT> src,
         }
     }
 
-    SCN_EXPECT(false);
+    SCN_ASSERT(false);
     SCN_UNREACHABLE;
 }
 
@@ -2104,7 +2104,7 @@ struct string_view_wrapper {
 
     [[noreturn]] string_type get_allocated_string() const
     {
-        SCN_EXPECT(false);
+        SCN_ASSERT(false);
         SCN_UNREACHABLE;
     }
 
@@ -3776,7 +3776,7 @@ public:
 
     static scan_expected<void> check_specs(const detail::format_specs&)
     {
-        SCN_EXPECT(false);
+        SCN_ASSERT(false);
         SCN_UNREACHABLE;
     }
 
@@ -3784,7 +3784,7 @@ public:
     auto read_default(Range, monostate&, detail::locale_ref)
         -> scan_expected<ranges::iterator_t<Range>>
     {
-        SCN_EXPECT(false);
+        SCN_ASSERT(false);
         SCN_UNREACHABLE;
     }
 
@@ -3795,7 +3795,7 @@ public:
                     detail::locale_ref)
         -> scan_expected<ranges::iterator_t<Range>>
     {
-        SCN_EXPECT(false);
+        SCN_ASSERT(false);
         SCN_UNREACHABLE;
     }
 };
@@ -5106,7 +5106,7 @@ constexpr std::int64_t parse_saturating_exponent(
     std::int64_t value = 0;
     for (CharT ch : digits) {
         const auto d = char_to_int(ch);
-        SCN_EXPECT(d < 10);
+        SCN_ASSERT(d < 10);
         value = value * 10 + d;
         if (value >= max_exponent_magnitude) {
             value = max_exponent_magnitude;
@@ -5237,7 +5237,7 @@ struct high_precision_decimal {
         std::size_t idx = 0;
         auto push_digit = [&](CharT ch) {
             const auto digit = char_to_int(ch);
-            SCN_EXPECT(digit < std::uint8_t{10});
+            SCN_ASSERT(digit < std::uint8_t{10});
             if (idx < hpd.digits.size()) {
                 hpd.digits[idx++] = digit;
             }
@@ -5311,7 +5311,7 @@ struct high_precision_decimal {
             const auto accumulator_before = accumulator;
             accumulator = (accumulator << 3u) + (accumulator << 1u) +
                           (i < num_digits ? digits[i] : 0u);
-            SCN_EXPECT(accumulator > accumulator_before);  // check for overflow
+            SCN_ASSERT(accumulator > accumulator_before);  // check for overflow
         }
 
         // Check the decimal part (if any) for rounding
@@ -5350,7 +5350,7 @@ struct high_precision_decimal {
             shift -= 60u;
         }
 
-        SCN_EXPECT(shift <= 60);
+        SCN_ASSERT(shift <= 60);
 
         const auto num_new_digits = count_new_digits(shift);
 
@@ -5414,7 +5414,7 @@ struct high_precision_decimal {
             shift -= 60u;
         }
 
-        SCN_EXPECT(shift <= 60);
+        SCN_ASSERT(shift <= 60);
 
         std::uint32_t read_index{};
         std::uint32_t write_index{};
@@ -5572,7 +5572,7 @@ scan_expected<void> simple_decimal_conversion(T& result,
     // "Repeatedly do Non-Rounding left-shifts until the HPD represents
     // a number in the range [1/2 ... 1] (i.e.[,] its decimal_point field
     // is zero and its digits[0] is at least 5)"
-    SCN_EXPECT(value.num_digits > 0);
+    SCN_ASSERT(value.num_digits > 0);
     while (value.decimal_point < 0) {
         const auto shift =
             static_cast<std::size_t>(-value.decimal_point) <
@@ -5653,7 +5653,7 @@ scan_expected<void> simple_decimal_conversion(T& result,
     }
 
     // Build resulting value
-    SCN_ENSURE(biased_exponent >= 0);
+    SCN_ASSERT(biased_exponent >= 0);
     return compute_float_value(result, biased_exponent, significand);
 }
 
@@ -5730,7 +5730,7 @@ auto parse_nan(ranges::subrange<Iterator, Sentinel> source)
         return detail::unexpected_scan_error(scan_error::invalid_scanned_value,
                                              "Invalid NaN payload value");
     }
-    SCN_ENSURE(*it == char_type{')'});
+    SCN_ASSERT(*it == char_type{')'});
     ++it;
     return it;
 }
@@ -5902,7 +5902,7 @@ struct source_reader {
 
         {
             // Hex
-            SCN_EXPECT(initial_kind == kind_type::hex_with_prefix ||
+            SCN_ASSERT(initial_kind == kind_type::hex_with_prefix ||
                        initial_kind == kind_type::hex_without_prefix);
 
             if (initial_kind == kind_type::hex_with_prefix) {
@@ -6025,8 +6025,6 @@ struct SCN_MAYBE_UNUSED convert_traits_sample {
     // has a `unsigned flags` parameter in `convert`,
     // and `convert` returns an iterator (not `void`)
     static constexpr bool need_definite_kind = false;
-    // If `true`, the `source` parameter has type `const CharT*`.
-    static constexpr bool need_null_termination = false;
     // If `true`, `convert` has a `source_reader<CharT>::state_type` parameter,
     // and needs `need_definite_kind` to be `true`.
     static constexpr bool need_reader_state = false;
@@ -6061,7 +6059,6 @@ private:
 
 public:
     static constexpr bool need_definite_kind = true;
-    static constexpr bool need_null_termination = true;
     static constexpr bool need_reader_state = false;
     static constexpr bool support_hexfloat = true;
 
@@ -6069,7 +6066,7 @@ public:
     static constexpr bool enabled = enabled_char<CharT> && enabled_float<T>;
 
     template <typename CharT, typename T>
-    static scan_expected<void> convert(const CharT* source,
+    static scan_expected<void> convert(std::basic_string_view<CharT> source,
                                        T& value,
                                        kind_type kind,
                                        bool& can_fallback);
@@ -6086,7 +6083,6 @@ public:
 
 struct convert_custom_traits {
     static constexpr bool need_definite_kind = true;
-    static constexpr bool need_null_termination = false;
     static constexpr bool need_reader_state = true;
     static constexpr bool support_hexfloat = true;
 
@@ -6158,7 +6154,6 @@ inline constexpr bool has_charconv_for<long double, void> = false;
 struct convert_from_chars_traits {
 #if SCN_HAS_FLOAT_CHARCONV && !SCN_DISABLE_FROM_CHARS
     static constexpr bool need_definite_kind = false;
-    static constexpr bool need_null_termination = false;
     static constexpr bool need_reader_state = false;
     static constexpr bool support_hexfloat = true;
 
@@ -6199,7 +6194,6 @@ inline constexpr bool fast_float_rounds_correctly =
 struct convert_fast_float_traits {
 #if SCN_HAS_FAST_FLOAT
     static constexpr bool need_definite_kind = false;
-    static constexpr bool need_null_termination = false;
     static constexpr bool need_reader_state = false;
     static constexpr bool support_hexfloat = false;
 
@@ -6378,7 +6372,7 @@ struct basic_convert_float {
     auto convert_default(Source& source, T& value)
         -> scan_expected<ranges::iterator_t<Source&>>
     {
-        static_assert(ranges::borrowed_range<Source>, "");
+        static_assert(ranges::borrowed_range<Source>);
         return do_convert<false>(source, value);
     }
 
@@ -6389,7 +6383,7 @@ struct basic_convert_float {
                        detail::locale_ref loc)
         -> scan_expected<ranges::iterator_t<Source&>>
     {
-        static_assert(ranges::borrowed_range<Source>, "");
+        static_assert(ranges::borrowed_range<Source>);
 
         SCN_GCC_COMPAT_PUSH
         SCN_GCC_COMPAT_IGNORE("-Wswitch-enum")
@@ -6416,7 +6410,7 @@ struct basic_convert_float {
                 break;
 
             default:
-                SCN_EXPECT(false);
+                SCN_ASSERT(false);
                 SCN_UNREACHABLE;
         }
 
@@ -6473,7 +6467,7 @@ private:
                         value = m_sign == sign_type::minus_sign
                                     ? -std::numeric_limits<T>::infinity()
                                     : std::numeric_limits<T>::infinity();
-                        SCN_ENSURE(res->definite_end);
+                        SCN_ASSERT(res->definite_end);
                         return *res->definite_end;
                     }
                     else {
@@ -6486,7 +6480,7 @@ private:
                 case kind_type::nan_without_payload:
                 case kind_type::nan_with_payload: {
                     if constexpr (std::numeric_limits<T>::has_quiet_NaN) {
-                        SCN_ENSURE(res->definite_end);
+                        SCN_ASSERT(res->definite_end);
 
                         auto payload_first = *res->definite_end;
                         auto payload_last = payload_first;
@@ -6496,7 +6490,7 @@ private:
                             while (*payload_last != CharT{')'}) {
                                 ++payload_last;
                             }
-                            SCN_ENSURE(ranges::next(payload_last) ==
+                            SCN_ASSERT(ranges::next(payload_last) ==
                                        *res->definite_end);
                         }
 
@@ -6512,7 +6506,7 @@ private:
                 }
 
                 default:
-                    SCN_ENSURE(!res->definite_end);
+                    SCN_ASSERT(!res->definite_end);
             }
 
             SCN_GCC_COMPAT_POP
@@ -6677,26 +6671,20 @@ private:
         }
 
         auto src = std::invoke([&]() noexcept {
-            if constexpr (Traits::need_null_termination) {
-                SCN_EXPECT(m_reader);
-                return m_reader->state().normalized_string.c_str();
-            }
-            else {
-                if constexpr (ranges::contiguous_range<decltype(source)>) {
-                    if (m_reader) {
-                        SCN_EXPECT(m_definite_length != 0);
-                        return std::basic_string_view<CharT>(
-                            m_reader->state().normalized_string);
-                    }
-                    return std::basic_string_view<CharT>(ranges::data(source),
-                                                         ranges::size(source));
-                }
-                else {
-                    SCN_EXPECT(m_reader);
-                    SCN_EXPECT(m_definite_length != 0);
+            if constexpr (ranges::contiguous_range<decltype(source)>) {
+                if (m_reader) {
+                    SCN_ASSERT(m_definite_length != 0);
                     return std::basic_string_view<CharT>(
                         m_reader->state().normalized_string);
                 }
+                return std::basic_string_view<CharT>(ranges::data(source),
+                                                     ranges::size(source));
+            }
+            else {
+                SCN_ASSERT(m_reader);
+                SCN_ASSERT(m_definite_length != 0);
+                return std::basic_string_view<CharT>(
+                    m_reader->state().normalized_string);
             }
         });
 
@@ -6707,15 +6695,10 @@ private:
 
         if (m_definite_length == 0) {
             if constexpr (!std::is_same_v<decltype(res), scan_expected<void>>) {
-                if constexpr (std::is_pointer_v<decltype(src)>) {
-                    m_definite_length = ranges::distance(src, *res);
-                }
-                else {
-                    m_definite_length = ranges::distance(src.begin(), *res);
-                }
+                m_definite_length = ranges::distance(src.begin(), *res);
             }
             else {
-                SCN_EXPECT(false);
+                SCN_ASSERT(false);
             }
         }
 
@@ -7076,7 +7059,7 @@ auto read_regex_matches_impl(std::basic_string_view<CharT> pattern,
             "Regex matching failed with an error");
     }
 
-    SCN_ENSURE(matches.ready());
+    SCN_ASSERT(matches.ready());
 
     auto full_match = matches[0].str();
     std::vector<typename basic_regex_matches<CharT>::submatch> submatches(
@@ -7382,7 +7365,7 @@ private:
     {
         if constexpr (detail::is_type_disabled<
                           basic_regex_matches<DestCharT>>) {
-            SCN_EXPECT(false);
+            SCN_ASSERT(false);
             SCN_UNREACHABLE;
         }
         else {
@@ -7753,8 +7736,8 @@ private:
             auto set = detail::parse_presentation_set(
                 it, detail::to_address(charset_string.end()), nonascii);
             SCN_TRY_DISCARD(nonascii.get_error());
-            SCN_ENSURE(it == detail::to_address(charset_string.end()));
-            SCN_ENSURE(set == charset_string);
+            SCN_ASSERT(it == detail::to_address(charset_string.end()));
+            SCN_ASSERT(set == charset_string);
 
             std::sort(nonascii.extra_ranges.begin(),
                       nonascii.extra_ranges.end());
@@ -7971,7 +7954,7 @@ protected:
 #endif
 
             default:
-                SCN_EXPECT(false);
+                SCN_ASSERT(false);
                 SCN_UNREACHABLE;
         }
 
@@ -8056,7 +8039,7 @@ protected:
 
         return detail::unexpected_scan_error(
             scan_error::invalid_scanned_value,
-            "Failed to read textual boolean value: No match");
+            "Failed to read textual boolean: No match");
     }
 
     unsigned m_options{allow_text | allow_numeric};
@@ -8309,7 +8292,7 @@ public:
         }
         else {
             SCN_UNUSED(range);
-            SCN_EXPECT(false);
+            SCN_ASSERT(false);
             SCN_UNREACHABLE;
         }
     }
@@ -8566,7 +8549,7 @@ struct default_arg_reader {
                                 ranges::distance(crange.begin(), it));
         }
         else {
-            SCN_EXPECT(false);
+            SCN_ASSERT(false);
             SCN_UNREACHABLE;
         }
     }
@@ -8609,7 +8592,7 @@ struct default_arg_reader {
             }
         }
         else {
-            SCN_EXPECT(false);
+            SCN_ASSERT(false);
             SCN_UNREACHABLE;
         }
     }
@@ -8925,7 +8908,7 @@ struct arg_reader {
                                 ranges::distance(crange.begin(), it));
         }
         else {
-            SCN_EXPECT(false);
+            SCN_ASSERT(false);
             SCN_UNREACHABLE;
         }
     }
@@ -8934,7 +8917,7 @@ struct arg_reader {
         typename basic_scan_arg<detail::default_context<char_type>>::handle)
         const
     {
-        SCN_EXPECT(false);
+        SCN_ASSERT(false);
         SCN_UNREACHABLE;
     }
 
@@ -8953,7 +8936,7 @@ struct custom_reader {
     template <typename T>
     scan_expected<iterator> operator()(T&) const
     {
-        SCN_EXPECT(false);
+        SCN_ASSERT(false);
         SCN_UNREACHABLE;
     }
 
