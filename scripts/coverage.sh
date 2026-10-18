@@ -23,7 +23,7 @@ lcov --add-tracefile coverage-base.info --add-tracefile coverage-test.info --out
 # Filter lcov data
 lcov --remove coverage-total.info \
   '/usr/*' '*/tests/*' '*/examples/*' '*/benchmark/*' '*/_deps/*' \
-  --output-file coverage-filtered.info --ignore-errors inconsistent
+  --output-file coverage-filtered.info --ignore-errors inconsistent,unused
 
 # Display summary
 lcov --list coverage-filtered.info --ignore-errors inconsistent
