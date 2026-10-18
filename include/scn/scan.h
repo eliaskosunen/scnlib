@@ -10118,13 +10118,12 @@ constexpr std::basic_string_view<CharT> parse_presentation_set(
             // clang-format on
             return {};
         }
-        if (*begin == CharT{']'}) {
-            handler.on_charset_single(char32_t{']'});
-            ++begin;
-        }
     }
-    else if (*begin == CharT{']'}) {
-        return {start, static_cast<size_t>(std::distance(start, ++begin))};
+
+    // A ']' right after '[' or '[^' is an ordinary member, not the end of the
+    // set
+    if (*begin == CharT{']'}) {
+        parse_presentation_set_literal(begin, end, handler);
     }
 
     while (begin != end) {
@@ -10992,9 +10991,11 @@ SCN_CLANG_IGNORE("-Wdocumentation-unknown-command")
  * are rejected in the format string.
  * To match a literal backslash, put it last in the set (like `[abc\]`),
  * so that no letter follows it.
- * The set can't contain `]` as the first character, as `[]` is an empty set.
- * It can only be matched in an inverted set, immediately after the `^`:
- * `[^]a]` matches anything except `]` and `a`.
+ * Like in `scanf`, a `]` immediately after the opening `[` (or `[^`) is
+ * an ordinary member of the set, and doesn't end it: `[]a]` matches `]` and
+ * `a`, and `[^]a]` matches anything except `]` and `a`. It can also start a
+ * range: `[]-a]` matches the characters from `]` to `a`.
+ * `[]` and `[^]` are unterminated sets, and are errors.
  * </td>
  * </tr>
  * <tr>
