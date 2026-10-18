@@ -36,7 +36,7 @@ scn::scan<...>(strm, ...);
  * The `basic_scan_parse_context` constructor only taking a format string is now deprecated.
    Instead, use the new constructor taking a `scn::source_tag<Source>`, which enables more compile-time checking.
  * `scn::basic_regex_matches` is no longer a `std::vector` of `std::optional<scn::basic_regex_match>`:
-   it can't be modified, and doesn't have `data()`, `swap()`, or reverse iterators.
+   it can't be modified, and doesn't have `data()` or reverse iterators.
    `operator[]`, `at()`, and its iterators return the `std::optional<scn::basic_regex_match>` by value.
    Its iterators are random-access only by `iterator_concept`: their `iterator_category` is `std::input_iterator_tag`.
  * fast_float 6.0.0 or newer is now required (previously 5.0.0), unless it's disabled with `SCN_DISABLE_FAST_FLOAT`
@@ -122,6 +122,7 @@ scn::scan<...>(strm, ...);
    (previous requirement was `ranges::forward_range`)
    * When the source range is an `input_range`, the range type returned from `scn::scan` isn't a `subrange` anymore,
      but another `input_range`.
+ * `scn::basic_regex_matches` now has `front()`, `back()`, `cbegin()`, `cend()`, `str()`, and `operator==`
  * `scn::scan_file` has been added, to scan from a `FILE` more resiliently than from a `FILE*` directly
  * `std::istream`s can now be used as sources for `scn::scan`, if `"scn/istream.h"` is included.
    * Instead of `.range()`, the member function to access the stream from a `scn::scan` result object is `.stream()`.

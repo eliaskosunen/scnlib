@@ -224,7 +224,9 @@ private:
 /**
  * Can be used to get all subexpression captures of a regex match.
  * Interface similar to a
- * `const std::vector<std::optional<basic_regex_match<CharT>>>`.
+ * `const std::vector<std::optional<basic_regex_match<CharT>>>`,
+ * except that elements are returned by value, and there is no `data()`
+ * or reverse iterators.
  * Stores `[0]` as a string, and the other matches as views into that string.
  *
  * \code{.cpp}
@@ -253,12 +255,31 @@ public:
         {
             return matched;
         }
+
+        // Offsets and name of an unmatched submatch are not significant
+        friend bool operator==(const submatch& a, const submatch& b)
+        {
+            if (a.matched != b.matched) {
+                return false;
+            }
+            if (!a.matched) {
+                return true;
+            }
+            return a.pos == b.pos && a.len == b.len
+#if SCN_REGEX_SUPPORTS_NAMED_CAPTURES
+                   && a.name == b.name
+#endif
+                ;
+        }
     };
 
     using match_type = basic_regex_match<CharT>;
 
     using value_type = std::optional<match_type>;
     using size_type = std::size_t;
+    using difference_type = std::ptrdiff_t;
+    using reference = value_type;
+    using const_reference = value_type;
 
     basic_regex_matches() = default;
 
@@ -293,6 +314,7 @@ public:
 #endif
     }
 
+    /// Like `operator[]`, but throws `std::out_of_range` if `i >= size()`.
     SCN_NODISCARD std::optional<match_type> at(std::size_t i) const
     {
         if (i == 0) {
@@ -305,20 +327,66 @@ public:
 #if SCN_REGEX_SUPPORTS_NAMED_CAPTURES
         if (sm.name.empty()) {
             return match_type{
-                std::basic_string_view<CharT>{m_match}.substr(sm.pos, sm.len)};
+                std::basic_string_view<CharT>(m_match.data(), m_match.size())
+                    .substr(sm.pos, sm.len)};
         }
         return match_type{
-            std::basic_string_view<CharT>{m_match}.substr(sm.pos, sm.len),
+            std::basic_string_view<CharT>(m_match.data(), m_match.size())
+                .substr(sm.pos, sm.len),
             sm.name};
 #else
         return match_type{
-            std::basic_string_view<CharT>{m_match}.substr(sm.pos, sm.len)};
+            std::basic_string_view<CharT>(m_match.data(), m_match.size())
+                .substr(sm.pos, sm.len)};
 #endif
     }
 
     SCN_NODISCARD std::size_t size() const
     {
         return m_submatches.size() + 1u;
+    }
+
+    SCN_NODISCARD std::optional<match_type> front() const
+    {
+        return (*this)[0];
+    }
+
+    SCN_NODISCARD std::optional<match_type> back() const
+    {
+        return (*this)[size() - 1];
+    }
+
+    /// The entire match, same as `[0]`. Invalidated when `*this` is
+    /// modified or destroyed.
+    SCN_NODISCARD std::basic_string_view<CharT> str() const noexcept
+    {
+        return m_match;
+    }
+
+    void swap(basic_regex_matches& other) noexcept
+    {
+        m_match.swap(other.m_match);
+        m_submatches.swap(other.m_submatches);
+    }
+
+    friend void swap(basic_regex_matches& a, basic_regex_matches& b) noexcept
+    {
+        a.swap(b);
+    }
+
+    /// Equal if the entire matches are equal, and each pair of submatches
+    /// is either both unmatched, or both matched at the same position
+    /// (and with the same name, if supported).
+    friend bool operator==(const basic_regex_matches& a,
+                           const basic_regex_matches& b)
+    {
+        return a.m_match == b.m_match && a.m_submatches == b.m_submatches;
+    }
+
+    friend bool operator!=(const basic_regex_matches& a,
+                           const basic_regex_matches& b)
+    {
+        return !(a == b);
     }
 
     struct iterator {
@@ -470,12 +538,24 @@ public:
         return iterator{*this, size()};
     }
 
+    using const_iterator = iterator;
+
+    SCN_NODISCARD const_iterator cbegin() const noexcept
+    {
+        return begin();
+    }
+
+    SCN_NODISCARD const_iterator cend() const noexcept
+    {
+        return end();
+    }
+
 private:
     std::basic_string<CharT> m_match{};
     std::vector<submatch> m_submatches{};
 };
 
-static_assert(ranges::bidirectional_range<basic_regex_matches<char>>);
+static_assert(ranges::random_access_range<basic_regex_matches<char>>);
 
 template <typename CharT>
 struct scanner<basic_regex_matches<CharT>, CharT>

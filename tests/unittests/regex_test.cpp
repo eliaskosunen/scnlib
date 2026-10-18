@@ -47,6 +47,15 @@ static_assert(
     std::is_same_v<
         std::iterator_traits<scn::regex_matches::iterator>::iterator_category,
         std::input_iterator_tag>);
+static_assert(std::is_same_v<scn::regex_matches::const_iterator,
+                             scn::regex_matches::iterator>);
+static_assert(
+    std::is_same_v<scn::regex_matches::difference_type, std::ptrdiff_t>);
+static_assert(std::is_same_v<scn::regex_matches::reference,
+                             scn::regex_matches::value_type>);
+static_assert(std::is_same_v<scn::regex_matches::const_reference,
+                             scn::regex_matches::value_type>);
+static_assert(scn::ranges::random_access_range<scn::regex_matches>);
 #if SCN_STD >= SCN_STD_20
 static_assert(
     scn::ranges::random_access_iterator<scn::regex_matches::iterator>);
@@ -127,6 +136,130 @@ TEST(RegexTest, MatchesIteratorArithmetic)
     EXPECT_EQ(first[2]->get(), "123");
     EXPECT_EQ((last - 1)[0]->get(), "123");
 }
+
+namespace {
+scn::regex_matches scan_matches(std::string_view source,
+                                std::string_view format)
+{
+    auto r = scn::scan<scn::regex_matches>(source, scn::runtime_format(format));
+    EXPECT_TRUE(r.has_value());
+    return r ? r->value() : scn::regex_matches{};
+}
+}  // namespace
+
+TEST(RegexTest, MatchesFrontBackStr)
+{
+    auto m = scan_matches("foobar123", "{:/([a-z]+)([0-9]+)/}");
+    ASSERT_EQ(m.size(), 3);
+    ASSERT_TRUE(m.front());
+    EXPECT_EQ(m.front()->get(), "foobar123");
+    ASSERT_TRUE(m.back());
+    EXPECT_EQ(m.back()->get(), "123");
+    EXPECT_EQ(m.str(), "foobar123");
+    EXPECT_EQ(m.cend() - m.cbegin(), 3);
+    EXPECT_EQ(m.cbegin(), m.begin());
+    EXPECT_EQ(m.cend(), m.end());
+    EXPECT_EQ((*m.cbegin())->get(), "foobar123");
+}
+
+TEST(RegexTest, MatchesBackUnmatched)
+{
+    auto m = scan_matches("b", "{:/(a)?b/}");
+    ASSERT_EQ(m.size(), 2);
+    EXPECT_FALSE(m.back());
+    EXPECT_TRUE(m.front());
+}
+
+TEST(RegexTest, MatchesAtOutOfRange)
+{
+    auto m = scan_matches("ab1", "{:/([a-z]+)/}");
+#if SCN_HAS_EXCEPTIONS
+    EXPECT_THROW((void)m.at(2), std::out_of_range);
+#endif
+    EXPECT_TRUE(m.at(1));
+}
+
+TEST(RegexTest, MatchesSwap)
+{
+    auto a = scan_matches("ab1", "{:/([a-z]+)([0-9])/}");
+    auto b = scan_matches("y", "{:/(y)/}");
+    a.swap(b);
+    EXPECT_EQ(a.size(), 2);
+    EXPECT_EQ(a.str(), "y");
+    EXPECT_EQ(a[1]->get(), "y");
+    EXPECT_EQ(b.size(), 3);
+    EXPECT_EQ(b[2]->get(), "1");
+
+    using std::swap;
+    swap(a, b);
+    EXPECT_EQ(a.size(), 3);
+    EXPECT_EQ(a[1]->get(), "ab");
+    EXPECT_EQ(b[1]->get(), "y");
+    static_assert(noexcept(swap(a, b)));
+    static_assert(noexcept(a.swap(b)));
+}
+
+TEST(RegexTest, MatchesCopyAndMoveShortMatch)
+{
+    auto m = scan_matches("ab1", "{:/([a-z]+)([0-9])/}");
+    auto copy = m;
+    EXPECT_EQ(copy.str(), "ab1");
+    EXPECT_EQ(copy[1]->get(), "ab");
+    EXPECT_EQ(copy[2]->get(), "1");
+    EXPECT_EQ(m[1]->get(), "ab");
+    EXPECT_EQ(copy, m);
+
+    auto moved = std::move(copy);
+    EXPECT_EQ(moved.str(), "ab1");
+    EXPECT_EQ(moved[1]->get(), "ab");
+    EXPECT_EQ(moved[2]->get(), "1");
+
+    scn::regex_matches assigned;
+    assigned = moved;
+    EXPECT_EQ(assigned[2]->get(), "1");
+    EXPECT_EQ(assigned.str().data(), assigned[0]->get().data());
+    EXPECT_NE(assigned.str().data(), m.str().data());
+}
+
+TEST(RegexTest, MatchesEquality)
+{
+    auto a = scan_matches("foobar123", "{:/([a-z]+)([0-9]+)/}");
+    auto same = scan_matches("foobar123", "{:/([a-z]+)([0-9]+)/}");
+    EXPECT_TRUE(a == same);
+    EXPECT_FALSE(a != same);
+
+    auto other_whole = scan_matches("foobaz123", "{:/([a-z]+)([0-9]+)/}");
+    EXPECT_FALSE(a == other_whole);
+    EXPECT_TRUE(a != other_whole);
+
+    auto split = scan_matches("foobar123", "{:/([a-z]{3})([a-z0-9]+)/}");
+    EXPECT_EQ(a.str(), split.str());
+    EXPECT_NE(a, split);
+
+    EXPECT_NE(a, scan_matches("foobar123", "{:/([a-z]+)([0-9]+)()/}"));
+}
+
+TEST(RegexTest, MatchesEqualityMatchedVsUnmatched)
+{
+    auto unmatched = scan_matches("b", "{:/(a)?b/}");
+    auto matched = scan_matches("b", "{:/(b)?b?/}");
+    EXPECT_EQ(unmatched.str(), matched.str());
+    ASSERT_EQ(unmatched.size(), matched.size());
+    EXPECT_FALSE(unmatched[1]);
+    EXPECT_TRUE(matched[1]);
+    EXPECT_NE(unmatched, matched);
+    EXPECT_EQ(unmatched, scan_matches("b", "{:/(a)?b/}"));
+}
+
+#if SCN_REGEX_SUPPORTS_NAMED_CAPTURES
+TEST(RegexTest, MatchesEqualityNames)
+{
+    auto named = scan_matches("foobar", "{:/(?<x>[a-z]+)/}");
+    EXPECT_EQ(named, scan_matches("foobar", "{:/(?<x>[a-z]+)/}"));
+    EXPECT_NE(named, scan_matches("foobar", "{:/(?<y>[a-z]+)/}"));
+    EXPECT_NE(named, scan_matches("foobar", "{:/([a-z]+)/}"));
+}
+#endif
 
 #if SCN_REGEX_SUPPORTS_NAMED_CAPTURES
 TEST(RegexTest, NamedString)
