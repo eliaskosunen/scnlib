@@ -36,8 +36,8 @@ inline std::mt19937_64& get_rng()
 SCN_CLANG_POP  // -Wunique-object-duplication
 #endif
 
-    // Stolen from ascii_ctype.h
-    inline bool is_classic_ascii_space(char ch)
+// Stolen from ascii_ctype.h
+inline bool is_classic_ascii_space(char ch)
 {
     static constexpr std::array<bool, 256> lookup = {
         {false, false, false, false, false, false, false, false, false, true,
