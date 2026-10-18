@@ -475,7 +475,8 @@
 
 #if SCN_CLANG >= SCN_COMPILER(3, 9, 0)
 #define SCN_CLANG_PUSH_IGNORE_UNDEFINED_TEMPLATE \
-    SCN_CLANG_PUSH SCN_CLANG_IGNORE("-Wundefined-func-template")
+    SCN_CLANG_PUSH                               \
+    SCN_CLANG_IGNORE("-Wundefined-func-template")
 #define SCN_CLANG_POP_IGNORE_UNDEFINED_TEMPLATE SCN_CLANG_POP
 #else
 #define SCN_CLANG_PUSH_IGNORE_UNDEFINED_TEMPLATE
@@ -484,7 +485,8 @@
 
 #if SCN_CLANG >= SCN_COMPILER(16, 0, 0)
 #define SCN_CLANG_PUSH_IGNORE_UNSAFE_BUFFER_USAGE \
-    SCN_CLANG_PUSH SCN_CLANG_IGNORE("-Wunsafe-buffer-usage")
+    SCN_CLANG_PUSH                                \
+    SCN_CLANG_IGNORE("-Wunsafe-buffer-usage")
 #define SCN_CLANG_POP_IGNORE_UNSAFE_BUFFER_USAGE SCN_CLANG_POP
 #else
 #define SCN_CLANG_PUSH_IGNORE_UNSAFE_BUFFER_USAGE

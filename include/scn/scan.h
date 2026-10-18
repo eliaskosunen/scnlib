@@ -5489,11 +5489,6 @@ inline constexpr bool
 
 SCN_GCC_POP  // -Wnoexcept (for the entirety of the expected and ranges impls)
 
-    // reset formatting
-    namespace detail
-{
-}
-
 /////////////////////////////////////////////////////////////////
 // Small generic algorithms
 /////////////////////////////////////////////////////////////////
@@ -5794,9 +5789,6 @@ public:
 SCN_CLANG_POP
 
 #endif
-
-namespace detail {
-}
 
 /**
  * An `expected<T, scan_error>`.
@@ -11181,10 +11173,6 @@ SCN_CLANG_IGNORE("-Wdocumentation-unknown-command")
 
 SCN_CLANG_POP  // -Wdocumentation-unknown-command
 
-    namespace detail
-{
-}
-
 namespace detail {
 /**
  * A runtime format string
@@ -12585,11 +12573,6 @@ extern template SCN_PUBLIC auto scan_int_impl(std::string_view source,
 }  // namespace detail
 
 SCN_GCC_POP  // -Wnoexcept
-
-    // dummy namespace to reset formatting
-    namespace detail
-{
-}
 
 /////////////////////////////////////////////////////////////////
 // scan
