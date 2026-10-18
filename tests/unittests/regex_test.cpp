@@ -354,7 +354,14 @@ TEST(RegexTest, UnmatchedOptionalGroup)
 TEST(RegexTest, MultilineFlagAbsent)
 {
     auto r = scn::scan<std::string_view>("a\nb", "{:/a$/}");
+#if SCN_REGEX_BACKEND == SCN_REGEX_BACKEND_STD && SCN_STDLIB_MS_STL && \
+    _MSVC_STL_UPDATE < 202506L
+    // Older MSVC STL versions always match in multiline mode
+    ASSERT_THAT(r, Succeeded());
+    EXPECT_EQ(r->value(), "a");
+#else
     EXPECT_THAT(r, FailedWith(scn::scan_error::invalid_scanned_value));
+#endif
 }
 
 TEST(RegexTest, MultilineFlag)

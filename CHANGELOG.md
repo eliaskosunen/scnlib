@@ -120,6 +120,7 @@ scn::scan<...>(strm, ...);
  * `std::istream`s can now be used as sources for `scn::scan`, if `"scn/istream.h"` is included.
    * Instead of `.range()`, the member function to access the stream from a `scn::scan` result object is `.stream()`.
  * Locale-enabled overloads for `scn::input` have been added.
+ * The `/m` regex flag is now supported with the `std` regex backend on MSVC Build Tools 14.50 (Visual Studio 2026) and later
  * Extended standard floating point types can now be scanned, if they're supported by the implementation
    (`std::float16_t`, `std::float32_t`, `std::float64_t`, `std::float128_t`, `std::bfloat16_t`)
  * `__int128` and `unsigned __int128` can now be scanned, if they're supported by the implementation.
