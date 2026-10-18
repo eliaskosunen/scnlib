@@ -183,7 +183,10 @@ static void scan_float_repeated_charconv(benchmark::State& state)
 }
 BENCHMARK_TEMPLATE(scan_float_repeated_charconv, float);
 BENCHMARK_TEMPLATE(scan_float_repeated_charconv, double);
+// libc++ has std::from_chars for float and double, but not long double
+#if !SCN_STDLIB_LIBCPP
 BENCHMARK_TEMPLATE(scan_float_repeated_charconv, long double);
+#endif
 
 #endif  // SCN_HAS_FLOAT_CHARCONV
 
