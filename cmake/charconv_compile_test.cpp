@@ -19,16 +19,22 @@
 #include <cstdio>
 #include <string_view>
 
-int main() {
+int main()
+{
     std::string_view input("3.14");
     double value{};
-    auto [ptr, ec] = std::from_chars(input.data(), input.data() + input.size(), value);
+    auto [ptr, ec] =
+        std::from_chars(input.data(), input.data() + input.size(), value);
     if (ec != std::errc{}) {
-        std::fprintf(stderr, "std::from_chars failed with error code %d\n", static_cast<int>(ec));
+        std::fprintf(stderr, "std::from_chars failed with error code %d\n",
+                     static_cast<int>(ec));
         return 1;
     }
     if (ptr != input.data() + input.size()) {
-        std::fprintf(stderr, "std::from_chars failed with invalid pointer: %p, expected %p\n", ptr, input.data() + input.size());
+        std::fprintf(
+            stderr,
+            "std::from_chars failed with invalid pointer: %p, expected %p\n",
+            ptr, input.data() + input.size());
         return 1;
     }
     return 0;

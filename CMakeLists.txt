@@ -1,44 +1,67 @@
 cmake_minimum_required(VERSION 3.16)
 
 project(
-        scn
-        VERSION 4.0.1
-        DESCRIPTION "scanf for modern C++"
-        HOMEPAGE_URL "https://scnlib.dev"
-        LANGUAGES CXX
+    scn
+    VERSION 4.0.1
+    DESCRIPTION "scanf for modern C++"
+    HOMEPAGE_URL "https://scnlib.dev"
+    LANGUAGES CXX
 )
 
-option(SCN_DISABLE_TOP_PROJECT "Treat scnlib as a subproject, even when it is the top-level project" OFF)
+option(
+    SCN_DISABLE_TOP_PROJECT
+    "Treat scnlib as a subproject, even when it is the top-level project"
+    OFF
+)
 
-if (CMAKE_VERSION VERSION_LESS 3.21)
+if(CMAKE_VERSION VERSION_LESS 3.21)
     get_property(not_top DIRECTORY PROPERTY PARENT_DIRECTORY)
-    if (NOT not_top)
+    if(NOT not_top)
         set(PROJECT_IS_TOP_LEVEL ON)
-    endif ()
-endif ()
-if (PROJECT_IS_TOP_LEVEL AND NOT SCN_DISABLE_TOP_PROJECT)
+    endif()
+endif()
+if(PROJECT_IS_TOP_LEVEL AND NOT SCN_DISABLE_TOP_PROJECT)
     set(SCN_IS_TOP_PROJECT ON)
-else ()
+else()
     set(SCN_IS_TOP_PROJECT OFF)
-endif ()
+endif()
 
-if (SCN_IS_TOP_PROJECT)
+if(SCN_IS_TOP_PROJECT)
     get_property(is_multi_cfg GLOBAL PROPERTY GENERATOR_IS_MULTI_CONFIG)
-    if (NOT DEFINED CMAKE_BUILD_TYPE AND NOT is_multi_cfg)
-        message(WARNING "No CMAKE_BUILD_TYPE set, generator is not multi-config, defaulting to Release")
+    if(NOT DEFINED CMAKE_BUILD_TYPE AND NOT is_multi_cfg)
+        message(
+            WARNING
+            "No CMAKE_BUILD_TYPE set, generator is not multi-config, defaulting to Release"
+        )
         set(CMAKE_BUILD_TYPE Release CACHE STRING "")
-    endif ()
+    endif()
 
-    if (NOT DEFINED CMAKE_CXX_VISIBILITY_PRESET)
-        message(STATUS "No CMAKE_CXX_VISIBILITY_PRESET set, defaulting to hidden")
-        set(CMAKE_CXX_VISIBILITY_PRESET hidden CACHE STRING "Preset for the export of private symbols")
-        set_property(CACHE CMAKE_CXX_VISIBILITY_PRESET PROPERTY STRINGS hidden default)
-    endif ()
-    if (NOT DEFINED CMAKE_VISIBILITY_INLINES_HIDDEN)
-        message(STATUS "No CMAKE_VISIBILITY_INLINES_HIDDEN set, defaulting to ON")
-        set(CMAKE_VISIBILITY_INLINES_HIDDEN ON CACHE BOOL
-                "Whether to add a compiler flag to hide symbols of inline functions")
-    endif ()
+    if(NOT DEFINED CMAKE_CXX_VISIBILITY_PRESET)
+        message(
+            STATUS
+            "No CMAKE_CXX_VISIBILITY_PRESET set, defaulting to hidden"
+        )
+        set(CMAKE_CXX_VISIBILITY_PRESET
+            hidden
+            CACHE STRING
+            "Preset for the export of private symbols"
+        )
+        set_property(
+            CACHE CMAKE_CXX_VISIBILITY_PRESET
+            PROPERTY STRINGS hidden default
+        )
+    endif()
+    if(NOT DEFINED CMAKE_VISIBILITY_INLINES_HIDDEN)
+        message(
+            STATUS
+            "No CMAKE_VISIBILITY_INLINES_HIDDEN set, defaulting to ON"
+        )
+        set(CMAKE_VISIBILITY_INLINES_HIDDEN
+            ON
+            CACHE BOOL
+            "Whether to add a compiler flag to hide symbols of inline functions"
+        )
+    endif()
 endif()
 
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
@@ -54,91 +77,91 @@ include(cmake/dependencies.cmake)
 include(cmake/sanitizers.cmake)
 
 set(SCN_SYSTEM_HEADERS_ATTRIBUTE "")
-if (SCN_HEADERS_AS_SYSTEM)
+if(SCN_HEADERS_AS_SYSTEM)
     set(SCN_SYSTEM_HEADERS_ATTRIBUTE "SYSTEM")
-endif ()
+endif()
 
-set(SCN_EXPORT_HEADER
-        "${CMAKE_CURRENT_BINARY_DIR}/include/scn/export.h"
-)
+set(SCN_EXPORT_HEADER "${CMAKE_CURRENT_BINARY_DIR}/include/scn/export.h")
 set(SCN_PUBLIC_HEADERS
-        include/scn/fwd.h
-        include/scn/macros.h
-        include/scn/scan.h
-        include/scn/ranges.h
-        include/scn/regex.h
-        include/scn/istream.h
-        include/scn/xchar.h
+    include/scn/fwd.h
+    include/scn/macros.h
+    include/scn/scan.h
+    include/scn/ranges.h
+    include/scn/regex.h
+    include/scn/istream.h
+    include/scn/xchar.h
 )
-set(SCN_PRIVATE_HEADERS
-        src/scn/impl.h
-)
-set(SCN_PRIVATE_SOURCES
-        src/scn/impl.cpp
-)
-set(SCN_MODULE_SOURCES
-        src/scn/scn.cppm
-)
+set(SCN_PRIVATE_HEADERS src/scn/impl.h)
+set(SCN_PRIVATE_SOURCES src/scn/impl.cpp)
+set(SCN_MODULE_SOURCES src/scn/scn.cppm)
 
 add_library(
-        scn
-        ${SCN_PUBLIC_HEADERS}
-        ${SCN_EXPORT_HEADER}
-        ${SCN_PRIVATE_HEADERS}
-        ${SCN_PRIVATE_SOURCES}
+    scn
+    ${SCN_PUBLIC_HEADERS}
+    ${SCN_EXPORT_HEADER}
+    ${SCN_PRIVATE_HEADERS}
+    ${SCN_PRIVATE_SOURCES}
 )
-target_include_directories(scn
-        ${SCN_SYSTEM_HEADERS_ATTRIBUTE}
-        PUBLIC
-            $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>
-            $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}/include>
-            $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
-        PRIVATE
-            $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/src>
+target_include_directories(
+    scn
+    ${SCN_SYSTEM_HEADERS_ATTRIBUTE}
+    PUBLIC
+        $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>
+        $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}/include>
+        $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
+    PRIVATE $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/src>
 )
-target_link_libraries(scn PRIVATE
+target_link_libraries(
+    scn
+    PRIVATE
         ${SCN_FAST_FLOAT_TARGET}
         ${SCN_EKNAN_TARGET}
         ${SCN_REGEX_BACKEND_TARGET}
 )
 set_library_flags(scn)
 # Linking the scn_sanitizers and scn_coverage targets would break exporting scn
-set(SCN_LIBRARY_INSTRUMENTATION_FLAGS ${SCN_LIBRARY_SANITIZER_FLAGS} ${SCN_COVERAGE_FLAGS})
-if (SCN_LIBRARY_INSTRUMENTATION_FLAGS)
+set(SCN_LIBRARY_INSTRUMENTATION_FLAGS
+    ${SCN_LIBRARY_SANITIZER_FLAGS}
+    ${SCN_COVERAGE_FLAGS}
+)
+if(SCN_LIBRARY_INSTRUMENTATION_FLAGS)
     target_compile_options(scn PRIVATE ${SCN_LIBRARY_INSTRUMENTATION_FLAGS})
-    target_link_options(scn PUBLIC $<BUILD_INTERFACE:${SCN_LIBRARY_INSTRUMENTATION_FLAGS}>)
-endif ()
+    target_link_options(
+        scn
+        PUBLIC $<BUILD_INTERFACE:${SCN_LIBRARY_INSTRUMENTATION_FLAGS}>
+    )
+endif()
 
 include(GenerateExportHeader)
 generate_export_header(
-        scn
-        BASE_NAME SCN_EXPORT_HEADER
-        EXPORT_FILE_NAME "${SCN_EXPORT_HEADER}"
+    scn
+    BASE_NAME SCN_EXPORT_HEADER
+    EXPORT_FILE_NAME "${SCN_EXPORT_HEADER}"
 )
 
-set_target_properties(
-        scn PROPERTIES
-        VERSION 4.0.1
-        SOVERSION 4.0.1
-)
+set_target_properties(scn PROPERTIES VERSION 4.0.1 SOVERSION 4.0.1)
 add_library(scn::scn ALIAS scn)
 
 include(cmake/modules.cmake)
 
-if (SCN_MODULES)
+if(SCN_MODULES)
     add_module_library(scn_module ${SCN_MODULE_SOURCES})
     target_link_libraries(scn_module PUBLIC scn::scn)
     add_library(scn::scn_module ALIAS scn_module)
-endif ()
+endif()
 
 add_library(scn_internal INTERFACE)
-target_link_libraries(scn_internal INTERFACE
+target_link_libraries(
+    scn_internal
+    INTERFACE
         scn::scn
         ${SCN_FAST_FLOAT_TARGET}
         ${SCN_EKNAN_TARGET}
         ${SCN_REGEX_BACKEND_TARGET}
 )
-target_include_directories(scn_internal INTERFACE
+target_include_directories(
+    scn_internal
+    INTERFACE
         $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>
         $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}/include>
         $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/src>

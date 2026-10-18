@@ -123,26 +123,26 @@ BENCHMARK(bench_string_sstream<wchar_t, lipsum_tag>);
 BENCHMARK(bench_string_sstream<wchar_t, unicode_tag>);
 
 namespace {
-    const char* sscanf_impl(const char* input, std::string& value)
-    {
-        auto r = std::sscanf(input, " %255s", value.data());
-        if (r != 1) {
-            return nullptr;
-        }
-        auto len = std::strlen(value.c_str());
-        value.resize(len);
-        return input + len;
+const char* sscanf_impl(const char* input, std::string& value)
+{
+    auto r = std::sscanf(input, " %255s", value.data());
+    if (r != 1) {
+        return nullptr;
     }
-    const wchar_t* sscanf_impl(const wchar_t* input, std::wstring& value)
-    {
-        auto r = std::swscanf(input, L" %255s", value.data());
-        if (r != 1) {
-            return nullptr;
-        }
-        auto len = std::wcslen(value.c_str());
-        value.resize(len);
-        return input + len;
+    auto len = std::strlen(value.c_str());
+    value.resize(len);
+    return input + len;
+}
+const wchar_t* sscanf_impl(const wchar_t* input, std::wstring& value)
+{
+    auto r = std::swscanf(input, L" %255s", value.data());
+    if (r != 1) {
+        return nullptr;
     }
+    auto len = std::wcslen(value.c_str());
+    value.resize(len);
+    return input + len;
+}
 }  // namespace
 
 template <typename CharT, typename Tag>

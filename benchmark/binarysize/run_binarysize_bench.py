@@ -17,39 +17,45 @@ def rounded_kb(bytes):
 
 def get_test_prettyname(test):
     names = {
-        'scn_benchmark_binarysize_control': 'empty',
-        'scn_benchmark_binarysize_scanf': '`std::scanf`',
-        'scn_benchmark_binarysize_iostream': '`std::istream`',
-        'scn_benchmark_binarysize_scnlib': '`scn::input`',
+        "scn_benchmark_binarysize_control": "empty",
+        "scn_benchmark_binarysize_scanf": "`std::scanf`",
+        "scn_benchmark_binarysize_iostream": "`std::istream`",
+        "scn_benchmark_binarysize_scnlib": "`scn::input`",
     }
     return names[test]
 
 
 def process_test(exec_dir, test):
     size, stripped = binarysize_bench.run(os.path.join(exec_dir, test))
-    return {'test': test, 'testPretty': get_test_prettyname(test).replace("`", ""),
-            'testPrettyMD': get_test_prettyname(test),
-            'size': size, 'stripped': stripped,
-            'sizeH': binarysize_bench.convert_size(size), 'strippedH': binarysize_bench.convert_size(stripped),
-            'sizeKiB': rounded_kb(size), 'strippedKiB': rounded_kb(stripped)}
+    return {
+        "test": test,
+        "testPretty": get_test_prettyname(test).replace("`", ""),
+        "testPrettyMD": get_test_prettyname(test),
+        "size": size,
+        "stripped": stripped,
+        "sizeH": binarysize_bench.convert_size(size),
+        "strippedH": binarysize_bench.convert_size(stripped),
+        "sizeKiB": rounded_kb(size),
+        "strippedKiB": rounded_kb(stripped),
+    }
 
 
 def make_plot(results, title):
     results = list(reversed(results))
 
-    names = list(map(lambda x: x['testPretty'].replace(' ', '\n'), results))
+    names = list(map(lambda x: x["testPretty"].replace(" ", "\n"), results))
     plt.figure(figsize=(10, 10.5))
-    plt.suptitle(f'Executable size benchmarks: {title}')
+    plt.suptitle(f"Executable size benchmarks: {title}")
 
     a = plt.subplot(211)
-    a.barh(names, list(map(lambda x: x['sizeKiB'], results)))
-    a.set_title('Executable size')
-    plt.xlabel('Size in KiB')
+    a.barh(names, list(map(lambda x: x["sizeKiB"], results)))
+    a.set_title("Executable size")
+    plt.xlabel("Size in KiB")
 
     b = plt.subplot(212)
-    b.barh(names, list(map(lambda x: x['strippedKiB'], results)))
-    b.set_title('Stripped size')
-    plt.xlabel('Size in KiB')
+    b.barh(names, list(map(lambda x: x["strippedKiB"], results)))
+    b.set_title("Stripped size")
+    plt.xlabel("Size in KiB")
 
     plt.show()
 
@@ -59,38 +65,48 @@ def main():
     title = sys.argv[2]
     pp = pprint.PrettyPrinter(indent=4)
 
-    tests = [f for f
-             in os.listdir(exec_dir)
-             if os.path.isfile(os.path.join(exec_dir, f))
-             and f.startswith('scn_benchmark_binarysize_')
-             and not f.endswith('stripped')
-             and not f.endswith('.py')]
-    presort_results = {item['test']: item for item in list(map(lambda test: process_test(exec_dir, test), tests))}
+    tests = [
+        f
+        for f in os.listdir(exec_dir)
+        if os.path.isfile(os.path.join(exec_dir, f))
+        and f.startswith("scn_benchmark_binarysize_")
+        and not f.endswith("stripped")
+        and not f.endswith(".py")
+    ]
+    presort_results = {
+        item["test"]: item
+        for item in list(map(lambda test: process_test(exec_dir, test), tests))
+    }
     results = [
-        presort_results['scn_benchmark_binarysize_control'],
-        presort_results['scn_benchmark_binarysize_scanf'],
-        presort_results['scn_benchmark_binarysize_iostream'],
-        presort_results['scn_benchmark_binarysize_scnlib'],
+        presort_results["scn_benchmark_binarysize_control"],
+        presort_results["scn_benchmark_binarysize_scanf"],
+        presort_results["scn_benchmark_binarysize_iostream"],
+        presort_results["scn_benchmark_binarysize_scnlib"],
     ]
 
-    first_column_width = len(max(results, key=lambda x: len(x['testPrettyMD']))['testPrettyMD'])
-    execsize_txt = 'Executable size'
-    stripsize_txt = 'Stripped size'
+    first_column_width = len(
+        max(results, key=lambda x: len(x["testPrettyMD"]))["testPrettyMD"]
+    )
+    execsize_txt = "Executable size"
+    stripsize_txt = "Stripped size"
 
-    print('Full results pretty-printed')
+    print("Full results pretty-printed")
     pp.pprint(results)
-    print('\n')
+    print("\n")
 
-    print('Formatted as markdown table (sorted by size, asc)')
-    print(f'| {"Method":{first_column_width}} | {execsize_txt} | {stripsize_txt} |')
-    print(f'| {":":-<{first_column_width}} | {":":->{len(execsize_txt)}} | {":":->{len(stripsize_txt)}} |')
+    print("Formatted as markdown table (sorted by size, asc)")
+    print(f"| {'Method':{first_column_width}} | {execsize_txt} | {stripsize_txt} |")
+    print(
+        f"| {':':-<{first_column_width}} | {':':->{len(execsize_txt)}} | {':':->{len(stripsize_txt)}} |"
+    )
     for result in results:
         print(
-            f'| {result["testPrettyMD"]:{first_column_width}} | {result["sizeKiB"]:>{len(execsize_txt)}} | {result["strippedKiB"]:>{len(stripsize_txt)}} |')
-    print('\n')
+            f"| {result['testPrettyMD']:{first_column_width}} | {result['sizeKiB']:>{len(execsize_txt)}} | {result['strippedKiB']:>{len(stripsize_txt)}} |"
+        )
+    print("\n")
 
     make_plot(results, title)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

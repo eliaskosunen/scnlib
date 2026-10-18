@@ -1,133 +1,132 @@
-if (NOT SCN_TESTS)
+if(NOT SCN_TESTS)
     return()
-endif ()
+endif()
 
 function(make_scn_test_flags target)
-    target_compile_options(${target} PRIVATE
+    target_compile_options(
+        ${target}
+        PRIVATE
             $<$<CXX_COMPILER_ID:GNU>:
-                -Wno-unused>
+            -Wno-unused>
             $<$<CXX_COMPILER_ID:Clang>:
-                -Wno-unused-variable
-                -Wno-used-but-marked-unused
-                -Wno-gnu-zero-variadic-macro-arguments
-                -Wno-global-constructors
-                -Wno-exit-time-destructors
-                -Wno-weak-vtables>
+            -Wno-unused-variable
+            -Wno-used-but-marked-unused
+            -Wno-gnu-zero-variadic-macro-arguments
+            -Wno-global-constructors
+            -Wno-exit-time-destructors
+            -Wno-weak-vtables>
     )
 endfunction()
 
 function(make_scn_test target)
     add_executable(${target} ${ARGN})
 
-    target_link_libraries(${target} PRIVATE
-            ${SCN_GTEST_LIBRARIES}
-            scn_sanitizers
-            scn_coverage
-            scn_internal)
+    target_link_libraries(
+        ${target}
+        PRIVATE ${SCN_GTEST_LIBRARIES} scn_sanitizers scn_coverage scn_internal
+    )
     make_scn_test_flags(${target})
 endfunction()
 
-make_scn_test(scn_tests
-        main.cpp
-
-        align_and_fill_test.cpp
-        all_headers_test.cpp
-        args_test.cpp
-        buffer_test.cpp
-        char_test.cpp
-        chrono_test.cpp
-        context_test.cpp
-        custom_type_test.cpp
-        error_test.cpp
-        expected_test.cpp
-        float_test.cpp
-        format_string_test.cpp
-        format_string_parser_test.cpp
-        integer_test.cpp
-        input_map_test.cpp
-        istream_scanner_test.cpp
-        istream_source_test.cpp
-        memory_test.cpp
-        ranges_polyfill_test.cpp
-        ranges_test.cpp
-        regex_test.cpp
-        result_test.cpp
-        scan_test.cpp
-        source_test.cpp
-        standalone_fwd_include_test.cpp
-        standalone_scan_include_test.cpp
-        string_test.cpp
-        string_view_test.cpp
-        unicode_test.cpp
-        xchar_test.cpp
+make_scn_test(
+    scn_tests
+    main.cpp
+    align_and_fill_test.cpp
+    all_headers_test.cpp
+    args_test.cpp
+    buffer_test.cpp
+    char_test.cpp
+    chrono_test.cpp
+    context_test.cpp
+    custom_type_test.cpp
+    error_test.cpp
+    expected_test.cpp
+    float_test.cpp
+    format_string_test.cpp
+    format_string_parser_test.cpp
+    integer_test.cpp
+    input_map_test.cpp
+    istream_scanner_test.cpp
+    istream_source_test.cpp
+    memory_test.cpp
+    ranges_polyfill_test.cpp
+    ranges_test.cpp
+    regex_test.cpp
+    result_test.cpp
+    scan_test.cpp
+    source_test.cpp
+    standalone_fwd_include_test.cpp
+    standalone_scan_include_test.cpp
+    string_test.cpp
+    string_view_test.cpp
+    unicode_test.cpp
+    xchar_test.cpp
 )
 add_test(NAME scn_tests COMMAND scn_tests)
 
-make_scn_test(scn_impl_tests
-        main.cpp
-
-        impl_tests/bits_test.cpp
-        impl_tests/contiguous_range_factory_test.cpp
-        impl_tests/file_test.cpp
-        impl_tests/find_fast_test.cpp
-        impl_tests/function_ref_test.cpp
-        impl_tests/ranges_util_test.cpp
-        impl_tests/read_algorithms_test.cpp
-        impl_tests/text_width_test.cpp
-        impl_tests/transcode_test.cpp
-        impl_tests/whitespace_skip_test.cpp
-
-        impl_tests/reader_test_common.h
-        impl_tests/bool_reader_test.cpp
-        impl_tests/float_reader_test.cpp
-        impl_tests/string_reader_test.cpp
-
-        impl_tests/float_conversion_test.h
-        impl_tests/float_conversion_test.cpp
-        impl_tests/float_conversion_test.impl_custom.cpp
-        impl_tests/float_conversion_test.impl_fast_float.cpp
-        impl_tests/float_conversion_test.impl_from_chars.cpp
-        impl_tests/float_conversion_test.impl_strtod.cpp
-
-        impl_tests/integer_reader_test.h
-        impl_tests/integer_reader_test.impl_narrow_classic.cpp
-        impl_tests/integer_reader_test.impl_narrow_localized.cpp
-        impl_tests/integer_reader_test.impl_wide_classic.cpp
-        impl_tests/integer_reader_test.impl_wide_localized.cpp
+make_scn_test(
+    scn_impl_tests
+    main.cpp
+    impl_tests/bits_test.cpp
+    impl_tests/contiguous_range_factory_test.cpp
+    impl_tests/file_test.cpp
+    impl_tests/find_fast_test.cpp
+    impl_tests/function_ref_test.cpp
+    impl_tests/ranges_util_test.cpp
+    impl_tests/read_algorithms_test.cpp
+    impl_tests/text_width_test.cpp
+    impl_tests/transcode_test.cpp
+    impl_tests/whitespace_skip_test.cpp
+    impl_tests/reader_test_common.h
+    impl_tests/bool_reader_test.cpp
+    impl_tests/float_reader_test.cpp
+    impl_tests/string_reader_test.cpp
+    impl_tests/float_conversion_test.h
+    impl_tests/float_conversion_test.cpp
+    impl_tests/float_conversion_test.impl_custom.cpp
+    impl_tests/float_conversion_test.impl_fast_float.cpp
+    impl_tests/float_conversion_test.impl_from_chars.cpp
+    impl_tests/float_conversion_test.impl_strtod.cpp
+    impl_tests/integer_reader_test.h
+    impl_tests/integer_reader_test.impl_narrow_classic.cpp
+    impl_tests/integer_reader_test.impl_narrow_localized.cpp
+    impl_tests/integer_reader_test.impl_wide_classic.cpp
+    impl_tests/integer_reader_test.impl_wide_localized.cpp
 )
 # Tests the deprecated C FILE* sources on purpose. MSVC and clang-cl report the
 # deprecation inside scn/scan.h, where the pragmas in the test can't disable it.
-if (MSVC)
-    set_source_files_properties(impl_tests/file_test.cpp PROPERTIES
+if(MSVC)
+    set_source_files_properties(
+        impl_tests/file_test.cpp
+        PROPERTIES
             COMPILE_OPTIONS
-            $<IF:$<CXX_COMPILER_ID:MSVC>,/wd4996,-Wno-deprecated-declarations>
+                $<IF:$<CXX_COMPILER_ID:MSVC>,/wd4996,-Wno-deprecated-declarations>
     )
-endif ()
+endif()
 add_test(NAME scn_impl_tests COMMAND scn_impl_tests)
 
 # pragma ignores seem to not always work for overflowing literals
-if (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
     set_source_files_properties(
-            impl_tests/float_reader_test.cpp
-            PROPERTIES COMPILE_OPTIONS
-            -Wno-overflow
+        impl_tests/float_reader_test.cpp
+        PROPERTIES COMPILE_OPTIONS -Wno-overflow
     )
-endif ()
-if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
+endif()
+if(CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
     set_source_files_properties(
-            impl_tests/float_reader_test.cpp
-            PROPERTIES COMPILE_OPTIONS
-            -Wno-literal-range
+        impl_tests/float_reader_test.cpp
+        PROPERTIES COMPILE_OPTIONS -Wno-literal-range
     )
-endif ()
+endif()
 
-if (SCN_MODULES)
+if(SCN_MODULES)
     add_executable(scn_module_tests module_test.cpp module_test_layout.cpp)
     target_link_libraries(scn_module_tests PRIVATE scn_module scn_sanitizers)
 
     target_uses_extensions(scn_module use_stdext)
     set_target_properties(
-            scn_module_tests PROPERTIES
+        scn_module_tests
+        PROPERTIES
             CXX_SCAN_FOR_MODULES ${SCN_USE_CMAKE_MODULES}
             CXX_EXTENSIONS ${use_stdext}
     )
@@ -135,68 +134,95 @@ if (SCN_MODULES)
     make_scn_test_flags(scn_module)
 
     add_test(NAME scn_module_tests COMMAND scn_module_tests)
-endif ()
+endif()
 
-if (SCN_TESTS_LOCALIZED)
-    make_scn_test(scn_localized_tests
-            main.cpp
-
-            localized_tests/localized_chrono_test.cpp
+if(SCN_TESTS_LOCALIZED)
+    make_scn_test(
+        scn_localized_tests
+        main.cpp
+        localized_tests/localized_chrono_test.cpp
     )
     add_test(NAME scn_localized_tests COMMAND scn_localized_tests)
-endif ()
+endif()
 
-make_scn_test(scn_stdin_test
-        main.cpp
+make_scn_test(scn_stdin_test main.cpp stdin_test.cpp)
 
-        stdin_test.cpp
-)
-
-make_scn_test(scn_stdin_parameterized_test
-        stdin_parameterized_test.cpp
-)
+make_scn_test(scn_stdin_parameterized_test stdin_parameterized_test.cpp)
 # Tests the deprecated C FILE* sources on purpose. MSVC and clang-cl report the
 # deprecation inside scn/scan.h, where the pragmas in the test can't disable it.
-if (MSVC)
-    target_compile_options(scn_stdin_parameterized_test PRIVATE
+if(MSVC)
+    target_compile_options(
+        scn_stdin_parameterized_test
+        PRIVATE
             $<IF:$<CXX_COMPILER_ID:MSVC>,/wd4996,-Wno-deprecated-declarations>
     )
-endif ()
+endif()
 
-add_custom_target(scn_stdin_test_prepare ALL
-        COMMAND ${CMAKE_COMMAND} -E copy
+add_custom_target(
+    scn_stdin_test_prepare
+    ALL
+    COMMAND
+        ${CMAKE_COMMAND} -E copy
         "${CMAKE_CURRENT_LIST_DIR}/stdin_test_runner.py"
         "${CMAKE_CURRENT_LIST_DIR}/stdin_test_input.txt"
         "${CMAKE_CURRENT_BINARY_DIR}"
-        COMMENT "Copying stdin test runner"
+    COMMENT "Copying stdin test runner"
 )
-add_custom_target(scn_stdin_parameterized_test_prepare ALL
-        COMMAND ${CMAKE_COMMAND} -E copy
+add_custom_target(
+    scn_stdin_parameterized_test_prepare
+    ALL
+    COMMAND
+        ${CMAKE_COMMAND} -E copy
         "${CMAKE_CURRENT_LIST_DIR}/stdin_parameterized_test_runner.py"
         "${CMAKE_CURRENT_BINARY_DIR}"
-        COMMENT "Copying stdin_parameterized test runner"
+    COMMENT "Copying stdin_parameterized test runner"
 )
-add_custom_target(scn_examples_test_prepare ALL
-        COMMAND ${CMAKE_COMMAND} -E copy
+add_custom_target(
+    scn_examples_test_prepare
+    ALL
+    COMMAND
+        ${CMAKE_COMMAND} -E copy
         "${CMAKE_CURRENT_LIST_DIR}/examples_test_runner.py"
         "${CMAKE_CURRENT_BINARY_DIR}"
-        COMMENT "Copying examples test runner"
+    COMMENT "Copying examples test runner"
 )
 
 find_package(Python3 COMPONENTS Interpreter)
-if (Python3_FOUND)
-    add_test(NAME scn_stdin_test COMMAND ${Python3_EXECUTABLE} "${CMAKE_CURRENT_BINARY_DIR}/stdin_test_runner.py")
+if(Python3_FOUND)
+    add_test(
+        NAME scn_stdin_test
+        COMMAND
+            ${Python3_EXECUTABLE}
+            "${CMAKE_CURRENT_BINARY_DIR}/stdin_test_runner.py"
+    )
 
-    add_test(NAME scn_stdin_parameterized_test COMMAND ${Python3_EXECUTABLE} "${CMAKE_CURRENT_BINARY_DIR}/stdin_parameterized_test_runner.py")
+    add_test(
+        NAME scn_stdin_parameterized_test
+        COMMAND
+            ${Python3_EXECUTABLE}
+            "${CMAKE_CURRENT_BINARY_DIR}/stdin_parameterized_test_runner.py"
+    )
 
-    if (SCN_EXAMPLES)
+    if(SCN_EXAMPLES)
         get_target_property(examples_bin_dir scn_example_1 BINARY_DIR)
-        add_test(NAME scn_examples_test COMMAND ${Python3_EXECUTABLE} "${CMAKE_CURRENT_BINARY_DIR}/examples_test_runner.py" "${examples_bin_dir}")
+        add_test(
+            NAME scn_examples_test
+            COMMAND
+                ${Python3_EXECUTABLE}
+                "${CMAKE_CURRENT_BINARY_DIR}/examples_test_runner.py"
+                "${examples_bin_dir}"
+        )
     else()
-        message(STATUS "scn_examples_test disabled, because SCN_EXAMPLES is OFF")
+        message(
+            STATUS
+            "scn_examples_test disabled, because SCN_EXAMPLES is OFF"
+        )
     endif()
-else ()
-    message(WARNING "python3 not found, scn_stdin_test and scn_examples_test not added to CTest")
-endif ()
+else()
+    message(
+        WARNING
+        "python3 not found, scn_stdin_test and scn_examples_test not added to CTest"
+    )
+endif()
 
 add_subdirectory(compilefail_tests)
