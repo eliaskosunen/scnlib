@@ -143,3 +143,34 @@ TEST(StrtodFallbackTest, CommaDecimalPointInCLocale)
     test_strtod_with_comma_decimal_point<wchar_t, double>();
     test_strtod_with_comma_decimal_point<wchar_t, long double>();
 }
+
+namespace {
+template <typename CharT, typename FloatT>
+void test_strtod_embedded_null()
+{
+    using traits = scn::impl::float_conversion::convert_strtod_traits;
+    if constexpr (traits::enabled<CharT, FloatT>) {
+        const CharT source[] = {CharT{'1'}, CharT{'.'}, CharT{'5'}, CharT{0},
+                                CharT{'2'}};
+        FloatT value{};
+        bool can_fallback = true;
+        auto result = traits::convert(
+            std::basic_string_view<CharT>{source, 5}, value,
+            scn::impl::float_conversion::kind_type::decimal, can_fallback);
+        EXPECT_FALSE(result);
+    }
+    else {
+        GTEST_SKIP() << "The strtod fallback isn't used for this type";
+    }
+}
+}  // namespace
+
+TEST(StrtodFallbackTest, EmbeddedNullIsNotACompleteRead)
+{
+    test_strtod_embedded_null<char, float>();
+    test_strtod_embedded_null<char, double>();
+    test_strtod_embedded_null<char, long double>();
+    test_strtod_embedded_null<wchar_t, float>();
+    test_strtod_embedded_null<wchar_t, double>();
+    test_strtod_embedded_null<wchar_t, long double>();
+}

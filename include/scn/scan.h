@@ -389,7 +389,7 @@ public:
                                     std::is_constructible_v<E, Err>>>
     explicit constexpr unexpected(Err&& e) noexcept(
         std::is_nothrow_constructible_v<E, Err>)
-        : m_unexpected(std::forward<Err>(e))
+        : m_unexpected(SCN_FWD(e))
     {
         SCN_UNLIKELY_ATTR SCN_UNUSED(m_unexpected);
     }
@@ -400,7 +400,7 @@ public:
               typename = std::enable_if_t<std::is_constructible_v<E, Args...>>>
     explicit constexpr unexpected(std::in_place_t, Args&&... args) noexcept(
         std::is_nothrow_constructible_v<E, Args...>)
-        : m_unexpected(std::forward<Args>(args)...)
+        : m_unexpected(SCN_FWD(args)...)
     {
         SCN_UNLIKELY_ATTR SCN_UNUSED(m_unexpected);
     }
@@ -416,11 +416,11 @@ public:
 
     SCN_NODISCARD constexpr E&& error() && noexcept
     {
-        return std::move(m_unexpected);
+        return SCN_MOVE(m_unexpected);
     }
     SCN_NODISCARD constexpr const E&& error() const&& noexcept
     {
-        return std::move(m_unexpected);
+        return SCN_MOVE(m_unexpected);
     }
 
 private:
@@ -516,7 +516,7 @@ T* construct_at(T* p, Args&&... args) noexcept(
     std::is_nothrow_constructible_v<T, Args...>)
 {
     return ::new (const_cast<void*>(static_cast<const volatile void*>(p)))
-        T(std::forward<Args>(args)...);
+        T(SCN_FWD(args)...);
 }
 template <typename T>
 void destroy_at(T* p) noexcept
@@ -574,7 +574,7 @@ struct SCN_TRIVIAL_ABI expected_storage_base<T, E, true> {
     constexpr explicit expected_storage_base(
         std::in_place_t,
         Args&&... args) noexcept(std::is_nothrow_constructible_v<T, Args...>)
-        : m_value(std::forward<Args>(args)...), m_has_value(true)
+        : m_value(SCN_FWD(args)...), m_has_value(true)
     {
     }
 
@@ -583,8 +583,7 @@ struct SCN_TRIVIAL_ABI expected_storage_base<T, E, true> {
     constexpr explicit expected_storage_base(
         unexpect_t,
         Args&&... args) noexcept(std::is_nothrow_constructible_v<E, Args...>)
-        : m_unexpected(std::in_place, std::forward<Args>(args)...),
-          m_has_value(false)
+        : m_unexpected(std::in_place, SCN_FWD(args)...), m_has_value(false)
     {
     }
 
@@ -598,11 +597,11 @@ struct SCN_TRIVIAL_ABI expected_storage_base<T, E, true> {
     }
     SCN_NODISCARD constexpr T&& get_value() && noexcept
     {
-        return std::move(m_value);
+        return SCN_MOVE(m_value);
     }
     SCN_NODISCARD constexpr const T&& get_value() const&& noexcept
     {
-        return std::move(m_value);
+        return SCN_MOVE(m_value);
     }
 
     SCN_NODISCARD constexpr unexpected<E>& get_unexpected() & noexcept
@@ -616,12 +615,12 @@ struct SCN_TRIVIAL_ABI expected_storage_base<T, E, true> {
     }
     SCN_NODISCARD constexpr unexpected<E>&& get_unexpected() && noexcept
     {
-        return std::move(m_unexpected);
+        return SCN_MOVE(m_unexpected);
     }
     SCN_NODISCARD constexpr const unexpected<E>&& get_unexpected()
         const&& noexcept
     {
-        return std::move(m_unexpected);
+        return SCN_MOVE(m_unexpected);
     }
 
     SCN_NODISCARD constexpr bool has_value() const noexcept
@@ -633,15 +632,14 @@ struct SCN_TRIVIAL_ABI expected_storage_base<T, E, true> {
     void construct(Args&&... args) noexcept(
         std::is_nothrow_constructible_v<T, Args...>)
     {
-        scn::detail::construct_at(&get_value(), std::forward<Args>(args)...);
+        scn::detail::construct_at(&get_value(), SCN_FWD(args)...);
         m_has_value = true;
     }
     template <typename... Args>
     void construct_unexpected(Args&&... args) noexcept(
         std::is_nothrow_constructible_v<E, Args...>)
     {
-        scn::detail::construct_at(&get_unexpected(),
-                                  std::forward<Args>(args)...);
+        scn::detail::construct_at(&get_unexpected(), SCN_FWD(args)...);
         m_has_value = false;
     }
 
@@ -687,8 +685,7 @@ struct SCN_TRIVIAL_ABI expected_storage_base<void, E, true> {
     explicit constexpr expected_storage_base(
         unexpect_t,
         Args&&... args) noexcept(std::is_nothrow_constructible_v<E, Args...>)
-        : m_unexpected(std::in_place, std::forward<Args>(args)...),
-          m_has_value(false)
+        : m_unexpected(std::in_place, SCN_FWD(args)...), m_has_value(false)
     {
     }
 
@@ -703,12 +700,12 @@ struct SCN_TRIVIAL_ABI expected_storage_base<void, E, true> {
     }
     SCN_NODISCARD constexpr unexpected<E>&& get_unexpected() && noexcept
     {
-        return std::move(m_unexpected);
+        return SCN_MOVE(m_unexpected);
     }
     SCN_NODISCARD constexpr const unexpected<E>&& get_unexpected()
         const&& noexcept
     {
-        return std::move(m_unexpected);
+        return SCN_MOVE(m_unexpected);
     }
 
     SCN_NODISCARD constexpr bool has_value() const noexcept
@@ -725,8 +722,7 @@ struct SCN_TRIVIAL_ABI expected_storage_base<void, E, true> {
     void construct_unexpected(Args&&... args) noexcept(
         std::is_nothrow_constructible_v<E, Args...>)
     {
-        scn::detail::construct_at(&get_unexpected(),
-                                  std::forward<Args>(args)...);
+        scn::detail::construct_at(&get_unexpected(), SCN_FWD(args)...);
         m_has_value = false;
     }
 
@@ -784,7 +780,7 @@ struct expected_storage_base<T, E, false> {
         Args&&... args) noexcept(std::is_nothrow_constructible_v<T, Args...>)
         : m_has_value(true)
     {
-        construct(std::forward<Args>(args)...);
+        construct(SCN_FWD(args)...);
     }
 
     template <typename... Args,
@@ -794,7 +790,7 @@ struct expected_storage_base<T, E, false> {
         Args&&... args) noexcept(std::is_nothrow_constructible_v<E, Args...>)
         : m_has_value(false)
     {
-        construct_unexpected(std::in_place, std::forward<Args>(args)...);
+        construct_unexpected(std::in_place, SCN_FWD(args)...);
     }
 
     ~expected_storage_base()
@@ -817,11 +813,11 @@ struct expected_storage_base<T, E, false> {
     }
     SCN_NODISCARD constexpr T&& get_value() && noexcept
     {
-        return std::move(*value_ptr());
+        return SCN_MOVE(*value_ptr());
     }
     SCN_NODISCARD constexpr const T&& get_value() const&& noexcept
     {
-        return std::move(*value_ptr());
+        return SCN_MOVE(*value_ptr());
     }
 
     SCN_NODISCARD constexpr unexpected<E>& get_unexpected() & noexcept
@@ -835,12 +831,12 @@ struct expected_storage_base<T, E, false> {
     }
     SCN_NODISCARD constexpr unexpected<E>&& get_unexpected() && noexcept
     {
-        return std::move(*unexpected_ptr());
+        return SCN_MOVE(*unexpected_ptr());
     }
     SCN_NODISCARD constexpr const unexpected<E>&& get_unexpected()
         const&& noexcept
     {
-        return std::move(*unexpected_ptr());
+        return SCN_MOVE(*unexpected_ptr());
     }
 
     SCN_NODISCARD constexpr bool has_value() const noexcept
@@ -852,15 +848,14 @@ struct expected_storage_base<T, E, false> {
     void construct(Args&&... args) noexcept(
         std::is_nothrow_constructible_v<T, Args...>)
     {
-        scn::detail::construct_at(value_ptr(), std::forward<Args>(args)...);
+        scn::detail::construct_at(value_ptr(), SCN_FWD(args)...);
         m_has_value = true;
     }
     template <typename... Args>
     void construct_unexpected(Args&&... args) noexcept(
         std::is_nothrow_constructible_v<E, Args...>)
     {
-        scn::detail::construct_at(unexpected_ptr(),
-                                  std::forward<Args>(args)...);
+        scn::detail::construct_at(unexpected_ptr(), SCN_FWD(args)...);
         m_has_value = false;
     }
 
@@ -936,7 +931,7 @@ struct expected_storage_base<void, E, false> {
         Args&&... args) noexcept(std::is_nothrow_constructible_v<E, Args...>)
         : m_has_value(false)
     {
-        construct_unexpected(std::in_place, std::forward<Args>(args)...);
+        construct_unexpected(std::in_place, SCN_FWD(args)...);
     }
 
     ~expected_storage_base()
@@ -957,12 +952,12 @@ struct expected_storage_base<void, E, false> {
     }
     SCN_NODISCARD constexpr unexpected<E>&& get_unexpected() && noexcept
     {
-        return std::move(*unexpected_ptr());
+        return SCN_MOVE(*unexpected_ptr());
     }
     SCN_NODISCARD constexpr const unexpected<E>&& get_unexpected()
         const&& noexcept
     {
-        return std::move(*unexpected_ptr());
+        return SCN_MOVE(*unexpected_ptr());
     }
 
     SCN_NODISCARD constexpr bool has_value() const noexcept
@@ -979,8 +974,7 @@ struct expected_storage_base<void, E, false> {
     void construct_unexpected(Args&&... args) noexcept(
         std::is_nothrow_constructible_v<E, Args...>)
     {
-        scn::detail::construct_at(unexpected_ptr(),
-                                  std::forward<Args>(args)...);
+        scn::detail::construct_at(unexpected_ptr(), SCN_FWD(args)...);
         m_has_value = false;
     }
 
@@ -1133,7 +1127,7 @@ struct expected_operations_base<
         std::is_nothrow_move_constructible_v<E> &&
         std::is_nothrow_move_assignable_v<E>)
     {
-        assign_common(std::move(other));
+        assign_common(SCN_MOVE(other));
         return *this;
     }
 
@@ -1145,15 +1139,15 @@ private:
     {
         if (this->has_value()) {
             if (other.has_value()) {
-                return reassign_value(std::forward<Other>(other));
+                return reassign_value(SCN_FWD(other));
             }
-            return assign_unexpected_over_value(std::forward<Other>(other));
+            return assign_unexpected_over_value(SCN_FWD(other));
         }
 
         if (other.has_value()) {
-            return assign_value_over_unexpected(std::forward<Other>(other));
+            return assign_value_over_unexpected(SCN_FWD(other));
         }
-        return reassign_unexpected(std::forward<Other>(other));
+        return reassign_unexpected(SCN_FWD(other));
     }
 
     template <typename Other>
@@ -1223,7 +1217,7 @@ struct expected_operations_base<
         std::is_nothrow_move_constructible_v<E> &&
         std::is_nothrow_move_assignable_v<E>)
     {
-        assign_common(std::move(other));
+        assign_common(SCN_MOVE(other));
         return *this;
     }
 
@@ -1237,13 +1231,13 @@ private:
             if (other.has_value()) {
                 return reassign_value();
             }
-            return assign_unexpected_over_value(std::forward<Other>(other));
+            return assign_unexpected_over_value(SCN_FWD(other));
         }
 
         if (other.has_value()) {
             return assign_value_over_unexpected();
         }
-        return reassign_unexpected(std::forward<Other>(other));
+        return reassign_unexpected(SCN_FWD(other));
     }
 
     void reassign_value() noexcept {}
@@ -1473,9 +1467,9 @@ template <
     typename... Args,
     typename = std::void_t<decltype(SCN_DECLVAL(F&&)(SCN_DECLVAL(Args&&)...))>>
 constexpr decltype(auto) trivial_invoke(F&& f, Args&&... args) noexcept(
-    noexcept(std::forward<F>(f)(std::forward<Args>(args)...)))
+    noexcept(SCN_FWD(f)(SCN_FWD(args)...)))
 {
-    return std::forward<F>(f)(std::forward<Args>(args)...);
+    return SCN_FWD(f)(SCN_FWD(args)...);
 }
 
 // and_then
@@ -1486,32 +1480,31 @@ template <typename Exp,
           typename Ret = decltype(trivial_invoke(SCN_DECLVAL(F),
                                                  *SCN_DECLVAL(Exp)))>
 constexpr auto and_then_impl(Exp&& exp, F&& f) noexcept(
-    noexcept(trivial_invoke(std::forward<F>(f), *std::forward<Exp>(exp))) &&
+    noexcept(trivial_invoke(SCN_FWD(f), *SCN_FWD(exp))) &&
     std::is_nothrow_constructible_v<Ret,
                                     unexpect_t,
-                                    decltype(std::forward<Exp>(exp).error())>)
+                                    decltype(SCN_FWD(exp).error())>)
 {
     static_assert(is_expected<Ret>::value, "F must return an expected");
 
     return SCN_LIKELY(exp.has_value())
-               ? trivial_invoke(std::forward<F>(f), *std::forward<Exp>(exp))
-               : Ret(unexpect, std::forward<Exp>(exp).error());
+               ? trivial_invoke(SCN_FWD(f), *SCN_FWD(exp))
+               : Ret(unexpect, SCN_FWD(exp).error());
 }
 template <typename Exp,
           typename F,
           std::enable_if_t<is_exp_void<Exp>::value>* = nullptr,
           typename Ret = decltype(trivial_invoke(SCN_DECLVAL(F)))>
 constexpr auto and_then_impl(Exp&& exp, F&& f) noexcept(
-    noexcept(trivial_invoke(std::forward<F>(f))) &&
+    noexcept(trivial_invoke(SCN_FWD(f))) &&
     std::is_nothrow_constructible_v<Ret,
                                     unexpect_t,
-                                    decltype(std::forward<Exp>(exp).error())>)
+                                    decltype(SCN_FWD(exp).error())>)
 {
     static_assert(is_expected<Ret>::value, "F must return an expected");
 
-    return SCN_LIKELY(exp.has_value())
-               ? trivial_invoke(std::forward<F>(f))
-               : Ret(unexpect, std::forward<Exp>(exp).error());
+    return SCN_LIKELY(exp.has_value()) ? trivial_invoke(SCN_FWD(f))
+                                       : Ret(unexpect, SCN_FWD(exp).error());
 }
 
 // or_else
@@ -1521,16 +1514,14 @@ template <typename Exp,
           typename Ret = decltype(trivial_invoke(SCN_DECLVAL(F),
                                                  SCN_DECLVAL(Exp).error()))>
 constexpr auto or_else_impl(Exp&& exp, F&& f) noexcept(
-    noexcept(trivial_invoke(std::forward<F>(f),
-                            std::forward<Exp>(exp).error())) &&
-    std::is_nothrow_constructible_v<Ret, decltype(std::forward<Exp>(exp))>)
+    noexcept(trivial_invoke(SCN_FWD(f), SCN_FWD(exp).error())) &&
+    std::is_nothrow_constructible_v<Ret, decltype(SCN_FWD(exp))>)
 {
     static_assert(is_expected<Ret>::value, "F must return an expected");
 
     return SCN_LIKELY(exp.has_value())
-               ? Ret(std::forward<Exp>(exp))
-               : trivial_invoke(std::forward<F>(f),
-                                std::forward<Exp>(exp).error());
+               ? Ret(SCN_FWD(exp))
+               : trivial_invoke(SCN_FWD(f), SCN_FWD(exp).error());
 }
 
 // transform
@@ -1545,16 +1536,15 @@ constexpr auto transform_impl(Exp&& exp, F&& f)
     using result = typename remove_cvref_t<Exp>::template rebind<Ret>;
     if constexpr (std::is_void_v<Ret>) {
         if (SCN_LIKELY(exp.has_value())) {
-            trivial_invoke(std::forward<F>(f), *std::forward<Exp>(exp));
+            trivial_invoke(SCN_FWD(f), *SCN_FWD(exp));
             return result();
         }
-        return result(unexpect, std::forward<Exp>(exp).error());
+        return result(unexpect, SCN_FWD(exp).error());
     }
     else {
         return SCN_LIKELY(exp.has_value())
-                   ? result(trivial_invoke(std::forward<F>(f),
-                                           *std::forward<Exp>(exp)))
-                   : result(unexpect, std::forward<Exp>(exp).error());
+                   ? result(trivial_invoke(SCN_FWD(f), *SCN_FWD(exp)))
+                   : result(unexpect, SCN_FWD(exp).error());
     }
 }
 template <typename Exp,
@@ -1566,15 +1556,15 @@ constexpr auto transform_impl(Exp&& exp, F&& f)
     using result = typename remove_cvref_t<Exp>::template rebind<Ret>;
     if constexpr (std::is_void_v<Ret>) {
         if (SCN_LIKELY(exp.has_value())) {
-            trivial_invoke(std::forward<F>(f));
+            trivial_invoke(SCN_FWD(f));
             return result();
         }
-        return result(unexpect, std::forward<Exp>(exp).error());
+        return result(unexpect, SCN_FWD(exp).error());
     }
     else {
         return SCN_LIKELY(exp.has_value())
-                   ? result(trivial_invoke(std::forward<F>(f)))
-                   : result(unexpect, std::forward<Exp>(exp).error());
+                   ? result(trivial_invoke(SCN_FWD(f)))
+                   : result(unexpect, SCN_FWD(exp).error());
     }
 }
 
@@ -1590,19 +1580,18 @@ constexpr auto transform_error_impl(Exp&& exp, F&& f)
     if constexpr (std::is_void_v<Ret>) {
         using result = expected<expected_value_type<Exp>, monostate>;
         if (SCN_LIKELY(exp.has_value())) {
-            return result(*std::forward<Exp>(exp));
+            return result(*SCN_FWD(exp));
         }
 
-        trivial_invoke(std::forward<F>(f), std::forward<Exp>(exp).error());
+        trivial_invoke(SCN_FWD(f), SCN_FWD(exp).error());
         return result(unexpect, monostate{});
     }
     else {
         using result = expected<expected_value_type<Exp>, remove_cvref_t<Ret>>;
         return SCN_LIKELY(exp.has_value())
-                   ? result(*std::forward<Exp>(exp))
+                   ? result(*SCN_FWD(exp))
                    : result(unexpect,
-                            trivial_invoke(std::forward<F>(f),
-                                           std::forward<Exp>(exp).error()));
+                            trivial_invoke(SCN_FWD(f), SCN_FWD(exp).error()));
     }
 }
 template <typename Exp,
@@ -1618,7 +1607,7 @@ constexpr auto transform_error_impl(Exp&& exp, F&& f)
             return result();
         }
 
-        trivial_invoke(std::forward<F>(f), std::forward<Exp>(exp).error());
+        trivial_invoke(SCN_FWD(f), SCN_FWD(exp).error());
         return result(unexpect, monostate{});
     }
     else {
@@ -1626,8 +1615,7 @@ constexpr auto transform_error_impl(Exp&& exp, F&& f)
         return SCN_LIKELY(exp.has_value())
                    ? result()
                    : result(unexpect,
-                            trivial_invoke(std::forward<F>(f),
-                                           std::forward<Exp>(exp).error()));
+                            trivial_invoke(SCN_FWD(f), SCN_FWD(exp).error()));
     }
 }
 
@@ -2030,7 +2018,7 @@ public:
         if (!has_value()) {
             return error();
         }
-        return std::forward<G>(default_error);
+        return SCN_FWD(default_error);
     }
     template <typename G,
               typename = std::enable_if_t<std::is_move_constructible_v<E> &&
@@ -2040,126 +2028,117 @@ public:
         std::is_nothrow_constructible_v<E, G&&>)
     {
         if (!has_value()) {
-            return std::move(error());
+            return SCN_MOVE(error());
         }
-        return std::forward<G>(default_error);
+        return SCN_FWD(default_error);
     }
 
     template <typename F>
-    constexpr auto and_then(F&& f) & noexcept(noexcept(
-        detail::and_then_impl(SCN_DECLVAL(expected&), std::forward<F>(f))))
-        -> decltype(detail::and_then_impl(*this, std::forward<F>(f)))
+    constexpr auto and_then(F&& f) & noexcept(
+        noexcept(detail::and_then_impl(SCN_DECLVAL(expected&), SCN_FWD(f))))
+        -> decltype(detail::and_then_impl(*this, SCN_FWD(f)))
     {
-        return detail::and_then_impl(*this, std::forward<F>(f));
+        return detail::and_then_impl(*this, SCN_FWD(f));
     }
     template <typename F>
-    constexpr auto and_then(F&& f) const& noexcept(
-        noexcept(detail::and_then_impl(SCN_DECLVAL(const expected&),
-                                       std::forward<F>(f))))
-        -> decltype(detail::and_then_impl(*this, std::forward<F>(f)))
+    constexpr auto and_then(F&& f) const& noexcept(noexcept(
+        detail::and_then_impl(SCN_DECLVAL(const expected&), SCN_FWD(f))))
+        -> decltype(detail::and_then_impl(*this, SCN_FWD(f)))
     {
-        return detail::and_then_impl(*this, std::forward<F>(f));
+        return detail::and_then_impl(*this, SCN_FWD(f));
     }
     template <typename F>
-    constexpr auto and_then(F&& f) && noexcept(noexcept(
-        detail::and_then_impl(SCN_DECLVAL(expected&&), std::forward<F>(f))))
-        -> decltype(detail::and_then_impl(*this, std::forward<F>(f)))
+    constexpr auto and_then(F&& f) && noexcept(
+        noexcept(detail::and_then_impl(SCN_DECLVAL(expected&&), SCN_FWD(f))))
+        -> decltype(detail::and_then_impl(*this, SCN_FWD(f)))
     {
-        return detail::and_then_impl(std::move(*this), std::forward<F>(f));
+        return detail::and_then_impl(SCN_MOVE(*this), SCN_FWD(f));
     }
     template <typename F>
-    constexpr auto and_then(F&& f) const&& noexcept(
-        noexcept(detail::and_then_impl(SCN_DECLVAL(const expected&&),
-                                       std::forward<F>(f))))
-        -> decltype(detail::and_then_impl(*this, std::forward<F>(f)))
+    constexpr auto and_then(F&& f) const&& noexcept(noexcept(
+        detail::and_then_impl(SCN_DECLVAL(const expected&&), SCN_FWD(f))))
+        -> decltype(detail::and_then_impl(*this, SCN_FWD(f)))
     {
-        return detail::and_then_impl(std::move(*this), std::forward<F>(f));
+        return detail::and_then_impl(SCN_MOVE(*this), SCN_FWD(f));
     }
 
     template <typename F>
-    constexpr auto or_else(F&& f) & noexcept(noexcept(
-        detail::or_else_impl(SCN_DECLVAL(expected&), std::forward<F>(f))))
-        -> decltype(detail::or_else_impl(*this, std::forward<F>(f)))
+    constexpr auto or_else(F&& f) & noexcept(
+        noexcept(detail::or_else_impl(SCN_DECLVAL(expected&), SCN_FWD(f))))
+        -> decltype(detail::or_else_impl(*this, SCN_FWD(f)))
     {
-        return detail::or_else_impl(*this, std::forward<F>(f));
+        return detail::or_else_impl(*this, SCN_FWD(f));
     }
     template <typename F>
     constexpr auto or_else(F&& f) const& noexcept(noexcept(
-        detail::or_else_impl(SCN_DECLVAL(const expected&), std::forward<F>(f))))
-        -> decltype(detail::or_else_impl(*this, std::forward<F>(f)))
+        detail::or_else_impl(SCN_DECLVAL(const expected&), SCN_FWD(f))))
+        -> decltype(detail::or_else_impl(*this, SCN_FWD(f)))
     {
-        return detail::or_else_impl(*this, std::forward<F>(f));
+        return detail::or_else_impl(*this, SCN_FWD(f));
     }
     template <typename F>
-    constexpr auto or_else(F&& f) && noexcept(noexcept(
-        detail::or_else_impl(SCN_DECLVAL(expected&&), std::forward<F>(f))))
-        -> decltype(detail::or_else_impl(*this, std::forward<F>(f)))
+    constexpr auto or_else(F&& f) && noexcept(
+        noexcept(detail::or_else_impl(SCN_DECLVAL(expected&&), SCN_FWD(f))))
+        -> decltype(detail::or_else_impl(*this, SCN_FWD(f)))
     {
-        return detail::or_else_impl(std::move(*this), std::forward<F>(f));
+        return detail::or_else_impl(SCN_MOVE(*this), SCN_FWD(f));
     }
     template <typename F>
-    constexpr auto or_else(F&& f) const&& noexcept(
-        noexcept(detail::or_else_impl(SCN_DECLVAL(const expected&&),
-                                      std::forward<F>(f))))
-        -> decltype(detail::or_else_impl(*this, std::forward<F>(f)))
+    constexpr auto or_else(F&& f) const&& noexcept(noexcept(
+        detail::or_else_impl(SCN_DECLVAL(const expected&&), SCN_FWD(f))))
+        -> decltype(detail::or_else_impl(*this, SCN_FWD(f)))
     {
-        return detail::or_else_impl(std::move(*this), std::forward<F>(f));
+        return detail::or_else_impl(SCN_MOVE(*this), SCN_FWD(f));
     }
 
     template <typename F>
     constexpr auto transform(
-        F&& f) & -> decltype(detail::transform_impl(*this, std::forward<F>(f)))
+        F&& f) & -> decltype(detail::transform_impl(*this, SCN_FWD(f)))
     {
-        return detail::transform_impl(*this, std::forward<F>(f));
-    }
-    template <typename F>
-    constexpr auto transform(F&& f)
-        const& -> decltype(detail::transform_impl(*this, std::forward<F>(f)))
-    {
-        return detail::transform_impl(*this, std::forward<F>(f));
+        return detail::transform_impl(*this, SCN_FWD(f));
     }
     template <typename F>
     constexpr auto transform(
-        F&& f) && -> decltype(detail::transform_impl(*this, std::forward<F>(f)))
+        F&& f) const& -> decltype(detail::transform_impl(*this, SCN_FWD(f)))
     {
-        return detail::transform_impl(std::move(*this), std::forward<F>(f));
+        return detail::transform_impl(*this, SCN_FWD(f));
     }
     template <typename F>
-    constexpr auto transform(F&& f)
-        const&& -> decltype(detail::transform_impl(*this, std::forward<F>(f)))
+    constexpr auto transform(
+        F&& f) && -> decltype(detail::transform_impl(*this, SCN_FWD(f)))
     {
-        return detail::transform_impl(std::move(*this), std::forward<F>(f));
+        return detail::transform_impl(SCN_MOVE(*this), SCN_FWD(f));
+    }
+    template <typename F>
+    constexpr auto transform(
+        F&& f) const&& -> decltype(detail::transform_impl(*this, SCN_FWD(f)))
+    {
+        return detail::transform_impl(SCN_MOVE(*this), SCN_FWD(f));
     }
 
     template <typename F>
     constexpr auto transform_error(
-        F&& f) & -> decltype(detail::transform_error_impl(*this,
-                                                          std::forward<F>(f)))
+        F&& f) & -> decltype(detail::transform_error_impl(*this, SCN_FWD(f)))
     {
-        return detail::transform_error_impl(*this, std::forward<F>(f));
+        return detail::transform_error_impl(*this, SCN_FWD(f));
     }
     template <typename F>
     constexpr auto transform_error(F&& f)
-        const& -> decltype(detail::transform_error_impl(*this,
-                                                        std::forward<F>(f)))
+        const& -> decltype(detail::transform_error_impl(*this, SCN_FWD(f)))
     {
-        return detail::transform_error_impl(*this, std::forward<F>(f));
+        return detail::transform_error_impl(*this, SCN_FWD(f));
     }
     template <typename F>
     constexpr auto transform_error(
-        F&& f) && -> decltype(detail::transform_error_impl(*this,
-                                                           std::forward<F>(f)))
+        F&& f) && -> decltype(detail::transform_error_impl(*this, SCN_FWD(f)))
     {
-        return detail::transform_error_impl(std::move(*this),
-                                            std::forward<F>(f));
+        return detail::transform_error_impl(SCN_MOVE(*this), SCN_FWD(f));
     }
     template <typename F>
     constexpr auto transform_error(F&& f)
-        const&& -> decltype(detail::transform_error_impl(*this,
-                                                         std::forward<F>(f)))
+        const&& -> decltype(detail::transform_error_impl(*this, SCN_FWD(f)))
     {
-        return detail::transform_error_impl(std::move(*this),
-                                            std::forward<F>(f));
+        return detail::transform_error_impl(SCN_MOVE(*this), SCN_FWD(f));
     }
 
 private:
@@ -2282,7 +2261,7 @@ inline constexpr bool boolean_testable_impl = std::is_convertible_v<T, bool>;
 struct boolean_testable_concept {
     template <typename T>
     auto requires_(T&& t)
-        -> requires_expr<boolean_testable_impl<decltype(!std::forward<T>(t))>>;
+        -> requires_expr<boolean_testable_impl<decltype(!SCN_FWD(t))>>;
 };
 
 template <typename T>
@@ -2813,12 +2792,11 @@ namespace detail {
 struct writable_concept {
     template <typename Out, typename T>
     auto requires_(Out&& o, T&& t)
-        -> decltype(*o = std::forward<T>(t),
-                    *std::forward<Out>(o) = std::forward<T>(t),
-                    const_cast<const iter_reference_t<Out>&&>(*o) =
-                        std::forward<T>(t),
-                    const_cast<const iter_reference_t<Out>&&>(
-                        *std::forward<Out>(o)) = std::forward<T>(t));
+        -> decltype(*o = SCN_FWD(t),
+                    *SCN_FWD(o) = SCN_FWD(t),
+                    const_cast<const iter_reference_t<Out>&&>(*o) = SCN_FWD(t),
+                    const_cast<const iter_reference_t<Out>&&>(*SCN_FWD(o)) =
+                        SCN_FWD(t));
 };
 
 }  // namespace detail
@@ -2948,7 +2926,7 @@ namespace detail {
 
 struct output_iterator_concept {
     template <typename I, typename T>
-    auto requires_(I i, T&& t) -> decltype(*i++ = std::forward<T>(t));
+    auto requires_(I i, T&& t) -> decltype(*i++ = SCN_FWD(t));
 };
 
 }  // namespace detail
@@ -3322,10 +3300,10 @@ private:
 public:
     template <typename T>
     constexpr auto operator()(T&& t) const
-        noexcept(noexcept(fn::impl(std::forward<T>(t), priority_tag<3>{})))
-            -> decltype(fn::impl(std::forward<T>(t), priority_tag<3>{}))
+        noexcept(noexcept(fn::impl(SCN_FWD(t), priority_tag<3>{})))
+            -> decltype(fn::impl(SCN_FWD(t), priority_tag<3>{}))
     {
-        return fn::impl(std::forward<T>(t), priority_tag<3>{});
+        return fn::impl(SCN_FWD(t), priority_tag<3>{});
     }
 };
 
@@ -3345,19 +3323,19 @@ private:
 
     template <typename T>
     static constexpr auto impl(T&& t) noexcept(
-        noexcept(ranges::size(std::forward<T>(t))))
-        -> decltype(ranges::size(std::forward<T>(t)), ssize_return_t<T>())
+        noexcept(ranges::size(SCN_FWD(t))))
+        -> decltype(ranges::size(SCN_FWD(t)), ssize_return_t<T>())
     {
-        return static_cast<ssize_return_t<T>>(ranges::size(std::forward<T>(t)));
+        return static_cast<ssize_return_t<T>>(ranges::size(SCN_FWD(t)));
     }
 
 public:
     template <typename T>
     constexpr auto operator()(T&& t) const
-        noexcept(noexcept(fn::impl(std::forward<T>(t))))
-            -> decltype(fn::impl(std::forward<T>(t)))
+        noexcept(noexcept(fn::impl(SCN_FWD(t))))
+            -> decltype(fn::impl(SCN_FWD(t)))
     {
-        return fn::impl(std::forward<T>(t));
+        return fn::impl(SCN_FWD(t));
     }
 };
 }  // namespace ssize_
@@ -3580,8 +3558,8 @@ struct view_base {};
 
 template <typename D>
 class view_interface : public view_base {
-    static_assert(std::is_class<D>::value, "");
-    static_assert(std::is_same_v<D, std::remove_cv_t<D>>, "");
+    static_assert(std::is_class<D>::value);
+    static_assert(std::is_same_v<D, std::remove_cv_t<D>>);
 
 private:
     constexpr D& derived() noexcept
@@ -4391,7 +4369,7 @@ public:
         if (!x._is_iterator() && y._is_iterator()) {
             return x.template _get_as<S>() == y.template _get_as<I>();
         }
-        SCN_EXPECT(false);
+        SCN_ASSERT(false);
         SCN_UNREACHABLE;
     }
 
@@ -4419,7 +4397,7 @@ public:
         if (!x._is_iterator() && y._is_iterator()) {
             return x.template _get_as<S>() - y.template _get_as<I>();
         }
-        SCN_EXPECT(false);
+        SCN_ASSERT(false);
         SCN_UNREACHABLE;
     }
 
@@ -6108,7 +6086,7 @@ inline constexpr char32_t decode_utf8_code_point_exhaustive(
     // gcc 7 thinks we'll get here, even when we won't
     // gcc 8 has a bug in debug mode:
     // https://gcc.gnu.org/bugzilla/show_bug.cgi?id=86678
-    SCN_EXPECT(false);
+    SCN_ASSERT(false);
 #endif
     SCN_UNREACHABLE;
 }
@@ -6168,7 +6146,7 @@ inline constexpr char32_t decode_utf8_code_point_exhaustive_valid(
     // gcc 7 thinks we'll get here, even when we won't
     // gcc 8 has a bug in debug mode:
     // https://gcc.gnu.org/bugzilla/show_bug.cgi?id=86678
-    SCN_EXPECT(false);
+    SCN_ASSERT(false);
 #endif
     SCN_UNREACHABLE;
 }
@@ -6306,7 +6284,7 @@ public:
     scan_file& operator=(const scan_file&) = delete;
 
     scan_file(scan_file&& other) noexcept
-        : m_prelude(std::move(other.m_prelude)), m_file(other.m_file)
+        : m_prelude(SCN_MOVE(other.m_prelude)), m_file(other.m_file)
     {
         other.m_prelude = {};
         other.m_file = nullptr;
@@ -6635,7 +6613,7 @@ public:
 
         SCN_EXPECT(m_parent);
         auto res = read_at_position();
-        SCN_EXPECT(res);
+        SCN_ASSERT(res);
         return parent()->get_character_at(m_position);
     }
 
@@ -6760,7 +6738,7 @@ public:
 private:
     bool do_fill() override
     {
-        SCN_EXPECT(false);
+        SCN_ASSERT(false);
         SCN_UNREACHABLE;
     }
 };
@@ -6859,7 +6837,7 @@ private:
             return false;
         }
         if constexpr (mp_valid_v<less_than_compare, iterator, sentinel>) {
-            SCN_EXPECT(m_cursor < ranges::end(*m_range));
+            SCN_ASSERT(m_cursor < ranges::end(*m_range));
         }
         if (!this->m_current_view.empty()) {
             this->m_putback_buffer.insert(this->m_putback_buffer.end(),
@@ -6870,7 +6848,7 @@ private:
         ++m_cursor;
         this->m_current_view = std::basic_string_view<char_type>{&m_latest, 1};
         if constexpr (mp_valid_v<less_than_compare, iterator, sentinel>) {
-            SCN_EXPECT(m_cursor <= ranges::end(*m_range));
+            SCN_ASSERT(m_cursor <= ranges::end(*m_range));
         }
         return true;
     }
@@ -6916,7 +6894,7 @@ inline void set_prelude_after_sync(std::basic_string<CharT>& prelude,
     const auto n_from_putback_buffer =
         detail::min(n_needed - n_from_current_view,
                     static_cast<std::ptrdiff_t>(putback_buffer.size()));
-    SCN_EXPECT(n_from_putback_buffer + n_from_current_view == n_needed);
+    SCN_ASSERT(n_from_putback_buffer + n_from_current_view == n_needed);
 
     prelude.append(putback_buffer.end() - n_from_putback_buffer,
                    putback_buffer.end());
@@ -6977,7 +6955,7 @@ private:
             return false;
         }
         if constexpr (mp_valid_v<less_than_compare, iterator, sentinel>) {
-            SCN_EXPECT(m_cursor.value < ranges::end(m_range));
+            SCN_ASSERT(m_cursor.value < ranges::end(m_range));
         }
         if (!this->m_current_view.empty()) {
             this->m_putback_buffer.insert(this->m_putback_buffer.end(),
@@ -6988,7 +6966,7 @@ private:
         ++m_cursor.value;
         this->m_current_view = std::basic_string_view<char_type>{&m_latest, 1};
         if constexpr (mp_valid_v<less_than_compare, iterator, sentinel>) {
-            SCN_EXPECT(m_cursor.value <= ranges::end(m_range));
+            SCN_ASSERT(m_cursor.value <= ranges::end(m_range));
         }
         return true;
     }
@@ -7840,7 +7818,7 @@ constexpr size_t encode_types()
                (encode_types_impl<CharT, Ts...>() << packed_arg_bits);
     }
     else {
-        SCN_EXPECT(false);
+        SCN_ASSERT(false);
         SCN_UNREACHABLE;
     }
 }
@@ -8431,8 +8409,9 @@ public:
     constexpr size_t next_arg_id()
     {
         if (SCN_UNLIKELY(m_next_arg_id < 0)) {
-            on_error(
-                "Cannot switch from manual to automatic argument indexing");
+            // clang-format off
+            on_error("Cannot switch from manual to automatic argument indexing");
+            // clang-format on
             return 0;
         }
 
@@ -8524,10 +8503,10 @@ constexpr auto&& forward_like(U&& x) noexcept
     }
     else {
         if constexpr (is_adding_const) {
-            return std::move(static_cast<std::add_const_t<U>&>(x));
+            return SCN_MOVE(static_cast<std::add_const_t<U>&>(x));
         }
         else {
-            return std::move(x);
+            return SCN_MOVE(x);
         }
     }
 }
@@ -9332,7 +9311,7 @@ public:
     {
         auto id = base::next_arg_id();
         if (SCN_UNLIKELY(id >= static_cast<size_t>(m_num_args))) {
-            this->on_error("Argument not found");
+            this->on_error("Argument ID out of range");
         }
         return id;
     }
@@ -9341,7 +9320,7 @@ public:
     {
         base::check_arg_id(id);
         if (SCN_UNLIKELY(id >= static_cast<size_t>(m_num_args))) {
-            this->on_error("Argument not found");
+            this->on_error("Argument ID out of range");
         }
     }
     using base::check_arg_id;
@@ -9374,7 +9353,7 @@ constexpr void basic_scan_parse_context<CharT>::do_check_arg_id(size_t id)
         if (static_cast<int>(id) >=
             static_cast<parse_context_type*>(this)->get_num_args()) {
             SCN_UNLIKELY_ATTR
-            on_error("Argument not found");
+            on_error("Argument ID out of range");
         }
     }
 }
@@ -9593,7 +9572,7 @@ struct format_specs {
                 // gcc 7 thinks we'll get here, even when we won't
                 // gcc 8 has a bug in debug mode:
                 // https://gcc.gnu.org/bugzilla/show_bug.cgi?id=86678
-                SCN_EXPECT(false);
+                SCN_ASSERT(false);
 #endif
                 SCN_UNREACHABLE;
         }
@@ -9646,7 +9625,7 @@ public:
             m_specs.localized = true;
         }
         else {
-            on_error("'L' flag invalid when SCN_DISABLE_LOCALE is on");
+            on_error("'L' specifier invalid when SCN_DISABLE_LOCALE is on");
         }
     }
 
@@ -9886,7 +9865,7 @@ constexpr presentation_type parse_presentation_type(CharT type)
             // gcc 7 thinks we'll get here, even when we won't
             // gcc 8 has a bug in debug mode:
             // https://gcc.gnu.org/bugzilla/show_bug.cgi?id=86678
-            SCN_EXPECT(false);
+            SCN_ASSERT(false);
 #endif
             SCN_UNREACHABLE;
         default:
@@ -9986,7 +9965,7 @@ constexpr const CharT* parse_width(const CharT* begin,
             handler.on_width(width);
         }
         else {
-            handler.on_error("Invalid field width");
+            handler.on_error("Field width is too large");
             return begin;
         }
     }
@@ -10010,7 +9989,7 @@ constexpr const CharT* parse_precision(const CharT* begin,
             handler.on_precision(prec);
         }
         else {
-            handler.on_error("Invalid field precision");
+            handler.on_error("Field precision is too large");
             return begin;
         }
     }
@@ -10354,31 +10333,41 @@ constexpr const CharT* parse_format_specs(const CharT* begin,
     }
 
     if (SCN_UNLIKELY(begin == end)) {
-        handler.on_error("Unexpected end of format string");
+        // clang-format off
+        handler.on_error("Unexpected end of format string, expected a format specifier or '}'");
+        // clang-format on
         return begin;
     }
 
     begin = parse_align(begin, end, handler);
     if (SCN_UNLIKELY(begin == end)) {
-        handler.on_error("Unexpected end of format string");
+        // clang-format off
+        handler.on_error("Unexpected end of format string, expected a width, precision, type specifier, or '}'");
+        // clang-format on
         return begin;
     }
 
     begin = parse_width(begin, end, handler);
     if (SCN_UNLIKELY(begin == end)) {
-        handler.on_error("Unexpected end of format string");
+        // clang-format off
+        handler.on_error("Unexpected end of format string, expected a precision, type specifier, or '}'");
+        // clang-format on
         return begin;
     }
 
     if (*begin == CharT{'.'}) {
         ++begin;
         if (SCN_UNLIKELY(begin == end)) {
-            handler.on_error("Unexpected end of format string");
+            // clang-format off
+            handler.on_error("Unexpected end of format string, expected a precision after '.'");
+            // clang-format on
             return begin;
         }
         begin = parse_precision(begin, end, handler);
         if (SCN_UNLIKELY(begin == end)) {
-            handler.on_error("Unexpected end of format string");
+            // clang-format off
+            handler.on_error("Unexpected end of format string, expected a type specifier or '}'");
+            // clang-format on
             return begin;
         }
     }
@@ -10388,7 +10377,9 @@ constexpr const CharT* parse_format_specs(const CharT* begin,
         ++begin;
     }
     if (SCN_UNLIKELY(begin == end)) {
-        handler.on_error("Unexpected end of format string");
+        // clang-format off
+        handler.on_error("Unexpected end of format string, expected a type specifier or '}'");
+        // clang-format on
         return begin;
     }
 
@@ -10396,7 +10387,7 @@ constexpr const CharT* parse_format_specs(const CharT* begin,
         do_presentation();
     }
     if (SCN_UNLIKELY(begin == end)) {
-        handler.on_error("Unexpected end of format string");
+        handler.on_error("Unexpected end of format string, expected '}'");
         return begin;
     }
 
@@ -10458,8 +10449,14 @@ constexpr const CharT* parse_replacement_field(const CharT* begin,
                 return begin;
             }
             begin = handler.on_format_specs(adapter.arg_id, begin + 1, end);
-            if (SCN_UNLIKELY(begin == end || *begin != '}')) {
-                handler.on_error("Unknown format specifier");
+            if (SCN_UNLIKELY(begin == end)) {
+                handler.on_error("Missing '}' in format string");
+                return begin;
+            }
+            if (SCN_UNLIKELY(*begin != '}')) {
+                // clang-format off
+                handler.on_error("Unexpected character in format specifier, expected '}'");
+                // clang-format on
                 return begin;
             }
         }
@@ -10580,7 +10577,7 @@ constexpr arg_type_category get_category_for_arg_type(arg_type type)
             SCN_CLANG_PUSH
             SCN_CLANG_IGNORE("-Wcovered-switch-default")
         default:
-            SCN_ENSURE(false);
+            SCN_ASSERT(false);
             SCN_UNREACHABLE;
             SCN_CLANG_POP
     }
@@ -10663,7 +10660,9 @@ constexpr void check_code_point_type_specs(const format_specs& specs,
     if (specs.type != presentation_type::none &&
         specs.type != presentation_type::character) {
         SCN_UNLIKELY_ATTR
-        return handler.on_error("Invalid type specifier for code point type");
+        // clang-format off
+        return handler.on_error("Invalid type specifier for a code point type, expected: c");
+        // clang-format on
     }
 }
 
@@ -10675,7 +10674,9 @@ constexpr void check_float_type_specs(const format_specs& specs,
         (specs.type < presentation_type::float_hex ||
          specs.type > presentation_type::float_general)) {
         SCN_UNLIKELY_ATTR
-        return handler.on_error("Invalid type specifier for float type");
+        // clang-format off
+        return handler.on_error("Invalid type specifier for a floating-point type, expected one of: a, A, e, E, f, F, g, G");
+        // clang-format on
     }
 }
 
@@ -10702,7 +10703,9 @@ constexpr void check_string_type_specs(const format_specs& specs,
         return;
     }
     SCN_UNLIKELY_ATTR
-    handler.on_error("Invalid type specifier for string");
+    // clang-format off
+    handler.on_error("Invalid type specifier for a string type, expected one of: s, c, [character set], /regex/");
+    // clang-format on
 }
 
 template <typename Handler>
@@ -10712,7 +10715,9 @@ constexpr void check_pointer_type_specs(const format_specs& specs,
     if (specs.type != presentation_type::none &&
         specs.type != presentation_type::pointer) {
         SCN_UNLIKELY_ATTR
-        return handler.on_error("Invalid type specifier for pointer");
+        // clang-format off
+        return handler.on_error("Invalid type specifier for a pointer type, expected: p");
+        // clang-format on
     }
 }
 
@@ -10729,7 +10734,9 @@ constexpr void check_bool_type_specs(const format_specs& specs,
         specs.type != presentation_type::int_octal &&
         specs.type != presentation_type::int_decimal) {
         SCN_UNLIKELY_ATTR
-        return handler.on_error("Invalid type specifier for boolean");
+        // clang-format off
+        return handler.on_error("Invalid type specifier for a boolean type, expected one of: s, i, d, u, o, x, X, b, B");
+        // clang-format on
     }
 }
 
@@ -10749,7 +10756,9 @@ constexpr void check_regex_type_specs(const format_specs& specs,
         return;
     }
     SCN_UNLIKELY_ATTR
-    handler.on_error("Invalid type specifier for regex_matches");
+    // clang-format off
+    handler.on_error("Invalid type specifier for regex_matches, expected: /regex/");
+    // clang-format on
 }
 #endif
 
@@ -11421,10 +11430,10 @@ private:
     constexpr void set_arg_as_read(size_t id)
     {
         if (id >= num_args) {
-            return on_error("Invalid out-of-range argument ID");
+            return on_error("Argument ID out of range");
         }
         if (m_visited_args[id]) {
-            return on_error("Argument with this ID already scanned");
+            return on_error("Argument with this ID has already been scanned");
         }
         m_visited_args[id] = true;
     }
@@ -11848,7 +11857,7 @@ constexpr typename ParseCtx::iterator scanner_parse_for_builtin_type(
         case arg_type::none_type:
             SCN_FALLTHROUGH;
         case arg_type::custom_type:
-            SCN_ENSURE(false);
+            SCN_ASSERT(false);
             break;
 
         case arg_type::bool_type:
@@ -11904,7 +11913,7 @@ constexpr typename ParseCtx::iterator scanner_parse_for_builtin_type(
             SCN_CLANG_IGNORE("-Wcovered-switch-default")
 
         default:
-            SCN_ENSURE(false);
+            SCN_ASSERT(false);
             SCN_UNREACHABLE;
 
             SCN_CLANG_POP
@@ -12195,7 +12204,7 @@ constexpr decltype(auto) visit_impl(Visitor&& vis, basic_scan_arg<Ctx>& arg)
 
 #undef SCN_VISIT
 
-    SCN_ENSURE(false);
+    SCN_ASSERT(false);
     SCN_UNREACHABLE;
 }
 

@@ -19,7 +19,7 @@
 
 int main()
 {
-    // build error: Invalid type specifier for code point type
+    // build error: Invalid type specifier for a code point type
     auto result = scn::scan<char32_t>("a", SCN_STRING("{:d}"));
     return !result;
 }

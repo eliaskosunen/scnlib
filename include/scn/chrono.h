@@ -659,7 +659,7 @@ constexpr const CharT* parse_chrono_format_specs(const CharT* begin,
                                                  Handler&& handler)
 {
     if (begin == end || *begin == CharT{'}'}) {
-        handler.on_error("chrono format specs can't be empty");
+        handler.on_error("Chrono format string can't be empty");
         return begin;
     }
 
@@ -668,14 +668,15 @@ constexpr const CharT* parse_chrono_format_specs(const CharT* begin,
         handler.on_localized();
         begin = ++p;
         if (p == end) {
-            handler.on_error("chrono format specs can't be empty");
+            handler.on_error("Chrono format string can't be empty");
             return p;
         }
     }
 
     if (p == end || *p != CharT{'%'}) {
-        handler.on_error(
-            "chrono format spec must start with a conversion specifier (%...)");
+        // clang-format off
+        handler.on_error("Chrono format string must start with a conversion specifier (%...)");
+        // clang-format on
         return p;
     }
 
@@ -825,15 +826,17 @@ constexpr const CharT* parse_chrono_format_specs(const CharT* begin,
                 if (*p == CharT{'E'} || *p == CharT{'O'}) {
                     ++p;
                     if (p == end) {
-                        handler.on_error(
-                            "Unexpected end of chrono format string");
+                        // clang-format off
+                        handler.on_error("Unexpected end of chrono format string");
+                        // clang-format on
                         return p;
                     }
                     use_alternate = true;
                 }
                 if (*p != CharT{'S'}) {
-                    handler.on_error(
-                        "Expected `S` after `%.` in format string");
+                    // clang-format off
+                    handler.on_error("Expected 'S' after '%.' in chrono format string");
+                    // clang-format on
                     return p;
                 }
                 ++p;
@@ -919,9 +922,9 @@ constexpr const CharT* parse_chrono_format_specs(const CharT* begin,
                         handler.on_tz_offset(numeric_system::alternative_e);
                         break;
                     default:
-                        handler.on_error(
-                            "Invalid character following 'E' in chrono format "
-                            "string");
+                        // clang-format off
+                        handler.on_error("Invalid character following 'E' in chrono format string");
+                        // clang-format on
                         return p;
                 }
                 break;
@@ -982,9 +985,9 @@ constexpr const CharT* parse_chrono_format_specs(const CharT* begin,
                         handler.on_tz_offset(numeric_system::alternative_o);
                         break;
                     default:
-                        handler.on_error(
-                            "Invalid character following 'O' in chrono format "
-                            "string");
+                        // clang-format off
+                        handler.on_error("Invalid character following 'O' in chrono format string");
+                        // clang-format on
                         return p;
                 }
                 break;
@@ -1800,8 +1803,9 @@ constexpr auto chrono_parse_impl(ParseCtx& pctx,
     auto it = pctx.begin();
     auto end = pctx.end();
     if (it == end || *it == CharT{'}'}) {
-        pctx.on_error(
-            "Format string without specifiers is not valid for this type");
+        // clang-format off
+        pctx.on_error("Format string without specifiers is not valid for this type");
+        // clang-format on
         return it;
     }
 
@@ -1811,7 +1815,7 @@ constexpr auto chrono_parse_impl(ParseCtx& pctx,
         fmt_str = detail::make_string_view_from_pointers(it, end);
     }
     if (auto e = checker.get_error(); SCN_UNLIKELY(!e)) {
-        SCN_EXPECT(e.error().code() == scan_error::invalid_format_string);
+        SCN_ASSERT(e.error().code() == scan_error::invalid_format_string);
         pctx.on_error(e.error().msg());
     }
     return end;
@@ -1922,7 +1926,7 @@ struct scanner<weekday, CharT>
         if (!r) {
             return unexpected(r.error());
         }
-        SCN_EXPECT(dt.wday);
+        SCN_ASSERT(dt.wday);
         wd = *dt.wday;
         return *r;
     }
@@ -1939,7 +1943,7 @@ struct scanner<day, CharT>
         if (!r) {
             return unexpected(r.error());
         }
-        SCN_EXPECT(dt.mday);
+        SCN_ASSERT(dt.mday);
         d = day{static_cast<unsigned>(*dt.mday)};
         return *r;
     }
@@ -1956,7 +1960,7 @@ struct scanner<month, CharT>
         if (!r) {
             return unexpected(r.error());
         }
-        SCN_EXPECT(dt.mon);
+        SCN_ASSERT(dt.mon);
         m = *dt.mon;
         return *r;
     }
@@ -1973,7 +1977,7 @@ struct scanner<year, CharT>
         if (!r) {
             return unexpected(r.error());
         }
-        SCN_EXPECT(dt.year);
+        SCN_ASSERT(dt.year);
         y = year{*dt.year};
         return *r;
     }
@@ -1992,8 +1996,8 @@ struct scanner<month_day, CharT>
         if (!r) {
             return unexpected(r.error());
         }
-        SCN_EXPECT(dt.mon);
-        SCN_EXPECT(dt.mday);
+        SCN_ASSERT(dt.mon);
+        SCN_ASSERT(dt.mday);
         if (!detail::is_valid_day_of_month(std::nullopt,
                                            static_cast<unsigned>(*dt.mon),
                                            static_cast<unsigned>(*dt.mday))) {
@@ -2019,8 +2023,8 @@ struct scanner<year_month, CharT>
         if (!r) {
             return unexpected(r.error());
         }
-        SCN_EXPECT(dt.year);
-        SCN_EXPECT(dt.mon);
+        SCN_ASSERT(dt.year);
+        SCN_ASSERT(dt.mon);
         ym = year_month{year{*dt.year}, month{static_cast<unsigned>(*dt.mon)}};
         return *r;
     }
@@ -2039,9 +2043,9 @@ struct scanner<year_month_day, CharT>
         if (!r) {
             return unexpected(r.error());
         }
-        SCN_EXPECT(dt.year);
-        SCN_EXPECT(dt.mon);
-        SCN_EXPECT(dt.mday);
+        SCN_ASSERT(dt.year);
+        SCN_ASSERT(dt.mon);
+        SCN_ASSERT(dt.mday);
         if (!detail::is_valid_day_of_month(dt.year,
                                            static_cast<unsigned>(*dt.mon),
                                            static_cast<unsigned>(*dt.mday))) {
