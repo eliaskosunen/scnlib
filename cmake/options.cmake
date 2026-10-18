@@ -103,23 +103,10 @@ option(
     ON
 )
 
-option(SCN_USE_32BIT "Compile as 32-bit (gcc or clang only)" OFF)
 option(
     SCN_USE_EXCEPTIONS
     "Compile with exception support (disabling also disables regex support, unless SCN_REGEX_BACKEND is re2)"
     ON
-)
-option(SCN_USE_RTTI "Compile with RTTI (run-time type information) support" ON)
-
-option(
-    SCN_USE_NATIVE_ARCH
-    "Add -march=native to build flags (gcc or clang only)"
-    OFF
-)
-option(
-    SCN_USE_HASWELL_ARCH
-    "Add -march=haswell to build flags (gcc or clang only)"
-    OFF
 )
 
 option(SCN_USE_ASAN "Compile with AddressSanitizer" OFF)

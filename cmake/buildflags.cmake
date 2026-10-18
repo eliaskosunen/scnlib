@@ -226,18 +226,6 @@ set(SCN_LIBRARY_PRIVATE_FLAGS
     ${SCN_WERROR_FLAGS}
     ${SCN_BIGOBJ_FLAGS}
 )
-set(SCN_LIBRARY_LINK_FLAGS)
-
-if(SCN_USE_32BIT)
-    list(APPEND SCN_LIBRARY_PUBLIC_FLAGS -m32)
-    list(APPEND SCN_LIBRARY_LINK_FLAGS -m32)
-endif()
-
-if(SCN_USE_NATIVE_ARCH)
-    list(APPEND SCN_LIBRARY_PRIVATE_FLAGS -march=native)
-elseif(SCN_USE_HASWELL_ARCH)
-    list(APPEND SCN_LIBRARY_PRIVATE_FLAGS -march=haswell)
-endif()
 
 if(NOT SCN_USE_EXCEPTIONS)
     list(APPEND SCN_LIBRARY_PRIVATE_FLAGS ${SCN_DISABLE_EXCEPTIONS_FLAGS})
@@ -247,14 +235,6 @@ elseif(
 )
     # clang-cl requires explicitly enabling exceptions
     list(APPEND SCN_LIBRARY_PUBLIC_FLAGS /EHsc)
-endif()
-
-if(NOT SCN_USE_RTTI)
-    if(SCN_CXX_FRONTEND STREQUAL "GNU")
-        list(APPEND SCN_LIBRARY_PRIVATE_FLAGS -fno-rtti)
-    elseif(SCN_CXX_FRONTEND STREQUAL "MSVC")
-        list(APPEND SCN_LIBRARY_PRIVATE_FLAGS /GR-)
-    endif()
 endif()
 
 # Not part of the public flags, so that it doesn't leak into consumers.
@@ -284,7 +264,6 @@ function(set_library_flags target)
             PRIVATE ${SCN_DISABLE_EXCEPTIONS_DEFINITIONS}
         )
     endif()
-    target_link_options(${target} PUBLIC ${SCN_LIBRARY_LINK_FLAGS})
     target_compile_features(${target} PUBLIC cxx_std_17)
 endfunction()
 

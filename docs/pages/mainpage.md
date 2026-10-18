@@ -176,7 +176,7 @@ Building and running the runtime performance benchmarks:
 
 \code{.sh}
 # create build directory like above
-$ cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_INTERPROCEDURAL_OPTIMIZATION=ON -DSCN_USE_NATIVE_ARCH=ON ..
+$ cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_INTERPROCEDURAL_OPTIMIZATION=ON -DCMAKE_CXX_FLAGS=-march=native ..
 $ make -j
 
 # disable CPU frequency scaling
@@ -503,35 +503,11 @@ CMake build type configuration
 </tr>
 
 <tr>
-<td>`SCN_USE_RTTI`</td>
-<td>✅</td>
-<td>❌</td>
-<td>`ON`</td>
-<td>Compile with RTTI</td>
-</tr>
-
-<tr>
 <td>`SCN_COVERAGE`</td>
 <td>✅</td>
 <td>❌</td>
 <td>`OFF`</td>
 <td>Enable code coverage reporting</td>
-</tr>
-
-<tr>
-<td>`SCN_USE_NATIVE_ARCH`</td>
-<td>✅</td>
-<td>❌</td>
-<td>`OFF`</td>
-<td>Add `-march=native`</td>
-</tr>
-
-<tr>
-<td>`SCN_USE_HASWELL_ARCH`</td>
-<td>✅</td>
-<td>❌</td>
-<td>`OFF`</td>
-<td>Add `-march=haswell`<br>(used for benchmarking to get a more recent, but reasonable architecture)</td>
 </tr>
 
 <tr>
