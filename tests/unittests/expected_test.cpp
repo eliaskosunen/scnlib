@@ -109,7 +109,6 @@ struct with_default_constructor {
 
 #if SCN_HAS_EXCEPTIONS
 struct throws_on_nonzero_construct {
-    throws_on_nonzero_construct() = default;
     throws_on_nonzero_construct(int value)
     {
         if (value != 0) {
