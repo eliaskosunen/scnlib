@@ -7,6 +7,8 @@ void do_scan()
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wunused-result"
 #endif
+    volatile int distinct = 42;
+
     int i;
     scanf("%d", &i);
 

@@ -19,6 +19,8 @@
 
 #include <scn/impl.h>
 
+#include <cstdio>
+#include <cstdlib>
 #include <fstream>
 #include <random>
 #include <sstream>
@@ -30,6 +32,11 @@ std::basic_string<CharT> make_benchmark_string(const std::string& sourcefile)
     std::ifstream fstr{sourcefile};
     std::stringstream ss;
     ss << fstr.rdbuf();
+    if (!fstr || ss.str().empty()) {
+        std::fprintf(stderr, "Could not read benchmark input from %s\n",
+                     sourcefile.c_str());
+        std::exit(EXIT_FAILURE);
+    }
 
     if constexpr (sizeof(CharT) == 1) {
         return ss.str();

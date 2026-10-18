@@ -431,14 +431,6 @@ CMake build type configuration
 </tr>
 
 <tr>
-<td>`SCN_BENCHMARKS_BUILDTIME`</td>
-<td>✅</td>
-<td>❌</td>
-<td>`SCN_ENABLE_EXTRAS`</td>
-<td>Enable build-time benchmark targets</td>
-</tr>
-
-<tr>
 <td>`SCN_BENCHMARKS_BINARYSIZE`</td>
 <td>✅</td>
 <td>❌</td>

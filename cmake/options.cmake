@@ -34,11 +34,6 @@ option(
 
 option(SCN_BENCHMARKS "Enable runtime benchmarks" ${SCN_ENABLE_EXTRAS})
 option(
-    SCN_BENCHMARKS_BUILDTIME
-    "Enable buildtime benchmarks"
-    ${SCN_ENABLE_EXTRAS}
-)
-option(
     SCN_BENCHMARKS_BINARYSIZE
     "Enable binary size benchmarks"
     ${SCN_ENABLE_EXTRAS}

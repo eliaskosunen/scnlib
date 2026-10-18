@@ -70,6 +70,7 @@ scn::scan<...>(strm, ...);
  * The CMake options `SCN_USE_RTTI`, `SCN_USE_NATIVE_ARCH`, and `SCN_USE_HASWELL_ARCH` were removed.
    Use `CMAKE_CXX_FLAGS` instead, for example `-fno-rtti` (`/GR-` with MSVC), `-march=native`, or `-march=haswell`.
    Unlike the options, the flags also apply to the code compiled from the headers in your own targets.
+ * The CMake option `SCN_BENCHMARKS_BUILDTIME` was removed. The build time benchmark is run with `scripts/benchmark.py`.
 
 ### Changes
 
