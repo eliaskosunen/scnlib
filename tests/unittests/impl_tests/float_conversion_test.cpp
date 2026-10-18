@@ -258,7 +258,7 @@ TEST(SaturatingExponentTest, Parse)
               max_exponent_magnitude);
     EXPECT_EQ(parse_saturating_exponent("99999999999999999999"sv, false),
               -max_exponent_magnitude);
-    EXPECT_EQ(parse_saturating_exponent(std::string_view{std::string(400, '9')},
+    EXPECT_EQ(parse_saturating_exponent(std::string_view(std::string(400, '9')),
                                         true),
               max_exponent_magnitude);
 }

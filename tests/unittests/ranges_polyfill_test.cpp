@@ -262,7 +262,11 @@ TEST(RangesPolyfillTest, IterConceptPointers)
 {
     static_assert(scn::ranges::random_access_iterator<const char*>);
     static_assert(scn::ranges::random_access_iterator<int*>);
+#if !SCN_CLANG || SCN_CLANG >= SCN_COMPILER(16, 0, 0)
+    // Clang 15 and older warn about dereferencing `void*` in the
+    // requirement instead of treating it as a substitution failure
     static_assert(!scn::ranges::input_iterator<void*>);
+#endif
 }
 
 // The fallback needs to know if iterator_traits is the primary template
