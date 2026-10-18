@@ -1,3 +1,5 @@
 # .git-blame-ignore-revs
 # Change clang-format option NamespaceIndentation All -> None
 e27ab49d3eede2feef5392e1970d1a48a0a2984d
+# Reformat with scripts/format.py (clang-format, ruff, gersemi, shfmt)
+790242b7eb161357f6b11ee13d0e558e190e3f7d
