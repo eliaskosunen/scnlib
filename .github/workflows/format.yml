@@ -3,16 +3,10 @@ name: Format
 on:
   push:
     branches:
-      - master
-      - v*/dev
-      - ci/*
-      - dev/*
+      - '**'
   pull_request:
     branches:
-      - master
-      - v*/dev
-      - ci/*
-      - dev/*
+      - '**'
   workflow_dispatch:
 
 concurrency:
