@@ -227,12 +227,6 @@ set(SCN_LIBRARY_PRIVATE_FLAGS
     ${SCN_BIGOBJ_FLAGS}
 )
 
-if(SCN_USE_NATIVE_ARCH)
-    list(APPEND SCN_LIBRARY_PRIVATE_FLAGS -march=native)
-elseif(SCN_USE_HASWELL_ARCH)
-    list(APPEND SCN_LIBRARY_PRIVATE_FLAGS -march=haswell)
-endif()
-
 if(NOT SCN_USE_EXCEPTIONS)
     list(APPEND SCN_LIBRARY_PRIVATE_FLAGS ${SCN_DISABLE_EXCEPTIONS_FLAGS})
 elseif(
@@ -241,14 +235,6 @@ elseif(
 )
     # clang-cl requires explicitly enabling exceptions
     list(APPEND SCN_LIBRARY_PUBLIC_FLAGS /EHsc)
-endif()
-
-if(NOT SCN_USE_RTTI)
-    if(SCN_CXX_FRONTEND STREQUAL "GNU")
-        list(APPEND SCN_LIBRARY_PRIVATE_FLAGS -fno-rtti)
-    elseif(SCN_CXX_FRONTEND STREQUAL "MSVC")
-        list(APPEND SCN_LIBRARY_PRIVATE_FLAGS /GR-)
-    endif()
 endif()
 
 # Not part of the public flags, so that it doesn't leak into consumers.

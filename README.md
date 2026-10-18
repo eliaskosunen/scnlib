@@ -308,7 +308,7 @@ and `OFF` otherwise.
 $ cd build
 $ cmake -DSCN_BENCHMARKS=ON \
         -DCMAKE_BUILD_TYPE=Release -DCMAKE_INTERPROCEDURAL_OPTIMIZATION=ON \
-        -DSCN_USE_HASWELL_ARCH=ON ..
+        -DCMAKE_CXX_FLAGS=-march=haswell ..
 $ cmake --build .
 # choose benchmarks to run in ./benchmark/runtime/*/*_bench
 $ ./benchmark/runtime/integer/scn_int_bench

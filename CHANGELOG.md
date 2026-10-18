@@ -67,6 +67,9 @@ scn::scan<...>(strm, ...);
  * The CMake option `SCN_USE_32BIT` was removed.
    To build for 32-bit x86, use a toolchain file, or add `-m32` to `CMAKE_CXX_FLAGS`,
    `CMAKE_EXE_LINKER_FLAGS`, and `CMAKE_SHARED_LINKER_FLAGS`.
+ * The CMake options `SCN_USE_RTTI`, `SCN_USE_NATIVE_ARCH`, and `SCN_USE_HASWELL_ARCH` were removed.
+   Use `CMAKE_CXX_FLAGS` instead, for example `-fno-rtti` (`/GR-` with MSVC), `-march=native`, or `-march=haswell`.
+   Unlike the options, the flags also apply to the code compiled from the headers in your own targets.
 
 ### Changes
 
