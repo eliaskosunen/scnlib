@@ -984,11 +984,12 @@
 #endif
 
 // Detect std::regex_constants::multiline:
-// libc++ 15 and later, or libstdc++ 11.4 or later
+// libc++ 15 and later, libstdc++ 11.4 or later, or MSVC STL 202506 or later
 // (2023-05-28 is the date of the commit introducing `multiline`,
 //  libstdc++ doesn't support checking for minor versions)
 #if SCN_STDLIB_LIBCPP >= 15000 || SCN_STDLIB_GLIBCXX >= 12 || \
-    (SCN_STDLIB_GLIBCXX == 11 && __GLIBCXX__ >= 20230528L)
+    (SCN_STDLIB_GLIBCXX == 11 && __GLIBCXX__ >= 20230528L) || \
+    (SCN_STDLIB_MS_STL && _MSVC_STL_UPDATE >= 202506L)
 #define SCN_HAS_STD_REGEX_MULTILINE 1
 #else
 #define SCN_HAS_STD_REGEX_MULTILINE 0

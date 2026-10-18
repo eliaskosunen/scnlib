@@ -128,7 +128,10 @@ SCN_BEGIN_NAMESPACE
  * <td>
  * Supported by `Boost` and `re2`.
  * For `std`, uses `std::regex_constants::multiline`,
- * which was introduced in C++17, but isn't implemented by MSVC.
+ * which was introduced in C++17.
+ * MSVC implements it starting from MSVC Build Tools 14.50 (Visual Studio 2026).
+ * Older versions of MSVC reject `/m`, and match `^` and `$` at line
+ * boundaries even without it.
  * </td>
  * </tr>
  *
