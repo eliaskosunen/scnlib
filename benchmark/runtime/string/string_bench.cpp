@@ -125,23 +125,23 @@ BENCHMARK(bench_string_sstream<wchar_t, unicode_tag>);
 namespace {
 const char* sscanf_impl(const char* input, std::string& value)
 {
-    auto r = std::sscanf(input, " %255s", value.data());
+    int consumed = 0;
+    auto r = std::sscanf(input, " %255s%n", value.data(), &consumed);
     if (r != 1) {
         return nullptr;
     }
-    auto len = std::strlen(value.c_str());
-    value.resize(len);
-    return input + len;
+    value.resize(std::strlen(value.c_str()));
+    return input + consumed;
 }
 const wchar_t* sscanf_impl(const wchar_t* input, std::wstring& value)
 {
-    auto r = std::swscanf(input, L" %255s", value.data());
+    int consumed = 0;
+    auto r = std::swscanf(input, L" %255ls%n", value.data(), &consumed);
     if (r != 1) {
         return nullptr;
     }
-    auto len = std::wcslen(value.c_str());
-    value.resize(len);
-    return input + len;
+    value.resize(std::wcslen(value.c_str()));
+    return input + consumed;
 }
 }  // namespace
 

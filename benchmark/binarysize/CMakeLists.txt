@@ -1,3 +1,11 @@
+# Inlining the generated functions into main would hide them from the size
+# measurement, and make the copies indistinguishable from each other
+if(MSVC)
+    set(binarysize_noinline "__declspec(noinline) ")
+else()
+    set(binarysize_noinline "__attribute__((noinline)) ")
+endif()
+
 function(generate_binarysize_test_files template outdir sources)
     set(binarysize_test_path "${CMAKE_CURRENT_BINARY_DIR}/${outdir}/")
     set(binarysize_test_main "${binarysize_test_path}/binarysize_test_main.cpp")
@@ -15,6 +23,12 @@ function(generate_binarysize_test_files template outdir sources)
         string(
             REPLACE "do_scan"
             "do_scan_${i}"
+            template_contents
+            "${template_contents}"
+        )
+        string(
+            REPLACE "void do_scan_${i}"
+            "${binarysize_noinline}void do_scan_${i}"
             template_contents
             "${template_contents}"
         )
@@ -99,14 +113,4 @@ target_link_libraries(
     scn_benchmark_binarysize_scnlib
     scn_internal
     scn_benchmark_binarysize_base
-)
-
-add_custom_target(
-    scn_benchmark_binarysize_prepare
-    ALL
-    COMMAND
-        ${CMAKE_COMMAND} -E copy "${CMAKE_CURRENT_LIST_DIR}/binarysize_bench.py"
-        "${CMAKE_CURRENT_LIST_DIR}/run_binarysize_bench.py"
-        "${CMAKE_BINARY_DIR}/benchmark/binarysize"
-    COMMENT "Copying binary size benchmark scripts"
 )

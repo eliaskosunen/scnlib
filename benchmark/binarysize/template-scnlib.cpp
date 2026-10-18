@@ -2,6 +2,8 @@
 
 void do_scan()
 {
+    volatile int distinct = 42;
+
     auto _1 = scn::input<int>("{}");
     auto _2 = scn::input<double>("{}");
     auto _3 = scn::input<long long>("{}");

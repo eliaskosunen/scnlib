@@ -2,6 +2,8 @@
 
 void do_scan()
 {
+    volatile int distinct = 42;
+
     int i;
     std::cin >> i;
 

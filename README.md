@@ -282,8 +282,10 @@ Above,
   which contains multiple values in their text representations, separated by
   spaces. The time used for creating any state needed for the scanner
   is not included. This test is called `"repeated"` in the benchmark sources.
-* The string test is an exception: strings are read one after another from a
-  sample of Lorem Ipsum.
+* The string test is an exception: whitespace-separated words are read one
+  after another from a sample text. "Lorem Ipsum" is ASCII-only, and "Unicode"
+  is Markus Kuhn's UTF-8 demo (`benchmark/runtime/string/unicode.txt`), with
+  mathematical notation, many languages and scripts, and box-drawing characters.
 
 The difference between "Test 1" and "Test 2" is most pronounced when using
 a `stringstream`, which is relatively expensive to construct,
@@ -299,8 +301,18 @@ with `-O3 -DNDEBUG -march=haswell` and LTO enabled.
 These benchmarks were run on 2024-05-23 (commit 3fd830de).
 
 The source code for these benchmarks can be found in the `benchmark` directory.
-You can run these benchmarks yourself by enabling the CMake
-variable `SCN_BENCHMARKS`.
+All benchmarks in this section, and the charts and tables, are produced by
+`scripts/benchmark.py`. It builds with Clang and GCC, runs the benchmarks,
+saves the results as JSON, and renders the charts and tables from it
+(see `scripts/benchmark.py --help`):
+
+```sh
+$ python3 -m venv venv && venv/bin/pip install -r scripts/benchmark-requirements.txt
+# Set the CPU frequency governor to "performance" first, and pick an idle CPU
+$ venv/bin/python scripts/benchmark.py all --cpu 3
+```
+
+To run a single benchmark binary yourself, enable the CMake variable `SCN_BENCHMARKS`.
 This variable is `ON` by default, if `scnlib` is the root CMake project,
 and `OFF` otherwise.
 
@@ -308,7 +320,7 @@ and `OFF` otherwise.
 $ cd build
 $ cmake -DSCN_BENCHMARKS=ON \
         -DCMAKE_BUILD_TYPE=Release -DCMAKE_INTERPROCEDURAL_OPTIMIZATION=ON \
-        -DCMAKE_CXX_FLAGS=-march=haswell ..
+        -DCMAKE_CXX_FLAGS=-march=x86-64-v3 ..
 $ cmake --build .
 # choose benchmarks to run in ./benchmark/runtime/*/*_bench
 $ ./benchmark/runtime/integer/scn_int_bench
@@ -316,8 +328,10 @@ $ ./benchmark/runtime/integer/scn_int_bench
 
 ### Executable size
 
-All sizes below are in kibibytes (KiB), measuring the compiled executable.
-"Stripped size" shows the size of the executable after running `strip`.
+All sizes below are in kibibytes (KiB). "Code + data" is the size of the
+`text` and `data` sections of the compiled executable, as reported by `size`:
+the machine code and the read-only and initialized data.
+Debug information and symbol tables are not included.
 Lower is better.
 
 #### Release build (`-O3 -DNDEBUG` + LTO)
@@ -370,7 +384,7 @@ these differences largely go away, except in Debug builds.
 
 #### About
 
-In these tests, 25 translation units are generated, in all of which values are
+In these tests, 17 translation units are generated, in all of which values are
 read from `stdin` five times.
 This is done to simulate a small project.
 `scnlib` is linked dynamically, to level the playing field with the standard
@@ -379,24 +393,9 @@ library, which is also dynamically linked.
 The code was compiled on Fedora 40, with GCC 14.1.1.
 See the directory `benchmark/binarysize` for the source code.
 
-You can run these benchmarks yourself by enabling the CMake
-variable `SCN_BENCHMARKS_BINARYSIZE`.
-This variable is `ON` by default, if `scnlib` is the root CMake project,
-and `OFF` otherwise.
-
-```sh
-$ cd build
-# For Debug
-$ cmake -DCMAKE_BUILD_TYPE=Debug \
-        -DSCN_BENCHMARKS_BINARYSIZE=ON \
-        -DBUILD_SHARED_LIBS=ON ..
-# For Release and MinSizeRel,
-# add -DCMAKE_BUILD_TYPE=$BUILD_TYPE and
-# -DCMAKE_INTERPROCEDURAL_OPTIMIZATION=ON
-
-$ cmake --build .
-$ ./benchmark/binarysize/run_binarysize_bench.py ./benchmark/binarysize $BUILD_TYPE
-```
+The executables are built with the CMake variable `SCN_BENCHMARKS_BINARYSIZE`
+and `BUILD_SHARED_LIBS=ON`, in Debug, Release and MinSizeRel, the latter two
+with LTO. `scripts/benchmark.py all --what binarysize` builds and measures them.
 
 ### Build time
 
@@ -442,20 +441,8 @@ processor, using GCC version 14.1.1.
 The compiler flags used for a Debug build were `-g`, and `-O3 -DNDEBUG` for a
 Release build.
 
-You can run these benchmarks yourself by enabling the CMake
-variable `SCN_BENCHMARKS_BUILDTIME`.
-This variable is `ON` by default, if `scnlib` is the root CMake project,
-and `OFF` otherwise.
-For these tests to work, `c++` must point to a GCC-compatible C++
-compiler binary,
-and a somewhat POSIX-compatible `/usr/bin/time` must be available.
-
-```sh
-$ cd build
-$ cmake -DSCN_BENCHMARKS_BUILDTIME=ON ..
-$ cmake --build .
-$ ./benchmark/buildtime/run-buildtime-benchmarks.sh
-```
+`scripts/benchmark.py all --what buildtime` compiles the sources in
+`benchmark/buildtime` and measures them. It needs GNU `/usr/bin/time`.
 
 ## Development
 

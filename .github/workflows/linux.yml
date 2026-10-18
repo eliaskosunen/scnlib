@@ -946,7 +946,7 @@ jobs:
         working-directory: ${{ runner.workspace }}/build
         run: |
           cmake -G Ninja -DSCN_CI=ON ${{ matrix.flags }} \
-                -DSCN_BENCHMARKS=OFF -DSCN_BENCHMARKS_BUILDTIME=OFF -DSCN_BENCHMARKS_BINARYSIZE=OFF \
+                -DSCN_BENCHMARKS=OFF -DSCN_BENCHMARKS_BINARYSIZE=OFF \
                 $GITHUB_WORKSPACE
 
       - name: Build library
