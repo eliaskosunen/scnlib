@@ -105,6 +105,7 @@ scn::scan<...>(strm, ...);
    (37% less with format specifiers, like `"{:d}"`), in the integer and floating-point benchmarks.
    Values like `scn::expected` and the scan arguments are no longer passed through memory in ways that stall the CPU,
    and format specifiers are handled with less overhead.
+   Scanning strings takes 20-30% less time with GCC, because the UTF-8 validation no longer copies a lookup table to the stack on every call.
  * The compiler error for an invalid format string checked at compile time contains the error message with GCC and Clang,
    regardless of how the code is formatted, or whether the compiler shows the source code at all.
    This includes the messages of custom scanners passed to `ParseContext::on_error`,
