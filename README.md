@@ -210,64 +210,147 @@ Including the following environments:
 
 ## Benchmarks
 
+The results below were produced on 2026-10-19 (commit e19aa48c),
+on an AMD Ryzen 7 5700X running Fedora 44 and Linux 7.2.7,
+with Clang 22.1.8 and GCC 16.2.1 (libstdc++ for both).
+The run-time benchmarks were pinned to a single core, running at a fixed 3.6 GHz.
+
 ### Run-time performance
 
-All times below are in nanoseconds of CPU time.
+All times below are in nanoseconds of CPU time, the median of 3 runs.
 Lower is better.
 
 #### Integer parsing (`int`)
 
 ![Integer result, chart](benchmark/runtime/results/int.png)
 
+Clang 22.1.8:
+
 | Test                             | Test 1 `"single"` | Test 2 `"repeated"` | Test average |
 |:---------------------------------|------------------:|--------------------:|-------------:|
-| `scn::scan`                      |              23.8 |                30.4 |         27.1 |
-| `scn::scan_value`                |              20.5 |                27.4 |         24.0 |
-| `scn::scan_int`                  |              16.5 |                24.1 |         20.3 |
-| `scn::scan_int_exhaustive_valid` |              4.08 |                   - |         4.08 |
-| `std::stringstream`              |               117 |                53.9 |         85.5 |
-| `sscanf`                         |              71.3 |                 474 |        272.7 |
-| `strtol`                         |              16.3 |                23.8 |         20.1 |
-| `std::from_chars`                |              8.73 |                13.0 |         10.9 |
-| `fast_float::from_chars`         |              6.87 |                11.8 |         9.35 |
+| `scn::scan`                      |              26.5 |                27.2 |         26.9 |
+| `scn::scan_value`                |              23.0 |                23.6 |         23.3 |
+| `scn::scan_int`                  |              19.8 |                20.9 |         20.4 |
+| `scn::scan_int_exhaustive_valid` |              6.63 |                   - |         6.63 |
+| `scn::scan` with `{:d}`          |              38.4 |                40.0 |         39.2 |
+| `std::stringstream`              |               119 |                51.0 |         85.2 |
+| `sscanf`                         |              80.0 |                 469 |          275 |
+| `strtol`                         |              23.3 |                23.8 |         23.6 |
+| `std::from_chars`                |              14.2 |                15.5 |         14.9 |
+| `fast_float::from_chars`         |              11.9 |                14.5 |         13.2 |
+
+GCC 16.2.1:
+
+| Test                             | Test 1 `"single"` | Test 2 `"repeated"` | Test average |
+|:---------------------------------|------------------:|--------------------:|-------------:|
+| `scn::scan`                      |              26.1 |                26.1 |         26.1 |
+| `scn::scan_value`                |              24.3 |                26.3 |         25.3 |
+| `scn::scan_int`                  |              20.5 |                22.6 |         21.5 |
+| `scn::scan_int_exhaustive_valid` |              2.97 |                   - |         2.97 |
+| `scn::scan` with `{:d}`          |              39.1 |                42.5 |         40.8 |
+| `std::stringstream`              |               121 |                51.0 |         86.1 |
+| `sscanf`                         |              86.0 |                 471 |          279 |
+| `strtol`                         |              23.0 |                24.3 |         23.6 |
+| `std::from_chars`                |              12.7 |                13.1 |         12.9 |
+| `fast_float::from_chars`         |              10.8 |                10.9 |         10.8 |
 
 #### Floating-point number parsing (`double`)
 
 ![Float result, chart](benchmark/runtime/results/float.png)
 
-| Test                     | Test 1 `"single"` | Test 2 `"repeated"` | Test Average |
+Clang 22.1.8:
+
+| Test                     | Test 1 `"single"` | Test 2 `"repeated"` | Test average |
 |:-------------------------|------------------:|--------------------:|-------------:|
-| `scn::scan`              |              55.8 |                63.7 |         59.7 |
-| `scn::scan_value`        |              52.1 |                58.8 |         55.5 |
-| `std::stringstream`      |               294 |                 271 |          283 |
-| `sscanf`                 |               159 |                 704 |          432 |
-| `strtod`                 |              79.1 |                 153 |          116 |
-| `std::from_chars`        |              18.0 |                28.1 |         23.0 |
-| `fast_float::from_chars` |              20.6 |                27.8 |         24.2 |
+| `scn::scan`              |              51.1 |                51.8 |         51.4 |
+| `scn::scan_value`        |              46.7 |                47.7 |         47.2 |
+| `std::stringstream`      |               358 |                 273 |          315 |
+| `sscanf`                 |               244 |                 723 |          483 |
+| `strtod`                 |               154 |                 154 |          154 |
+| `std::from_chars`        |              26.9 |                27.3 |         27.1 |
+| `fast_float::from_chars` |              29.3 |                29.9 |         29.6 |
+
+GCC 16.2.1:
+
+| Test                     | Test 1 `"single"` | Test 2 `"repeated"` | Test average |
+|:-------------------------|------------------:|--------------------:|-------------:|
+| `scn::scan`              |              59.4 |                59.8 |         59.6 |
+| `scn::scan_value`        |              55.3 |                56.2 |         55.7 |
+| `std::stringstream`      |               386 |                 272 |          329 |
+| `sscanf`                 |               248 |                 720 |          484 |
+| `strtod`                 |               153 |                 153 |          153 |
+| `std::from_chars`        |              27.1 |                28.0 |         27.6 |
+| `fast_float::from_chars` |              25.2 |                25.2 |         25.2 |
 
 #### String "word" (whitespace-separated character sequence) parsing (`string` and `string_view`)
 
 ![String result, chart](benchmark/runtime/results/string.png)
 
-| Test                           |      |
-|:-------------------------------|-----:|
-| `scn::scan<string>`            | 24.5 |
-| `scn::scan<string_view>`       | 22.2 |
-| `scn::scan_value<string>`      | 23.1 |
-| `scn::scan_value<string_view>` | 21.0 |
-| `std::stringstream`            |  134 |
-| `sscanf`                       | 58.4 |
+Clang 22.1.8:
+
+| Test                           | Lorem Ipsum text | Unicode text |
+|:-------------------------------|-----------------:|-------------:|
+| `scn::scan<string>`            |             42.1 |         59.5 |
+| `scn::scan<string_view>`       |             35.6 |         50.1 |
+| `scn::scan_value<string>`      |             38.6 |         57.0 |
+| `scn::scan_value<string_view>` |             31.3 |         46.0 |
+| `std::stringstream`            |             32.6 |         34.7 |
+| `sscanf`                       |              362 |          141 |
+
+GCC 16.2.1:
+
+| Test                           | Lorem Ipsum text | Unicode text |
+|:-------------------------------|-----------------:|-------------:|
+| `scn::scan<string>`            |             42.9 |         66.4 |
+| `scn::scan<string_view>`       |             34.8 |         53.1 |
+| `scn::scan_value<string>`      |             37.9 |         60.6 |
+| `scn::scan_value<string_view>` |             28.5 |         47.5 |
+| `std::stringstream`            |             33.1 |         34.0 |
+| `sscanf`                       |              350 |          131 |
+
+#### Basic `scn::scan` options
+
+Clang 22.1.8:
+
+| Test                     | Time |
+|:-------------------------|-----:|
+| `scn::scan`              | 17.8 |
+| `scn::scan` with options | 31.4 |
+| `scn::scan` with locale  | 17.8 |
+| `scn::scan` localized    | 69.0 |
+| `scn::scan_value`        | 13.9 |
+| `std::stringstream`      | 94.8 |
+| `sscanf`                 | 50.5 |
+| `strtol`                 | 9.17 |
+
+GCC 16.2.1:
+
+| Test                     | Time |
+|:-------------------------|-----:|
+| `scn::scan`              | 22.9 |
+| `scn::scan` with options | 34.5 |
+| `scn::scan` with locale  | 23.0 |
+| `scn::scan` localized    | 92.9 |
+| `scn::scan_value`        | 17.5 |
+| `std::stringstream`      | 97.0 |
+| `sscanf`                 | 57.3 |
+| `strtol`                 | 9.17 |
 
 #### Conclusions
 
-* `scn::scan` is always faster than using `stringstream`s and `sscanf`
-* `std::from_chars`/`fast_float::from_chars` is faster than `scn::scan`, but it
-  supports fewer features
-* `strtod` is slower than `scn::scan`, and supports fewer features
-* `scn::scan_value` is slightly faster compared to `scn::scan`
-* `scn::scan_int` is faster than both `scn::scan` and `scn::scan_value`
-* `strtol` is ~on-par with `scn::scan_int`.
-* `scn::scan_int_exhaustive_valid` is blazing-fast.
+* For numbers, `scn::scan` is faster than `std::stringstream` and `sscanf`,
+  and 2.5x to 3x faster than `strtod`.
+* `std::from_chars` and `fast_float::from_chars` are about twice as fast as `scn::scan`,
+  but they support fewer features.
+* `scn::scan_value` is 3-13% faster than `scn::scan`.
+  `scn::scan_int` is faster still, and slightly faster than `strtol`.
+* `scn::scan_int_exhaustive_valid` takes 3 to 7 ns.
+* Scanning an `int` with `{:d}` takes about 50% longer than with `{}`.
+* When reading words, `std::stringstream` is about as fast as `scn::scan_value<string_view>`
+  with the ASCII text, and faster than any of the scnlib functions with the Unicode text.
+* The two compilers are about equal with integers.
+  With GCC, `scn::scan` is about 15% slower with floating-point numbers,
+  and about 30% slower in the basic test.
 
 #### About
 
@@ -286,19 +369,21 @@ Above,
   after another from a sample text. "Lorem Ipsum" is ASCII-only, and "Unicode"
   is Markus Kuhn's UTF-8 demo (`benchmark/runtime/string/unicode.txt`), with
   mathematical notation, many languages and scripts, and box-drawing characters.
+* The basic test scans an `int` from `"123"`.
+  "With options" uses `{:i}`, "with locale" passes a `std::locale` but scans with `{}`,
+  and "localized" uses `{:L}`.
 
 The difference between "Test 1" and "Test 2" is most pronounced when using
 a `stringstream`, which is relatively expensive to construct,
-and seems to be adding around ~50ns of runtime.
-With `sscanf`, it seems like using the `%n` specifier and skipping whitespace
-are really expensive (~400ns of runtime).
+and adds about 70 to 115 ns.
+With `sscanf`, "Test 2" is slower instead, because glibc's `sscanf` goes through
+the whole remaining input on every call, and the input of "Test 2" has 8192 values.
+For the same reason, the `sscanf` string results depend on the length of the text:
+the Lorem Ipsum text is 64 KiB, and the Unicode text is 13 KiB.
 With `scn::scan` and `std::from_chars`, there's really no state to construct,
 and the results for "Test 1" and "Test 2" are thus quite similar.
 
-These benchmarks were run on a Fedora 40 machine, running the Linux kernel version
-6.8.9, with an AMD Ryzen 7 5700X processor, and compiled with clang version 18.1.1,
-with `-O3 -DNDEBUG -march=haswell` and LTO enabled.
-These benchmarks were run on 2024-05-23 (commit 3fd830de).
+The benchmarks were compiled with `-O3 -DNDEBUG -march=x86-64-v3` and LTO enabled.
 
 The source code for these benchmarks can be found in the `benchmark` directory.
 All benchmarks in this section, and the charts and tables, are produced by
@@ -338,59 +423,98 @@ Lower is better.
 
 ![Release result, chart](benchmark/binarysize/graph-release.png)
 
-Size of `scnlib` shared library (`.so`): 1.7M
+Clang 22.1.8:
 
-| Method         | Executable size | Stripped size |
-| :------------- | --------------: | ------------: |
-| empty          |             7.6 |           4.4 |
-| `std::scanf`   |            10.4 |           5.8 |
-| `std::istream` |            11.1 |           6.2 |
-| `scn::input`   |            11.2 |           6.4 |
+Size of `scnlib` shared library (`.so`): 2.5M
+
+| Method         | Code + data |
+|:---------------|------------:|
+| empty          |         2.2 |
+| `std::scanf`   |         6.4 |
+| `std::istream` |         6.5 |
+| `scn::input`   |        11.2 |
+
+GCC 16.2.1:
+
+Size of `scnlib` shared library (`.so`): 2.6M
+
+| Method         | Code + data |
+|:---------------|------------:|
+| empty          |         2.2 |
+| `std::scanf`   |         7.0 |
+| `std::istream` |         7.3 |
+| `scn::input`   |         6.5 |
 
 #### Minimized (MinSizeRel) build (`-Os -DNDEBUG` + LTO)
 
 ![MinSizeRel result, chart](benchmark/binarysize/graph-minsizerel.png)
 
-Size of `scnlib` shared library (`.so`): 1.1M
+Clang 22.1.8:
 
-| Method         | Executable size | Stripped size |
-| :------------- | --------------: | ------------: |
-| empty          |             7.5 |           4.4 |
-| `std::scanf`   |            10.3 |           5.8 |
-| `std::istream` |            11.0 |           6.1 |
-| `scn::input`   |            12.4 |           6.6 |
+Size of `scnlib` shared library (`.so`): 1.7M
+
+| Method         | Code + data |
+|:---------------|------------:|
+| empty          |         2.1 |
+| `std::scanf`   |         6.4 |
+| `std::istream` |         6.5 |
+| `scn::input`   |         6.7 |
+
+GCC 16.2.1:
+
+Size of `scnlib` shared library (`.so`): 1.6M
+
+| Method         | Code + data |
+|:---------------|------------:|
+| empty          |         2.0 |
+| `std::scanf`   |         5.8 |
+| `std::istream` |         6.0 |
+| `scn::input`   |         5.5 |
 
 #### Debug build (`-g -O0`)
 
 ![Debug result, chart](benchmark/binarysize/graph-debug.png)
 
+Clang 22.1.8:
+
+Size of `scnlib` shared library (`.so`): 18M
+
+| Method         | Code + data |
+|:---------------|------------:|
+| empty          |         2.4 |
+| `std::scanf`   |        12.2 |
+| `std::istream` |         7.9 |
+| `scn::input`   |        40.6 |
+
+GCC 16.2.1:
+
 Size of `scnlib` shared library (`.so`): 20M
 
-| Method         | Executable size | Stripped size |
-| :------------- | --------------: | ------------: |
-| empty          |            18.4 |           5.2 |
-| `std::scanf`   |             429 |          11.8 |
-| `std::istream` |             438 |           9.4 |
-| `scn::input`   |            2234 |          51.3 |
+| Method         | Code + data |
+|:---------------|------------:|
+| empty          |         2.3 |
+| `std::scanf`   |        16.5 |
+| `std::istream` |         7.5 |
+| `scn::input`   |        80.8 |
 
 #### Conclusions
 
-When using optimized builds, depending on compiler flags, scnlib provides a
-binary, the size of which is within ~5% of what would be produced with `scanf`
-or `<iostream>`s.
-In a Debug-environment, scnlib is ~5x bigger when compared to `scanf`
-or `<iostream>`. After `strip`ping the binaries,
-these differences largely go away, except in Debug builds.
+With GCC, the code using scnlib is slightly smaller than with `scanf` or `<iostream>`,
+in both Release and MinSizeRel builds.
+With Clang, it's about 5% bigger in a MinSizeRel build,
+and about 75% bigger in a Release build, where Clang inlines more of scnlib at each call site.
+In a Debug build, scnlib is 3x to 5x bigger than `scanf`,
+and 5x to 11x bigger than `<iostream>`.
 
 #### About
 
-In these tests, 17 translation units are generated, in all of which values are
-read from `stdin` five times.
+In these tests, 17 translation units are generated, in all of which four values
+(`int`, `double`, `long long`, and a string) are read from `stdin`.
 This is done to simulate a small project.
 `scnlib` is linked dynamically, to level the playing field with the standard
 library, which is also dynamically linked.
 
-The code was compiled on Fedora 40, with GCC 14.1.1.
+The code was compiled with `-march=x86-64-v3`, in addition to the flags above.
 See the directory `benchmark/binarysize` for the source code.
 
 The executables are built with the CMake variable `SCN_BENCHMARKS_BINARYSIZE`
@@ -401,33 +525,55 @@ with LTO. `scripts/benchmark.py all --what binarysize` builds and measures them.
 
 #### CPU time
 
-Time is in seconds of CPU time (user time + sys/kernel time).
+Time is in seconds of CPU time (user time + sys/kernel time), the median of 3 runs.
 Lower is better.
+
+Clang 22.1.8:
+
+| Method       | Debug | Release |
+|:-------------|------:|--------:|
+| empty        |  0.06 |    0.06 |
+| `scanf`      |  0.18 |    0.17 |
+| `<iostream>` |  0.24 |    0.23 |
+| `scn::input` |  0.45 |    0.43 |
+
+GCC 16.2.1:
 
 | Method       | Debug | Release |
 |:-------------|------:|--------:|
 | empty        |  0.05 |    0.05 |
-| `scanf`      |  0.22 |    0.20 |
-| `<iostream>` |  0.28 |    0.27 |
-| `scn::input` |  0.54 |    0.45 |
+| `scanf`      |  0.29 |    0.26 |
+| `<iostream>` |  0.35 |    0.32 |
+| `scn::input` |  0.65 |    0.53 |
 
 #### Memory consumption
 
-Memory is in mebibytes (MiB) used while compiling.
+Memory is in mebibytes (MiB) used while compiling, the median of 3 runs.
 Lower is better.
+
+Clang 22.1.8:
 
 | Method       | Debug | Release |
 |:-------------|------:|--------:|
-| empty        |  21.0 |    23.3 |
-| `scanf`      |  56.3 |    53.6 |
-| `<iostream>` |  67.8 |    65.0 |
-| `scn::input` |   102 |    91.0 |
+| empty        |  74.2 |    78.3 |
+| `scanf`      |   103 |     105 |
+| `<iostream>` |   107 |     110 |
+| `scn::input` |   125 |     125 |
+
+GCC 16.2.1:
+
+| Method       | Debug | Release |
+|:-------------|------:|--------:|
+| empty        |  23.4 |    26.6 |
+| `scanf`      |  79.3 |    73.3 |
+| `<iostream>` |  93.2 |    86.9 |
+| `scn::input` |   139 |     124 |
 
 #### Conclusions
 
-Code using scnlib takes around 2x longer to compile compared to `<iostream>`,
-and also uses around 1.5x more memory.
-Release builds seem to be slightly faster as compared to Debug builds.
+Code using scnlib takes about 1.7x to 1.9x longer to compile compared to `<iostream>`.
+It uses about 15% more memory than `<iostream>` with Clang, and about 45% more with GCC.
+Release builds are slightly faster to compile than Debug builds, especially with GCC.
 
 #### About
 
@@ -436,8 +582,6 @@ libraries.
 The time taken to compile the library itself is not taken into account
 (the standard library is precompiled, anyway).
 
-These tests were run on a Fedora 40 machine, with an AMD Ryzen 7 5700X
-processor, using GCC version 14.1.1.
 The compiler flags used for a Debug build were `-g`, and `-O3 -DNDEBUG` for a
 Release build.
 
