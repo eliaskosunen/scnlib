@@ -8506,9 +8506,13 @@ struct default_arg_reader {
     auto impl(Reader& rd, Range rng, T& value)
         -> scan_expected<ranges::iterator_t<Range>>
     {
-        SCN_TRY(it, skip_ws_before_if_required(rd.skip_ws_before_read(), rng)
-                        .transform_error(make_eof_scan_error));
-        return rd.read_default(ranges::subrange{it, rng.end()}, value, loc);
+        // Not SCN_TRY + transform_error: GCC copies the whole expected
+        // through memory after the out-of-line transform_error call
+        auto it = skip_ws_before_if_required(rd.skip_ws_before_read(), rng);
+        if (SCN_UNLIKELY(!it)) {
+            return unexpected(make_eof_scan_error(it.error()));
+        }
+        return rd.read_default(ranges::subrange{*it, rng.end()}, value, loc);
     }
 
     template <typename T>
