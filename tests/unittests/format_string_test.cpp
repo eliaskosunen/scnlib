@@ -85,9 +85,9 @@ void expect_same_as_with_large_precision(
         ASSERT_EQ(plain.has_value(), with_precision.has_value())
             << format << " " << source;
         if (!plain) {
-            // Not the message: with a precision, the reader gets a
-            // non-contiguous range, and some readers' messages differ there
             EXPECT_EQ(plain.error().code(), with_precision.error().code())
+                << format << " " << source;
+            EXPECT_STREQ(plain.error().msg(), with_precision.error().msg())
                 << format << " " << source;
             continue;
         }

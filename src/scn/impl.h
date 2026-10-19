@@ -2061,11 +2061,251 @@ constexpr void for_each_code_point_valid(std::basic_string_view<CharT> input,
 }
 
 /////////////////////////////////////////////////////////////////
-// contiguous_range_factory
+// Field width bounds
 /////////////////////////////////////////////////////////////////
 
-template <typename View>
-class take_width_view;
+enum class field_unit { code_unit, code_point };
+
+struct bounded_sentinel {};
+
+// Bounds a non-contiguous range to a number of units without reading past the
+// bound. For code points, the field ends after the continuation units that the
+// lead unit of its last code point calls for. If the input has fewer, the unit
+// read in place of the missing one starts the next code point, and is the only
+// one read past the bound.
+template <typename It, typename S, field_unit Unit>
+class bounded_iterator {
+    static_assert(ranges::forward_iterator<It>);
+    static_assert(ranges::sentinel_for<S, It>);
+
+public:
+    using value_type = ranges::iter_value_t<It>;
+    using reference = ranges::iter_reference_t<It>;
+    using pointer = void;
+    using difference_type = ranges::iter_difference_t<It>;
+    using iterator_category =
+        std::conditional_t<ranges::bidirectional_iterator<It>,
+                           std::bidirectional_iterator_tag,
+                           std::forward_iterator_tag>;
+
+    constexpr bounded_iterator() = default;
+
+    constexpr bounded_iterator(It it, S end, difference_type max)
+        : m_current(SCN_MOVE(it)), m_end(SCN_MOVE(end)), m_remaining(max)
+    {
+    }
+
+    constexpr It base() const
+    {
+        return m_current;
+    }
+
+    constexpr difference_type remaining() const
+    {
+        return m_remaining;
+    }
+
+    constexpr decltype(auto) operator*() const
+    {
+        return *m_current;
+    }
+
+    constexpr bounded_iterator& operator++()
+    {
+        if constexpr (Unit == field_unit::code_unit) {
+            --m_remaining;
+        }
+        else {
+            const auto ch = *m_current;
+            if (detail::is_code_point_start(ch)) {
+                --m_remaining;
+                // An invalid lead unit is a code point of its own
+                const auto length = static_cast<difference_type>(
+                    detail::code_point_length_by_starting_code_unit(ch));
+                m_pending = length == 0 ? 0 : length - 1;
+            }
+            else if (m_pending > 0) {
+                --m_pending;
+            }
+        }
+        ++m_current;
+        ++m_offset;
+        return *this;
+    }
+
+    constexpr bounded_iterator operator++(int)
+    {
+        auto tmp = *this;
+        ++*this;
+        return tmp;
+    }
+
+    template <typename Iter = It>
+    constexpr auto operator--()
+        -> std::enable_if_t<ranges::bidirectional_iterator<Iter>,
+                            bounded_iterator&>
+    {
+        --m_current;
+        --m_offset;
+        if constexpr (Unit == field_unit::code_unit) {
+            ++m_remaining;
+        }
+        else {
+            // Moving back over a start makes `m_remaining` positive, so
+            // `m_pending` isn't used until moving forward over a start
+            // again sets it anew.
+            if (detail::is_code_point_start(*m_current)) {
+                ++m_remaining;
+                m_pending = 0;
+            }
+            else {
+                ++m_pending;
+            }
+        }
+        return *this;
+    }
+
+    template <typename Iter = It>
+    constexpr auto operator--(int)
+        -> std::enable_if_t<ranges::bidirectional_iterator<Iter>,
+                            bounded_iterator>
+    {
+        auto tmp = *this;
+        --*this;
+        return tmp;
+    }
+
+    // Comparing the underlying iterators could read more input from a
+    // scan_buffer, since its iterators read up to their position when
+    // compared. Iterators into the same range are equal at the same offset.
+    friend constexpr bool operator==(const bounded_iterator& a,
+                                     const bounded_iterator& b)
+    {
+        return a.m_offset == b.m_offset;
+    }
+    friend constexpr bool operator!=(const bounded_iterator& a,
+                                     const bounded_iterator& b)
+    {
+        return !(a == b);
+    }
+
+    friend constexpr bool operator==(const bounded_iterator& x,
+                                     bounded_sentinel)
+    {
+        return x.is_at_bound();
+    }
+    friend constexpr bool operator==(bounded_sentinel,
+                                     const bounded_iterator& x)
+    {
+        return x.is_at_bound();
+    }
+    friend constexpr bool operator!=(const bounded_iterator& x,
+                                     bounded_sentinel)
+    {
+        return !x.is_at_bound();
+    }
+    friend constexpr bool operator!=(bounded_sentinel,
+                                     const bounded_iterator& x)
+    {
+        return !x.is_at_bound();
+    }
+
+private:
+    // With code units, the bound is checked before the end of the source,
+    // so that reaching the bound never reads more input from a source that
+    // reads on demand (e.g., stdin).
+    constexpr bool is_at_bound() const
+    {
+        if constexpr (Unit == field_unit::code_unit) {
+            return m_remaining == 0 || m_current == m_end;
+        }
+        else {
+            // A complete last code point ends the field without looking
+            // at what comes after it
+            if (m_remaining == 0 && m_pending == 0) {
+                return true;
+            }
+            return m_current == m_end ||
+                   (m_remaining == 0 &&
+                    detail::is_code_point_start(*m_current));
+        }
+    }
+
+    struct no_pending {};
+
+    It m_current{};
+    SCN_NO_UNIQUE_ADDRESS S m_end{};
+    difference_type m_remaining{0};
+    difference_type m_offset{0};
+    // Continuation units still expected in the current code point
+    SCN_NO_UNIQUE_ADDRESS std::conditional_t<Unit == field_unit::code_point,
+                                             difference_type,
+                                             no_pending>
+        m_pending{};
+};
+
+template <typename It>
+struct is_bounded_iterator : std::false_type {};
+template <typename It, typename S, field_unit Unit>
+struct is_bounded_iterator<bounded_iterator<It, S, Unit>> : std::true_type {};
+
+template <field_unit Unit, typename Range>
+auto make_bounded_range(const Range& range, std::ptrdiff_t max)
+{
+    using iterator = bounded_iterator<ranges::iterator_t<Range>,
+                                      ranges::sentinel_t<Range>, Unit>;
+    return ranges::subrange{iterator{range.begin(), range.end(), max},
+                            bounded_sentinel{}};
+}
+
+// Contiguous counterpart of `make_bounded_range`: the end of the first `max`
+// units of `[first, last)`.
+template <field_unit Unit, typename It>
+It find_bounded_end(It first, It last, std::ptrdiff_t max)
+{
+    if constexpr (Unit == field_unit::code_unit) {
+        return first + std::min(max, static_cast<std::ptrdiff_t>(last - first));
+    }
+    else {
+        // Same rule as `bounded_iterator`
+        std::ptrdiff_t pending = 0;
+        for (; first != last; ++first) {
+            if (detail::is_code_point_start(*first)) {
+                if (max == 0) {
+                    break;
+                }
+                --max;
+                const auto length = static_cast<std::ptrdiff_t>(
+                    detail::code_point_length_by_starting_code_unit(*first));
+                pending = length == 0 ? 0 : length - 1;
+            }
+            else if (pending > 0) {
+                --pending;
+            }
+            else if (max == 0) {
+                break;
+            }
+        }
+        return first;
+    }
+}
+
+template <field_unit Unit, typename It>
+std::ptrdiff_t count_field_units(It first, It last)
+{
+    if constexpr (Unit == field_unit::code_unit) {
+        return static_cast<std::ptrdiff_t>(last - first);
+    }
+    else {
+        return static_cast<std::ptrdiff_t>(std::count_if(
+            first, last,
+            [](auto ch) { return detail::is_code_point_start(ch); }));
+    }
+}
+
+/////////////////////////////////////////////////////////////////
+// contiguous_range_factory
+/////////////////////////////////////////////////////////////////
 
 template <typename CharT>
 struct string_view_wrapper {
@@ -2232,10 +2472,13 @@ private:
             auto end_seg = range.end().contiguous_segment();
             if (SCN_UNLIKELY(detail::to_address(beg_seg.end()) !=
                              detail::to_address(end_seg.end()))) {
+                // Not std::copy: comparing the iterators would make the
+                // buffer read more input, to reach the position of `end`
+                const auto size =
+                    range.end().position() - range.begin().position();
                 auto& str = m_storage.emplace();
-                str.reserve(static_cast<std::size_t>(range.end().position() -
-                                                     range.begin().position()));
-                std::copy(range.begin(), range.end(), std::back_inserter(str));
+                str.reserve(static_cast<std::size_t>(size));
+                std::copy_n(range.begin(), size, std::back_inserter(str));
                 m_view = string_view_type{str.data(), str.size()};
                 return;
             }
@@ -2278,6 +2521,11 @@ auto make_contiguous_buffer(Range&& range)
                   ranges::contiguous_range<Range> &&
                   ranges::sized_range<Range>) {
         return string_view_wrapper{SCN_FWD(range)};
+    }
+    else if constexpr (is_bounded_iterator<ranges::iterator_t<Range>>::value &&
+                       ranges::common_range<Range>) {
+        return make_contiguous_buffer(
+            ranges::subrange{range.begin().base(), range.end().base()});
     }
     else {
         return contiguous_range_factory{SCN_FWD(range)};
@@ -2994,564 +3242,7 @@ auto apply_opt(Expected<Iterator>&& result, Range range)
     }
     return *result;
 }
-
-/////////////////////////////////////////////////////////////////
-// Text width calculation
-/////////////////////////////////////////////////////////////////
-
-constexpr std::size_t calculate_text_width_for_fmt_v10(char32_t cp)
-{
-    if (cp >= 0x1100 &&
-        (cp <= 0x115f ||  // Hangul Jamo init. consonants
-         cp == 0x2329 ||  // LEFT-POINTING ANGLE BRACKET
-         cp == 0x232a ||  // RIGHT-POINTING ANGLE BRACKET
-         // CJK ... Yi except IDEOGRAPHIC HALF FILL SPACE:
-         (cp >= 0x2e80 && cp <= 0xa4cf && cp != 0x303f) ||
-         (cp >= 0xac00 && cp <= 0xd7a3) ||    // Hangul Syllables
-         (cp >= 0xf900 && cp <= 0xfaff) ||    // CJK Compatibility Ideographs
-         (cp >= 0xfe10 && cp <= 0xfe19) ||    // Vertical Forms
-         (cp >= 0xfe30 && cp <= 0xfe6f) ||    // CJK Compatibility Forms
-         (cp >= 0xff00 && cp <= 0xff60) ||    // Fullwidth Forms
-         (cp >= 0xffe0 && cp <= 0xffe6) ||    // Fullwidth Forms
-         (cp >= 0x20000 && cp <= 0x2fffd) ||  // CJK
-         (cp >= 0x30000 && cp <= 0x3fffd) ||
-         // Miscellaneous Symbols and Pictographs + Emoticons:
-         (cp >= 0x1f300 && cp <= 0x1f64f) ||
-         // Supplemental Symbols and Pictographs:
-         (cp >= 0x1f900 && cp <= 0x1f9ff))) {
-        return 2;
-    }
-    return 1;
-}
-
-constexpr std::size_t calculate_valid_text_width(char32_t cp)
-{
-    return calculate_text_width_for_fmt_v10(cp);
-}
-
-template <typename CharT>
-std::size_t calculate_valid_text_width(std::basic_string_view<CharT> input)
-{
-    std::size_t count{0};
-    for_each_code_point_valid(input, [&count](char32_t cp) {
-        count += calculate_text_width_for_fmt_v10(cp);
-    });
-    return count;
-}
-
-constexpr std::size_t calculate_text_width(char32_t cp)
-{
-    return calculate_text_width_for_fmt_v10(cp);
-}
-
-template <typename CharT>
-std::size_t calculate_text_width(std::basic_string_view<CharT> input)
-{
-    std::size_t count{0};
-    for_each_code_point(input, [&count](char32_t cp) {
-        count += calculate_text_width_for_fmt_v10(cp);
-    });
-    return count;
-}
-
-namespace counted_width_iterator_impl {
-template <typename It, typename S>
-class counted_width_iterator {
-    static_assert(ranges::forward_iterator<It>);
-    static_assert(ranges::sentinel_for<S, It>);
-
-    template <typename OtherIt, typename OtherS>
-    friend class counted_width_iterator;
-
-public:
-    using iterator = It;
-    using sentinel = S;
-    using value_type = ranges::iter_value_t<It>;
-    using pointer = value_type*;
-    using reference = value_type&;
-    using difference_type = ranges::iter_difference_t<It>;
-    using iterator_category =
-        std::conditional_t<ranges::bidirectional_iterator<It>,
-                           std::bidirectional_iterator_tag,
-                           std::forward_iterator_tag>;
-
-    constexpr counted_width_iterator() = default;
-
-    constexpr counted_width_iterator(iterator x, sentinel s, difference_type n)
-        : m_current(x), m_end(s), m_count(n)
-    {
-    }
-
-    template <typename OtherIt,
-              typename OtherS,
-              std::enable_if_t<std::is_convertible_v<OtherIt, It> &&
-                               std::is_convertible_v<OtherS, S>>* = nullptr>
-    constexpr counted_width_iterator(
-        const counted_width_iterator<OtherIt, OtherS>& other)
-        : m_current(other.m_current),
-          m_end(other.m_end),
-          m_count(other.m_count),
-          m_multibyte_left(other.m_multibyte_left)
-    {
-    }
-
-    template <typename OtherIt, typename OtherS>
-    constexpr auto operator=(
-        const counted_width_iterator<OtherIt, OtherS>& other)
-        -> std::enable_if_t<std::is_convertible_v<OtherIt, It> &&
-                                std::is_convertible_v<OtherS, S>,
-                            counted_width_iterator&>
-    {
-        m_current = other.m_current;
-        m_end = other.m_end;
-        m_count = other.m_count;
-        m_multibyte_left = other.m_multibyte_left;
-        return *this;
-    }
-
-    constexpr It base() const
-    {
-        return m_current;
-    }
-    constexpr difference_type count() const
-    {
-        return m_count;
-    }
-    constexpr difference_type multibyte_left() const
-    {
-        return m_multibyte_left;
-    }
-
-    bool is_current_double_wide() const
-    {
-        SCN_EXPECT(count() != 0 || multibyte_left() != 0);
-        return _get_width_at_current_cp_start(_get_cp_length_at_current()) == 2;
-    }
-
-    constexpr decltype(auto) operator*()
-    {
-        return *m_current;
-    }
-    constexpr decltype(auto) operator*() const
-    {
-        return *m_current;
-    }
-
-    constexpr counted_width_iterator& operator++()
-    {
-        SCN_EXPECT(m_current != m_end);
-        _increment_current();
-        return *this;
-    }
-
-    constexpr counted_width_iterator operator++(int)
-    {
-        auto tmp = *this;
-        ++*this;
-        return tmp;
-    }
-
-    template <typename Iter = It>
-    constexpr auto operator--()
-        -> std::enable_if_t<ranges::bidirectional_iterator<Iter>,
-                            counted_width_iterator&>
-    {
-        _decrement_current();
-        return *this;
-    }
-
-    template <typename Iter = It>
-    constexpr auto operator--(int)
-        -> std::enable_if_t<ranges::bidirectional_iterator<Iter>,
-                            counted_width_iterator>
-    {
-        auto tmp = *this;
-        --*this;
-        return tmp;
-    }
-
-    // TODO: optimize, make better than forward, if possible
-#if 0
-                template <typename Iter = It>
-                constexpr auto operator+(difference_type n) -> std::enable_if_t<
-                    ranges_std::random_access_iterator<Iter>,
-                    counted_width_iterator>
-                {
-                    // TODO
-                    return counted_width_iterator(m_current + n, m_count - n);
-                }
-
-                template <typename Iter = It,
-                          std::enable_if_t<ranges_std::random_access_iterator<
-                              Iter>>* = nullptr>
-                friend constexpr counted_width_iterator operator+(
-                    ranges_std::iter_difference_t<Iter> n,
-                    const counted_width_iterator<Iter>& x)
-                {
-                    return x + n;
-                }
-
-                template <typename Iter = It>
-                constexpr auto operator+=(difference_type n)
-                    -> std::enable_if_t<
-                        ranges_std::random_access_iterator<Iter>,
-                        counted_width_iterator&>
-                {
-                    // TODO
-                    m_current += n;
-                    m_count -= n;
-                    return *this;
-                }
-
-                template <typename Iter = It>
-                constexpr auto operator-(difference_type n) -> std::enable_if_t<
-                    ranges_std::random_access_iterator<Iter>,
-                    counted_width_iterator>
-                {
-                    // TODO
-                    return counted_width_iterator(m_current - n, m_count + n);
-                }
-
-                template <typename Iter = It,
-                          std::enable_if_t<ranges_std::random_access_iterator<
-                              Iter>>* = nullptr>
-                constexpr decltype(auto) operator[](difference_type n) const
-                {
-                    return m_current[n];
-                }
-#endif
-
-    template <typename OtherIt, typename OtherS>
-    friend constexpr auto operator==(
-        const counted_width_iterator& a,
-        const counted_width_iterator<OtherIt, OtherS>& b)
-        -> decltype(SCN_DECLVAL(const It&) == SCN_DECLVAL(const OtherIt&))
-    {
-        return a.m_current == b.m_current;
-    }
-    template <typename OtherIt, typename OtherS>
-    friend constexpr auto operator!=(
-        const counted_width_iterator& a,
-        const counted_width_iterator<OtherIt, OtherS>& b)
-        -> decltype(SCN_DECLVAL(const It&) == SCN_DECLVAL(const OtherIt&))
-    {
-        return !(a == b);
-    }
-
-    friend constexpr bool operator==(const counted_width_iterator& x,
-                                     ranges::default_sentinel_t)
-    {
-        return (x.count() == 0 && x.multibyte_left() == 0) ||
-               (x.count() == 1 && x.multibyte_left() == 0 &&
-                x.is_current_double_wide());
-    }
-    friend constexpr bool operator==(ranges::default_sentinel_t s,
-                                     const counted_width_iterator& x)
-    {
-        return x == s;
-    }
-
-    friend constexpr bool operator!=(const counted_width_iterator& a,
-                                     ranges::default_sentinel_t b)
-    {
-        return !(a == b);
-    }
-    friend constexpr bool operator!=(ranges::default_sentinel_t a,
-                                     const counted_width_iterator& b)
-    {
-        return !(a == b);
-    }
-
-    template <typename OtherIt, typename OtherS>
-    friend constexpr auto operator<(
-        const counted_width_iterator& a,
-        const counted_width_iterator<OtherIt, OtherS>& b)
-        -> decltype(SCN_DECLVAL(const It&) < SCN_DECLVAL(const OtherIt&))
-    {
-        if (a.count() == b.count()) {
-            return a.multibyte_left() > b.multibyte_left();
-        }
-
-        return a.count() > b.count();
-    }
-
-    template <typename OtherIt, typename OtherS>
-    friend constexpr auto operator>(
-        const counted_width_iterator& a,
-        const counted_width_iterator<OtherIt, OtherS>& b)
-        -> decltype(SCN_DECLVAL(const It&) < SCN_DECLVAL(const OtherIt&))
-    {
-        return b < a;
-    }
-
-    template <typename OtherIt, typename OtherS>
-    friend constexpr auto operator<=(
-        const counted_width_iterator& a,
-        const counted_width_iterator<OtherIt, OtherS>& b)
-        -> decltype(SCN_DECLVAL(const It&) < SCN_DECLVAL(const OtherIt&))
-    {
-        return !(b < a);
-    }
-
-    template <typename OtherIt, typename OtherS>
-    friend constexpr auto operator>=(
-        const counted_width_iterator& a,
-        const counted_width_iterator<OtherIt, OtherS>& b)
-        -> decltype(SCN_DECLVAL(const It&) < SCN_DECLVAL(const OtherIt&))
-    {
-        return !(a < b);
-    }
-
-#if 0
-                template <typename OtherIt, typename OtherS>
-                friend constexpr auto operator-(
-                    const counted_width_iterator& a,
-                    const counted_width_iterator<OtherIt, OtherS>& b)
-                    -> std::enable_if_t<ranges_std::common_with<OtherIt, It>,
-                                        ranges_std::iter_difference_t<OtherIt>>
-                {
-                    // TODO
-                }
-
-                friend constexpr ranges_std::iter_difference_t<It> operator-(
-                    const counted_width_iterator& x,
-                    ranges_std::default_sentinel_t)
-                {
-                    // TODO
-                }
-
-                friend constexpr ranges_std::iter_difference_t<It> operator-(
-                    ranges_std::default_sentinel_t,
-                    const counted_width_iterator& x)
-                {
-                    // TODO
-                }
-#endif
-
-#if 0
-                template <typename Iter = It>
-                constexpr auto operator-=(difference_type n)
-                    -> std::enable_if_t<
-                        ranges_std::random_access_iterator<Iter>,
-                        counted_width_iterator&>
-                {
-                    // TODO
-                    m_current -= n;
-                    m_count += n;
-                    return *this;
-                }
-#endif
-
-private:
-    difference_type _get_cp_length_at_current() const
-    {
-        return static_cast<difference_type>(
-            detail::code_point_length_by_starting_code_unit(*m_current));
-    }
-
-    difference_type _get_width_at_current_cp_start(difference_type cplen) const
-    {
-        if (SCN_UNLIKELY(cplen == 0)) {
-            return 0;
-        }
-
-        if (cplen == 1) {
-            SCN_EXPECT(m_current != m_end);
-            auto cp = static_cast<char32_t>(*m_current);
-            return static_cast<difference_type>(calculate_valid_text_width(cp));
-        }
-
-        auto r = read_exactly_n_code_units(ranges::subrange{m_current, m_end},
-                                           cplen);
-        if (SCN_UNLIKELY(!r)) {
-            return 0;
-        }
-
-        auto cp_str = std::basic_string<value_type>{m_current, *r};
-        return static_cast<difference_type>(calculate_text_width(
-            std::basic_string_view<value_type>{cp_str.data(), cp_str.size()}));
-    }
-
-    void _increment_current()
-    {
-        if (m_multibyte_left == 0) {
-            auto cplen = _get_cp_length_at_current();
-            m_multibyte_left = cplen - 1;
-            m_count -= _get_width_at_current_cp_start(cplen);
-        }
-        else {
-            --m_multibyte_left;
-        }
-
-        ++m_current;
-    }
-
-    void _decrement_current()
-    {
-        --m_current;
-
-        auto cplen = _get_cp_length_at_current();
-        if (cplen == 0) {
-            ++m_multibyte_left;
-        }
-        else {
-            m_count += _get_width_at_current_cp_start(cplen);
-            m_multibyte_left = cplen - 1;
-        }
-    }
-
-    It m_current{};
-    S m_end{};
-    difference_type m_count{0};
-    difference_type m_multibyte_left{0};
-};
-
-template <typename I, typename S>
-counted_width_iterator(I, S, ranges::iter_difference_t<I>)
-    -> counted_width_iterator<I, S>;
-}  // namespace counted_width_iterator_impl
-
-using counted_width_iterator_impl::counted_width_iterator;
-
-template <typename View, typename = void>
-struct take_width_view_storage;
-
-template <typename View>
-struct take_width_view_storage<View,
-                               std::enable_if_t<ranges::borrowed_range<View>>> {
-    take_width_view_storage(const View& v) : view(v) {}
-
-    const View& get() const
-    {
-        return view;
-    }
-
-    View view;
-};
-
-template <typename View>
-struct take_width_view_storage<
-    View,
-    std::enable_if_t<!ranges::borrowed_range<View>>> {
-    take_width_view_storage(const View& v) : view(&v) {}
-
-    const View& get() const
-    {
-        return *view;
-    }
-
-    const View* view;
-};
-
-template <typename View>
-class take_width_view : public ranges::view_interface<take_width_view<View>> {
-    template <bool IsConst>
-    class sentinel {
-        friend class sentinel<!IsConst>;
-        using Base = std::conditional_t<IsConst, const View, View>;
-        using CWI = counted_width_iterator<ranges::iterator_t<Base>,
-                                           ranges::sentinel_t<Base>>;
-        using underlying = ranges::sentinel_t<Base>;
-
-    public:
-        constexpr sentinel() = default;
-
-        constexpr explicit sentinel(underlying s) : m_end(SCN_MOVE(s)) {}
-
-        template <
-            typename S,
-            std::enable_if_t<std::is_same_v<S, sentinel<!IsConst>>>* = nullptr,
-            bool C = IsConst,
-            typename VV = View,
-            std::enable_if_t<C && std::is_convertible_v<ranges::sentinel_t<VV>,
-                                                        underlying>>* = nullptr>
-        constexpr explicit sentinel(S s) : m_end(SCN_MOVE(s.m_end))
-        {
-        }
-
-        constexpr underlying base() const
-        {
-            return m_end;
-        }
-
-        friend constexpr bool operator==(const CWI& y, const sentinel& x)
-        {
-            return (y.count() == 0 && y.multibyte_left() == 0) ||
-                   y.base() == x.m_end ||
-                   (y.count() == 1 && y.multibyte_left() == 0 &&
-                    y.is_current_double_wide());
-        }
-
-        friend constexpr bool operator==(const sentinel& x, const CWI& y)
-        {
-            return y == x;
-        }
-
-        friend constexpr bool operator!=(const CWI& y, const sentinel& x)
-        {
-            return !(y == x);
-        }
-
-        friend constexpr bool operator!=(const sentinel& x, const CWI& y)
-        {
-            return !(y == x);
-        }
-
-    private:
-        SCN_NO_UNIQUE_ADDRESS underlying m_end{};
-    };
-
-public:
-    using value_type = ranges::range_value_t<View>;
-
-    take_width_view() = default;
-
-    constexpr take_width_view(const View& base, std::ptrdiff_t count)
-        : m_base(base), m_count(count)
-    {
-    }
-
-    constexpr View base() const
-    {
-        return m_base;
-    }
-
-    constexpr auto begin() const
-    {
-        return counted_width_iterator{m_base.get().begin(), m_base.get().end(),
-                                      m_count};
-    }
-
-    constexpr auto end() const
-    {
-        return sentinel<true>{m_base.get().end()};
-    }
-
-private:
-    take_width_view_storage<View> m_base{};
-    std::ptrdiff_t m_count{0};
-};
-
-template <typename R>
-take_width_view(R&&, std::ptrdiff_t) -> take_width_view<R>;
-
-struct _take_width_fn {
-    template <typename R>
-    constexpr auto operator()(const R& r, std::ptrdiff_t n) const
-        -> decltype(take_width_view{r, n})
-    {
-        return take_width_view{r, n};
-    }
-};
-
-inline constexpr _take_width_fn take_width{};
 }  // namespace impl
-
-namespace ranges {
-template <typename R>
-inline constexpr bool enable_borrowed_range<::scn::impl::take_width_view<R>> =
-    enable_borrowed_range<R>;
-}
 
 /////////////////////////////////////////////////////////////////
 // contiguous_scan_context
@@ -7408,16 +7099,7 @@ auto read_string_view_impl(Range range,
 {
     static_assert(ranges::forward_iterator<detail::remove_cvref_t<Iterator>>);
 
-    auto src = [&]() {
-        if constexpr (detail::is_specialization_of_v<Range, take_width_view>) {
-            return make_contiguous_buffer(
-                ranges::subrange{range.begin().base(), result.base()});
-        }
-        else {
-            return make_contiguous_buffer(
-                ranges::subrange{range.begin(), result});
-        }
-    }();
+    auto src = make_contiguous_buffer(ranges::subrange{range.begin(), result});
     using src_type = decltype(src);
 
     if (src.stores_allocated_string()) {
@@ -7517,47 +7199,19 @@ public:
     // Note: no localized version,
     // since it's equivalent in behavior
 
+    // Reads all of the range: arg_reader has bounded it to the field width
     template <typename Range, typename ValueCharT>
     auto read(Range range, std::basic_string<ValueCharT>& value)
         -> scan_expected<ranges::iterator_t<Range>>
     {
-        return read_impl(
-            range,
-            [&](const auto& rng) {
-                return read_string_impl(rng, read_all(rng), value);
-            },
-            detail::priority_tag<1>{});
+        return read_string_impl(range, read_all(range), value);
     }
 
     template <typename Range, typename ValueCharT>
     auto read(Range range, std::basic_string_view<ValueCharT>& value)
         -> scan_expected<ranges::iterator_t<Range>>
     {
-        return read_impl(
-            range,
-            [&](const auto& rng) {
-                return read_string_view_impl(rng, read_all(rng), value);
-            },
-            detail::priority_tag<1>{});
-    }
-
-private:
-    template <typename View, typename ReadCb>
-    static auto read_impl(const take_width_view<View>& range,
-                          ReadCb&& read_cb,
-                          detail::priority_tag<1>)
-        -> scan_expected<ranges::iterator_t<take_width_view<View>&>>
-    {
-        return read_cb(range);
-    }
-
-    template <typename Range, typename ReadCb>
-    static auto read_impl(Range, ReadCb&&, detail::priority_tag<0>)
-        -> scan_expected<ranges::iterator_t<Range>>
-    {
-        return detail::unexpected_scan_error(
-            scan_error::invalid_format_string,
-            "Cannot read characters {:c} without maximum field width");
+        return read_string_view_impl(range, read_all(range), value);
     }
 };
 
@@ -8547,30 +8201,13 @@ struct default_arg_reader {
     detail::locale_ref loc;
 };
 
-template <typename Iterator>
-using skip_result = std::pair<Iterator, std::ptrdiff_t>;
-
-SCN_MAYBE_UNUSED constexpr scan_expected<void> check_widths_for_arg_reader(
-    const detail::format_specs& specs,
-    std::ptrdiff_t prefix_width,
-    std::ptrdiff_t value_width,
-    std::ptrdiff_t postfix_width)
-{
-    if (specs.width != 0) {
-        if (prefix_width + value_width + postfix_width < specs.width) {
-            return detail::unexpected_scan_error(
-                scan_error::length_too_short,
-                "Scanned value too narrow, width did not exceed what "
-                "was specified in the format string");
-        }
-    }
-    if (specs.precision != 0) {
-        // Ensured by take_width_view
-        SCN_ENSURE(prefix_width + value_width + postfix_width <=
-                   specs.precision);
-    }
-    return {};
-}
+template <typename T>
+inline constexpr field_unit field_unit_for =
+    detail::is_specialization_of_v<T, std::basic_string> ||
+            detail::is_specialization_of_v<T, std::basic_string_view> ||
+            detail::is_specialization_of_v<T, basic_regex_matches>
+        ? field_unit::code_point
+        : field_unit::code_unit;
 
 template <typename Context>
 struct arg_reader {
@@ -8580,103 +8217,13 @@ struct arg_reader {
     using range_type = typename context_type::range_type;
     using iterator = ranges::iterator_t<range_type>;
 
-    // A precision smaller than the width of the next character would make
-    // the readers see an empty range, with input remaining.
-    // They'd either succeed without consuming anything, or report
-    // different errors depending on the reader.
-    template <typename View>
-    static scan_expected<void> check_precision_fits_next_character(
-        const View& max_width_view,
-        bool is_source_empty)
-    {
-        if (SCN_UNLIKELY(!is_source_empty &&
-                         max_width_view.begin() == max_width_view.end())) {
-            return detail::unexpected_scan_error(
-                scan_error::invalid_scanned_value,
-                "Precision is smaller than the width of the next character");
-        }
-        return {};
-    }
-
-    template <typename Range>
-    auto impl_prefix(Range rng, bool rd_skip_ws_before_read)
-        -> scan_expected<skip_result<ranges::iterator_t<Range>>>
-    {
-        const bool need_skipped_width =
-            specs.width != 0 || specs.precision != 0;
-        using result_type = skip_result<ranges::iterator_t<Range>>;
-
-        // Read prefix
-        if (rd_skip_ws_before_read) {
-            // Skip preceding whitespace, if required by the reader
-            if (specs.precision != 0) {
-                auto max_width_view = take_width(rng, specs.precision);
-                SCN_TRY(w_it, skip_classic_whitespace(max_width_view)
-                                  .transform_error(make_eof_scan_error));
-                return result_type{w_it.base(), specs.precision - w_it.count()};
-            }
-            SCN_TRY(it, skip_classic_whitespace(rng).transform_error(
-                            make_eof_scan_error));
-
-            if (need_skipped_width) {
-                return result_type{
-                    it,
-                    calculate_text_width(make_contiguous_buffer(
-                                             ranges::subrange{rng.begin(), it})
-                                             .view())};
-            }
-            return result_type{it, 0};
-        }
-
-        return result_type{rng.begin(), 0};
-    }
-
-    template <typename Range>
-    auto impl_postfix(Range rng,
-                      bool rd_skip_ws_before_read,
-                      std::ptrdiff_t prefix_width,
-                      std::ptrdiff_t value_width)
-        -> scan_expected<skip_result<ranges::iterator_t<Range>>>
-    {
-        const bool need_skipped_width =
-            specs.width != 0 || specs.precision != 0;
-        using result_type = skip_result<ranges::iterator_t<Range>>;
-
-        if (!rd_skip_ws_before_read &&
-            ((specs.width != 0 && prefix_width + value_width < specs.width) ||
-             (specs.precision != 0 &&
-              prefix_width + value_width < specs.precision))) {
-            if (specs.precision != 0) {
-                const auto initial_width =
-                    specs.precision - prefix_width - value_width;
-                auto max_width_view = take_width(rng, initial_width);
-                SCN_TRY(w_it, skip_classic_whitespace(max_width_view, true)
-                                  .transform_error(make_eof_scan_error));
-                return result_type{w_it.base(), initial_width - w_it.count()};
-            }
-            SCN_TRY(it, skip_classic_whitespace(rng, true).transform_error(
-                            make_eof_scan_error));
-
-            if (need_skipped_width) {
-                return result_type{
-                    it,
-                    calculate_text_width(make_contiguous_buffer(
-                                             ranges::subrange{rng.begin(), it})
-                                             .view())};
-            }
-            return result_type{it, 0};
-        }
-        return result_type{rng.begin(), 0};
-    }
-
     template <typename Reader, typename Range, typename T>
     auto impl(Reader& rd, Range rng, T& value)
         -> scan_expected<ranges::iterator_t<Range>>
     {
         if (specs.width == 0 && specs.precision == 0) {
-            // What the general path below reduces to without width and
-            // precision. Not calling skip_classic_whitespace: another
-            // caller made GCC stop inlining it into the "{}" path.
+            // No bounds. Unlike in the bounded path below, readers that
+            // don't skip whitespace check for the end of input themselves.
             auto it = rng.begin();
             if (rd.skip_ws_before_read()) {
                 it = read_while_classic_space(rng);
@@ -8689,68 +8236,40 @@ struct arg_reader {
                                  loc);
         }
 
-        const bool need_skipped_width =
-            specs.width != 0 || specs.precision != 0;
-
-        // Read prefix
         auto it = rng.begin();
-        std::ptrdiff_t prefix_width = 0;
-        if (specs.precision != 0) {
-            auto max_width_view = take_width(rng, specs.precision);
-            SCN_TRY_DISCARD(check_precision_fits_next_character(
-                max_width_view, rng.begin() == rng.end()));
-            SCN_TRY(prefix_result,
-                    impl_prefix(max_width_view, rd.skip_ws_before_read()));
-            it = prefix_result.first.base();
-            prefix_width = prefix_result.second;
+        if (rd.skip_ws_before_read()) {
+            it = read_while_classic_space(rng);
         }
-        else {
-            SCN_TRY(prefix_result, impl_prefix(rng, rd.skip_ws_before_read()));
-            std::tie(it, prefix_width) = prefix_result;
+        if (auto e = eof_check(ranges::subrange{it, rng.end()});
+            SCN_UNLIKELY(!e)) {
+            return unexpected(make_eof_scan_error(e));
         }
-        auto prefix_end_it = it;
 
-        // Read value
-        std::ptrdiff_t value_width = 0;
-        if (specs.precision != 0) {
-            if (specs.precision <= prefix_width) {
-                return detail::unexpected_scan_error(
-                    scan_error::invalid_scanned_value,
-                    "Leading whitespace exceeded the field precision");
-            }
-
-            const auto initial_width = specs.precision - prefix_width;
-            auto max_width_view =
-                take_width(ranges::subrange{it, rng.end()}, initial_width);
-            SCN_TRY_DISCARD(check_precision_fits_next_character(
-                max_width_view, it == rng.end()));
-            SCN_TRY(w_it, rd.read_specs(max_width_view, specs, value, loc));
-            it = w_it.base();
-            value_width = initial_width - w_it.count();
-        }
-        else {
-            SCN_TRY_ASSIGN(it, rd.read_specs(ranges::subrange{it, rng.end()},
+        constexpr auto unit = field_unit_for<T>;
+        const std::ptrdiff_t max =
+            specs.precision != 0 ? specs.precision : specs.width;
+        std::ptrdiff_t length = 0;
+        if constexpr (ranges::contiguous_range<Range>) {
+            auto bounded_end = find_bounded_end<unit>(it, rng.end(), max);
+            SCN_TRY(value_end, rd.read_specs(ranges::subrange{it, bounded_end},
                                              specs, value, loc));
-
-            if (need_skipped_width) {
-                value_width = static_cast<std::ptrdiff_t>(calculate_text_width(
-                    make_contiguous_buffer(ranges::subrange{prefix_end_it, it})
-                        .view()));
-            }
+            length = count_field_units<unit>(it, value_end);
+            it = value_end;
+        }
+        else {
+            SCN_TRY(value_end,
+                    rd.read_specs(make_bounded_range<unit>(
+                                      ranges::subrange{it, rng.end()}, max),
+                                  specs, value, loc));
+            length = max - value_end.remaining();
+            it = value_end.base();
         }
 
-        // Read postfix
-        std::ptrdiff_t postfix_width = 0;
-        if (it != rng.end()) {
-            SCN_TRY(postfix_result,
-                    impl_postfix(ranges::subrange{it, rng.end()},
-                                 rd.skip_ws_before_read(), prefix_width,
-                                 value_width));
-            std::tie(it, postfix_width) = postfix_result;
+        if (length < specs.width) {
+            return detail::unexpected_scan_error(
+                scan_error::length_too_short,
+                "Scanned value is shorter than the field width");
         }
-
-        SCN_TRY_DISCARD(check_widths_for_arg_reader(
-            specs, prefix_width, value_width, postfix_width));
         return it;
     }
 
@@ -8767,8 +8286,7 @@ struct arg_reader {
             auto rd = make_reader<T, char_type>();
             SCN_TRY_DISCARD(rd.check_specs(specs));
 
-            if (!is_entire_source_contiguous(range) || specs.precision != 0 ||
-                specs.width != 0) {
+            if (!is_entire_source_contiguous(range)) {
                 return impl(rd, range, value);
             }
             auto crange = get_as_contiguous(range);

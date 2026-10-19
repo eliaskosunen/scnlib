@@ -307,39 +307,42 @@ TEST(StringTest, CharacterSetNonMatchingInputIsNotEndOfInput)
     EXPECT_THAT(result, FailedWith(scn::scan_error::invalid_scanned_value));
 }
 
-// U+4E00 is 3 bytes long in UTF-8, and has a width of 2
-TEST(StringTest, PrecisionSmallerThanNextCharacterWidth)
+// U+4E00 is 3 bytes long in UTF-8. Precision counts code points.
+TEST(StringTest, PrecisionOfOneMultibyteCodePoint)
 {
     const std::string wide_char = "\xe4\xb8\x80";
 
     constexpr std::array<const char*, 4> formats{"{:.1c}", "{:.1}", "{:.1[^x]}",
                                                  "{:.1s}"};
     for (auto fmt : formats) {
-        auto result =
-            scn::scan<std::string>(wide_char, scn::runtime_format(fmt));
-        EXPECT_THAT(result, FailedWith(scn::scan_error::invalid_scanned_value))
-            << fmt;
+        const auto input = wide_char + "a";
+        auto result = scn::scan<std::string>(input, scn::runtime_format(fmt));
+        ASSERT_THAT(result, Succeeded()) << fmt;
+        EXPECT_EQ(result->value(), wide_char) << fmt;
+        EXPECT_EQ(result->begin(), input.begin() + 3) << fmt;
 
         auto deque_source =
             std::deque<char>(wide_char.begin(), wide_char.end());
+        deque_source.push_back('a');
         auto from_deque =
             scn::scan<std::string>(deque_source, scn::runtime_format(fmt));
-        EXPECT_THAT(from_deque,
-                    FailedWith(scn::scan_error::invalid_scanned_value))
-            << fmt;
+        ASSERT_THAT(from_deque, Succeeded()) << fmt;
+        EXPECT_EQ(from_deque->value(), wide_char) << fmt;
+        EXPECT_EQ(from_deque->begin(), deque_source.begin() + 3) << fmt;
     }
 }
 
-TEST(StringTest, PrecisionSmallerThanNextCharacterWidthStringView)
+TEST(StringTest, PrecisionOfOneMultibyteCodePointStringView)
 {
     const std::string wide_char = "\xe4\xb8\x80";
 
     auto result =
         scn::scan<std::string_view>(wide_char, scn::runtime_format("{:.1c}"));
-    EXPECT_THAT(result, FailedWith(scn::scan_error::invalid_scanned_value));
+    ASSERT_THAT(result, Succeeded());
+    EXPECT_EQ(result->value(), wide_char);
 }
 
-TEST(StringTest, PrecisionEqualToNextCharacterWidth)
+TEST(StringTest, PrecisionLongerThanInput)
 {
     const std::string wide_char = "\xe4\xb8\x80";
 

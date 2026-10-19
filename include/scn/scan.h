@@ -5582,8 +5582,7 @@ public:
         /// in the source.
         invalid_literal,
 
-        /// Scanned field width was shorter than
-        /// what was specified as the minimum field width.
+        /// Scanned value had fewer units than the field width.
         length_too_short,
 
         /// Source range is in an invalid state,
@@ -5976,6 +5975,25 @@ constexpr std::size_t code_point_length_by_starting_code_unit(U ch)
         static_assert(sizeof(U) == 4);
         SCN_UNUSED(ch);
         return 1;
+    }
+}
+
+// Unlike `code_point_length_by_starting_code_unit(ch) != 0`,
+// an invalid UTF-8 lead byte (0xF8-0xFF) counts as a start.
+template <typename U>
+constexpr bool is_code_point_start(U ch)
+{
+    if constexpr (sizeof(U) == 1) {
+        return (static_cast<unsigned char>(ch) & 0xc0) != 0x80;
+    }
+    else if constexpr (sizeof(U) == 2) {
+        const auto unit = static_cast<std::uint16_t>(0xffff & ch);
+        return unit < 0xdc00 || unit > 0xdfff;
+    }
+    else {
+        static_assert(sizeof(U) == 4);
+        SCN_UNUSED(ch);
+        return true;
     }
 }
 
@@ -10685,32 +10703,55 @@ SCN_CLANG_IGNORE("-Wdocumentation-unknown-command")
  *
  * \section width Width
  *
- * Width specifies the minimum number of characters that will be read from
- * the source range. It can be any positive integer: a width of zero is an
- * error.
- * Skipped preceding whitespace is included in the width.
+ * Width specifies the exact number of units that will be read from the
+ * source range, or the minimum, if a precision is also given.
+ * It can be any positive integer without leading zeros: a width of zero is
+ * an error.
+ * If the value is shorter than the width, the scan fails with
+ * `scn::scan_error::length_too_short`.
+ *
+ * What counts as a unit depends on the type:
+ *
+ *  * Strings (with any type specifier) and `scn::regex_matches`: code points.
+ *  * Numbers, pointers, and characters and booleans with an integer
+ *    presentation type: code units.
+ *    Every character of the value counts: the sign, base prefix, digits,
+ *    radix point, exponent, and thousands separators.
+ *
+ * Whitespace skipped before the value doesn't count toward the width,
+ * like in `scanf`.
  *
  * Characters and booleans don't take a width, except with an integer
  * presentation type.
  *
- * For the purposes of width calculation, the same algorithm is used that in
- * {fmt}. Every code point has a width of one, except the following ones
- * have a width of 2:
+ * \code{.cpp}
+ * auto a = scn::scan<int, int, int>("20260131", "{:4}{:2}{:2}");
+ * // a->values() == (2026, 1, 31)
  *
- * * any code point with the East_Asian_Width="W" or East_Asian_Width="F"
- *   Derived Extracted Property as described by UAX#44
- * * U+4DC0 – U+4DFF (Yijing Hexagram Symbols)
- * * U+1F300 – U+1F64F (Miscellaneous Symbols and Pictographs, Emoticons)
- * * U+1F900 – U+1F9FF (Supplemental Symbols and Pictographs)
+ * auto b = scn::scan<int>("   42", "{:5}");
+ * // b.error() == scn::scan_error::length_too_short
+ * \endcode
  *
  * \section precision Precision
  *
- * Precision specifies the maximum number of characters that will be read from
- * the source range. The method for counting characters is the same as above,
- * with the width field.
- * It must be a positive integer, and a `.` without one is an error.
+ * Precision specifies the maximum number of units that will be read from the
+ * source range, counted like the width.
+ * It must be a positive integer without leading zeros, and a `.` without one
+ * is an error.
+ * With both, `{:N.M}` reads from `N` to `M` units, and a width larger than
+ * the precision is an error.
  * Like the width, it isn't allowed for characters and booleans, except with
  * an integer presentation type.
+ *
+ * The field ends where the width or precision says, which can cut a value
+ * short: `{:3}` on `"12345"` reads `123`, and `{:2e}` on `"1e5"` fails,
+ * because the exponent has no digits.
+ * A regular expression sees the end of the field as the end of the input,
+ * so `$` matches there.
+ *
+ * For floating-point numbers, precision counts characters, like for any
+ * other number. This differs from `std::format`, where it's the number of
+ * digits after the radix point: `{:.2f}` on `"3.14"` reads `3.`.
  *
  * \section localized Localized
  *
@@ -10749,8 +10790,8 @@ SCN_CLANG_IGNORE("-Wdocumentation-unknown-command")
  * <tr>
  * <td>`c`</td>
  * <td>
- * Copies from the input until the field precision is exhausted,
- * or the input ends.
+ * Copies code points from the input until the field precision is exhausted,
+ * or the input ends, including any whitespace.
  * Doesn't skip preceding whitespace.
  * Errors if no field precision is provided.
  * </td>

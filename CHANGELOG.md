@@ -48,6 +48,15 @@ scn::scan<...>(strm, ...);
    Previously, it was accepted.
  * Fill and alignment (`{:*<5}`, `{:>5}`) are removed from the format string syntax, and are now format string errors.
    `scn::scan_error::invalid_fill` is removed, so the enumerators after it in `scn::scan_error::code` have new values.
+ * Width and precision now count the units of the value instead of text columns:
+   code points for strings and `scn::regex_matches`, and code units for numbers, pointers,
+   and characters and booleans with an integer presentation type.
+   * A width (`{:4}`) now reads exactly that many units, so `{:4}{:2}{:2}` reads `"20260131"` as 2026, 1, and 31.
+     Previously, it was a minimum, and didn't limit how much was read.
+   * With both, `{:N.M}` reads from `N` to `M` units. A precision alone is still a maximum.
+   * Whitespace skipped before a value no longer counts toward the width or precision.
+   * Whitespace after a value read with a character set or a regex is no longer skipped
+     to make up the width or precision.
  * In a character set (`{:[...]}`), a backslash followed by a letter (like `\d`),
    or something that looks like a character class (like `[:alpha:]`), is now a format string error.
    Previously, they were matched as literal characters.
@@ -154,7 +163,8 @@ scn::scan<...>(strm, ...);
  * C++20 modules support
  * Building as a shared library (with `BUILD_SHARED_LIBS`) is now supported, with the exported symbols marked explicitly
  * More optimized reading for source ranges that are both `bidirectional_range`s and `sized_range`s.
- * Regular expressions can now be scanned from non-contiguous sources, with the `std` and `Boost` regex backends
+ * Regular expressions can now be scanned from non-contiguous sources, with the `std` and `Boost` regex backends.
+   A width or precision with a regex now works with every backend, including `re2`. Previously, it was an error.
  * `scn::basic_scan_parse_context` now tells whether the source is contiguous or borrowed,
    with `is_source_contiguous()` and `is_source_borrowed()`, so that `scanner::parse` can check them
  * C++20 views whose `iterator_concept` is stronger than their `iterator_category` (like `std::views::transform`)
@@ -171,8 +181,6 @@ scn::scan<...>(strm, ...);
  * Fix scanning from stdin not being thread-safe on MinGW, and with other C standard libraries not recognized by scnlib,
    since the `FILE` wasn't locked
  * Add compatibility with fast_float v7 and v8
- * Fix a double-width character (like an emoji) being read when only one column of field width or precision was left.
-   A precision smaller than the width of the next character now fails the scan with `invalid_scanned_value`.
  * Character arrays (including string literals) as sources now end at the first null character,
    or at the end of the array if there's none. Previously, the last element was always dropped,
    even if it wasn't a null character, and the characters after an embedded null character were scanned.

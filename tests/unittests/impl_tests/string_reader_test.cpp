@@ -237,69 +237,63 @@ TYPED_TEST(StringWordReaderTest, Word)
     EXPECT_TRUE(this->check_value(val, "foo"sv));
 }
 
-TEST(StringCharacterReaderTest, NonTakeWidthInput)
+TEST(StringCharacterReaderTest, StringReadsWholeRange)
 {
     auto src = "foo"sv;
     std::string val{};
     auto ret = scn::impl::character_reader_impl<char>{}.read(src, val);
 
-    ASSERT_THAT(ret, Failed());
-}
-
-TEST(StringCharacterReaderTest, StringWithSameWidth)
-{
-    auto src = scn::impl::take_width("foo"sv, 3);
-    std::string val{};
-    auto ret = scn::impl::character_reader_impl<char>{}.read(src, val);
-
     ASSERT_THAT(ret, Succeeded());
+    EXPECT_EQ(*ret, src.end());
     EXPECT_EQ(val, "foo");
 }
-TEST(StringCharacterReaderTest, StringViewWithSameWidth)
+TEST(StringCharacterReaderTest, StringViewReadsWholeRange)
 {
-    auto src = scn::impl::take_width("foo"sv, 3);
+    auto src = "foo"sv;
     std::string_view val{};
     auto ret = scn::impl::character_reader_impl<char>{}.read(src, val);
 
     ASSERT_THAT(ret, Succeeded());
+    EXPECT_EQ(*ret, src.end());
     EXPECT_EQ(val, "foo");
 }
 
-TEST(StringCharacterReaderTest, StringWithMoreWidth)
+TEST(StringCharacterReaderTest, StringWithBoundedRange)
 {
-    auto src = scn::impl::take_width("foo"sv, 6);
+    auto input = "foobar"sv;
+    auto src = scn::impl::make_bounded_range<scn::impl::field_unit::code_point>(
+        input, 3);
     std::string val{};
     auto ret = scn::impl::character_reader_impl<char>{}.read(src, val);
 
     ASSERT_THAT(ret, Succeeded());
+    EXPECT_EQ(ret->base(), input.begin() + 3);
     EXPECT_EQ(val, "foo");
 }
-TEST(StringCharacterReaderTest, StringViewWithMoreWidth)
+TEST(StringCharacterReaderTest, StringViewWithBoundedRange)
 {
-    auto src = scn::impl::take_width("foo"sv, 6);
+    auto input = "foobar"sv;
+    auto src = scn::impl::make_bounded_range<scn::impl::field_unit::code_point>(
+        input, 3);
     std::string_view val{};
     auto ret = scn::impl::character_reader_impl<char>{}.read(src, val);
 
     ASSERT_THAT(ret, Succeeded());
+    EXPECT_EQ(ret->base(), input.begin() + 3);
     EXPECT_EQ(val, "foo");
+    EXPECT_EQ(val.data(), input.data());
 }
 
-TEST(StringCharacterReaderTest, StringWithLessWidth)
+TEST(StringCharacterReaderTest, StringWithBoundPastEnd)
 {
-    auto src = scn::impl::take_width("foobar"sv, 3);
+    auto input = "foo"sv;
+    auto src = scn::impl::make_bounded_range<scn::impl::field_unit::code_point>(
+        input, 6);
     std::string val{};
     auto ret = scn::impl::character_reader_impl<char>{}.read(src, val);
 
     ASSERT_THAT(ret, Succeeded());
-    EXPECT_EQ(val, "foo");
-}
-TEST(StringCharacterReaderTest, StringViewWithLessWidth)
-{
-    auto src = scn::impl::take_width("foobar"sv, 3);
-    std::string_view val{};
-    auto ret = scn::impl::character_reader_impl<char>{}.read(src, val);
-
-    ASSERT_THAT(ret, Succeeded());
+    EXPECT_EQ(ret->base(), input.end());
     EXPECT_EQ(val, "foo");
 }
 

@@ -531,8 +531,59 @@ TEST(RegexTest, SinglelineFlag)
 #endif
 }
 
+TEST(RegexTest, Precision)
+{
+    auto r = scn::scan<std::string>("abcdef", "{:.3/[a-z]+/}");
+    ASSERT_THAT(r, Succeeded());
+    EXPECT_EQ(r->value(), "abc");
+    EXPECT_STREQ(r->begin(), "def");
+}
+
+TEST(RegexTest, PrecisionWithMatches)
+{
+    auto r = scn::scan<scn::regex_matches>("abcdef", "{:.3/([a-z]+)/}");
+    ASSERT_THAT(r, Succeeded());
+    EXPECT_THAT(r->value(), regex_matches_are<char>({"abc", "abc"}));
+    EXPECT_STREQ(r->begin(), "def");
+}
+
+// The end of the field is the end of the input for the regex
+TEST(RegexTest, PrecisionWithEndAnchor)
+{
+    auto r = scn::scan<std::string>("abcdef", "{:.3/[a-z]+$/}");
+    ASSERT_THAT(r, Succeeded());
+    EXPECT_EQ(r->value(), "abc");
+    EXPECT_STREQ(r->begin(), "def");
+}
+
+TEST(RegexTest, WidthLongerThanMatch)
+{
+    auto r = scn::scan<std::string>("abc123", "{:4/[a-z]+/}");
+    ASSERT_THAT(r, FailedWith(scn::scan_error::length_too_short));
+}
+
+// U+00E4, U+00F6, U+00FC are two bytes each
+TEST(RegexTest, WidthCountsCodePoints)
+{
+    auto r = scn::scan<scn::regex_matches>("\xc3\xa4\xc3\xb6\xc3\xbc",
+                                           "{:2/[^a]+/}");
+    ASSERT_THAT(r, Succeeded());
+    EXPECT_THAT(r->value(), regex_matches_are<char>({"\xc3\xa4\xc3\xb6"}));
+    EXPECT_STREQ(r->begin(), "\xc3\xbc");
+}
+
 #if SCN_REGEX_BACKEND == SCN_REGEX_BACKEND_STD || \
     SCN_REGEX_BACKEND == SCN_REGEX_BACKEND_BOOST
+
+TEST(RegexTest, NonContiguousSourceWidthCountsCodePoints)
+{
+    const auto input = std::string_view{"\xc3\xa4\xc3\xb6\xc3\xbc"};
+    auto source = std::deque<char>(input.begin(), input.end());
+    auto r = scn::scan<scn::regex_matches>(source, "{:2/[^a]+/}");
+    ASSERT_THAT(r, Succeeded());
+    EXPECT_THAT(r->value(), regex_matches_are<char>({"\xc3\xa4\xc3\xb6"}));
+    EXPECT_EQ(std::distance(source.begin(), r->begin()), 4);
+}
 
 TEST(RegexTest, NonContiguousSource)
 {
@@ -541,6 +592,20 @@ TEST(RegexTest, NonContiguousSource)
     ASSERT_THAT(r, Succeeded());
     EXPECT_THAT(r->range(), ::testing::Not(IsEmptyRange()));
     EXPECT_EQ(r->value(), "Foo");
+}
+
+TEST(RegexTest, NonContiguousSourceWithPrecision)
+{
+    auto source = std::deque<char>{'F', 'o', 'o', 'b', 'a', 'r'};
+    auto r = scn::scan<std::string>(source, "{:.3/[a-zA-Z]+/}");
+    ASSERT_THAT(r, Succeeded());
+    EXPECT_EQ(r->value(), "Foo");
+    ASSERT_NE(r->begin(), source.end());
+    EXPECT_EQ(*r->begin(), 'b');
+
+    auto matches = scn::scan<scn::regex_matches>(source, "{:.3/[a-zA-Z]+/}");
+    ASSERT_THAT(matches, Succeeded());
+    EXPECT_THAT(matches->value(), regex_matches_are<char>({"Foo"}));
 }
 
 TEST(RegexTest, NonContiguousSourceWithMatches)

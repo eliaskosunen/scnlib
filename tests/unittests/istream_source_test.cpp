@@ -74,6 +74,26 @@ private:
     std::streamsize m_available;
 };
 
+// Records the furthest position the stream was asked to read
+class tracking_streambuf : public unbuffered_streambuf {
+public:
+    using unbuffered_streambuf::unbuffered_streambuf;
+
+    std::size_t furthest_read() const
+    {
+        return m_furthest;
+    }
+
+private:
+    int_type underflow() override
+    {
+        m_furthest = std::max(m_furthest, m_pos);
+        return unbuffered_streambuf::underflow();
+    }
+
+    std::size_t m_furthest{0};
+};
+
 // Claims more characters to be available than there are
 class overpromising_streambuf : public string_streambuf {
 public:
@@ -278,6 +298,46 @@ TEST(IstreamSourceTest, StreambufWithoutBulkReads)
     auto [a, b] = result->values();
     EXPECT_EQ(a, 12);
     EXPECT_EQ(b, 34);
+}
+
+TEST(IstreamSourceTest, WidthLongerThanValue)
+{
+    std::istringstream ss{"12\n"};
+    auto result = scn::scan<int>(ss, "{:5}");
+    EXPECT_THAT(result, FailedWith(scn::scan_error::length_too_short));
+}
+
+TEST(IstreamSourceTest, WidthLeavesTheRest)
+{
+    std::istringstream ss{"abcdef"};
+    auto result = scn::scan<std::string>(ss, "{:3}");
+    ASSERT_THAT(result, Succeeded());
+    EXPECT_EQ(result->value(), "abc");
+
+    std::string rest;
+    std::getline(ss, rest);
+    EXPECT_EQ(rest, "def");
+}
+
+// Like stdin: reading past the field could wait for more input
+TEST(IstreamSourceTest, WidthDoesntReadPastTheField)
+{
+    for (auto fmt : {"{:3}", "{:.3}"}) {
+        tracking_streambuf buf{"abcdef"};
+        std::istream stream{&buf};
+        auto result = scn::scan<std::string>(stream, scn::runtime_format(fmt));
+        ASSERT_THAT(result, Succeeded()) << fmt;
+        EXPECT_EQ(result->value(), "abc") << fmt;
+        EXPECT_EQ(buf.furthest_read(), 2u) << fmt;
+    }
+
+    // U+00E4 is two bytes
+    tracking_streambuf buf{"a\xc3\xa4zz"};
+    std::istream stream{&buf};
+    auto result = scn::scan<std::string>(stream, "{:2}");
+    ASSERT_THAT(result, Succeeded());
+    EXPECT_EQ(result->value(), "a\xc3\xa4");
+    EXPECT_EQ(buf.furthest_read(), 2u);
 }
 
 TEST(IstreamSourceTest, SequentialSingleFieldsWithSpecs)

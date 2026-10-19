@@ -42,13 +42,16 @@ so the library and the code using it must be compiled in the same C++ standard m
 
 \section faq-fixed-width How do I scan fixed-width fields?
 
-Use the precision of the replacement fields,
-which limits the number of characters (columns) that are read:
-`scn::scan<int, int, int>("20260131", "{:.4}{:.2}{:.2}")`.
-The width (`{:4}`), by contrast, is a minimum:
-the field must span at least that many columns,
-or the scan fails with `scn::scan_error::length_too_short`.
-It doesn't limit how much is read, so combine it with a precision to bound both.
+Use the width of the replacement fields, which reads exactly that many characters:
+`scn::scan<int, int, int>("20260131", "{:4}{:2}{:2}")` gives 2026, 1, and 31.
+If a value is shorter than its field, the scan fails with
+`scn::scan_error::length_too_short`.
+For a field of varying length, give both a width and a precision:
+`{:2.4}` reads from 2 to 4 characters.
+
+Whitespace skipped before a value doesn't count toward the width, like in `scanf`.
+Because of that, fields padded with leading spaces can't be read this way:
+`{:5}` on `"   42"` fails, since the value is only two characters long.
 
 \section faq-regex Is it safe to use regular expressions with untrusted input?
 
