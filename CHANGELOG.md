@@ -2,7 +2,7 @@
 
 ## 5.0.0
 
-_Release 2025-xx-xx_
+_Release 2026-xx-xx_
 
 ### Breaking changes
 
@@ -31,42 +31,261 @@ scn::scan<...>(strm, ...);
  * Previously deprecated `scn::visit_scan_arg` is now removed. Use `scn::basic_scan_arg::visit` instead.
  * The `basic_scan_context` constructor only taking an iterator is now deprecated.
    Instead, use the new constructors that take a range, or both an interator and a sentinel.
- * `scn::invalid_input_range` renamed as `scn::input_source`.
- * `file_marker` removed as a return type of `scan`
+ * `scn::invalid_input_range` is renamed to `scn::invalid_source`.
+ * `file_marker` is removed as a return type of `scan`
+ * The `basic_scan_parse_context` constructor only taking a format string is now deprecated.
+   Instead, use the new constructor taking a `scn::source_tag<Source>`, which enables more compile-time checking.
+ * `scn::basic_regex_matches` is no longer a `std::vector` of `std::optional<scn::basic_regex_match>`:
+   it can't be modified, and doesn't have `data()` or reverse iterators.
+   `operator[]`, `at()`, and its iterators return the `std::optional<scn::basic_regex_match>` by value.
+   Its iterators are random-access only by `iterator_concept`: their `iterator_category` is `std::input_iterator_tag`.
+ * fast_float 6.0.0 or newer is now required (previously 5.0.0), unless it's disabled with `SCN_DISABLE_FAST_FLOAT`
+ * A width or precision of zero (`{:0}`, `{:.0}`) or with a leading zero (`{:05}`, `{:.05}`),
+   and a `.` without a precision (`{:5.}`) are now format string errors.
+   Previously, `{:05}` and `{:.05}` were read as `{:5}` and `{:.5}`, and the others were ignored.
+ * A width or precision on a `char`, `wchar_t`, `char32_t`, or `bool` is now a format string error,
+   unless the presentation type is an integer one, like `d` or `x` (which `char32_t` doesn't have).
+   Previously, it was accepted.
+ * Fill and alignment (`{:*<5}`, `{:>5}`) are removed from the format string syntax, and are now format string errors.
+   `scn::scan_error::invalid_fill` is removed, so the enumerators after it in `scn::scan_error::code` have new values.
+ * Width and precision now count the units of the value instead of text columns:
+   code points for strings (except with `c`) and `scn::regex_matches`, and code units for numbers, pointers,
+   and characters and booleans with an integer presentation type.
+   * A width (`{:4}`) now reads exactly that many units, so `{:4}{:2}{:2}` reads `"20260131"` as 2026, 1, and 31.
+     Previously, it was a minimum, and didn't limit how much was read.
+   * With both, `{:N.M}` reads from `N` to `M` units. A precision alone is still a maximum.
+   * Whitespace skipped before a value no longer counts toward the width or precision.
+   * Whitespace after a value read with a character set or a regex is no longer skipped
+     to make up the width or precision.
+ * `c` for strings now copies code units verbatim: the encoding isn't validated, and nothing is transcoded,
+   so the character type of the string must be the same as the source's.
+   Its width and precision count code units, and either one is required:
+   `{:5c}` reads exactly 5 code units, and `{:.5c}` from 1 to 5.
+   Previously, a precision was required, invalid encoding was an error,
+   and the value was transcoded to the character type of the string.
+ * Scanning a `wchar_t` from a narrow source with `{}` is now a format string error,
+   and `scn::scan_value<wchar_t>` from a narrow source doesn't compile, since a `wchar_t` is a single wide code unit.
+   `{:c}` is still an error, and integer presentation types, like `{:d}`, still work.
+   Previously, `{}` decoded a code point, which failed for characters outside the BMP with a 16-bit `wchar_t` (Windows).
+ * In a character set (`{:[...]}`), a backslash followed by a letter (like `\d`),
+   or something that looks like a character class (like `[:alpha:]`), is now a format string error.
+   Previously, they were matched as literal characters.
+ * In an inverted character set, `]` after `^` now starts a range if followed by `-` and another character:
+   `{:[^]-a]}` is everything except the characters from `]` to `a`. Previously, it was everything except `]`, `-`, and `a`.
+ * `{:[]}` is now a format string error (an unterminated character set, like `{:[^]}` already was).
+   Previously, it was an empty set.
+ * `std::chrono::time_point`s are now scanned as UTC, applying an offset scanned with `%z`,
+   instead of as local time with `std::mktime`, which depended on the `TZ` environment variable.
+   Unset fields default to 1970-01-01 00:00:00.
+   To get the previous result, convert the scanned UTC time to local time with `std::chrono::current_zone()`,
+   or scan into a `std::tm` and call `std::mktime`.
+ * `%u` in chrono format strings: `1` is now Monday and `7` Sunday, as in `strftime`,
+   and, without `L`, `0` is rejected (previously, `1` was Sunday).
+   For a Sunday-based weekday number from `0` to `6`, use `%w`.
+ * `%x` in chrono format strings, without `L`, is now `%m/%d/%y`, as in the C locale
+   (previously `%m/%d/%Y`). For a four-digit year, use `%m/%d/%Y`.
+ * `%S` in chrono format strings reads an optional fractional part when scanning a `time_point`
+   more precise than seconds, like `std::chrono::parse`, and the fractional part of `%.S` is now optional.
+   To leave the fractional part unread, scan a `time_point` with a precision of seconds.
+ * `scn::expected::emplace()` now requires `T` (or `E`, for `scn::unexpected`) to be nothrow constructible
+   from the arguments, like `std::expected`.
+   The assignment operators of `scn::expected` are now deleted or constrained like those of `std::expected`.
+ * The CMake option `SCN_USE_32BIT` was removed.
+   To build for 32-bit x86, use a toolchain file, or add `-m32` to `CMAKE_CXX_FLAGS`,
+   `CMAKE_EXE_LINKER_FLAGS`, and `CMAKE_SHARED_LINKER_FLAGS`.
+ * The CMake options `SCN_USE_RTTI`, `SCN_USE_NATIVE_ARCH`, and `SCN_USE_HASWELL_ARCH` were removed.
+   Use `CMAKE_CXX_FLAGS` instead, for example `-fno-rtti` (`/GR-` with MSVC), `-march=native`, or `-march=haswell`.
+   Unlike the options, the flags also apply to the code compiled from the headers in your own targets.
+ * The CMake option `SCN_BENCHMARKS_BUILDTIME` was removed. The build time benchmark is run with `scripts/benchmark.py`.
 
 ### Changes
 
- * Charset scanning (`{:[...]}` with strings) now accepts an empty string as a valid result.
-   Previously, at least a single character must've matched for scanning to succeed.
+ * `char` and `wchar_t` scanned with an integer presentation type (`{:d}`) now skip leading whitespace, like integers.
+   Previously, `" 42"` was an error.
+ * `scn::scan_error::code_t` is now public, to name the error code enum without `enum scn::scan_error::code`
+ * `scn::expected::value()` is now checked: if it contains an error, it throws the new `scn::bad_expected_access`
+   (or aborts, without exceptions). `operator*` and `operator->` remain unchecked.
+   This is consistent with `std::expected`.
+ * `scn::expected<T, E>` can now be assigned an `scn::unexpected<G>` with `G` other than `E`, like `std::expected`
+ * In release builds (with `NDEBUG`), internal assertions are no longer turned into optimizer assumptions
+ * Floating-point error messages no longer name the backend (fast_float, `std::from_chars`, or `std::strtod`)
+ * `%j` and `%Z` in the format string of a `time_point` are now format string errors, instead of always failing when scanning
+ * A read error from a C `FILE` now fails the scan, instead of being treated as the end of the input
+ * Regex support is disabled with `SCN_USE_EXCEPTIONS=OFF`, unless `SCN_REGEX_BACKEND` is `re2`,
+   since `std::regex` and Boost.Regex report errors only by throwing
  * Textual boolean representations are now case-insensitive, so both `true` and `True` (and so on) are accepted.
+ * `std::from_chars` is now used for `float` and `double` with libc++ 20 and newer
+ * Floating-point values that can't be parsed with fast_float or `std::from_chars` (like `long double`, or hexfloats without `std::from_chars`)
+   are now parsed with a custom built-in implementation, instead of `std::strtod`.
+   This covers every type with a known binary format: the regular IEEE 754 types (binary16/32/64/128),
+   bfloat16, and x87, m68k, and double-double `long double`.
+   `std::strtod` (or `strtof`, `strtold`) is now only used for a `float`, `double`, or `long double` of an unknown format (like IBM hexadecimal floating-point).
+   Instead of using `strtod_l`, or setting the C locale temporarily with `setlocale` (which isn't thread-safe), scnlib replaces the decimal point in the input with the one of the C locale.
+   With `SCN_DISABLE_STRTOD`, scanning such a type is a compile-time error.
+ * fast_float is only used if `float` is IEEE 754 binary32 and `double` is binary64. Otherwise, it isn't included, and doesn't break the build (like with a 32-bit `double`)
+ * The configuration macros are now in a separate header, `<scn/macros.h>`
+ * When scnlib is the top-level CMake project (and `SCN_DISABLE_TOP_PROJECT` is `OFF`), symbols are hidden by default
+   (`CMAKE_CXX_VISIBILITY_PRESET` and `CMAKE_VISIBILITY_INLINES_HIDDEN`)
+ * A whitespace character in a format string now also matches the end of the input, so `"{} "` matches `"123"`.
+   A non-whitespace literal character not matched because the input ended now gives `end_of_input`,
+   instead of `invalid_literal`.
+ * Scanning takes 33-55% less time than in v4.0.1 with GCC, and 10-25% less with Clang
+   (37% less with format specifiers, like `"{:d}"`), in the integer and floating-point benchmarks.
+   Values like `scn::expected` and the scan arguments are no longer passed through memory in ways that stall the CPU,
+   and format specifiers are handled with less overhead.
+   Scanning strings takes 20-30% less time with GCC, because the UTF-8 validation no longer copies a lookup table to the stack on every call.
+ * The compiler error for an invalid format string checked at compile time contains the error message with GCC and Clang,
+   regardless of how the code is formatted, or whether the compiler shows the source code at all.
+   This includes the messages of custom scanners passed to `ParseContext::on_error`,
+   which is now `constexpr`, and keeps the first error if called more than once.
+ * A character set (`{:[...]}`) on empty input now fails with `scn::scan_error::end_of_input`,
+   instead of `invalid_scanned_value`
+ * When scanning a `year_month_day` or a `time_point`, a weekday given together with a full date must now match the date.
+   A weekday can now be used together with a day of the month: previously, that was a format string error.
+ * With clang-cl, `SCN_MODULES` requires CMake 4.4 or newer, and the Ninja generator
 
 ### Features
 
+ * A character set (`{:[...]}`) can now contain `]`, by putting it first, like in `scanf`:
+   `{:[]abc]}`. This already worked in inverted sets (`{:[^]abc]}`).
  * `ranges::input_range`s can now be used as sources for `scn::scan`
    (previous requirement was `ranges::forward_range`)
    * When the source range is an `input_range`, the range type returned from `scn::scan` isn't a `subrange` anymore,
      but another `input_range`.
- * Reading from stdin with any scanning function is now thread-safe.
- * More resilient parsing of files with `scn::scan_file`
+ * `scn::basic_regex_matches` now has `front()`, `back()`, `cbegin()`, `cend()`, `str()`, and `operator==`
+ * `scn::scan_file` has been added, to scan from a `FILE` more resiliently than from a `FILE*` directly
  * `std::istream`s can now be used as sources for `scn::scan`, if `"scn/istream.h"` is included.
    * Instead of `.range()`, the member function to access the stream from a `scn::scan` result object is `.stream()`.
- * `scn::vinput` has been added to read from stdin directly with the type-erased API.
  * Locale-enabled overloads for `scn::input` have been added.
+ * The `/m` regex flag is now supported with the `std` regex backend on MSVC Build Tools 14.50 (Visual Studio 2026) and later
  * Extended standard floating point types can now be scanned, if they're supported by the implementation
    (`std::float16_t`, `std::float32_t`, `std::float64_t`, `std::float128_t`, `std::bfloat16_t`)
  * `__int128` and `unsigned __int128` can now be scanned, if they're supported by the implementation.
    Aliases for these types are provided and used, with `scn::int128` and `scn::uint128`.
- * The payload of a NaN in floating-point values is now parsed and stored in the scanned floating-point value.
+ * The payload of a NaN in floating-point values (like `nan(0x1234)`) is now parsed and stored in the scanned floating-point value.
+   * This uses a new optional dependency, [eknan](https://github.com/eliaskosunen/eknan),
+     fetched with `FetchContent` by default, like fast_float.
+     It can be disabled with `SCN_DISABLE_EKNAN`, which makes payloads ignored,
+     or found with `find_package`, with `SCN_USE_EXTERNAL_EKNAN`.
+   * The payload is an integer, with the same base prefixes as with the `i` type specifier
+     (`0b`, `0o`, `0x`, or `0` for octal), and `_` allowed anywhere after the prefix.
+     A payload that is invalid, or doesn't fit in the NaN, gives the default quiet NaN.
  * C++20 modules support
+ * Building as a shared library (with `BUILD_SHARED_LIBS`) is now supported, with the exported symbols marked explicitly
  * More optimized reading for source ranges that are both `bidirectional_range`s and `sized_range`s.
+ * Regular expressions can now be scanned from non-contiguous sources, with the `std` and `Boost` regex backends.
+   A width or precision with a regex now works with every backend, including `re2`. Previously, it was an error.
+ * `scn::basic_scan_parse_context` now tells whether the source is contiguous or borrowed,
+   with `is_source_contiguous()` and `is_source_borrowed()`, so that `scanner::parse` can check them
+ * C++20 views whose `iterator_concept` is stronger than their `iterator_category` (like `std::views::transform`)
+   can now be scanned from, with the range category given by their `iterator_concept`,
+   as are ranges whose iterators only describe themselves with a `std::iterator_traits` specialization
+   (like `std::common_iterator`, from `std::views::common`)
+ * Ranges that can only be iterated over when non-const (like `std::views::filter`) can now be scanned from
+ * The `rNN` and `RNN` integer type specifiers are now supported, for an arbitrary base `NN` from 2 to 36 (without a base prefix)
 
 ### Fixes
 
  * Tons of compiler warning fixes
  * Fix compiler errors occurring from accidental use of ADL when calling `decay_copy` unqualified
- * Files are no longer considered "borrowed" by `scn::basic_scan_parse_context`
- * Fix symbol visibility when compiling as a shared library
+ * Fix scanning from stdin not being thread-safe on MinGW, and with other C standard libraries not recognized by scnlib,
+   since the `FILE` wasn't locked
  * Add compatibility with fast_float v7 and v8
+ * Character arrays (including string literals) as sources now end at the first null character,
+   or at the end of the array if there's none. Previously, the last element was always dropped,
+   even if it wasn't a null character, and the characters after an embedded null character were scanned.
+ * Fix compilation with GCC 8 in debug mode
+ * Fix CMake deprecation warnings caused by `FetchContent_Populate` and `CMAKE_FIND_PACKAGE_SORT_ORDER`
+ * Fix localized month names (`L%b`) being ignored when `SCN_DISABLE_FAST_FLOAT` is set
+ * Fix the check for `SCN_REGEX_BOOST_USE_ICU` in the installed CMake package config,
+   which also required fast_float when built with `SCN_DISABLE_FAST_FLOAT`, and Boost when built with `SCN_DISABLE_REGEX`
+ * Fix `cmake --install --component scnlib_Development` not installing the library itself
+ * Fix the CMake option `SCN_DISABLE_CHRONO` having no effect, and the build errors with it
+ * `SCN_INSTALL` now defaults to `ON` whenever scnlib is the top-level CMake project,
+   even with `SCN_DISABLE_TOP_PROJECT`, so that package managers don't need to set it
+ * Fix `scn::expected`: `emplace()` over an error leaked the error,
+   the converting constructors default-constructed a value and never destroyed it,
+   and assigning a value over an error swallowed an exception thrown while constructing it.
+   When constructing a value or an error threw, the copy and move constructors destroyed an object that was never constructed,
+   and `emplace()` and assigning an `scn::unexpected` over a value destroyed the old one twice.
+ * Fix `scn::expected<T, E>::operator=(U&&)` recursing until a stack overflow
+   for a `U` that isn't assignable to `T` (like an `scn::expected<T, E>` lvalue)
+ * `scn::expected<T, E>` is no longer constructible from `scn::unexpect` as a value of `T` (like with `T = std::any`)
+ * `scn::expected<T, E>` is now nothrow move assignable when `T` and `E` are (like `scn::expected<std::string, int>`)
+ * `scn::expected` is no longer marked `[[clang::trivial_abi]]` when `T` or `E` isn't trivially copyable,
+   which made Clang relocate them with a bitwise copy
+ * Fix multi-byte whitespace (like U+2028) not being recognized when it's split between two chunks of a non-contiguous source,
+   like a buffered file
+ * An invalid code point is no longer skipped as whitespace when scanning from a non-contiguous source,
+   which made the result differ from a contiguous source with the same contents
+ * Fix the lock of a C `FILE` being released between the characters put back into it after a scan
+ * Fix scanning an integer right after another integer from a non-contiguous source (like `std::deque<char>`) failing
+   with `end_of_input` when the format string has no whitespace between the fields (`"{}{}"`)
+ * Fix `putback()` and repeated `unget()` in an `operator>>` used through `scn::basic_istream_scanner`
+   failing an assertion, and `unget()` at the beginning of the input not failing
+ * Fix argument tracking in format strings with 64 or more arguments,
+   and report the first error in a format string, instead of the last
+ * Overlong UTF-8 sequences, encoded surrogate code points, and unpaired UTF-16 surrogates are now treated as invalid
+ * Fix scanning a `char32_t`: empty input was read out of bounds,
+   and invalid or truncated UTF-8, surrogates, and values above U+10FFFF weren't rejected
+ * Fix character set ranges crossing the ASCII boundary
+ * Fix characters outside the BMP being transcoded with an invalid low surrogate when scanning a narrow source
+   into a wide string with a 16-bit `wchar_t` (Windows)
+ * `scn::scan_int` returns an error for an invalid base, and rejects unsupported types at compile time instead of failing to link.
+   `scn::scan_int_exhaustive_valid` is now supported on big-endian platforms, and accepts leading zeroes.
+ * Fix integer overflow not being detected for some 64-bit values with the maximum number of digits
+   (e.g. `30000000000000000000` scanned as a `uint64_t` gave 11553255926290448384)
+ * Integer presentations (like `{:d}`) for `char` and `wchar_t` now use the signedness of the type:
+   where it's unsigned, values above the signed maximum are accepted, and negative values rejected
+ * `{:c}` is now accepted for `char`, and for `wchar_t` from a wide source, as documented,
+   and the format string of a `char32_t` is checked the same way at compile time as at runtime
+ * Fix localized integer scanning (`{:L}`): a thousands separator before the first digit (`,,,5`) was accepted,
+   and with `o` or `i`, a leading zero followed by a thousands separator (`0,10`) ended the value at the zero.
+   A thousands separator after the last digit is no longer consumed, so `"{:L}, {}"` matches `"1, 2"`.
+ * Defining `SCN_USE_EXCEPTIONS` as `0` now makes scnlib behave as if exceptions were disabled; previously, the macro had no effect.
+   Building with the CMake option `SCN_USE_EXCEPTIONS=OFF` now defines it for the users of the library too,
+   and no longer fails to compile.
+ * `scn::scan_error::to_errc()` returns `std::errc::invalid_argument` for `max_error` instead of being undefined behavior,
+   and `scn::basic_scan_parse_context::advance_to()` reports an error for an iterator outside of the format string,
+   which fails the scan when a custom scanner's `parse` returns one
+ * Runtime format strings mixing automatic and manual argument indexing (like `"{} {0}"`) are now rejected,
+   like format strings checked at compile time
+ * Fix scanning ranges with wide characters failing to compile,
+   and reading out of bounds with multi-character brackets or separators
+ * Fix `scn::regex_matches` being unscannable when `<scn/ranges.h>` is included
+ * Scanning a `scn::regex_matches` with a runtime format string without a regex (like `{}`) now fails,
+   instead of failing an assertion (undefined behavior in release builds)
+ * A custom scanner returning an iterator past the end of the source, or before the start of its field,
+   now fails the scan with `scn::scan_error::invalid_source_state`,
+   instead of reading out of bounds, or corrupting the position of a stream or a `FILE`
+ * `scn::basic_istream_scanner` now imbues the locale passed to `scn::scan` into the stream given to `operator>>`
+ * Fix compilation with libc++ 23, which removed `__wrap_iter::base()`
+ * Fix the locale not being passed on when scanning a single argument with the default format string (`"{}"`)
+ * Regular expressions: with the Boost backend, `.` no longer matches a newline without the `s` flag,
+   and with the re2 backend, `^` and `$` no longer match at line breaks without the `m` flag
+ * A `/` in a regex in a format string is escaped only by an odd number of backslashes,
+   so that a regex can end in a literal backslash (`{:/\\/}`)
+ * Scanning from a character pointer (like `const char*`) is now a call to a deleted function,
+   with an explanation in C++26, instead of an unexplained "no matching function"
+ * Fix fractional seconds being off by one unit of the `time_point` precision
+   (e.g. `00.000511` scanned as 510 microseconds)
+ * `%Z` in chrono format strings no longer hits an assertion failure on an empty timezone name, and fails instead
+ * Fix chrono format strings: `%C` wasn't range-checked, a non-ASCII literal character caused the character after it to be treated as a literal
+   (e.g. `ä%Y`), localized fields read from the beginning of the input instead of the current position,
+   and building with `SCN_DISABLE_TYPE_STRING` failed
+ * Fix `%y` and `%C` being combined incorrectly when scanning a `scn::datetime_components`,
+   and `%j` only accepting values up to 6
+ * Scanning a `month_day`, `year_month_day`, or `time_point` fails if the day doesn't exist in its month
+   (e.g. February 30th), like `std::chrono::parse`. Previously, it was accepted, and a `time_point` was normalized
+   to the next month. Scanning a `time_point` also fails on a leap second (second `60`).
+ * Fix localized `%O` modifiers in chrono format strings (like `{:L%Om}`) always failing with libc++,
+   and `L%OI` failing on `12` with libstdc++
+ * Fix `long double` hexfloats close to the smallest subnormal value: with musl, a value rounding to zero
+   wasn't reported as an underflow, and with a double-double `long double` (PowerPC), an exact half of the smallest
+   subnormal value gave 2^-970
+ * `%Ou` is now accepted in chrono format strings, `%OW` is no longer scanned as a weekday,
+   and `%z` rejects minutes above 59
+ * Documentation fixes, and documentation for scanning dates and times
 
 ## 4.0.1
 
