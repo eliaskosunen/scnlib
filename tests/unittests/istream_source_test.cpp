@@ -322,7 +322,7 @@ TEST(IstreamSourceTest, WidthLeavesTheRest)
 // Like stdin: reading past the field could wait for more input
 TEST(IstreamSourceTest, WidthDoesntReadPastTheField)
 {
-    for (auto fmt : {"{:3}", "{:.3}"}) {
+    for (auto fmt : {"{:3}", "{:.3}", "{:3c}"}) {
         tracking_streambuf buf{"abcdef"};
         std::istream stream{&buf};
         auto result = scn::scan<std::string>(stream, scn::runtime_format(fmt));

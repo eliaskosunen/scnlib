@@ -70,12 +70,45 @@ TEST(CharTest, CharFromWide)
     static_assert(!scn::detail::is_scannable<char, wchar_t>::value);
 }
 
-TEST(CharTest, WcharFromNarrow)
+TEST(CharTest, WcharFromNarrowRejected)
 {
-    auto result = scn::scan<wchar_t>("abc", "{}");
+    for (auto fmt : {"{}", "{:}", "{:c}"}) {
+        EXPECT_THAT(scn::scan<wchar_t>("abc", scn::runtime_format(fmt)),
+                    FailedWith(scn::scan_error::invalid_format_string))
+            << fmt;
+        EXPECT_THAT(scn::scan<wchar_t>(std::deque<char>{'a', 'b'},
+                                       scn::runtime_format(fmt)),
+                    FailedWith(scn::scan_error::invalid_format_string))
+            << fmt;
+    }
+    // Rejected before the end of input is checked
+    for (auto fmt : {"{}", "{:}", "{:c}"}) {
+        EXPECT_THAT(scn::scan<wchar_t>("", scn::runtime_format(fmt)),
+                    FailedWith(scn::scan_error::invalid_format_string))
+            << fmt;
+        EXPECT_THAT(
+            scn::scan<wchar_t>(std::deque<char>{}, scn::runtime_format(fmt)),
+            FailedWith(scn::scan_error::invalid_format_string))
+            << fmt;
+    }
+    EXPECT_THAT((scn::scan<int, wchar_t>("1", scn::runtime_format("{}{}"))),
+                FailedWith(scn::scan_error::invalid_format_string));
+    EXPECT_THAT((scn::scan<int, wchar_t>("1", scn::runtime_format("{} {}"))),
+                FailedWith(scn::scan_error::invalid_format_string));
+}
+TEST(CharTest, WcharFromNarrowRejectedInVscanValue)
+{
+    wchar_t ch{};
+    auto result = scn::vscan_value(
+        std::string_view{"abc"}, scn::detail::make_arg<scn::scan_context>(ch));
+    EXPECT_THAT(result, FailedWith(scn::scan_error::invalid_format_string));
+}
+TEST(CharTest, WcharFromNarrowWithIntegerPresentation)
+{
+    auto result = scn::scan<wchar_t>("42", "{:d}");
     ASSERT_THAT(result, Succeeded());
-    auto [ch] = result->values();
-    EXPECT_EQ(ch, L'a');
+    EXPECT_EQ(result->value(), static_cast<wchar_t>(42));
+    EXPECT_THAT(result->range(), IsEmptyRange());
 }
 TEST(CharTest, WcharFromWide)
 {
@@ -141,12 +174,6 @@ TEST(CharTest, CharAfterInt)
 TEST(CharTest, CodePointFromNarrowEmptyInput)
 {
     EXPECT_THAT(scn::scan<char32_t>("", scn::runtime_format("{:c}")),
-                FailedWith(scn::scan_error::end_of_input));
-}
-
-TEST(CharTest, WcharFromNarrowEmptyInput)
-{
-    EXPECT_THAT(scn::scan<wchar_t>("", scn::runtime_format("{:c}")),
                 FailedWith(scn::scan_error::end_of_input));
 }
 
@@ -232,21 +259,6 @@ TEST(CharTest, CodePointFromNarrowInvalidUtf8)
     }
 }
 
-TEST(CharTest, WcharFromNarrowInvalidUtf8)
-{
-    constexpr std::array<std::string_view, 5> inputs{
-        "\xc3\x28",          // bad continuation
-        "\xe4\xb8",          // truncated at the end of input
-        "\xc0\x80",          // overlong NUL
-        "\xed\xa0\x80",      // surrogate U+D800
-        "\xf4\x90\x80\x80",  // U+110000
-    };
-    for (std::string_view input : inputs) {
-        EXPECT_THAT(scn::scan<wchar_t>(input, "{}"),
-                    FailedWith(scn::scan_error::invalid_scanned_value));
-    }
-}
-
 TEST(CharTest, CodePointFromNarrowMultiByte)
 {
     const std::pair<std::string_view, char32_t> cases[] = {
@@ -262,14 +274,6 @@ TEST(CharTest, CodePointFromNarrowMultiByte)
             EXPECT_EQ(result->begin(), input.end()) << fmt;
         }
     }
-}
-
-TEST(CharTest, WcharFromNarrowMultiByte)
-{
-    auto result = scn::scan<wchar_t>("\xe4\xb8\x96", "{}");
-    ASSERT_THAT(result, Succeeded());
-    EXPECT_EQ(result->value(), static_cast<wchar_t>(0x4e16));
-    EXPECT_THAT(result->range(), IsEmptyRange());
 }
 
 TEST(CharTest, CodePointFromWideInvalid)

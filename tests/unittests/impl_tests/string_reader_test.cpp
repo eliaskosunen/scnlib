@@ -261,7 +261,7 @@ TEST(StringCharacterReaderTest, StringViewReadsWholeRange)
 TEST(StringCharacterReaderTest, StringWithBoundedRange)
 {
     auto input = "foobar"sv;
-    auto src = scn::impl::make_bounded_range<scn::impl::field_unit::code_point>(
+    auto src = scn::impl::make_bounded_range<scn::impl::field_unit::code_unit>(
         input, 3);
     std::string val{};
     auto ret = scn::impl::character_reader_impl<char>{}.read(src, val);
@@ -273,7 +273,7 @@ TEST(StringCharacterReaderTest, StringWithBoundedRange)
 TEST(StringCharacterReaderTest, StringViewWithBoundedRange)
 {
     auto input = "foobar"sv;
-    auto src = scn::impl::make_bounded_range<scn::impl::field_unit::code_point>(
+    auto src = scn::impl::make_bounded_range<scn::impl::field_unit::code_unit>(
         input, 3);
     std::string_view val{};
     auto ret = scn::impl::character_reader_impl<char>{}.read(src, val);
@@ -284,10 +284,44 @@ TEST(StringCharacterReaderTest, StringViewWithBoundedRange)
     EXPECT_EQ(val.data(), input.data());
 }
 
+TEST(StringCharacterReaderTest, InvalidEncodingIsCopiedVerbatim)
+{
+    auto src = "a\xff\xc3"sv;
+    std::string val{};
+    auto ret = scn::impl::character_reader_impl<char>{}.read(src, val);
+    ASSERT_THAT(ret, Succeeded());
+    EXPECT_EQ(*ret, src.end());
+    EXPECT_EQ(val, src);
+
+    std::string_view view{};
+    auto view_ret = scn::impl::character_reader_impl<char>{}.read(src, view);
+    ASSERT_THAT(view_ret, Succeeded());
+    EXPECT_EQ(view, src);
+}
+TEST(StringCharacterReaderTest, BoundedRangeSplitsCodePoint)
+{
+    auto input = "\xc3\xa4"sv;
+    auto src = scn::impl::make_bounded_range<scn::impl::field_unit::code_unit>(
+        input, 1);
+    std::string val{};
+    auto ret = scn::impl::character_reader_impl<char>{}.read(src, val);
+
+    ASSERT_THAT(ret, Succeeded());
+    EXPECT_EQ(ret->base(), input.begin() + 1);
+    EXPECT_EQ(val, "\xc3");
+}
+TEST(StringCharacterReaderTest, DifferentCharacterTypeIsAnError)
+{
+    auto src = "foo"sv;
+    std::wstring val{};
+    auto ret = scn::impl::character_reader_impl<char>{}.read(src, val);
+    EXPECT_THAT(ret, FailedWith(scn::scan_error::invalid_format_string));
+}
+
 TEST(StringCharacterReaderTest, StringWithBoundPastEnd)
 {
     auto input = "foo"sv;
-    auto src = scn::impl::make_bounded_range<scn::impl::field_unit::code_point>(
+    auto src = scn::impl::make_bounded_range<scn::impl::field_unit::code_unit>(
         input, 6);
     std::string val{};
     auto ret = scn::impl::character_reader_impl<char>{}.read(src, val);

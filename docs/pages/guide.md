@@ -277,7 +277,8 @@ auto result = scn::scan_value<int>("123");
 
 scnlib expects all input given to it to be Unicode.
 All input with the character/value type of `char` is always assumed to be UTF-8.
-Encoding errors are checked for, and may cause scanning to fail.
+Encoding errors are checked for and may cause scanning to fail,
+except when reading a string with `c`, which copies code units verbatim.
 
 This guide has so far only used narrow (`char`) ranges as input.
 scnlib also supports wide (`wchar_t`) ranges to be used as source ranges,
@@ -296,6 +297,7 @@ auto result = scn::scan<std::wstring>(L"foo bar", L"{}");
 
 // narrow strings can be scanned from wide sources, and vice versa
 // in these cases, Unicode transcoding (UTF-8 <-> UTF-16/32) is performed
+// (except with `c`, which copies code units, so the character types must match)
 auto result2 = scn::scan<std::string>(result->range(), L"{}");
 // result2->value() == "bar"
 \endcode

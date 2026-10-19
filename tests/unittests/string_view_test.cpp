@@ -50,7 +50,7 @@ TEST(StringViewTest, StringPresentationWideStringViewFromWideSource)
     EXPECT_EQ(result->value(), L"abc");
 }
 
-TEST(StringViewTest, CharacterPresentationWithNoWidthCausesError)
+TEST(StringViewTest, CharacterPresentationRequiresWidthOrPrecision)
 {
     auto result =
         scn::scan<std::string_view>("abc def", scn::runtime_format("{:c}"));
@@ -90,8 +90,13 @@ TEST(StringViewTest, CharacterSetPresentationWideStringViewFromWideSource)
 TEST(StringViewTest, InvalidUtf8)
 {
     auto source = std::string_view{"\x82\xf5"};
-    auto result = scn::scan<std::string_view>(source, "{:.64c}");
+    auto result = scn::scan<std::string_view>(source, "{}");
     ASSERT_THAT(result, FailedWith(scn::scan_error::invalid_scanned_value));
+
+    // `c` doesn't validate the encoding
+    auto characters = scn::scan<std::string_view>(source, "{:.64c}");
+    ASSERT_THAT(characters, Succeeded());
+    EXPECT_EQ(characters->value(), source);
 }
 
 TEST(StringViewTest, WonkyInput)
@@ -115,5 +120,6 @@ TEST(StringViewTest, WonkyInput2)
     auto input = std::string_view{source, sizeof(source)};
 
     auto result = scn::scan<std::string_view>(input, "{:.64c}");
-    ASSERT_THAT(result, FailedWith(scn::scan_error::invalid_scanned_value));
+    ASSERT_THAT(result, Succeeded());
+    EXPECT_EQ(result->value(), input);
 }

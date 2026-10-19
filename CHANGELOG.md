@@ -49,7 +49,7 @@ scn::scan<...>(strm, ...);
  * Fill and alignment (`{:*<5}`, `{:>5}`) are removed from the format string syntax, and are now format string errors.
    `scn::scan_error::invalid_fill` is removed, so the enumerators after it in `scn::scan_error::code` have new values.
  * Width and precision now count the units of the value instead of text columns:
-   code points for strings and `scn::regex_matches`, and code units for numbers, pointers,
+   code points for strings (except with `c`) and `scn::regex_matches`, and code units for numbers, pointers,
    and characters and booleans with an integer presentation type.
    * A width (`{:4}`) now reads exactly that many units, so `{:4}{:2}{:2}` reads `"20260131"` as 2026, 1, and 31.
      Previously, it was a minimum, and didn't limit how much was read.
@@ -57,6 +57,16 @@ scn::scan<...>(strm, ...);
    * Whitespace skipped before a value no longer counts toward the width or precision.
    * Whitespace after a value read with a character set or a regex is no longer skipped
      to make up the width or precision.
+ * `c` for strings now copies code units verbatim: the encoding isn't validated, and nothing is transcoded,
+   so the character type of the string must be the same as the source's.
+   Its width and precision count code units, and either one is required:
+   `{:5c}` reads exactly 5 code units, and `{:.5c}` from 1 to 5.
+   Previously, a precision was required, invalid encoding was an error,
+   and the value was transcoded to the character type of the string.
+ * Scanning a `wchar_t` from a narrow source with `{}` is now a format string error,
+   and `scn::scan_value<wchar_t>` from a narrow source doesn't compile, since a `wchar_t` is a single wide code unit.
+   `{:c}` is still an error, and integer presentation types, like `{:d}`, still work.
+   Previously, `{}` decoded a code point, which failed for characters outside the BMP with a 16-bit `wchar_t` (Windows).
  * In a character set (`{:[...]}`), a backslash followed by a letter (like `\d`),
    or something that looks like a character class (like `[:alpha:]`), is now a format string error.
    Previously, they were matched as literal characters.
@@ -216,8 +226,8 @@ scn::scan<...>(strm, ...);
  * Fix argument tracking in format strings with 64 or more arguments,
    and report the first error in a format string, instead of the last
  * Overlong UTF-8 sequences, encoded surrogate code points, and unpaired UTF-16 surrogates are now treated as invalid
- * Fix scanning a `char32_t`, or a `wchar_t` from a narrow source: empty input
-   was read out of bounds, and invalid or truncated UTF-8, surrogates, and values above U+10FFFF weren't rejected
+ * Fix scanning a `char32_t`: empty input was read out of bounds,
+   and invalid or truncated UTF-8, surrogates, and values above U+10FFFF weren't rejected
  * Fix character set ranges crossing the ASCII boundary
  * Fix characters outside the BMP being transcoded with an invalid low surrogate when scanning a narrow source
    into a wide string with a 16-bit `wchar_t` (Windows)
@@ -227,7 +237,7 @@ scn::scan<...>(strm, ...);
    (e.g. `30000000000000000000` scanned as a `uint64_t` gave 11553255926290448384)
  * Integer presentations (like `{:d}`) for `char` and `wchar_t` now use the signedness of the type:
    where it's unsigned, values above the signed maximum are accepted, and negative values rejected
- * `{:c}` is now accepted for `char` and `wchar_t`, as documented,
+ * `{:c}` is now accepted for `char`, and for `wchar_t` from a wide source, as documented,
    and the format string of a `char32_t` is checked the same way at compile time as at runtime
  * Fix localized integer scanning (`{:L}`): a thousands separator before the first digit (`,,,5`) was accepted,
    and with `o` or `i`, a leading zero followed by a thousands separator (`0,10`) ended the value at the zero.

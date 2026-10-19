@@ -10465,7 +10465,7 @@ constexpr void check_int_type_specs(const format_specs& specs,
     }
 }
 
-template <typename Handler>
+template <typename ValueCharT, typename SourceCharT, typename Handler>
 constexpr void check_char_type_specs(const format_specs& specs,
                                      Handler&& handler)
 {
@@ -10484,6 +10484,16 @@ constexpr void check_char_type_specs(const format_specs& specs,
         // clang-format off
         return handler.on_error("Width and precision are not supported for characters, except with an integer presentation type");
         // clang-format on
+    }
+    if constexpr (std::is_same_v<ValueCharT, wchar_t> &&
+                  std::is_same_v<SourceCharT, char>) {
+        if (specs.type == presentation_type::none ||
+            specs.type == presentation_type::character) {
+            SCN_UNLIKELY_ATTR
+            // clang-format off
+            return handler.on_error("A wchar_t can't be scanned from a narrow source, except with an integer presentation type");
+            // clang-format on
+        }
     }
 }
 
@@ -10535,9 +10545,9 @@ constexpr void check_string_type_specs(const format_specs& specs,
         return;
     }
     if (specs.type == presentation_type::character) {
-        if (SCN_UNLIKELY(specs.precision == 0)) {
+        if (SCN_UNLIKELY(specs.width == 0 && specs.precision == 0)) {
             // clang-format off
-            return handler.on_error("'c' type specifier for strings requires the field precision to be specified");
+            return handler.on_error("'c' type specifier for strings requires a field width or precision");
             // clang-format on
         }
         return;
@@ -10546,6 +10556,26 @@ constexpr void check_string_type_specs(const format_specs& specs,
     // clang-format off
     handler.on_error("Invalid type specifier for a string type, expected one of: s, c, [character set], /regex/");
     // clang-format on
+}
+
+// Separate from check_string_type_specs, because the string reader, which
+// calls that at runtime, is shared between target types
+template <typename ValueCharT, typename SourceCharT, typename Handler>
+constexpr void check_string_char_type_specs(const format_specs& specs,
+                                            Handler&& handler)
+{
+    if constexpr (!std::is_same_v<ValueCharT, SourceCharT>) {
+        if (specs.type == presentation_type::character) {
+            SCN_UNLIKELY_ATTR
+            // clang-format off
+            return handler.on_error("'c' type specifier for strings requires the character type of the string to match the source");
+            // clang-format on
+        }
+    }
+    else {
+        SCN_UNUSED(specs);
+        SCN_UNUSED(handler);
+    }
 }
 
 template <typename Handler>
@@ -10712,7 +10742,8 @@ SCN_CLANG_IGNORE("-Wdocumentation-unknown-command")
  *
  * What counts as a unit depends on the type:
  *
- *  * Strings (with any type specifier) and `scn::regex_matches`: code points.
+ *  * Strings with the `c` type specifier: code units.
+ *  * Other strings and `scn::regex_matches`: code points.
  *  * Numbers, pointers, and characters and booleans with an integer
  *    presentation type: code units.
  *    Every character of the value counts: the sign, base prefix, digits,
@@ -10790,10 +10821,13 @@ SCN_CLANG_IGNORE("-Wdocumentation-unknown-command")
  * <tr>
  * <td>`c`</td>
  * <td>
- * Copies code points from the input until the field precision is exhausted,
- * or the input ends, including any whitespace.
+ * Copies code units from the input verbatim, including any whitespace.
+ * The encoding isn't validated, and a code point can be cut in the middle.
+ * Nothing is transcoded: the character type of the string must be the same
+ * as the source's.
+ * Requires a field width or precision: `{:5c}` reads exactly 5 code units,
+ * and `{:.5c}` from 1 to 5.
  * Doesn't skip preceding whitespace.
- * Errors if no field precision is provided.
  * </td>
  * </tr>
  * <tr>
@@ -10905,9 +10939,11 @@ SCN_CLANG_IGNORE("-Wdocumentation-unknown-command")
  * <tr>
  * <td>none, `c`</td>
  * <td>
- * Copies a character (code point for `char32_t`, code unit otherwise) from the
- * input. Leading whitespace is not skipped, and width and precision are not
- * allowed.
+ * Copies a character from the input: a code unit for `char` and `wchar_t`,
+ * and a code point for `char32_t`.
+ * Leading whitespace is not skipped, and width and precision are not allowed.
+ * A `wchar_t` is a single wide code unit, so scanning one from a narrow
+ * source is an error.
  * </td>
  * </tr>
  * <tr>
@@ -10919,8 +10955,9 @@ SCN_CLANG_IGNORE("-Wdocumentation-unknown-command")
  * </tr>
  * </table>
  *
- * \note When scanning characters (`char` and `wchar_t`), the source range is
- * read a single code unit at a time, and encoding is not respected.
+ * \note A `char` or a `wchar_t` is read as a single code unit, without
+ * decoding: a `char` can be a part of a multibyte UTF-8 sequence.
+ * To read a whole code point, use `char32_t`.
  *
  * \subsection type-float Type specifier: floating-point values
  *
@@ -11197,6 +11234,13 @@ public:
 
         auto type = m_types[id];
         check_arg_can_be_read(type);
+        if constexpr (std::is_same_v<CharT, char>) {
+            if (type == arg_type::wide_character_type) {
+                // clang-format off
+                return on_error("A wchar_t can't be scanned from a narrow source, except with an integer presentation type");
+                // clang-format on
+            }
+        }
 
         if (type == arg_type::custom_type && id < num_args) {
             // Only call scanner::parse to check for errors,
@@ -11701,8 +11745,10 @@ constexpr typename ParseCtx::iterator scanner_parse_for_builtin_type(
             break;
 
         case arg_type::narrow_character_type:
+            check_char_type_specs<char, char_type>(specs, checker);
+            break;
         case arg_type::wide_character_type:
-            check_char_type_specs(specs, checker);
+            check_char_type_specs<wchar_t, char_type>(specs, checker);
             break;
 
         case arg_type::code_point_type:
@@ -11721,7 +11767,13 @@ constexpr typename ParseCtx::iterator scanner_parse_for_builtin_type(
             break;
 
         case arg_type::narrow_string_type:
+            check_string_type_specs(specs, checker);
+            check_string_char_type_specs<char, char_type>(specs, checker);
+            break;
         case arg_type::wide_string_type:
+            check_string_type_specs(specs, checker);
+            check_string_char_type_specs<wchar_t, char_type>(specs, checker);
+            break;
         case arg_type::string_view_type:
             check_string_type_specs(specs, checker);
             break;
@@ -12629,6 +12681,9 @@ template <typename T,
           typename = std::enable_if_t<detail::is_narrow_source<Source>>>
 SCN_NODISCARD auto scan_value(Source&& source) -> scan_result_type<Source, T>
 {
+    static_assert(!std::is_same_v<T, wchar_t>,
+                  "A wchar_t can't be scanned from a narrow source without "
+                  "a format string: use scn::scan with \"{:d}\" instead");
     auto result = make_scan_result<Source, T>();
     fill_scan_result(
         result, vscan_value(SCN_FWD(source),
@@ -12647,6 +12702,9 @@ template <typename T,
 SCN_NODISCARD auto scan_value(Source&& source, T initial_value)
     -> scan_result_type<Source, T>
 {
+    static_assert(!std::is_same_v<T, wchar_t>,
+                  "A wchar_t can't be scanned from a narrow source without "
+                  "a format string: use scn::scan with \"{:d}\" instead");
     auto result =
         make_scan_result<Source>(std::tuple<T>{SCN_MOVE(initial_value)});
     fill_scan_result(

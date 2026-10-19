@@ -21,9 +21,11 @@
 #include <scn/xchar.h>
 
 #include <deque>
+#include <initializer_list>
 #include <locale>
 #include <string>
 #include <string_view>
+#include <utility>
 
 TEST(WidthPrecisionTest, DefaultWithInt)
 {
@@ -330,6 +332,94 @@ TEST(WidthPrecisionTest, EmptyInputWithBoundsIsEndOfInput)
     expect_error<std::string>("", "{:3[a-z]}", scn::scan_error::end_of_input);
     expect_error<std::string>("", "{:.3c}", scn::scan_error::end_of_input);
     expect_error<int>("   ", "{:3}", scn::scan_error::end_of_input);
+}
+
+// `c` on strings counts code units
+TEST(WidthPrecisionTest, StringCharacters)
+{
+    expect_value<std::string>("abc def", "{:1c}", "a", "bc def");
+    expect_value<std::string>("abc def", "{:5c}", "abc d", "ef");
+    expect_value<std::string>("abc def", "{:.5c}", "abc d", "ef");
+    expect_value<std::string>("ab", "{:.5c}", "ab", "");
+    expect_value<std::string>("abc def", "{:2.5c}", "abc d", "ef");
+    expect_value<std::string>("abc", "{:2.5c}", "abc", "");
+}
+
+TEST(WidthPrecisionTest, StringCharactersKeepWhitespace)
+{
+    expect_value<std::string>(" a b", "{:3c}", " a ", "b");
+    expect_value<std::string>("\n", "{:1c}", "\n", "");
+}
+
+TEST(WidthPrecisionTest, StringCharactersSplitCodePoints)
+{
+    expect_value<std::string>("\xc3\xa4", "{:1c}", "\xc3", "\xa4");
+    expect_value<std::string>(
+        "\xe4\xb8\x80"
+        "a",
+        "{:.2c}", "\xe4\xb8",
+        "\x80"
+        "a");
+}
+
+TEST(WidthPrecisionTest, StringCharactersDontValidate)
+{
+    expect_value<std::string>(
+        "a\xff"
+        "b",
+        "{:3c}",
+        "a\xff"
+        "b",
+        "");
+    expect_value<std::string>("\x80\x80", "{:1c}", "\x80", "\x80");
+}
+
+TEST(WidthPrecisionTest, StringCharactersShorterThanWidth)
+{
+    expect_error<std::string>("abc", "{:5c}",
+                              scn::scan_error::length_too_short);
+    expect_error<std::string>("a", "{:2.5c}",
+                              scn::scan_error::length_too_short);
+    expect_error<std::string>("", "{:1c}", scn::scan_error::end_of_input);
+    expect_error<std::string>("", "{:5c}", scn::scan_error::end_of_input);
+}
+
+TEST(WidthPrecisionTest, StringViewCharacters)
+{
+    const std::string_view input = "a\xff\xc3\xa4 b";
+    for (auto [fmt, expected] :
+         std::initializer_list<std::pair<const char*, std::string_view>>{
+             {"{:1c}", "a"},
+             {"{:3c}", "a\xff\xc3"},
+             {"{:.4c}", "a\xff\xc3\xa4"},
+             {"{:2.8c}", input}}) {
+        auto result =
+            scn::scan<std::string_view>(input, scn::runtime_format(fmt));
+        ASSERT_THAT(result, Succeeded()) << fmt;
+        EXPECT_EQ(result->value(), expected) << fmt;
+        EXPECT_EQ(result->value().data(), input.data()) << fmt;
+        EXPECT_EQ(result->begin(), input.begin() + expected.size()) << fmt;
+    }
+    EXPECT_THAT(scn::scan<std::string_view>("ab", scn::runtime_format("{:3c}")),
+                FailedWith(scn::scan_error::length_too_short));
+    EXPECT_THAT(scn::scan<std::string_view>("", scn::runtime_format("{:1c}")),
+                FailedWith(scn::scan_error::end_of_input));
+}
+
+TEST(WidthPrecisionTest, WideStringCharacters)
+{
+    auto result = scn::scan<std::wstring>(L"ab cd", L"{:3c}");
+    ASSERT_THAT(result, Succeeded());
+    EXPECT_EQ(result->value(), L"ab ");
+    EXPECT_STREQ(result->begin(), L"cd");
+
+    auto one = scn::scan<std::wstring>(L"ab", L"{:1c}");
+    ASSERT_THAT(one, Succeeded());
+    EXPECT_EQ(one->value(), L"a");
+
+    auto view = scn::scan<std::wstring_view>(L"ab cd", L"{:.4c}");
+    ASSERT_THAT(view, Succeeded());
+    EXPECT_EQ(view->value(), L"ab c");
 }
 
 #if !SCN_DISABLE_TYPE_DOUBLE

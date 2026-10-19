@@ -52,6 +52,18 @@ For a field of varying length, give both a width and a precision:
 Whitespace skipped before a value doesn't count toward the width, like in `scanf`.
 Because of that, fields padded with leading spaces can't be read this way:
 `{:5}` on `"   42"` fails, since the value is only two characters long.
+Instead, read the field into a `std::string_view` with `{:5c}`,
+which reads exactly five code units, whitespace included, and then scan the value from that:
+
+\code{.cpp}
+auto field = scn::scan<std::string_view>("   42  7", "{:5c}");
+// field->value() == "   42"
+auto value = scn::scan<int>(field->value(), "{}");
+// value->value() == 42
+\endcode
+
+A `std::string_view` can only be read from a contiguous source.
+For others, like `std::cin`, read the field into a `std::string` instead.
 
 \section faq-regex Is it safe to use regular expressions with untrusted input?
 

@@ -1819,32 +1819,6 @@ inline constexpr auto is_first_char_space(std::basic_string_view<CharT> str)
     return {res.iterator, res.value, detail::is_cp_space(res.value)};
 }
 
-inline constexpr scan_expected<wchar_t> encode_code_point_as_wide_character(
-    char32_t cp,
-    bool error_on_overflow)
-{
-    SCN_EXPECT(cp < detail::invalid_code_point);
-    if constexpr (sizeof(wchar_t) == sizeof(char32_t)) {
-        SCN_UNUSED(error_on_overflow);
-        return static_cast<wchar_t>(cp);
-    }
-    else {
-        if (cp < 0x10000) {
-            return static_cast<wchar_t>(cp);
-        }
-        if (error_on_overflow) {
-            return detail::unexpected_scan_error(
-                scan_error::value_positive_overflow,
-                "Non-BMP code point can't be "
-                "narrowed to a single 2-byte "
-                "wchar_t code unit");
-        }
-        // Return the lead surrogate
-        return static_cast<wchar_t>(
-            (static_cast<std::uint32_t>(cp) - 0x10000) / 0x400 + 0xd800);
-    }
-}
-
 template <typename SourceCharT, typename DestCharT>
 void transcode_to_string_impl_to32(std::basic_string_view<SourceCharT> src,
                                    std::basic_string<DestCharT>& dest)
@@ -7092,9 +7066,9 @@ auto read_string_impl(Range range,
 }
 
 template <typename Range, typename Iterator, typename ValueCharT>
-auto read_string_view_impl(Range range,
-                           Iterator&& result,
-                           std::basic_string_view<ValueCharT>& value)
+auto read_string_view_unchecked_impl(Range range,
+                                     Iterator&& result,
+                                     std::basic_string_view<ValueCharT>& value)
     -> scan_expected<ranges::iterator_t<Range>>
 {
     static_assert(ranges::forward_iterator<detail::remove_cvref_t<Iterator>>);
@@ -7117,15 +7091,23 @@ auto read_string_view_impl(Range range,
     else {
         const auto view = src.view();
         value = std::basic_string_view<ValueCharT>(view.data(), view.size());
-
-        if (!validate_unicode(value)) {
-            return detail::unexpected_scan_error(
-                scan_error::invalid_scanned_value,
-                "Invalid encoding in scanned string_view");
-        }
-
         return SCN_MOVE(result);
     }
+}
+
+template <typename Range, typename Iterator, typename ValueCharT>
+auto read_string_view_impl(Range range,
+                           Iterator&& result,
+                           std::basic_string_view<ValueCharT>& value)
+    -> scan_expected<ranges::iterator_t<Range>>
+{
+    SCN_TRY(it, read_string_view_unchecked_impl(range, SCN_FWD(result), value));
+    if (!validate_unicode(value)) {
+        return detail::unexpected_scan_error(
+            scan_error::invalid_scanned_value,
+            "Invalid encoding in scanned string_view");
+    }
+    return it;
 }
 
 template <typename SourceCharT>
@@ -7199,19 +7181,35 @@ public:
     // Note: no localized version,
     // since it's equivalent in behavior
 
-    // Reads all of the range: arg_reader has bounded it to the field width
+    // Copies all of the range verbatim, without validating the encoding:
+    // arg_reader has bounded it to the field width
     template <typename Range, typename ValueCharT>
     auto read(Range range, std::basic_string<ValueCharT>& value)
         -> scan_expected<ranges::iterator_t<Range>>
     {
-        return read_string_impl(range, read_all(range), value);
+        if constexpr (std::is_same_v<ValueCharT, SourceCharT>) {
+            auto it = read_all(range);
+            auto src =
+                make_contiguous_buffer(ranges::subrange{range.begin(), it});
+            SCN_TRY_DISCARD(transcode_if_necessary(SCN_MOVE(src), value));
+            return it;
+        }
+        else {
+            // Rejected by arg_reader before getting here
+            SCN_UNUSED(range);
+            SCN_UNUSED(value);
+            return detail::unexpected_scan_error(
+                scan_error::invalid_format_string,
+                "'c' type specifier for strings requires the character type "
+                "of the string to match the source");
+        }
     }
 
     template <typename Range, typename ValueCharT>
     auto read(Range range, std::basic_string_view<ValueCharT>& value)
         -> scan_expected<ranges::iterator_t<Range>>
     {
-        return read_string_view_impl(range, read_all(range), value);
+        return read_string_view_unchecked_impl(range, read_all(range), value);
     }
 };
 
@@ -7825,27 +7823,7 @@ public:
     }
 };
 
-template <>
-class code_point_reader<wchar_t> {
-public:
-    template <typename SourceRange>
-    auto read(const SourceRange& range, wchar_t& ch)
-        -> scan_expected<ranges::iterator_t<SourceRange>>
-    {
-        code_point_reader<char32_t> reader{};
-        char32_t cp{};
-        auto ret = reader.read(range, cp);
-        if (SCN_UNLIKELY(!ret)) {
-            return unexpected(ret.error());
-        }
-
-        SCN_TRY(encoded_ch, encode_code_point_as_wide_character(cp, true));
-        ch = encoded_ch;
-        return *ret;
-    }
-};
-
-template <typename ValueCharT>
+template <typename ValueCharT, typename SourceCharT>
 class char_reader_base {
 public:
     constexpr char_reader_base() = default;
@@ -7862,7 +7840,7 @@ public:
             detail::check_code_point_type_specs(specs, eh);
         }
         else {
-            detail::check_char_type_specs(specs, eh);
+            detail::check_char_type_specs<ValueCharT, SourceCharT>(specs, eh);
             m_is_integer = specs.type != detail::presentation_type::none &&
                            specs.type != detail::presentation_type::character;
         }
@@ -7878,7 +7856,7 @@ private:
 };
 
 template <typename CharT>
-class reader_impl_for_char : public char_reader_base<char> {
+class reader_impl_for_char : public char_reader_base<char, CharT> {
 public:
     template <typename Range>
     auto read_default(Range range, char& value, detail::locale_ref loc)
@@ -7918,7 +7896,7 @@ public:
 };
 
 template <typename CharT>
-class reader_impl_for_wchar : public char_reader_base<wchar_t> {
+class reader_impl_for_wchar : public char_reader_base<wchar_t, CharT> {
 public:
     template <typename Range>
     auto read_default(Range range, wchar_t& value, detail::locale_ref loc)
@@ -7926,7 +7904,12 @@ public:
     {
         SCN_UNUSED(loc);
         if constexpr (std::is_same_v<CharT, char>) {
-            return code_point_reader<wchar_t>{}.read(range, value);
+            SCN_UNUSED(range);
+            SCN_UNUSED(value);
+            return detail::unexpected_scan_error(
+                scan_error::invalid_format_string,
+                "A wchar_t can't be scanned from a narrow source, except "
+                "with an integer presentation type");
         }
         else {
             return code_unit_reader<wchar_t>{}.read(range, value);
@@ -7957,7 +7940,7 @@ public:
 };
 
 template <typename CharT>
-class reader_impl_for_code_point : public char_reader_base<char32_t> {
+class reader_impl_for_code_point : public char_reader_base<char32_t, CharT> {
 public:
     template <typename Range>
     auto read_default(Range range, char32_t& value, detail::locale_ref loc)
@@ -8134,8 +8117,16 @@ struct default_arg_reader {
     template <typename T>
     scan_expected<iterator> operator()(T& value)
     {
-        if constexpr (!detail::is_type_disabled<T> &&
-                      is_contiguous_context<Context>) {
+        if constexpr (std::is_same_v<T, wchar_t> &&
+                      std::is_same_v<char_type, char>) {
+            SCN_UNUSED(value);
+            return detail::unexpected_scan_error(
+                scan_error::invalid_format_string,
+                "A wchar_t can't be scanned from a narrow source, except "
+                "with an integer presentation type");
+        }
+        else if constexpr (!detail::is_type_disabled<T> &&
+                           is_contiguous_context<Context>) {
             auto rd = make_reader<T, char_type>();
             return impl(rd, range, value);
         }
@@ -8202,9 +8193,14 @@ struct default_arg_reader {
 };
 
 template <typename T>
-inline constexpr field_unit field_unit_for =
+inline constexpr bool is_string_target =
     detail::is_specialization_of_v<T, std::basic_string> ||
-            detail::is_specialization_of_v<T, std::basic_string_view> ||
+    detail::is_specialization_of_v<T, std::basic_string_view>;
+
+// Except for strings with `c`, which count code units
+template <typename T>
+inline constexpr field_unit field_unit_for =
+    is_string_target<T> ||
             detail::is_specialization_of_v<T, basic_regex_matches>
         ? field_unit::code_point
         : field_unit::code_unit;
@@ -8221,6 +8217,18 @@ struct arg_reader {
     auto impl(Reader& rd, Range rng, T& value)
         -> scan_expected<ranges::iterator_t<Range>>
     {
+        if constexpr (is_string_target<T>) {
+            if (specs.type == detail::presentation_type::character) {
+                // `c` requires a width or a precision, and reads at least one
+                // code unit even with only a precision
+                const std::ptrdiff_t min = specs.width != 0 ? specs.width : 1;
+                const std::ptrdiff_t max =
+                    specs.precision != 0 ? specs.precision : min;
+                return impl_bounded<field_unit::code_unit>(rd, rng, min, max,
+                                                           value);
+            }
+        }
+
         if (specs.width == 0 && specs.precision == 0) {
             // No bounds. Unlike in the bounded path below, readers that
             // don't skip whitespace check for the end of input themselves.
@@ -8236,6 +8244,18 @@ struct arg_reader {
                                  loc);
         }
 
+        return impl_bounded<field_unit_for<T>>(
+            rd, rng, specs.width,
+            specs.precision != 0 ? specs.precision : specs.width, value);
+    }
+
+    template <field_unit Unit, typename Reader, typename Range, typename T>
+    auto impl_bounded(Reader& rd,
+                      Range rng,
+                      std::ptrdiff_t min,
+                      std::ptrdiff_t max,
+                      T& value) -> scan_expected<ranges::iterator_t<Range>>
+    {
         auto it = rng.begin();
         if (rd.skip_ws_before_read()) {
             it = read_while_classic_space(rng);
@@ -8245,27 +8265,24 @@ struct arg_reader {
             return unexpected(make_eof_scan_error(e));
         }
 
-        constexpr auto unit = field_unit_for<T>;
-        const std::ptrdiff_t max =
-            specs.precision != 0 ? specs.precision : specs.width;
         std::ptrdiff_t length = 0;
         if constexpr (ranges::contiguous_range<Range>) {
-            auto bounded_end = find_bounded_end<unit>(it, rng.end(), max);
+            auto bounded_end = find_bounded_end<Unit>(it, rng.end(), max);
             SCN_TRY(value_end, rd.read_specs(ranges::subrange{it, bounded_end},
                                              specs, value, loc));
-            length = count_field_units<unit>(it, value_end);
+            length = count_field_units<Unit>(it, value_end);
             it = value_end;
         }
         else {
             SCN_TRY(value_end,
-                    rd.read_specs(make_bounded_range<unit>(
+                    rd.read_specs(make_bounded_range<Unit>(
                                       ranges::subrange{it, rng.end()}, max),
                                   specs, value, loc));
             length = max - value_end.remaining();
             it = value_end.base();
         }
 
-        if (length < specs.width) {
+        if (length < min) {
             return detail::unexpected_scan_error(
                 scan_error::length_too_short,
                 "Scanned value is shorter than the field width");
@@ -8280,11 +8297,13 @@ struct arg_reader {
                       is_contiguous_context<Context>) {
             auto rd = make_reader<T, char_type>();
             SCN_TRY_DISCARD(rd.check_specs(specs));
+            SCN_TRY_DISCARD(check_string_char_type<T>());
             return impl(rd, range, value);
         }
         else if constexpr (!detail::is_type_disabled<T>) {
             auto rd = make_reader<T, char_type>();
             SCN_TRY_DISCARD(rd.check_specs(specs));
+            SCN_TRY_DISCARD(check_string_char_type<T>());
 
             if (!is_entire_source_contiguous(range)) {
                 return impl(rd, range, value);
@@ -8304,6 +8323,22 @@ struct arg_reader {
         const
     {
         SCN_UNREACHABLE;
+    }
+
+    // The string reader is shared between target types, so it can't check this
+    template <typename T>
+    scan_expected<void> check_string_char_type() const
+    {
+        if constexpr (detail::is_specialization_of_v<T, std::basic_string>) {
+            reader_error_handler eh{};
+            detail::check_string_char_type_specs<typename T::value_type,
+                                                 char_type>(specs, eh);
+            if (SCN_UNLIKELY(!eh)) {
+                return detail::unexpected_scan_error(
+                    scan_error::invalid_format_string, eh.m_msg);
+            }
+        }
+        return {};
     }
 
     range_type range;
