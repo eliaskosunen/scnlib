@@ -5582,12 +5582,7 @@ public:
         /// in the source.
         invalid_literal,
 
-        /// Too many fill characters scanned,
-        /// field precision (max width) exceeded.
-        invalid_fill,
-
-        /// Scanned field width was shorter than
-        /// what was specified as the minimum field width.
+        /// Scanned value had fewer units than the field width.
         length_too_short,
 
         /// Source range is in an invalid state,
@@ -5658,7 +5653,6 @@ public:
             case invalid_format_string:
             case invalid_scanned_value:
             case invalid_literal:
-            case invalid_fill:
             case length_too_short:
             case insufficient_source:
                 return std::errc::invalid_argument;
@@ -5981,6 +5975,25 @@ constexpr std::size_t code_point_length_by_starting_code_unit(U ch)
         static_assert(sizeof(U) == 4);
         SCN_UNUSED(ch);
         return 1;
+    }
+}
+
+// Unlike `code_point_length_by_starting_code_unit(ch) != 0`,
+// an invalid UTF-8 lead byte (0xF8-0xFF) counts as a start.
+template <typename U>
+constexpr bool is_code_point_start(U ch)
+{
+    if constexpr (sizeof(U) == 1) {
+        return (static_cast<unsigned char>(ch) & 0xc0) != 0x80;
+    }
+    else if constexpr (sizeof(U) == 2) {
+        const auto unit = static_cast<std::uint16_t>(0xffff & ch);
+        return unit < 0xdc00 || unit > 0xdfff;
+    }
+    else {
+        static_assert(sizeof(U) == 4);
+        SCN_UNUSED(ch);
+        return true;
     }
 }
 
@@ -9343,13 +9356,6 @@ constexpr void basic_scan_parse_context<CharT>::do_check_arg_id(std::size_t id)
 }
 
 namespace detail {
-enum class align_type : unsigned char {
-    none = 0,
-    left = 1,   // '<'
-    right = 2,  // '>'
-    center = 3  // '^'
-};
-
 enum class presentation_type : unsigned char {
     none,
     int_binary,            // 'b', 'B'
@@ -9418,96 +9424,13 @@ constexpr regex_flags& operator^=(regex_flags& a, regex_flags b)
 }
 #endif
 
-class fill_type {
-public:
-    constexpr void operator=(char c)
-    {
-        m_data[0] = c;
-        m_size = 1;
-    }
-
-    template <typename CharT>
-    constexpr void operator=(std::basic_string_view<CharT> s)
-    {
-        SCN_EXPECT(!s.empty());
-        SCN_EXPECT(s.size() * sizeof(CharT) <= max_size);
-        if constexpr (sizeof(CharT) == 1) {
-            // Bounded by max_size, too: GCC can't see the precondition, and
-            // warns about an overflow (-Wstringop-overflow) in LTO builds
-            const auto size = detail::min(s.size(), max_size);
-            for (std::size_t i = 0; i < size; ++i) {
-                m_data[i] = s[i];
-            }
-            m_size = static_cast<unsigned char>(size);
-        }
-        else if constexpr (sizeof(CharT) == 2) {
-            store_code_unit<2>(0, static_cast<unsigned>(s.front()));
-            m_size = 2;
-            if (s.size() == 1) {
-                return;
-            }
-            store_code_unit<2>(2, static_cast<unsigned>(s[1]));
-            m_size = 4;
-        }
-        else {
-            store_code_unit<4>(0, static_cast<unsigned>(s.front()));
-            m_size = 4;
-        }
-    }
-
-    /// Size in bytes
-    constexpr std::size_t size() const
-    {
-        return m_size;
-    }
-
-    template <typename CharT>
-    CharT get_code_unit() const
-    {
-        SCN_EXPECT(m_size <= sizeof(CharT));
-        if (m_size == 1) {
-            // Set with `operator=(char)`, or from a narrow string
-            return static_cast<CharT>(static_cast<unsigned char>(m_data[0]));
-        }
-        CharT r{};
-        std::memcpy(&r, m_data, m_size);
-        return r;
-    }
-
-    template <typename CharT>
-    std::basic_string_view<CharT> get_code_units() const
-    {
-        return {reinterpret_cast<const CharT*>(
-                    SCN_ASSUME_ALIGNED(m_data, alignof(CharT))),
-                m_size / sizeof(CharT)};
-    }
-
-private:
-    // Stores `value` into `m_data` in native byte order,
-    // so that it can be read back with `memcpy`
-    template <std::size_t Width>
-    constexpr void store_code_unit(std::size_t offset, unsigned value)
-    {
-        for (std::size_t i = 0; i < Width; ++i) {
-            const auto shift = SCN_IS_BIG_ENDIAN ? (Width - 1 - i) * 8 : i * 8;
-            m_data[offset + i] = static_cast<char>(value >> shift);
-        }
-    }
-
-    static constexpr std::size_t max_size = 4;
-    alignas(char32_t) char m_data[max_size] = {' '};
-    unsigned char m_size{1};
-};
-
 struct format_specs {
     // ordered to minimize padding
 
     int width{0};
     int precision{0};
-    fill_type fill{};
 
     presentation_type type{presentation_type::none};
-    align_type align{align_type::none};
     unsigned char arbitrary_base{0};
     bool localized{false};
 
@@ -9518,7 +9441,7 @@ struct format_specs {
     regex_flags regexp_flags{regex_flags::none};
 #endif
 
-    // 1 byte of padding here (2 bytes if regex disabled)
+    // 2 bytes of padding here (3 bytes if regex disabled)
 
     union {
         const char* charset_string{nullptr};
@@ -9587,15 +9510,6 @@ struct specs_setter {
 public:
     explicit constexpr specs_setter(format_specs& specs) : m_specs(specs) {}
 
-    constexpr void on_align(align_type align)
-    {
-        m_specs.align = align;
-    }
-    template <typename CharT>
-    constexpr void on_fill(std::basic_string_view<CharT> fill)
-    {
-        m_specs.fill = fill;
-    }
     template <bool Dependent = true>
     constexpr void on_localized()
     {
@@ -9852,76 +9766,11 @@ constexpr bool is_ascii_letter(CharT ch)
            (ch >= CharT{'A'} && ch <= CharT{'Z'});
 }
 
-template <typename CharT, typename Handler>
-constexpr const CharT* parse_align(const CharT* begin,
-                                   const CharT* end,
-                                   Handler&& handler)
+template <typename CharT>
+constexpr bool starts_with_leading_zero(const CharT* begin, const CharT* end)
 {
-    SCN_EXPECT(begin != end);
-
-    auto check_align = [](wchar_t ch) {
-        switch (ch) {
-            case L'<':
-                return align_type::left;
-            case L'>':
-                return align_type::right;
-            case L'^':
-                return align_type::center;
-            default:
-                return align_type::none;
-        }
-    };
-
-    const auto potential_fill_len = static_cast<std::ptrdiff_t>(
-        code_point_length_by_starting_code_unit(*begin));
-    if (SCN_UNLIKELY(potential_fill_len == 0 ||
-                     std::distance(begin, end) < potential_fill_len)) {
-        handler.on_error("Invalid encoding in fill character");
-        return begin;
-    }
-
-    auto potential_fill = std::basic_string_view<CharT>{
-        begin, static_cast<std::size_t>(potential_fill_len)};
-    if (SCN_UNLIKELY(decode_code_point_exhaustive(potential_fill) >=
-                     invalid_code_point)) {
-        handler.on_error("Invalid encoding in fill character");
-        return begin;
-    }
-
-    auto potential_align_on_fill = check_align(static_cast<wchar_t>(*begin));
-
-    const auto begin_before_fill = begin;
-    begin += potential_fill_len;
-
-    if (begin == end) {
-        return begin_before_fill;
-    }
-
-    auto potential_align_after_fill = check_align(static_cast<wchar_t>(*begin));
-    const auto begin_after_fill = begin;
-    ++begin;
-
-    if (potential_fill_len == 1) {
-        if (SCN_UNLIKELY(potential_fill[0] == '{')) {
-            handler.on_error("Invalid fill character '{' in format string");
-            return begin;
-        }
-        if (potential_fill[0] == '[') {
-            return begin_before_fill;
-        }
-    }
-
-    if (potential_align_after_fill == align_type::none) {
-        if (potential_align_on_fill != align_type::none) {
-            handler.on_align(potential_align_on_fill);
-            return begin_after_fill;
-        }
-        return begin_before_fill;
-    }
-
-    handler.on_fill(potential_fill);
-    handler.on_align(potential_align_after_fill);
-    return begin;
+    return *begin == CharT{'0'} && end - begin > 1 && begin[1] >= CharT{'0'} &&
+           begin[1] <= CharT{'9'};
 }
 
 template <typename CharT, typename Handler>
@@ -9932,7 +9781,15 @@ constexpr const CharT* parse_width(const CharT* begin,
     SCN_EXPECT(begin != end);
 
     if (*begin >= CharT{'0'} && *begin <= CharT{'9'}) {
+        if (SCN_UNLIKELY(starts_with_leading_zero(begin, end))) {
+            handler.on_error("Field width must not start with a zero");
+            return begin;
+        }
         int width = parse_simple_int(begin, end);
+        if (SCN_UNLIKELY(width == 0)) {
+            handler.on_error("Field width must be greater than zero");
+            return begin;
+        }
         if (SCN_LIKELY(width != -1)) {
             handler.on_width(width);
         }
@@ -9952,6 +9809,10 @@ constexpr const CharT* parse_precision(const CharT* begin,
     SCN_EXPECT(begin != end);
 
     if (*begin >= CharT{'0'} && *begin <= CharT{'9'}) {
+        if (SCN_UNLIKELY(starts_with_leading_zero(begin, end))) {
+            handler.on_error("Precision must not start with a zero");
+            return begin;
+        }
         int prec = parse_simple_int(begin, end);
         if (SCN_UNLIKELY(prec == 0)) {
             handler.on_error("Precision must be greater than zero");
@@ -9964,6 +9825,9 @@ constexpr const CharT* parse_precision(const CharT* begin,
             handler.on_error("Field precision is too large");
             return begin;
         }
+    }
+    else {
+        handler.on_error("Expected a precision after the period");
     }
     return begin;
 }
@@ -10310,14 +10174,6 @@ constexpr const CharT* parse_format_specs(const CharT* begin,
         return begin;
     }
 
-    begin = parse_align(begin, end, handler);
-    if (SCN_UNLIKELY(begin == end)) {
-        // clang-format off
-        handler.on_error("Unexpected end of format string, expected a width, precision, type specifier, or '}'");
-        // clang-format on
-        return begin;
-    }
-
     begin = parse_width(begin, end, handler);
     if (SCN_UNLIKELY(begin == end)) {
         // clang-format off
@@ -10609,7 +10465,7 @@ constexpr void check_int_type_specs(const format_specs& specs,
     }
 }
 
-template <typename Handler>
+template <typename ValueCharT, typename SourceCharT, typename Handler>
 constexpr void check_char_type_specs(const format_specs& specs,
                                      Handler&& handler)
 {
@@ -10620,6 +10476,24 @@ constexpr void check_char_type_specs(const format_specs& specs,
         // clang-format off
         return handler.on_error("Invalid type specifier for a character type, expected one of: c, b, B, d, i, u, o, x, X");
         // clang-format on
+    }
+    if ((specs.width != 0 || specs.precision != 0) &&
+        (specs.type == presentation_type::none ||
+         specs.type == presentation_type::character)) {
+        SCN_UNLIKELY_ATTR
+        // clang-format off
+        return handler.on_error("Width and precision are not supported for characters, except with an integer presentation type");
+        // clang-format on
+    }
+    if constexpr (std::is_same_v<ValueCharT, wchar_t> &&
+                  std::is_same_v<SourceCharT, char>) {
+        if (specs.type == presentation_type::none ||
+            specs.type == presentation_type::character) {
+            SCN_UNLIKELY_ATTR
+            // clang-format off
+            return handler.on_error("A wchar_t can't be scanned from a narrow source, except with an integer presentation type");
+            // clang-format on
+        }
     }
 }
 
@@ -10632,6 +10506,12 @@ constexpr void check_code_point_type_specs(const format_specs& specs,
         SCN_UNLIKELY_ATTR
         // clang-format off
         return handler.on_error("Invalid type specifier for a code point type, expected: c");
+        // clang-format on
+    }
+    if (specs.width != 0 || specs.precision != 0) {
+        SCN_UNLIKELY_ATTR
+        // clang-format off
+        return handler.on_error("Width and precision are not supported for code points");
         // clang-format on
     }
 }
@@ -10665,9 +10545,9 @@ constexpr void check_string_type_specs(const format_specs& specs,
         return;
     }
     if (specs.type == presentation_type::character) {
-        if (SCN_UNLIKELY(specs.precision == 0)) {
+        if (SCN_UNLIKELY(specs.width == 0 && specs.precision == 0)) {
             // clang-format off
-            return handler.on_error("'c' type specifier for strings requires the field precision to be specified");
+            return handler.on_error("'c' type specifier for strings requires a field width or precision");
             // clang-format on
         }
         return;
@@ -10676,6 +10556,26 @@ constexpr void check_string_type_specs(const format_specs& specs,
     // clang-format off
     handler.on_error("Invalid type specifier for a string type, expected one of: s, c, [character set], /regex/");
     // clang-format on
+}
+
+// Separate from check_string_type_specs, because the string reader, which
+// calls that at runtime, is shared between target types
+template <typename ValueCharT, typename SourceCharT, typename Handler>
+constexpr void check_string_char_type_specs(const format_specs& specs,
+                                            Handler&& handler)
+{
+    if constexpr (!std::is_same_v<ValueCharT, SourceCharT>) {
+        if (specs.type == presentation_type::character) {
+            SCN_UNLIKELY_ATTR
+            // clang-format off
+            return handler.on_error("'c' type specifier for strings requires the character type of the string to match the source");
+            // clang-format on
+        }
+    }
+    else {
+        SCN_UNUSED(specs);
+        SCN_UNUSED(handler);
+    }
 }
 
 template <typename Handler>
@@ -10706,6 +10606,14 @@ constexpr void check_bool_type_specs(const format_specs& specs,
         SCN_UNLIKELY_ATTR
         // clang-format off
         return handler.on_error("Invalid type specifier for a boolean type, expected one of: s, i, d, u, o, x, X, b, B");
+        // clang-format on
+    }
+    if ((specs.width != 0 || specs.precision != 0) &&
+        (specs.type == presentation_type::none ||
+         specs.type == presentation_type::string)) {
+        SCN_UNLIKELY_ATTR
+        // clang-format off
+        return handler.on_error("Width and precision are not supported for booleans, except with an integer presentation type");
         // clang-format on
     }
 }
@@ -10778,15 +10686,9 @@ SCN_CLANG_IGNORE("-Wdocumentation-unknown-command")
  * replacement-field   ::= '{' [arg-id] [':' format-spec] '}'
  * arg-id              ::= nonnegative-integer
  *
- * format-spec         ::= [fill-and-align]
- *                         [width] [precision]
- *                         ['L'] [type]
- * fill-and-align      ::= [fill] align
- * fill                ::= any character other than
- *                         '{' or '}'
- * align               ::= one of '<' '>' '^'
+ * format-spec         ::= [width] [precision] ['L'] [type]
  * width               ::= positive-integer
- * precision           ::= '.' nonnegative-integer
+ * precision           ::= '.' positive-integer
  * type                ::= 'a' | 'A' | 'b' | 'B' | 'c' | 'd' |
  *                         'e' | 'E' | 'f' | 'F' | 'g' | 'G' |
  *                         'o' | 'p' | 's' | 'x' | 'X' | 'i' | 'u' |
@@ -10829,79 +10731,58 @@ SCN_CLANG_IGNORE("-Wdocumentation-unknown-command")
  * auto e = scn::scan<int, int>("2 to 300", "{0} to {2}");
  * \endcode
  *
- * \section fill-and-align Fill and align
- *
- * Alignment allows for skipping character before and/or after a value.
- * There are three possible values for alignment:
- *
- * <table>
- * <caption id="align-table">
- * Alignment options
- * </caption>
- *
- * <tr><th>Option</th> <th>Meaning</th></tr>
- *
- * <tr>
- * <td>`<`</td>
- * <td>
- * Align the value to the left (skips fill characters after the value)
- * </td>
- * </tr>
- *
- * <tr>
- * <td>`>`</td>
- * <td>
- * Align the value to the right (skips fill characters before the value)
- * </td>
- * </tr>
- *
- * <tr>
- * <td>`^`</td>
- * <td>
- * Align the value to the center
- * (skips fill characters both before and after the value)
- * </td>
- * </tr>
- * </table>
- *
- * The fill character can be any Unicode code point, except for `{` and `}`.
- * The default fill is the space character `' '`.
- *
- * For format type specifiers other than `c` (default for `char` and `wchar_t`,
- * available for `string` and `string_view`), `[...]`, and the regex `/.../`,
- * the default alignment is `>`.
- * Otherwise, the default alignment is `<`.
- *
- * In addition to the skipping of fill characters,
- * for format type specifiers with the `>` default alignment,
- * preceding whitespace is automatically skipped.
- * This preceding whitespace isn't counted as part of the field width,
- * as described below.
- *
- * The number of fill characters consumed can be controlled with the width and
- * precision specifiers.
- *
  * \section width Width
  *
- * Width specifies the minimum number of characters that will be read from
- * the source range. It can be any unsigned integer. Any fill characters skipped
- * are included in the width
+ * Width specifies the exact number of units that will be read from the
+ * source range, or the minimum, if a precision is also given.
+ * It can be any positive integer without leading zeros: a width of zero is
+ * an error.
+ * If the value is shorter than the width, the scan fails with
+ * `scn::scan_error::length_too_short`.
  *
- * For the purposes of width calculation, the same algorithm is used that in
- * {fmt}. Every code point has a width of one, except the following ones
- * have a width of 2:
+ * What counts as a unit depends on the type:
  *
- * * any code point with the East_Asian_Width="W" or East_Asian_Width="F"
- *   Derived Extracted Property as described by UAX#44
- * * U+4DC0 – U+4DFF (Yijing Hexagram Symbols)
- * * U+1F300 – U+1F64F (Miscellaneous Symbols and Pictographs, Emoticons)
- * * U+1F900 – U+1F9FF (Supplemental Symbols and Pictographs)
+ *  * Strings with the `c` type specifier: code units.
+ *  * Other strings and `scn::regex_matches`: code points.
+ *  * Numbers, pointers, and characters and booleans with an integer
+ *    presentation type: code units.
+ *    Every character of the value counts: the sign, base prefix, digits,
+ *    radix point, exponent, and thousands separators.
+ *
+ * Whitespace skipped before the value doesn't count toward the width,
+ * like in `scanf`.
+ *
+ * Characters and booleans don't take a width, except with an integer
+ * presentation type.
+ *
+ * \code{.cpp}
+ * auto a = scn::scan<int, int, int>("20260131", "{:4}{:2}{:2}");
+ * // a->values() == (2026, 1, 31)
+ *
+ * auto b = scn::scan<int>("   42", "{:5}");
+ * // b.error() == scn::scan_error::length_too_short
+ * \endcode
  *
  * \section precision Precision
  *
- * Precision specifies the maximum number of characters that will be read from
- * the source range. The method for counting characters is the same as above,
- * with the width field.
+ * Precision specifies the maximum number of units that will be read from the
+ * source range, counted like the width.
+ * It must be a positive integer without leading zeros, and a `.` without one
+ * is an error.
+ * With both, `{:N.M}` reads from `N` to `M` units, and a width larger than
+ * the precision is an error.
+ * Like the width, it isn't allowed for characters and booleans, except with
+ * an integer presentation type.
+ *
+ * The field ends where the width or precision says, which can cut a value
+ * short: `{:3}` on `"12345"` reads `123`, and `{:2e}` on `"1e5"` fails,
+ * because the exponent has no digits.
+ * A regular expression sees the end of the field as the end of the input,
+ * so `$` matches there.
+ *
+ * For floating-point numbers, precision counts characters, like for any
+ * other number. This differs from `std::format`, where it's the number of
+ * digits after the radix point: `{:.2f}` on `"3.14"` reads `3.`.
  *
  * \section localized Localized
  *
@@ -10934,18 +10815,19 @@ SCN_CLANG_IGNORE("-Wdocumentation-unknown-command")
  * <tr>
  * <td>none, `s`</td>
  * <td>
- * Copies from the input until a whitespace character is encountered, or,
- * if using the `<` (left) or `^` (center) alignment,
- * a fill character is encountered.
+ * Copies from the input until a whitespace character is encountered.
  * </td>
  * </tr>
  * <tr>
  * <td>`c`</td>
  * <td>
- * Copies from the input until the field precision is exhausted,
- * or the input ends.
+ * Copies code units from the input verbatim, including any whitespace.
+ * The encoding isn't validated, and a code point can be cut in the middle.
+ * Nothing is transcoded: the character type of the string must be the same
+ * as the source's.
+ * Requires a field width or precision: `{:5c}` reads exactly 5 code units,
+ * and `{:.5c}` from 1 to 5.
  * Doesn't skip preceding whitespace.
- * Errors if no field precision is provided.
  * </td>
  * </tr>
  * <tr>
@@ -11057,20 +10939,25 @@ SCN_CLANG_IGNORE("-Wdocumentation-unknown-command")
  * <tr>
  * <td>none, `c`</td>
  * <td>
- * Copies a character (code point for `char32_t`, code unit otherwise) from the
- * input.
+ * Copies a character from the input: a code unit for `char` and `wchar_t`,
+ * and a code point for `char32_t`.
+ * Leading whitespace is not skipped, and width and precision are not allowed.
+ * A `wchar_t` is a single wide code unit, so scanning one from a narrow
+ * source is an error.
  * </td>
  * </tr>
  * <tr>
  * <td>`b`, `B`, `d`, `i`, `o`, `u`, `x`, `X`</td>
  * <td>
  * Same as for integers, see above \ref type-int. Not allowed for `char32_t`.
+ * Leading whitespace is skipped, and width and precision are allowed.
  * </td>
  * </tr>
  * </table>
  *
- * \note When scanning characters (`char` and `wchar_t`), the source range is
- * read a single code unit at a time, and encoding is not respected.
+ * \note A `char` or a `wchar_t` is read as a single code unit, without
+ * decoding: a `char` can be a part of a multibyte UTF-8 sequence.
+ * To read a whole code point, use `char32_t`.
  *
  * \subsection type-float Type specifier: floating-point values
  *
@@ -11147,18 +11034,21 @@ SCN_CLANG_IGNORE("-Wdocumentation-unknown-command")
  * <td>`s`</td>
  * <td>
  * Allows for the textual representation (`true` or `false`).
+ * Width and precision are not allowed.
  * </td>
  * </tr>
  * <tr>
  * <td>`b`, `B`, `d`, `i`, `o`, `u`, `x`, `X`</td>
  * <td>
  * Allows for the integral/numeric representation (`0` or `1`).
+ * Width and precision are allowed.
  * </td>
  * </tr>
  * <tr>
  * <td>none</td>
  * <td>
  * Allows for both the textual and the integral/numeric representation.
+ * Width and precision are not allowed.
  * </td>
  * </tr>
  * </table>
@@ -11344,6 +11234,13 @@ public:
 
         auto type = m_types[id];
         check_arg_can_be_read(type);
+        if constexpr (std::is_same_v<CharT, char>) {
+            if (type == arg_type::wide_character_type) {
+                // clang-format off
+                return on_error("A wchar_t can't be scanned from a narrow source, except with an integer presentation type");
+                // clang-format on
+            }
+        }
 
         if (type == arg_type::custom_type && id < num_args) {
             // Only call scanner::parse to check for errors,
@@ -11848,8 +11745,10 @@ constexpr typename ParseCtx::iterator scanner_parse_for_builtin_type(
             break;
 
         case arg_type::narrow_character_type:
+            check_char_type_specs<char, char_type>(specs, checker);
+            break;
         case arg_type::wide_character_type:
-            check_char_type_specs(specs, checker);
+            check_char_type_specs<wchar_t, char_type>(specs, checker);
             break;
 
         case arg_type::code_point_type:
@@ -11868,7 +11767,13 @@ constexpr typename ParseCtx::iterator scanner_parse_for_builtin_type(
             break;
 
         case arg_type::narrow_string_type:
+            check_string_type_specs(specs, checker);
+            check_string_char_type_specs<char, char_type>(specs, checker);
+            break;
         case arg_type::wide_string_type:
+            check_string_type_specs(specs, checker);
+            check_string_char_type_specs<wchar_t, char_type>(specs, checker);
+            break;
         case arg_type::string_view_type:
             check_string_type_specs(specs, checker);
             break;
@@ -12776,6 +12681,9 @@ template <typename T,
           typename = std::enable_if_t<detail::is_narrow_source<Source>>>
 SCN_NODISCARD auto scan_value(Source&& source) -> scan_result_type<Source, T>
 {
+    static_assert(!std::is_same_v<T, wchar_t>,
+                  "A wchar_t can't be scanned from a narrow source without "
+                  "a format string: use scn::scan with \"{:d}\" instead");
     auto result = make_scan_result<Source, T>();
     fill_scan_result(
         result, vscan_value(SCN_FWD(source),
@@ -12794,6 +12702,9 @@ template <typename T,
 SCN_NODISCARD auto scan_value(Source&& source, T initial_value)
     -> scan_result_type<Source, T>
 {
+    static_assert(!std::is_same_v<T, wchar_t>,
+                  "A wchar_t can't be scanned from a narrow source without "
+                  "a format string: use scn::scan with \"{:d}\" instead");
     auto result =
         make_scan_result<Source>(std::tuple<T>{SCN_MOVE(initial_value)});
     fill_scan_result(

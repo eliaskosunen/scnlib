@@ -19,8 +19,7 @@
 
 int main()
 {
-    // build error: Invalid fill character '{' in format string
-    // build error: Invalid fill character \'{\' in format string
-    auto result = scn::scan<int>("42", SCN_STRING("{:{^}"));
-    return result && result->value() == 42;
+    // build error: Width and precision are not supported for code points
+    auto result = scn::scan<char32_t>("a", SCN_STRING("{:3}"));
+    return !result;
 }

@@ -19,7 +19,7 @@
 
 int main()
 {
-    // build error: Invalid encoding in fill character
-    auto result = scn::scan<std::string>("a", SCN_STRING("{:\xc3\x28>4}"));
+    // build error: be scanned from a narrow source, except with an integer
+    auto result = scn::scan<wchar_t>("a", SCN_STRING("{}"));
     return !result;
 }

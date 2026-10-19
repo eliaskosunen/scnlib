@@ -1,30 +1,41 @@
 include(icm_build_failure_testing)
 
 set(buildfail_sources
-    brace_as_fill_character.cpp
+    alignment_in_format_string.cpp
+    character_pointer_source.cpp
     charset_backslash_escape.cpp
     charset_class.cpp
     charset_empty.cpp
     charset_reversed_range.cpp
     charset_unterminated.cpp
-    character_pointer_source.cpp
     code_point_with_integer_presentation.cpp
     integer_base_leading_zero.cpp
     integer_with_string_presentation.cpp
-    invalid_fill_character_encoding.cpp
     invalid_unicode_in_format_string.cpp
     letters_in_argument_id.cpp
     locale_flag_with_locale_disabled.cpp
     locale_flag_with_string.cpp
     negative_argument_id.cpp
+    precision_leading_zero.cpp
+    precision_without_digits.cpp
     precision_zero.cpp
     regex_disabled.cpp
     scan_int_exhaustive_valid_unsupported_type.cpp
     scan_int_unsupported_type.cpp
+    string_character_presentation_narrow_string_from_wide_source.cpp
+    string_character_presentation_wide_string_from_narrow_source.cpp
     string_view_non_contiguous_source.cpp
     unterminated_argument_id.cpp
     unterminated_format_specifier.cpp
     usertype_non_contiguous_source.cpp
+    wchar_from_narrow_source.cpp
+    wchar_from_narrow_source_with_character_presentation.cpp
+    wchar_from_narrow_source_with_scan_value.cpp
+    width_leading_zero.cpp
+    width_on_bool.cpp
+    width_on_character.cpp
+    width_on_code_point.cpp
+    width_zero.cpp
 )
 if(NOT SCN_DISABLE_TYPE_DOUBLE)
     list(APPEND buildfail_sources float_format_unsupported_without_strtod.cpp)

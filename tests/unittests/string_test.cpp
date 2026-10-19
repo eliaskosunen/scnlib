@@ -15,6 +15,7 @@
 // This file is a part of scnlib:
 //     https://github.com/eliaskosunen/scnlib
 
+#include <scn/istream.h>
 #include <scn/scan.h>
 #include <scn/xchar.h>
 
@@ -22,6 +23,8 @@
 
 #include <array>
 #include <deque>
+#include <iterator>
+#include <sstream>
 
 TEST(StringTest, DefaultNarrowStringFromNarrowSource)
 {
@@ -83,12 +86,65 @@ TEST(StringTest, StringPresentationWideStringFromNarrowSource)
     EXPECT_EQ(result->value(), L"abc");
 }
 
-TEST(StringTest, CharacterPresentationWithNoWidthCausesError)
+TEST(StringTest, CharacterPresentationRequiresWidthOrPrecision)
 {
     auto result =
         scn::scan<std::string>("abc def", scn::runtime_format("{:c}"));
     ASSERT_THAT(result, FailedWith(scn::scan_error::invalid_format_string));
 }
+
+TEST(StringTest, CharacterPresentationWithWidth)
+{
+    auto result = scn::scan<std::string>("abc def", "{:5c}");
+    ASSERT_THAT(result, Succeeded());
+    EXPECT_STREQ(result->begin(), "ef");
+    EXPECT_EQ(result->value(), "abc d");
+
+    auto with_precision = scn::scan<std::string>("abc def", "{:2.5c}");
+    ASSERT_THAT(with_precision, Succeeded());
+    EXPECT_STREQ(with_precision->begin(), "ef");
+    EXPECT_EQ(with_precision->value(), "abc d");
+}
+
+// U+00E4 is two bytes, and `c` counts them separately
+TEST(StringTest, CharacterPresentationWithWidthFromNonContiguousSource)
+{
+    const auto input = std::string_view{
+        "a\xc3\xa4"
+        "bcd"};
+    const auto source = std::deque<char>(input.begin(), input.end());
+    auto result = scn::scan<std::string>(source, "{:4c}");
+    ASSERT_THAT(result, Succeeded());
+    EXPECT_EQ(result->value(),
+              "a\xc3\xa4"
+              "b");
+    EXPECT_EQ(std::distance(source.begin(), result->begin()), 4);
+
+    const auto short_source = std::deque<char>{'a', 'b', 'c'};
+    EXPECT_THAT(scn::scan<std::string>(short_source, "{:4c}"),
+                FailedWith(scn::scan_error::length_too_short));
+}
+
+#if !SCN_DISABLE_IOSTREAM
+TEST(StringTest, CharacterPresentationWithWidthFromIstream)
+{
+    std::istringstream stream{
+        "a\xc3\xa4"
+        "bcd"};
+    auto result = scn::scan<std::string>(stream, "{:4c}");
+    ASSERT_THAT(result, Succeeded());
+    EXPECT_EQ(result->value(),
+              "a\xc3\xa4"
+              "b");
+    std::string rest;
+    std::getline(stream, rest);
+    EXPECT_EQ(rest, "cd");
+
+    std::istringstream short_stream{"abc"};
+    EXPECT_THAT(scn::scan<std::string>(short_stream, "{:4c}"),
+                FailedWith(scn::scan_error::length_too_short));
+}
+#endif
 
 TEST(StringTest, CharacterPresentationNarrowStringFromNarrowSource)
 {
@@ -105,19 +161,26 @@ TEST(StringTest, CharacterPresentationWideStringFromWideSource)
     EXPECT_EQ(result->value(), L"abc ");
 }
 
+// `c` doesn't transcode
 TEST(StringTest, CharacterPresentationNarrowStringFromWideSource)
 {
-    auto result = scn::scan<std::string>(L"abc def", L"{:.4c}");
-    ASSERT_THAT(result, Succeeded());
-    EXPECT_STREQ(result->begin(), L"def");
-    EXPECT_EQ(result->value(), "abc ");
+    for (auto fmt : {L"{:1c}", L"{:.4c}"}) {
+        EXPECT_THAT(
+            scn::scan<std::string>(L"abc def", scn::runtime_format(fmt)),
+            FailedWith(scn::scan_error::invalid_format_string));
+        EXPECT_THAT(scn::scan<std::string>(L"", scn::runtime_format(fmt)),
+                    FailedWith(scn::scan_error::invalid_format_string));
+    }
 }
 TEST(StringTest, CharacterPresentationWideStringFromNarrowSource)
 {
-    auto result = scn::scan<std::wstring>("abc def", "{:.4c}");
-    ASSERT_THAT(result, Succeeded());
-    EXPECT_STREQ(result->begin(), "def");
-    EXPECT_EQ(result->value(), L"abc ");
+    for (auto fmt : {"{:1c}", "{:.4c}"}) {
+        EXPECT_THAT(
+            scn::scan<std::wstring>("abc def", scn::runtime_format(fmt)),
+            FailedWith(scn::scan_error::invalid_format_string));
+        EXPECT_THAT(scn::scan<std::wstring>("", scn::runtime_format(fmt)),
+                    FailedWith(scn::scan_error::invalid_format_string));
+    }
 }
 
 TEST(StringTest, CharacterSetPresentationNarrowStringFromNarrowSource)
@@ -307,78 +370,68 @@ TEST(StringTest, CharacterSetNonMatchingInputIsNotEndOfInput)
     EXPECT_THAT(result, FailedWith(scn::scan_error::invalid_scanned_value));
 }
 
-// U+4E00 is 3 bytes long in UTF-8, and has a width of 2
-TEST(StringTest, PrecisionSmallerThanNextCharacterWidth)
+// U+4E00 is 3 bytes long in UTF-8. Precision counts code points.
+TEST(StringTest, PrecisionOfOneMultibyteCodePoint)
 {
     const std::string wide_char = "\xe4\xb8\x80";
 
-    constexpr std::array<const char*, 4> formats{"{:.1c}", "{:.1}", "{:.1[^x]}",
+    constexpr std::array<const char*, 3> formats{"{:.1}", "{:.1[^x]}",
                                                  "{:.1s}"};
     for (auto fmt : formats) {
-        auto result =
-            scn::scan<std::string>(wide_char, scn::runtime_format(fmt));
-        EXPECT_THAT(result, FailedWith(scn::scan_error::invalid_scanned_value))
-            << fmt;
+        const auto input = wide_char + "a";
+        auto result = scn::scan<std::string>(input, scn::runtime_format(fmt));
+        ASSERT_THAT(result, Succeeded()) << fmt;
+        EXPECT_EQ(result->value(), wide_char) << fmt;
+        EXPECT_EQ(result->begin(), input.begin() + 3) << fmt;
 
         auto deque_source =
             std::deque<char>(wide_char.begin(), wide_char.end());
+        deque_source.push_back('a');
         auto from_deque =
             scn::scan<std::string>(deque_source, scn::runtime_format(fmt));
-        EXPECT_THAT(from_deque,
-                    FailedWith(scn::scan_error::invalid_scanned_value))
-            << fmt;
+        ASSERT_THAT(from_deque, Succeeded()) << fmt;
+        EXPECT_EQ(from_deque->value(), wide_char) << fmt;
+        EXPECT_EQ(from_deque->begin(), deque_source.begin() + 3) << fmt;
     }
 }
 
-TEST(StringTest, PrecisionSmallerThanNextCharacterWidthStringView)
+TEST(StringTest, PrecisionOfOneMultibyteCodePointStringView)
 {
     const std::string wide_char = "\xe4\xb8\x80";
 
     auto result =
-        scn::scan<std::string_view>(wide_char, scn::runtime_format("{:.1c}"));
-    EXPECT_THAT(result, FailedWith(scn::scan_error::invalid_scanned_value));
+        scn::scan<std::string_view>(wide_char, scn::runtime_format("{:.1}"));
+    ASSERT_THAT(result, Succeeded());
+    EXPECT_EQ(result->value(), wide_char);
 }
 
-TEST(StringTest, PrecisionSmallerThanNextCharacterWidthCodePoint)
+// `c` counts code units, and can split a code point
+TEST(StringTest, CharacterPresentationSplitsMultibyteCodePoint)
+{
+    const std::string input = "\xe4\xb8\x80";
+
+    auto result = scn::scan<std::string>(input, "{:.1c}");
+    ASSERT_THAT(result, Succeeded());
+    EXPECT_EQ(result->value(), "\xe4");
+    EXPECT_EQ(result->begin(), input.begin() + 1);
+
+    auto view = scn::scan<std::string_view>(input, "{:2c}");
+    ASSERT_THAT(view, Succeeded());
+    EXPECT_EQ(view->value(), "\xe4\xb8");
+    EXPECT_EQ(view->begin(), input.begin() + 2);
+}
+
+TEST(StringTest, PrecisionLongerThanInput)
 {
     const std::string wide_char = "\xe4\xb8\x80";
 
-    auto result = scn::scan<char32_t>(wide_char, scn::runtime_format("{:.1}"));
-    EXPECT_THAT(result, FailedWith(scn::scan_error::invalid_scanned_value));
-}
-
-// The precision is used up by the fill before the character
-TEST(StringTest, PrecisionSmallerThanNextCharacterWidthAfterFill)
-{
-    const std::string wide_char = "\xe4\xb8\x80";
-
-    auto result =
-        scn::scan<std::string>(" " + wide_char, scn::runtime_format("{:>2.2}"));
-    EXPECT_THAT(result, FailedWith(scn::scan_error::invalid_scanned_value));
-}
-
-TEST(StringTest, PrecisionEqualToNextCharacterWidth)
-{
-    const std::string wide_char = "\xe4\xb8\x80";
-
-    constexpr std::array<const char*, 3> formats{"{:.2c}", "{:.2}",
-                                                 "{:.2[^x]}"};
+    constexpr std::array<const char*, 2> formats{"{:.2}", "{:.2[^x]}"};
     for (auto fmt : formats) {
         auto result =
             scn::scan<std::string>(wide_char, scn::runtime_format(fmt));
         ASSERT_THAT(result, Succeeded()) << fmt;
         EXPECT_EQ(result->value(), wide_char) << fmt;
     }
-}
-
-TEST(StringTest, PrecisionEqualToNextCharacterWidthCodePoint)
-{
-    const std::string wide_char = "\xe4\xb8\x80";
-
-    auto result = scn::scan<char32_t>(wide_char, scn::runtime_format("{:.2}"));
-    ASSERT_THAT(result, Succeeded());
-    EXPECT_EQ(result->value(), U'\u4e00');
-    EXPECT_THAT(result->range(), IsEmptyRange());
 }
 
 TEST(StringTest, CharacterSetMatchingNothing)
@@ -409,8 +462,11 @@ TEST(StringTest, WonkyInput)
     const char source[] = {'o', ' ', '\x0f', '\n', '\n', '\xc3'};
     auto input = std::string_view{source, sizeof(source)};
 
+    // `c` doesn't validate the encoding
     auto result = scn::scan<std::string>(input, "{:.64c}");
-    ASSERT_THAT(result, FailedWith(scn::scan_error::invalid_scanned_value));
+    ASSERT_THAT(result, Succeeded());
+    EXPECT_EQ(result->value(), input);
+    EXPECT_THAT(result->range(), IsEmptyRange());
 }
 
 TEST(StringTest, WonkyInputAndFormatWithTranscoding)

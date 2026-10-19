@@ -68,9 +68,9 @@ void expect_same_as_indexed_field(std::basic_string_view<CharT> source,
 }  // namespace
 
 namespace {
-// Without fill, width and precision, the reader skips the fill and width
-// handling. A precision larger than the input goes through it, but must
-// give the same results.
+// Without width and precision, the reader skips the width handling.
+// A precision larger than the input goes through it, but must give the same
+// results.
 template <typename T>
 void expect_same_as_with_large_precision(
     std::string_view source,
@@ -85,9 +85,9 @@ void expect_same_as_with_large_precision(
         ASSERT_EQ(plain.has_value(), with_precision.has_value())
             << format << " " << source;
         if (!plain) {
-            // Not the message: with a precision, the reader gets a
-            // non-contiguous range, and some readers' messages differ there
             EXPECT_EQ(plain.error().code(), with_precision.error().code())
+                << format << " " << source;
+            EXPECT_STREQ(plain.error().msg(), with_precision.error().msg())
                 << format << " " << source;
             continue;
         }
@@ -259,34 +259,18 @@ TEST(FormatStringTest, InvalidRangeSet)
     ASSERT_THAT(result, Failed());
 }
 
-TEST(FormatStringTest, InvalidEncodingInFillCharacter)
+TEST(FormatStringTest, FillAndAlignmentAreInvalid)
 {
-    EXPECT_THAT(
-        scn::scan<std::string>("abcd", scn::runtime_format("{:\xc3\x28>4}")),
-        FailedWith(scn::scan_error::invalid_format_string));
-    EXPECT_THAT(
-        scn::scan<std::string>("abcd", scn::runtime_format("{:\xe4\xb8")),
-        FailedWith(scn::scan_error::invalid_format_string));
-}
-
-TEST(FormatStringTest, MultibyteFillCharacter)
-{
-    // Split in two, because `\xa4a` would be read as one escape sequence
-    auto result = scn::scan<std::string>(
-        "\xc3\xa4\xc3\xa4"
-        "ab",
-        scn::runtime_format("{:\xc3\xa4>4}"));
-    ASSERT_THAT(result, Succeeded());
-    EXPECT_EQ(result->value(), "ab");
-    EXPECT_THAT(result->range(), IsEmptyRange());
-}
-
-TEST(FormatStringTest, InvalidFillCharacterErrorMessage)
-{
-    auto result =
-        scn::scan<std::string>("abcd", scn::runtime_format("{:\xc3\x28>4}"));
-    ASSERT_FALSE(result);
-    EXPECT_STREQ(result.error().msg(), "Invalid encoding in fill character");
+    for (const char* fmt :
+         {"{:<}", "{:>5}", "{:^5}", "{:*^5}", "{:x<3}", "{:_>4c}", "{:<5s}",
+          "{:\xc3\xa4>4}", "{:\xc3\x28>4}", "{:{^}", "{:\xe4\xb8"}) {
+        EXPECT_THAT(scn::scan<std::string>("abcd", scn::runtime_format(fmt)),
+                    FailedWith(scn::scan_error::invalid_format_string))
+            << fmt;
+        EXPECT_THAT(scn::scan<int>("42", scn::runtime_format(fmt)),
+                    FailedWith(scn::scan_error::invalid_format_string))
+            << fmt;
+    }
 }
 
 TEST(FormatStringTest, ZeroPrecisionErrorMessage)
@@ -440,7 +424,7 @@ TEST(FormatStringTest, SpecsWithoutWidthSameAsWithLargePrecision)
                                                       {"d", "x", "i", "u"});
         expect_same_as_with_large_precision<double>(source,
                                                     {"f", "e", "g", "a", "L"});
-        expect_same_as_with_large_precision<bool>(source, {"s", "i", "L"});
+        expect_same_as_with_large_precision<bool>(source, {"i"});
     }
     constexpr std::array<const char*, 4> double_sources{"3.25e2 x", "0x1.8p1",
                                                         "inf", " -0.5"};
@@ -451,7 +435,7 @@ TEST(FormatStringTest, SpecsWithoutWidthSameAsWithLargePrecision)
     constexpr std::array<const char*, 4> bool_sources{"true", "1", "false x",
                                                       "  0"};
     for (auto source : bool_sources) {
-        expect_same_as_with_large_precision<bool>(source, {"s", "i", "L"});
+        expect_same_as_with_large_precision<bool>(source, {"i"});
     }
 }
 
@@ -604,4 +588,32 @@ TEST(FormatStringTest, FuzzingError3)
 {
     auto result = scn::scan<std::string>("{:G}", scn::runtime_format("{:G}"));
     ASSERT_THAT(result, Failed());
+}
+
+TEST(FormatStringTest, ZeroWidthIsError)
+{
+    for (auto fmt : {"{:0}", "{:0d}", "{:0.5}", "{:00}"}) {
+        EXPECT_THAT(scn::scan<int>("42", scn::runtime_format(fmt)),
+                    FailedWith(scn::scan_error::invalid_format_string))
+            << fmt;
+    }
+}
+
+TEST(FormatStringTest, LeadingZeroInWidthOrPrecisionIsError)
+{
+    for (auto fmt :
+         {"{:05}", "{:005}", "{:.05}", "{:5.05}", "{:05.5}", "{:.00}"}) {
+        EXPECT_THAT(scn::scan<int>("42000", scn::runtime_format(fmt)),
+                    FailedWith(scn::scan_error::invalid_format_string))
+            << fmt;
+    }
+}
+
+TEST(FormatStringTest, PrecisionWithoutDigitsIsError)
+{
+    for (auto fmt : {"{:.}", "{:5.}", "{:.d}", "{:.L}", "{:5.L}"}) {
+        EXPECT_THAT(scn::scan<int>("42", scn::runtime_format(fmt)),
+                    FailedWith(scn::scan_error::invalid_format_string))
+            << fmt;
+    }
 }

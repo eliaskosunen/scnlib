@@ -31,7 +31,6 @@ endfunction()
 make_scn_test(
     scn_tests
     main.cpp
-    align_and_fill_test.cpp
     all_headers_test.cpp
     args_test.cpp
     buffer_test.cpp
@@ -60,6 +59,7 @@ make_scn_test(
     string_test.cpp
     string_view_test.cpp
     unicode_test.cpp
+    width_precision_test.cpp
     xchar_test.cpp
 )
 add_test(NAME scn_tests COMMAND scn_tests)
@@ -68,13 +68,13 @@ make_scn_test(
     scn_impl_tests
     main.cpp
     impl_tests/bits_test.cpp
+    impl_tests/bounded_range_test.cpp
     impl_tests/contiguous_range_factory_test.cpp
     impl_tests/file_test.cpp
     impl_tests/find_fast_test.cpp
     impl_tests/function_ref_test.cpp
     impl_tests/ranges_util_test.cpp
     impl_tests/read_algorithms_test.cpp
-    impl_tests/text_width_test.cpp
     impl_tests/transcode_test.cpp
     impl_tests/whitespace_skip_test.cpp
     impl_tests/reader_test_common.h

@@ -454,3 +454,24 @@ TEST(ScanTest, LiteralMismatch)
     auto result = scn::scan<int>("123;", "{},");
     ASSERT_THAT(result, FailedWith(scn::scan_error::invalid_literal));
 }
+
+TEST(ScanTest, BoolRejectsWidthAndPrecisionWithoutIntegerPresentation)
+{
+    for (auto fmt : {"{:3}", "{:.3}", "{:2.3}", "{:3s}", "{:.3s}"}) {
+        EXPECT_THAT(scn::scan<bool>("true", scn::runtime_format(fmt)),
+                    FailedWith(scn::scan_error::invalid_format_string))
+            << fmt;
+    }
+}
+
+TEST(ScanTest, BoolWidthWithIntegerPresentationAllowed)
+{
+    auto result = scn::scan<bool>("1", scn::runtime_format("{:1d}"));
+    ASSERT_THAT(result, Succeeded());
+    EXPECT_TRUE(result->value());
+
+    auto with_precision = scn::scan<bool>("01", scn::runtime_format("{:.1d}"));
+    ASSERT_THAT(with_precision, Succeeded());
+    EXPECT_FALSE(with_precision->value());
+    EXPECT_STREQ(with_precision->begin(), "1");
+}

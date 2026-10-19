@@ -106,25 +106,19 @@ std::string do_run_line_by_line(Source& source,
 }
 
 template <typename Source>
-std::string do_run_all(Source& source,
-                       std::string_view expected,
-                       bool is_valid_unicode)
+std::string do_run_all(Source& source, std::string_view expected)
 {
-    auto res = scn::scan<std::string>(source, "{:.4096c}");
+    // `c` copies the code units verbatim, even if the encoding is invalid.
+    // The precision is larger than max_input_bytes, so that the scan reaches
+    // the end of the file.
+    auto res = scn::scan<std::string>(source, "{:.8192c}");
     if (!res) {
-        if (res.error().code() == scn::scan_error::invalid_scanned_value &&
-            std::string{res.error().msg()} ==
-                "Invalid encoding in scanned string" &&
-            !is_valid_unicode) {
-            // Allow this kind of error,
-            // if the input really was invalid
-            return std::string{expected};
+        if (res.error().code() == scn::scan_error::end_of_input &&
+            expected.empty()) {
+            return {};
         }
         throw std::runtime_error("scan failed with " +
                                  std::string(res.error().msg()));
-    }
-    if (!is_valid_unicode) {
-        throw std::runtime_error("no error on invalid encoding");
     }
     return res->value();
 }
@@ -150,7 +144,7 @@ void run_file(std::string_view expected, bool is_valid_unicode)
     {
         const cfile_guard guard{};
         scn::scan_file file{guard.file};
-        const auto s = do_run_all(file, expected, is_valid_unicode);
+        const auto s = do_run_all(file, expected);
         check(s, expected);
         ensure_eof(file);
     }
@@ -180,7 +174,7 @@ void run_fstream(std::string_view expected, bool is_valid_unicode)
 
     {
         std::ifstream strm{path, std::ios::in | std::ios::binary};
-        const auto s = do_run_all(strm, expected, is_valid_unicode);
+        const auto s = do_run_all(strm, expected);
         check(s, expected);
         ensure_eof(strm);
     }
