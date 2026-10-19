@@ -9427,13 +9427,13 @@ public:
         SCN_EXPECT(!s.empty());
         SCN_EXPECT(s.size() * sizeof(CharT) <= max_size);
         if constexpr (sizeof(CharT) == 1) {
-            for (size_t i = 0; i < s.size(); ++i) {
-                SCN_GCC_PUSH
-                SCN_GCC_IGNORE("-Wstringop-overflow")  // false positive
+            // Bounded by max_size, too: GCC can't see the precondition, and
+            // warns about an overflow (-Wstringop-overflow) in LTO builds
+            const auto size = detail::min(s.size(), max_size);
+            for (size_t i = 0; i < size; ++i) {
                 m_data[i] = s[i];
-                SCN_GCC_POP
             }
-            m_size = static_cast<unsigned char>(s.size());
+            m_size = static_cast<unsigned char>(size);
         }
         else if constexpr (sizeof(CharT) == 2) {
             store_code_unit<2>(0, static_cast<unsigned>(s.front()));
