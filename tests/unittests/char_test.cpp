@@ -21,6 +21,7 @@
 #include <scn/xchar.h>
 
 #include <array>
+#include <deque>
 #include <limits>
 #include <string>
 
@@ -139,20 +140,14 @@ TEST(CharTest, CharAfterInt)
 
 TEST(CharTest, CodePointFromNarrowEmptyInput)
 {
-    for (const char* fmt : {"{:c}", "{:.2}"}) {
-        EXPECT_THAT(scn::scan<char32_t>("", scn::runtime_format(fmt)),
-                    FailedWith(scn::scan_error::end_of_input))
-            << fmt;
-    }
+    EXPECT_THAT(scn::scan<char32_t>("", scn::runtime_format("{:c}")),
+                FailedWith(scn::scan_error::end_of_input));
 }
 
 TEST(CharTest, WcharFromNarrowEmptyInput)
 {
-    for (const char* fmt : {"{:c}", "{:.2}"}) {
-        EXPECT_THAT(scn::scan<wchar_t>("", scn::runtime_format(fmt)),
-                    FailedWith(scn::scan_error::end_of_input))
-            << fmt;
-    }
+    EXPECT_THAT(scn::scan<wchar_t>("", scn::runtime_format("{:c}")),
+                FailedWith(scn::scan_error::end_of_input));
 }
 
 TEST(CharTest, CharacterPresentationNarrow)
@@ -301,4 +296,77 @@ TEST(CharTest, CodePointFromWideEmptyInput)
     EXPECT_THAT(
         scn::scan<char32_t>(std::wstring_view{}, scn::runtime_format(L"{:c}")),
         FailedWith(scn::scan_error::end_of_input));
+}
+
+TEST(CharTest, WidthAndPrecisionRejectedWithoutIntegerPresentation)
+{
+    for (auto fmt : {"{:3}", "{:.3}", "{:3c}", "{:.3c}", "{:2.3}"}) {
+        EXPECT_THAT(scn::scan<char>("abcd", scn::runtime_format(fmt)),
+                    FailedWith(scn::scan_error::invalid_format_string))
+            << fmt;
+        EXPECT_THAT(scn::scan<wchar_t>("abcd", scn::runtime_format(fmt)),
+                    FailedWith(scn::scan_error::invalid_format_string))
+            << fmt;
+    }
+    for (auto fmt : {L"{:3}", L"{:.3}", L"{:3c}", L"{:.3c}", L"{:2.3}"}) {
+        EXPECT_THAT(scn::scan<wchar_t>(L"abcd", scn::runtime_format(fmt)),
+                    FailedWith(scn::scan_error::invalid_format_string));
+    }
+}
+
+TEST(CharTest, WidthAndPrecisionRejectedForCodePoint)
+{
+    for (auto fmt : {"{:3}", "{:.3}", "{:3c}", "{:.3c}"}) {
+        EXPECT_THAT(scn::scan<char32_t>("abcd", scn::runtime_format(fmt)),
+                    FailedWith(scn::scan_error::invalid_format_string))
+            << fmt;
+    }
+    EXPECT_THAT(scn::scan<char32_t>(L"abcd", scn::runtime_format(L"{:3}")),
+                FailedWith(scn::scan_error::invalid_format_string));
+}
+
+TEST(CharTest, WidthWithIntegerPresentationAllowed)
+{
+    auto result = scn::scan<char>("42", scn::runtime_format("{:2d}"));
+    ASSERT_THAT(result, Succeeded());
+    EXPECT_EQ(result->value(), 42);
+}
+
+TEST(CharTest, IntegerPresentationSkipsLeadingWhitespace)
+{
+    auto narrow = scn::scan<char>(" 42", "{:d}");
+    ASSERT_THAT(narrow, Succeeded());
+    EXPECT_EQ(narrow->value(), 42);
+
+    auto wide = scn::scan<wchar_t>(L" 42", L"{:d}");
+    ASSERT_THAT(wide, Succeeded());
+    EXPECT_EQ(wide->value(), 42);
+
+    auto hex = scn::scan<char>(" \t2a", "{:x}");
+    ASSERT_THAT(hex, Succeeded());
+    EXPECT_EQ(hex->value(), 0x2a);
+
+    const auto source = std::deque<char>{' ', '2', 'a', 'z'};
+    auto non_contiguous = scn::scan<char>(source, "{:x}");
+    ASSERT_THAT(non_contiguous, Succeeded());
+    EXPECT_EQ(non_contiguous->value(), 0x2a);
+    EXPECT_EQ(*non_contiguous->begin(), 'z');
+}
+
+TEST(CharTest, IntegerPresentationOnWhitespaceOnlyIsEndOfInput)
+{
+    EXPECT_THAT(scn::scan<char>("  ", "{:d}"),
+                FailedWith(scn::scan_error::end_of_input));
+    EXPECT_THAT(scn::scan<char>(std::deque<char>{' ', '\n'}, "{:x}"),
+                FailedWith(scn::scan_error::end_of_input));
+    EXPECT_THAT(scn::scan<wchar_t>(L" ", L"{:d}"),
+                FailedWith(scn::scan_error::end_of_input));
+}
+
+TEST(CharTest, CharacterPresentationKeepsLeadingWhitespace)
+{
+    auto result = scn::scan<char>(" a", "{:c}");
+    ASSERT_THAT(result, Succeeded());
+    EXPECT_EQ(result->value(), ' ');
+    EXPECT_STREQ(result->begin(), "a");
 }

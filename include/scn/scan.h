@@ -9748,6 +9748,13 @@ constexpr bool is_ascii_letter(CharT ch)
            (ch >= CharT{'A'} && ch <= CharT{'Z'});
 }
 
+template <typename CharT>
+constexpr bool starts_with_leading_zero(const CharT* begin, const CharT* end)
+{
+    return *begin == CharT{'0'} && end - begin > 1 && begin[1] >= CharT{'0'} &&
+           begin[1] <= CharT{'9'};
+}
+
 template <typename CharT, typename Handler>
 constexpr const CharT* parse_width(const CharT* begin,
                                    const CharT* end,
@@ -9756,7 +9763,15 @@ constexpr const CharT* parse_width(const CharT* begin,
     SCN_EXPECT(begin != end);
 
     if (*begin >= CharT{'0'} && *begin <= CharT{'9'}) {
+        if (SCN_UNLIKELY(starts_with_leading_zero(begin, end))) {
+            handler.on_error("Field width must not start with a zero");
+            return begin;
+        }
         int width = parse_simple_int(begin, end);
+        if (SCN_UNLIKELY(width == 0)) {
+            handler.on_error("Field width must be greater than zero");
+            return begin;
+        }
         if (SCN_LIKELY(width != -1)) {
             handler.on_width(width);
         }
@@ -9776,6 +9791,10 @@ constexpr const CharT* parse_precision(const CharT* begin,
     SCN_EXPECT(begin != end);
 
     if (*begin >= CharT{'0'} && *begin <= CharT{'9'}) {
+        if (SCN_UNLIKELY(starts_with_leading_zero(begin, end))) {
+            handler.on_error("Precision must not start with a zero");
+            return begin;
+        }
         int prec = parse_simple_int(begin, end);
         if (SCN_UNLIKELY(prec == 0)) {
             handler.on_error("Precision must be greater than zero");
@@ -9788,6 +9807,9 @@ constexpr const CharT* parse_precision(const CharT* begin,
             handler.on_error("Field precision is too large");
             return begin;
         }
+    }
+    else {
+        handler.on_error("Expected a precision after the period");
     }
     return begin;
 }
@@ -10437,6 +10459,14 @@ constexpr void check_char_type_specs(const format_specs& specs,
         return handler.on_error("Invalid type specifier for a character type, expected one of: c, b, B, d, i, u, o, x, X");
         // clang-format on
     }
+    if ((specs.width != 0 || specs.precision != 0) &&
+        (specs.type == presentation_type::none ||
+         specs.type == presentation_type::character)) {
+        SCN_UNLIKELY_ATTR
+        // clang-format off
+        return handler.on_error("Width and precision are not supported for characters, except with an integer presentation type");
+        // clang-format on
+    }
 }
 
 template <typename Handler>
@@ -10448,6 +10478,12 @@ constexpr void check_code_point_type_specs(const format_specs& specs,
         SCN_UNLIKELY_ATTR
         // clang-format off
         return handler.on_error("Invalid type specifier for a code point type, expected: c");
+        // clang-format on
+    }
+    if (specs.width != 0 || specs.precision != 0) {
+        SCN_UNLIKELY_ATTR
+        // clang-format off
+        return handler.on_error("Width and precision are not supported for code points");
         // clang-format on
     }
 }
@@ -10524,6 +10560,14 @@ constexpr void check_bool_type_specs(const format_specs& specs,
         return handler.on_error("Invalid type specifier for a boolean type, expected one of: s, i, d, u, o, x, X, b, B");
         // clang-format on
     }
+    if ((specs.width != 0 || specs.precision != 0) &&
+        (specs.type == presentation_type::none ||
+         specs.type == presentation_type::string)) {
+        SCN_UNLIKELY_ATTR
+        // clang-format off
+        return handler.on_error("Width and precision are not supported for booleans, except with an integer presentation type");
+        // clang-format on
+    }
 }
 
 #if !SCN_DISABLE_REGEX
@@ -10596,7 +10640,7 @@ SCN_CLANG_IGNORE("-Wdocumentation-unknown-command")
  *
  * format-spec         ::= [width] [precision] ['L'] [type]
  * width               ::= positive-integer
- * precision           ::= '.' nonnegative-integer
+ * precision           ::= '.' positive-integer
  * type                ::= 'a' | 'A' | 'b' | 'B' | 'c' | 'd' |
  *                         'e' | 'E' | 'f' | 'F' | 'g' | 'G' |
  *                         'o' | 'p' | 's' | 'x' | 'X' | 'i' | 'u' |
@@ -10642,8 +10686,12 @@ SCN_CLANG_IGNORE("-Wdocumentation-unknown-command")
  * \section width Width
  *
  * Width specifies the minimum number of characters that will be read from
- * the source range. It can be any unsigned integer.
+ * the source range. It can be any positive integer: a width of zero is an
+ * error.
  * Skipped preceding whitespace is included in the width.
+ *
+ * Characters and booleans don't take a width, except with an integer
+ * presentation type.
  *
  * For the purposes of width calculation, the same algorithm is used that in
  * {fmt}. Every code point has a width of one, except the following ones
@@ -10660,6 +10708,9 @@ SCN_CLANG_IGNORE("-Wdocumentation-unknown-command")
  * Precision specifies the maximum number of characters that will be read from
  * the source range. The method for counting characters is the same as above,
  * with the width field.
+ * It must be a positive integer, and a `.` without one is an error.
+ * Like the width, it isn't allowed for characters and booleans, except with
+ * an integer presentation type.
  *
  * \section localized Localized
  *
@@ -10814,13 +10865,15 @@ SCN_CLANG_IGNORE("-Wdocumentation-unknown-command")
  * <td>none, `c`</td>
  * <td>
  * Copies a character (code point for `char32_t`, code unit otherwise) from the
- * input.
+ * input. Leading whitespace is not skipped, and width and precision are not
+ * allowed.
  * </td>
  * </tr>
  * <tr>
  * <td>`b`, `B`, `d`, `i`, `o`, `u`, `x`, `X`</td>
  * <td>
  * Same as for integers, see above \ref type-int. Not allowed for `char32_t`.
+ * Leading whitespace is skipped, and width and precision are allowed.
  * </td>
  * </tr>
  * </table>
@@ -10903,18 +10956,21 @@ SCN_CLANG_IGNORE("-Wdocumentation-unknown-command")
  * <td>`s`</td>
  * <td>
  * Allows for the textual representation (`true` or `false`).
+ * Width and precision are not allowed.
  * </td>
  * </tr>
  * <tr>
  * <td>`b`, `B`, `d`, `i`, `o`, `u`, `x`, `X`</td>
  * <td>
  * Allows for the integral/numeric representation (`0` or `1`).
+ * Width and precision are allowed.
  * </td>
  * </tr>
  * <tr>
  * <td>none</td>
  * <td>
  * Allows for both the textual and the integral/numeric representation.
+ * Width and precision are not allowed.
  * </td>
  * </tr>
  * </table>

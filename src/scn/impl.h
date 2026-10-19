@@ -8198,10 +8198,10 @@ public:
 
     bool skip_ws_before_read() const
     {
-        return false;
+        return m_is_integer;
     }
 
-    static scan_expected<void> check_specs(const detail::format_specs& specs)
+    scan_expected<void> check_specs(const detail::format_specs& specs)
     {
         reader_error_handler eh{};
         if constexpr (std::is_same_v<ValueCharT, char32_t>) {
@@ -8209,6 +8209,8 @@ public:
         }
         else {
             detail::check_char_type_specs(specs, eh);
+            m_is_integer = specs.type != detail::presentation_type::none &&
+                           specs.type != detail::presentation_type::character;
         }
         if (SCN_UNLIKELY(!eh)) {
             return detail::unexpected_scan_error(
@@ -8216,6 +8218,9 @@ public:
         }
         return {};
     }
+
+private:
+    bool m_is_integer{false};
 };
 
 template <typename CharT>

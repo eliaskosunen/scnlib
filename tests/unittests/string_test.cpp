@@ -339,14 +339,6 @@ TEST(StringTest, PrecisionSmallerThanNextCharacterWidthStringView)
     EXPECT_THAT(result, FailedWith(scn::scan_error::invalid_scanned_value));
 }
 
-TEST(StringTest, PrecisionSmallerThanNextCharacterWidthCodePoint)
-{
-    const std::string wide_char = "\xe4\xb8\x80";
-
-    auto result = scn::scan<char32_t>(wide_char, scn::runtime_format("{:.1}"));
-    EXPECT_THAT(result, FailedWith(scn::scan_error::invalid_scanned_value));
-}
-
 TEST(StringTest, PrecisionEqualToNextCharacterWidth)
 {
     const std::string wide_char = "\xe4\xb8\x80";
@@ -359,16 +351,6 @@ TEST(StringTest, PrecisionEqualToNextCharacterWidth)
         ASSERT_THAT(result, Succeeded()) << fmt;
         EXPECT_EQ(result->value(), wide_char) << fmt;
     }
-}
-
-TEST(StringTest, PrecisionEqualToNextCharacterWidthCodePoint)
-{
-    const std::string wide_char = "\xe4\xb8\x80";
-
-    auto result = scn::scan<char32_t>(wide_char, scn::runtime_format("{:.2}"));
-    ASSERT_THAT(result, Succeeded());
-    EXPECT_EQ(result->value(), U'\u4e00');
-    EXPECT_THAT(result->range(), IsEmptyRange());
 }
 
 TEST(StringTest, CharacterSetMatchingNothing)

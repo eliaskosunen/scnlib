@@ -40,7 +40,12 @@ scn::scan<...>(strm, ...);
    `operator[]`, `at()`, and its iterators return the `std::optional<scn::basic_regex_match>` by value.
    Its iterators are random-access only by `iterator_concept`: their `iterator_category` is `std::input_iterator_tag`.
  * fast_float 6.0.0 or newer is now required (previously 5.0.0), unless it's disabled with `SCN_DISABLE_FAST_FLOAT`
- * A precision of zero (`{:.0}`) is now a format string error. Previously, it was ignored.
+ * A width or precision of zero (`{:0}`, `{:.0}`) or with a leading zero (`{:05}`, `{:.05}`),
+   and a `.` without a precision (`{:5.}`) are now format string errors.
+   Previously, `{:05}` and `{:.05}` were read as `{:5}` and `{:.5}`, and the others were ignored.
+ * A width or precision on a `char`, `wchar_t`, `char32_t`, or `bool` is now a format string error,
+   unless the presentation type is an integer one, like `d` or `x` (which `char32_t` doesn't have).
+   Previously, it was accepted.
  * Fill and alignment (`{:*<5}`, `{:>5}`) are removed from the format string syntax, and are now format string errors.
    `scn::scan_error::invalid_fill` is removed, so the enumerators after it in `scn::scan_error::code` have new values.
  * In a character set (`{:[...]}`), a backslash followed by a letter (like `\d`),
@@ -76,6 +81,8 @@ scn::scan<...>(strm, ...);
 
 ### Changes
 
+ * `char` and `wchar_t` scanned with an integer presentation type (`{:d}`) now skip leading whitespace, like integers.
+   Previously, `" 42"` was an error.
  * `scn::scan_error::code_t` is now public, to name the error code enum without `enum scn::scan_error::code`
  * `scn::expected::value()` is now checked: if it contains an error, it throws the new `scn::bad_expected_access`
    (or aborts, without exceptions). `operator*` and `operator->` remain unchecked.

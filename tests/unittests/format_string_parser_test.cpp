@@ -84,6 +84,55 @@ TEST_F(FormatStringParserWidthTest, WidthTooLarge)
     ASSERT_NE(handler.latest_error, nullptr);
 }
 
+TEST_F(FormatStringParserWidthTest, WidthZero)
+{
+    std::string_view input{"0}"};
+    std::ignore = scn::detail::parse_width(
+        input.data(), input.data() + input.size(), handler);
+    ASSERT_NE(handler.latest_error, nullptr);
+}
+
+TEST_F(FormatStringParserWidthTest, WidthWithLeadingZero)
+{
+    std::string_view input{"05}"};
+    std::ignore = scn::detail::parse_width(
+        input.data(), input.data() + input.size(), handler);
+    ASSERT_NE(handler.latest_error, nullptr);
+    EXPECT_EQ(specs.width, 0);
+}
+
+class FormatStringParserPrecisionTest : public ::testing::Test {
+protected:
+    scn::detail::format_specs specs{};
+    mock_specs_setter handler{specs};
+};
+
+TEST_F(FormatStringParserPrecisionTest, PrecisionWithoutDigits)
+{
+    std::string_view input{"}"};
+    std::ignore = scn::detail::parse_precision(
+        input.data(), input.data() + input.size(), handler);
+    ASSERT_NE(handler.latest_error, nullptr);
+}
+
+TEST_F(FormatStringParserPrecisionTest, Precision)
+{
+    std::string_view input{"12}"};
+    std::ignore = scn::detail::parse_precision(
+        input.data(), input.data() + input.size(), handler);
+    EXPECT_EQ(handler.latest_error, nullptr);
+    EXPECT_EQ(specs.precision, 12);
+}
+
+TEST_F(FormatStringParserPrecisionTest, PrecisionWithLeadingZero)
+{
+    std::string_view input{"012}"};
+    std::ignore = scn::detail::parse_precision(
+        input.data(), input.data() + input.size(), handler);
+    ASSERT_NE(handler.latest_error, nullptr);
+    EXPECT_EQ(specs.precision, 0);
+}
+
 class FormatStringParserFormatSpecsTest : public ::testing::Test {
 protected:
     scn::detail::format_specs specs{};

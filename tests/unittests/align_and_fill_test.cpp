@@ -51,34 +51,11 @@ TEST(AlignAndFillTest, CustomWidthDefaultAlignInt)
     EXPECT_STREQ(r->begin(), "");
 }
 
-TEST(AlignAndFillTest, CustomWidthDefaultAlignChar)
-{
-    auto r = scn::scan<char>("x     ", "{:6}");
-    ASSERT_THAT(r, Succeeded());
-    EXPECT_EQ(r->value(), 'x');
-    EXPECT_STREQ(r->begin(), "");
-}
-TEST(AlignAndFillTest, CustomWidthDefaultAlignCharWithMoreInput)
-{
-    auto r = scn::scan<char>("x       ", "{:6}");
-    ASSERT_THAT(r, Succeeded());
-    EXPECT_EQ(r->value(), 'x');
-    EXPECT_STREQ(r->begin(), "");
-}
-
 TEST(AlignAndFillTest, CustomPrecDefaultAlignInt)
 {
     auto r = scn::scan<int>("    42", "{:.6}");
     ASSERT_THAT(r, Succeeded());
     EXPECT_EQ(r->value(), 42);
-    EXPECT_STREQ(r->begin(), "");
-}
-
-TEST(AlignAndFillTest, CustomPrecDefaultAlignChar)
-{
-    auto r = scn::scan<char>("x     ", "{:.6}");
-    ASSERT_THAT(r, Succeeded());
-    EXPECT_EQ(r->value(), 'x');
     EXPECT_STREQ(r->begin(), "");
 }
 
@@ -119,14 +96,6 @@ TEST(AlignAndFillTest, P1729_Ex3r3)
     EXPECT_EQ(r->value(), 42);
     EXPECT_STREQ(r->begin(), "");
 }
-TEST(AlignAndFillTest, P1729_Ex3r4)
-{
-    auto r = scn::scan<char>("x     ", "{:6}");
-    ASSERT_THAT(r, Succeeded());
-    EXPECT_EQ(r->value(), 'x');
-    EXPECT_STREQ(r->begin(), "");
-}
-
 TEST(AlignAndFillTest, PythonParse3)
 {
     auto r = scn::scan<std::string, std::string>("look", "{:.2}{:.2}");

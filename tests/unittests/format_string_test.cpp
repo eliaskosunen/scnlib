@@ -424,7 +424,7 @@ TEST(FormatStringTest, SpecsWithoutWidthSameAsWithLargePrecision)
                                                       {"d", "x", "i", "u"});
         expect_same_as_with_large_precision<double>(source,
                                                     {"f", "e", "g", "a", "L"});
-        expect_same_as_with_large_precision<bool>(source, {"s", "i", "L"});
+        expect_same_as_with_large_precision<bool>(source, {"i"});
     }
     constexpr std::array<const char*, 4> double_sources{"3.25e2 x", "0x1.8p1",
                                                         "inf", " -0.5"};
@@ -435,7 +435,7 @@ TEST(FormatStringTest, SpecsWithoutWidthSameAsWithLargePrecision)
     constexpr std::array<const char*, 4> bool_sources{"true", "1", "false x",
                                                       "  0"};
     for (auto source : bool_sources) {
-        expect_same_as_with_large_precision<bool>(source, {"s", "i", "L"});
+        expect_same_as_with_large_precision<bool>(source, {"i"});
     }
 }
 
@@ -588,4 +588,32 @@ TEST(FormatStringTest, FuzzingError3)
 {
     auto result = scn::scan<std::string>("{:G}", scn::runtime_format("{:G}"));
     ASSERT_THAT(result, Failed());
+}
+
+TEST(FormatStringTest, ZeroWidthIsError)
+{
+    for (auto fmt : {"{:0}", "{:0d}", "{:0.5}", "{:00}"}) {
+        EXPECT_THAT(scn::scan<int>("42", scn::runtime_format(fmt)),
+                    FailedWith(scn::scan_error::invalid_format_string))
+            << fmt;
+    }
+}
+
+TEST(FormatStringTest, LeadingZeroInWidthOrPrecisionIsError)
+{
+    for (auto fmt :
+         {"{:05}", "{:005}", "{:.05}", "{:5.05}", "{:05.5}", "{:.00}"}) {
+        EXPECT_THAT(scn::scan<int>("42000", scn::runtime_format(fmt)),
+                    FailedWith(scn::scan_error::invalid_format_string))
+            << fmt;
+    }
+}
+
+TEST(FormatStringTest, PrecisionWithoutDigitsIsError)
+{
+    for (auto fmt : {"{:.}", "{:5.}", "{:.d}", "{:.L}", "{:5.L}"}) {
+        EXPECT_THAT(scn::scan<int>("42", scn::runtime_format(fmt)),
+                    FailedWith(scn::scan_error::invalid_format_string))
+            << fmt;
+    }
 }

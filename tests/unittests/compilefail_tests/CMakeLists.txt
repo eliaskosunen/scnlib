@@ -16,6 +16,8 @@ set(buildfail_sources
     locale_flag_with_locale_disabled.cpp
     locale_flag_with_string.cpp
     negative_argument_id.cpp
+    precision_leading_zero.cpp
+    precision_without_digits.cpp
     precision_zero.cpp
     regex_disabled.cpp
     scan_int_exhaustive_valid_unsupported_type.cpp
@@ -24,6 +26,11 @@ set(buildfail_sources
     unterminated_argument_id.cpp
     unterminated_format_specifier.cpp
     usertype_non_contiguous_source.cpp
+    width_leading_zero.cpp
+    width_on_bool.cpp
+    width_on_character.cpp
+    width_on_code_point.cpp
+    width_zero.cpp
 )
 if(NOT SCN_DISABLE_TYPE_DOUBLE)
     list(APPEND buildfail_sources float_format_unsupported_without_strtod.cpp)

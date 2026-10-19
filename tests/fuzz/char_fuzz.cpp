@@ -25,7 +25,7 @@ constexpr std::size_t max_input_bytes = 1024;
 template <typename T, typename Source>
 void scan_all(Source& source)
 {
-    constexpr std::array<const char*, 3> format_strings{"{}", "{:c}", "{:.2}"};
+    constexpr std::array<const char*, 3> format_strings{"{}", "{:c}", "{:d}"};
     for (const auto* format_string : format_strings) {
         auto result = scn::scan<T>(source, scn::runtime_format(format_string));
         (void)result;
