@@ -1,7 +1,7 @@
 include(icm_build_failure_testing)
 
 set(buildfail_sources
-    brace_as_fill_character.cpp
+    alignment_in_format_string.cpp
     charset_backslash_escape.cpp
     charset_class.cpp
     charset_empty.cpp
@@ -11,7 +11,6 @@ set(buildfail_sources
     code_point_with_integer_presentation.cpp
     integer_base_leading_zero.cpp
     integer_with_string_presentation.cpp
-    invalid_fill_character_encoding.cpp
     invalid_unicode_in_format_string.cpp
     letters_in_argument_id.cpp
     locale_flag_with_locale_disabled.cpp

@@ -139,36 +139,19 @@ TEST(CharTest, CharAfterInt)
 
 TEST(CharTest, CodePointFromNarrowEmptyInput)
 {
-    // Whitespace is only skipped as fill, so `{:c}` and `{:.2}` would read it
-    constexpr std::array<std::pair<std::string_view, const char*>, 8>
-        code_point_cases{{{"", "{:c}"},
-                          {"", "{:.2}"},
-                          {"", "{:>4}"},
-                          {"", "{:>4c}"},
-                          {" ", "{:>4}"},
-                          {" ", "{:>4c}"},
-                          {"    ", "{:>4}"},
-                          {"    ", "{:>4c}"}}};
-    for (auto [input, fmt] : code_point_cases) {
-        EXPECT_THAT(scn::scan<char32_t>(input, scn::runtime_format(fmt)),
+    for (const char* fmt : {"{:c}", "{:.2}"}) {
+        EXPECT_THAT(scn::scan<char32_t>("", scn::runtime_format(fmt)),
                     FailedWith(scn::scan_error::end_of_input))
-            << '"' << input << "\" " << fmt;
+            << fmt;
     }
 }
 
 TEST(CharTest, WcharFromNarrowEmptyInput)
 {
-    // Whitespace is only skipped as fill, so `{:c}` and `{:.2}` would read it
-    constexpr std::array<std::pair<std::string_view, const char*>, 5>
-        wide_cases{{{"", "{:c}"},
-                    {"", "{:.2}"},
-                    {"", "{:>4}"},
-                    {" ", "{:>4}"},
-                    {"    ", "{:>4}"}}};
-    for (auto [input, fmt] : wide_cases) {
-        EXPECT_THAT(scn::scan<wchar_t>(input, scn::runtime_format(fmt)),
+    for (const char* fmt : {"{:c}", "{:.2}"}) {
+        EXPECT_THAT(scn::scan<wchar_t>("", scn::runtime_format(fmt)),
                     FailedWith(scn::scan_error::end_of_input))
-            << '"' << input << "\" " << fmt;
+            << fmt;
     }
 }
 

@@ -347,16 +347,6 @@ TEST(StringTest, PrecisionSmallerThanNextCharacterWidthCodePoint)
     EXPECT_THAT(result, FailedWith(scn::scan_error::invalid_scanned_value));
 }
 
-// The precision is used up by the fill before the character
-TEST(StringTest, PrecisionSmallerThanNextCharacterWidthAfterFill)
-{
-    const std::string wide_char = "\xe4\xb8\x80";
-
-    auto result =
-        scn::scan<std::string>(" " + wide_char, scn::runtime_format("{:>2.2}"));
-    EXPECT_THAT(result, FailedWith(scn::scan_error::invalid_scanned_value));
-}
-
 TEST(StringTest, PrecisionEqualToNextCharacterWidth)
 {
     const std::string wide_char = "\xe4\xb8\x80";

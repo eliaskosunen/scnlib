@@ -12,14 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 //
-// This file is a part of scnlib:
-//     https://github.com/eliaskosunen/scnlib
 
 #include <scn/scan.h>
 
 int main()
 {
-    // build error: Invalid encoding in fill character
-    auto result = scn::scan<std::string>("a", SCN_STRING("{:\xc3\x28>4}"));
+    // build error: Invalid type specifier in format string
+    auto result = scn::scan<int>("42", SCN_STRING("{:<5}"));
     return !result;
 }

@@ -5582,10 +5582,6 @@ public:
         /// in the source.
         invalid_literal,
 
-        /// Too many fill characters scanned,
-        /// field precision (max width) exceeded.
-        invalid_fill,
-
         /// Scanned field width was shorter than
         /// what was specified as the minimum field width.
         length_too_short,
@@ -5658,7 +5654,6 @@ public:
             case invalid_format_string:
             case invalid_scanned_value:
             case invalid_literal:
-            case invalid_fill:
             case length_too_short:
             case insufficient_source:
                 return std::errc::invalid_argument;
@@ -9343,13 +9338,6 @@ constexpr void basic_scan_parse_context<CharT>::do_check_arg_id(std::size_t id)
 }
 
 namespace detail {
-enum class align_type : unsigned char {
-    none = 0,
-    left = 1,   // '<'
-    right = 2,  // '>'
-    center = 3  // '^'
-};
-
 enum class presentation_type : unsigned char {
     none,
     int_binary,            // 'b', 'B'
@@ -9418,96 +9406,13 @@ constexpr regex_flags& operator^=(regex_flags& a, regex_flags b)
 }
 #endif
 
-class fill_type {
-public:
-    constexpr void operator=(char c)
-    {
-        m_data[0] = c;
-        m_size = 1;
-    }
-
-    template <typename CharT>
-    constexpr void operator=(std::basic_string_view<CharT> s)
-    {
-        SCN_EXPECT(!s.empty());
-        SCN_EXPECT(s.size() * sizeof(CharT) <= max_size);
-        if constexpr (sizeof(CharT) == 1) {
-            // Bounded by max_size, too: GCC can't see the precondition, and
-            // warns about an overflow (-Wstringop-overflow) in LTO builds
-            const auto size = detail::min(s.size(), max_size);
-            for (std::size_t i = 0; i < size; ++i) {
-                m_data[i] = s[i];
-            }
-            m_size = static_cast<unsigned char>(size);
-        }
-        else if constexpr (sizeof(CharT) == 2) {
-            store_code_unit<2>(0, static_cast<unsigned>(s.front()));
-            m_size = 2;
-            if (s.size() == 1) {
-                return;
-            }
-            store_code_unit<2>(2, static_cast<unsigned>(s[1]));
-            m_size = 4;
-        }
-        else {
-            store_code_unit<4>(0, static_cast<unsigned>(s.front()));
-            m_size = 4;
-        }
-    }
-
-    /// Size in bytes
-    constexpr std::size_t size() const
-    {
-        return m_size;
-    }
-
-    template <typename CharT>
-    CharT get_code_unit() const
-    {
-        SCN_EXPECT(m_size <= sizeof(CharT));
-        if (m_size == 1) {
-            // Set with `operator=(char)`, or from a narrow string
-            return static_cast<CharT>(static_cast<unsigned char>(m_data[0]));
-        }
-        CharT r{};
-        std::memcpy(&r, m_data, m_size);
-        return r;
-    }
-
-    template <typename CharT>
-    std::basic_string_view<CharT> get_code_units() const
-    {
-        return {reinterpret_cast<const CharT*>(
-                    SCN_ASSUME_ALIGNED(m_data, alignof(CharT))),
-                m_size / sizeof(CharT)};
-    }
-
-private:
-    // Stores `value` into `m_data` in native byte order,
-    // so that it can be read back with `memcpy`
-    template <std::size_t Width>
-    constexpr void store_code_unit(std::size_t offset, unsigned value)
-    {
-        for (std::size_t i = 0; i < Width; ++i) {
-            const auto shift = SCN_IS_BIG_ENDIAN ? (Width - 1 - i) * 8 : i * 8;
-            m_data[offset + i] = static_cast<char>(value >> shift);
-        }
-    }
-
-    static constexpr std::size_t max_size = 4;
-    alignas(char32_t) char m_data[max_size] = {' '};
-    unsigned char m_size{1};
-};
-
 struct format_specs {
     // ordered to minimize padding
 
     int width{0};
     int precision{0};
-    fill_type fill{};
 
     presentation_type type{presentation_type::none};
-    align_type align{align_type::none};
     unsigned char arbitrary_base{0};
     bool localized{false};
 
@@ -9518,7 +9423,7 @@ struct format_specs {
     regex_flags regexp_flags{regex_flags::none};
 #endif
 
-    // 1 byte of padding here (2 bytes if regex disabled)
+    // 2 bytes of padding here (3 bytes if regex disabled)
 
     union {
         const char* charset_string{nullptr};
@@ -9587,15 +9492,6 @@ struct specs_setter {
 public:
     explicit constexpr specs_setter(format_specs& specs) : m_specs(specs) {}
 
-    constexpr void on_align(align_type align)
-    {
-        m_specs.align = align;
-    }
-    template <typename CharT>
-    constexpr void on_fill(std::basic_string_view<CharT> fill)
-    {
-        m_specs.fill = fill;
-    }
     template <bool Dependent = true>
     constexpr void on_localized()
     {
@@ -9850,78 +9746,6 @@ constexpr bool is_ascii_letter(CharT ch)
 {
     return (ch >= CharT{'a'} && ch <= CharT{'z'}) ||
            (ch >= CharT{'A'} && ch <= CharT{'Z'});
-}
-
-template <typename CharT, typename Handler>
-constexpr const CharT* parse_align(const CharT* begin,
-                                   const CharT* end,
-                                   Handler&& handler)
-{
-    SCN_EXPECT(begin != end);
-
-    auto check_align = [](wchar_t ch) {
-        switch (ch) {
-            case L'<':
-                return align_type::left;
-            case L'>':
-                return align_type::right;
-            case L'^':
-                return align_type::center;
-            default:
-                return align_type::none;
-        }
-    };
-
-    const auto potential_fill_len = static_cast<std::ptrdiff_t>(
-        code_point_length_by_starting_code_unit(*begin));
-    if (SCN_UNLIKELY(potential_fill_len == 0 ||
-                     std::distance(begin, end) < potential_fill_len)) {
-        handler.on_error("Invalid encoding in fill character");
-        return begin;
-    }
-
-    auto potential_fill = std::basic_string_view<CharT>{
-        begin, static_cast<std::size_t>(potential_fill_len)};
-    if (SCN_UNLIKELY(decode_code_point_exhaustive(potential_fill) >=
-                     invalid_code_point)) {
-        handler.on_error("Invalid encoding in fill character");
-        return begin;
-    }
-
-    auto potential_align_on_fill = check_align(static_cast<wchar_t>(*begin));
-
-    const auto begin_before_fill = begin;
-    begin += potential_fill_len;
-
-    if (begin == end) {
-        return begin_before_fill;
-    }
-
-    auto potential_align_after_fill = check_align(static_cast<wchar_t>(*begin));
-    const auto begin_after_fill = begin;
-    ++begin;
-
-    if (potential_fill_len == 1) {
-        if (SCN_UNLIKELY(potential_fill[0] == '{')) {
-            handler.on_error("Invalid fill character '{' in format string");
-            return begin;
-        }
-        if (potential_fill[0] == '[') {
-            return begin_before_fill;
-        }
-    }
-
-    if (potential_align_after_fill == align_type::none) {
-        if (potential_align_on_fill != align_type::none) {
-            handler.on_align(potential_align_on_fill);
-            return begin_after_fill;
-        }
-        return begin_before_fill;
-    }
-
-    handler.on_fill(potential_fill);
-    handler.on_align(potential_align_after_fill);
-    return begin;
 }
 
 template <typename CharT, typename Handler>
@@ -10306,14 +10130,6 @@ constexpr const CharT* parse_format_specs(const CharT* begin,
     if (SCN_UNLIKELY(begin == end)) {
         // clang-format off
         handler.on_error("Unexpected end of format string, expected a format specifier or '}'");
-        // clang-format on
-        return begin;
-    }
-
-    begin = parse_align(begin, end, handler);
-    if (SCN_UNLIKELY(begin == end)) {
-        // clang-format off
-        handler.on_error("Unexpected end of format string, expected a width, precision, type specifier, or '}'");
         // clang-format on
         return begin;
     }
@@ -10778,13 +10594,7 @@ SCN_CLANG_IGNORE("-Wdocumentation-unknown-command")
  * replacement-field   ::= '{' [arg-id] [':' format-spec] '}'
  * arg-id              ::= nonnegative-integer
  *
- * format-spec         ::= [fill-and-align]
- *                         [width] [precision]
- *                         ['L'] [type]
- * fill-and-align      ::= [fill] align
- * fill                ::= any character other than
- *                         '{' or '}'
- * align               ::= one of '<' '>' '^'
+ * format-spec         ::= [width] [precision] ['L'] [type]
  * width               ::= positive-integer
  * precision           ::= '.' nonnegative-integer
  * type                ::= 'a' | 'A' | 'b' | 'B' | 'c' | 'd' |
@@ -10829,63 +10639,11 @@ SCN_CLANG_IGNORE("-Wdocumentation-unknown-command")
  * auto e = scn::scan<int, int>("2 to 300", "{0} to {2}");
  * \endcode
  *
- * \section fill-and-align Fill and align
- *
- * Alignment allows for skipping character before and/or after a value.
- * There are three possible values for alignment:
- *
- * <table>
- * <caption id="align-table">
- * Alignment options
- * </caption>
- *
- * <tr><th>Option</th> <th>Meaning</th></tr>
- *
- * <tr>
- * <td>`<`</td>
- * <td>
- * Align the value to the left (skips fill characters after the value)
- * </td>
- * </tr>
- *
- * <tr>
- * <td>`>`</td>
- * <td>
- * Align the value to the right (skips fill characters before the value)
- * </td>
- * </tr>
- *
- * <tr>
- * <td>`^`</td>
- * <td>
- * Align the value to the center
- * (skips fill characters both before and after the value)
- * </td>
- * </tr>
- * </table>
- *
- * The fill character can be any Unicode code point, except for `{` and `}`.
- * The default fill is the space character `' '`.
- *
- * For format type specifiers other than `c` (default for `char` and `wchar_t`,
- * available for `string` and `string_view`), `[...]`, and the regex `/.../`,
- * the default alignment is `>`.
- * Otherwise, the default alignment is `<`.
- *
- * In addition to the skipping of fill characters,
- * for format type specifiers with the `>` default alignment,
- * preceding whitespace is automatically skipped.
- * This preceding whitespace isn't counted as part of the field width,
- * as described below.
- *
- * The number of fill characters consumed can be controlled with the width and
- * precision specifiers.
- *
  * \section width Width
  *
  * Width specifies the minimum number of characters that will be read from
- * the source range. It can be any unsigned integer. Any fill characters skipped
- * are included in the width
+ * the source range. It can be any unsigned integer.
+ * Skipped preceding whitespace is included in the width.
  *
  * For the purposes of width calculation, the same algorithm is used that in
  * {fmt}. Every code point has a width of one, except the following ones
@@ -10934,9 +10692,7 @@ SCN_CLANG_IGNORE("-Wdocumentation-unknown-command")
  * <tr>
  * <td>none, `s`</td>
  * <td>
- * Copies from the input until a whitespace character is encountered, or,
- * if using the `<` (left) or `^` (center) alignment,
- * a fill character is encountered.
+ * Copies from the input until a whitespace character is encountered.
  * </td>
  * </tr>
  * <tr>

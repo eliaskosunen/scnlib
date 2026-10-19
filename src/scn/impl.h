@@ -7465,50 +7465,6 @@ public:
     }
 };
 
-template <typename SourceCharT>
-class custom_word_reader_impl {
-public:
-    template <typename Range, typename ValueCharT>
-    auto read(Range range,
-              const detail::format_specs& specs,
-              std::basic_string<ValueCharT>& value)
-        -> scan_expected<ranges::iterator_t<Range>>
-    {
-        if (specs.fill.size() <= sizeof(SourceCharT)) {
-            return read_string_impl(
-                range,
-                read_until_code_unit(
-                    range, specs.fill.template get_code_unit<SourceCharT>()),
-                value);
-        }
-        return read_string_impl(
-            range,
-            read_until_code_units(
-                range, specs.fill.template get_code_units<SourceCharT>()),
-            value);
-    }
-
-    template <typename Range, typename ValueCharT>
-    auto read(Range range,
-              const detail::format_specs& specs,
-              std::basic_string_view<ValueCharT>& value)
-        -> scan_expected<ranges::iterator_t<Range>>
-    {
-        if (specs.fill.size() <= sizeof(SourceCharT)) {
-            return read_string_view_impl(
-                range,
-                read_until_code_unit(
-                    range, specs.fill.template get_code_unit<SourceCharT>()),
-                value);
-        }
-        return read_string_view_impl(
-            range,
-            read_until_code_units(
-                range, specs.fill.template get_code_units<SourceCharT>()),
-            value);
-    }
-};
-
 #if !SCN_DISABLE_REGEX
 template <typename SourceCharT>
 class regex_string_reader_impl {
@@ -7843,16 +7799,9 @@ public:
                 m_type = reader_type::word;
                 break;
 
-            case detail::presentation_type::string: {
-                if (specs.align == detail::align_type::left ||
-                    specs.align == detail::align_type::center) {
-                    m_type = reader_type::custom_word;
-                }
-                else {
-                    m_type = reader_type::word;
-                }
+            case detail::presentation_type::string:
+                m_type = reader_type::word;
                 break;
-            }
 
             case detail::presentation_type::character:
                 m_type = reader_type::character;
@@ -7904,7 +7853,6 @@ public:
 protected:
     enum class reader_type {
         word,
-        custom_word,
         character,
         character_set,
 #if !SCN_DISABLE_REGEX
@@ -7923,10 +7871,6 @@ protected:
         switch (m_type) {
             case reader_type::word:
                 return word_reader_impl<SourceCharT>{}.read(range, value);
-
-            case reader_type::custom_word:
-                return custom_word_reader_impl<SourceCharT>{}.read(range, specs,
-                                                                   value);
 
             case reader_type::character:
                 return character_reader_impl<SourceCharT>{}.read(range, value);
@@ -8599,65 +8543,7 @@ struct default_arg_reader {
 };
 
 template <typename Iterator>
-using skip_fill_result = std::pair<Iterator, std::ptrdiff_t>;
-
-template <typename Range>
-auto skip_fill(Range range,
-               std::ptrdiff_t max_width,
-               const detail::fill_type& fill,
-               bool want_skipped_width)
-    -> scan_expected<skip_fill_result<ranges::iterator_t<Range>>>
-{
-    using char_type = detail::char_t<Range>;
-    using result_type = skip_fill_result<ranges::iterator_t<Range>>;
-
-    if (fill.size() <= sizeof(char_type)) {
-        const auto fill_ch = fill.template get_code_unit<char_type>();
-        const auto pred = [=](char_type ch) { return ch == fill_ch; };
-
-        if (max_width == 0) {
-            auto it = read_while_code_unit(range, pred);
-
-            if (want_skipped_width) {
-                auto prefix_width =
-                    static_cast<std::ptrdiff_t>(
-                        calculate_text_width(static_cast<char32_t>(fill_ch))) *
-                    ranges::distance(range.begin(), it);
-                return result_type{it, prefix_width};
-            }
-            return result_type{it, 0};
-        }
-
-        auto max_width_view = take_width(range, max_width);
-        auto w_it = read_while_code_unit(max_width_view, pred);
-
-        if (want_skipped_width) {
-            return result_type{w_it.base(), max_width - w_it.count()};
-        }
-        return result_type{w_it.base(), 0};
-    }
-
-    const auto fill_chars = fill.template get_code_units<char_type>();
-    if (max_width == 0) {
-        auto it = read_while_code_units(range, fill_chars);
-
-        if (want_skipped_width) {
-            auto prefix_width =
-                static_cast<std::ptrdiff_t>(calculate_text_width(fill_chars)) *
-                ranges::distance(range.begin(), it) / ranges::ssize(fill_chars);
-            return result_type{it, prefix_width};
-        }
-        return result_type{it, 0};
-    }
-
-    auto max_width_view = take_width(range, max_width);
-    auto w_it = read_while_code_units(max_width_view, fill_chars);
-
-    if (want_skipped_width) {
-        return result_type{w_it.base(), max_width - w_it.count()};
-    }
-    return result_type{w_it.base(), 0};
-}
+using skip_result = std::pair<Iterator, std::ptrdiff_t>;
 
 SCN_MAYBE_UNUSED constexpr scan_expected<void> check_widths_for_arg_reader(
     const detail::format_specs& specs,
@@ -8709,20 +8595,14 @@ struct arg_reader {
 
     template <typename Range>
     auto impl_prefix(Range rng, bool rd_skip_ws_before_read)
-        -> scan_expected<skip_fill_result<ranges::iterator_t<Range>>>
+        -> scan_expected<skip_result<ranges::iterator_t<Range>>>
     {
         const bool need_skipped_width =
             specs.width != 0 || specs.precision != 0;
-        using result_type = skip_fill_result<ranges::iterator_t<Range>>;
+        using result_type = skip_result<ranges::iterator_t<Range>>;
 
         // Read prefix
-        if (specs.align == detail::align_type::right ||
-            specs.align == detail::align_type::center) {
-            return skip_fill(rng, specs.precision, specs.fill,
-                             need_skipped_width);
-        }
-        if (specs.align == detail::align_type::none && rd_skip_ws_before_read) {
-            // Default alignment:
+        if (rd_skip_ws_before_read) {
             // Skip preceding whitespace, if required by the reader
             if (specs.precision != 0) {
                 auto max_width_view = take_width(rng, specs.precision);
@@ -8751,23 +8631,13 @@ struct arg_reader {
                       bool rd_skip_ws_before_read,
                       std::ptrdiff_t prefix_width,
                       std::ptrdiff_t value_width)
-        -> scan_expected<skip_fill_result<ranges::iterator_t<Range>>>
+        -> scan_expected<skip_result<ranges::iterator_t<Range>>>
     {
         const bool need_skipped_width =
             specs.width != 0 || specs.precision != 0;
-        using result_type = skip_fill_result<ranges::iterator_t<Range>>;
+        using result_type = skip_result<ranges::iterator_t<Range>>;
 
-        if (specs.align == detail::align_type::left ||
-            specs.align == detail::align_type::center) {
-            if (specs.precision != 0 &&
-                specs.precision - value_width - prefix_width == 0) {
-                return result_type{rng.begin(), 0};
-            }
-            return skip_fill(rng, specs.precision - value_width - prefix_width,
-                             specs.fill, need_skipped_width);
-        }
-        if (specs.align == detail::align_type::none &&
-            !rd_skip_ws_before_read &&
+        if (!rd_skip_ws_before_read &&
             ((specs.width != 0 && prefix_width + value_width < specs.width) ||
              (specs.precision != 0 &&
               prefix_width + value_width < specs.precision))) {
@@ -8798,10 +8668,9 @@ struct arg_reader {
     auto impl(Reader& rd, Range rng, T& value)
         -> scan_expected<ranges::iterator_t<Range>>
     {
-        if (specs.align == detail::align_type::none && specs.width == 0 &&
-            specs.precision == 0) {
-            // What the general path below reduces to without fill, width,
-            // and precision. Not calling skip_classic_whitespace: another
+        if (specs.width == 0 && specs.precision == 0) {
+            // What the general path below reduces to without width and
+            // precision. Not calling skip_classic_whitespace: another
             // caller made GCC stop inlining it into the "{}" path.
             auto it = rng.begin();
             if (rd.skip_ws_before_read()) {
@@ -8841,9 +8710,8 @@ struct arg_reader {
         if (specs.precision != 0) {
             if (specs.precision <= prefix_width) {
                 return detail::unexpected_scan_error(
-                    scan_error::invalid_fill,
-                    "Too many fill characters before value, "
-                    "precision exceeded before reading value");
+                    scan_error::invalid_scanned_value,
+                    "Leading whitespace exceeded the field precision");
             }
 
             const auto initial_width = specs.precision - prefix_width;

@@ -46,7 +46,7 @@ Use the precision of the replacement fields,
 which limits the number of characters (columns) that are read:
 `scn::scan<int, int, int>("20260131", "{:.4}{:.2}{:.2}")`.
 The width (`{:4}`), by contrast, is a minimum:
-the field, including any fill characters, must span at least that many columns,
+the field must span at least that many columns,
 or the scan fails with `scn::scan_error::length_too_short`.
 It doesn't limit how much is read, so combine it with a precision to bound both.
 

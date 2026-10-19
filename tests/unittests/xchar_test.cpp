@@ -111,28 +111,3 @@ TEST(XCharTest, ScanValueWideWithDefaultFail)
     auto result = scn::scan_value<int>(L"xyz", 222);
     ASSERT_THAT(result, Failed());
 }
-
-TEST(XCharTest, NonAsciiFill)
-{
-    auto result = scn::scan<int>(L"\u0100\u010042", L"{:\u0100>}");
-    ASSERT_THAT(result, Succeeded());
-    EXPECT_EQ(result->value(), 42);
-    EXPECT_THAT(result->range(), IsEmptyRange());
-}
-
-// A surrogate pair when wchar_t is UTF-16
-TEST(XCharTest, AstralFill)
-{
-    auto result = scn::scan<int>(L"\U0001F600\U0001F60042", L"{:\U0001F600>}");
-    ASSERT_THAT(result, Succeeded());
-    EXPECT_EQ(result->value(), 42);
-    EXPECT_THAT(result->range(), IsEmptyRange());
-}
-
-TEST(XCharTest, AstralFillLeftAligned)
-{
-    auto result = scn::scan<int>(L"42\U0001F600\U0001F600", L"{:\U0001F600<}");
-    ASSERT_THAT(result, Succeeded());
-    EXPECT_EQ(result->value(), 42);
-    EXPECT_TRUE(result->range().empty());
-}

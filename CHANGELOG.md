@@ -41,6 +41,8 @@ scn::scan<...>(strm, ...);
    Its iterators are random-access only by `iterator_concept`: their `iterator_category` is `std::input_iterator_tag`.
  * fast_float 6.0.0 or newer is now required (previously 5.0.0), unless it's disabled with `SCN_DISABLE_FAST_FLOAT`
  * A precision of zero (`{:.0}`) is now a format string error. Previously, it was ignored.
+ * Fill and alignment (`{:*<5}`, `{:>5}`) are removed from the format string syntax, and are now format string errors.
+   `scn::scan_error::invalid_fill` is removed, so the enumerators after it in `scn::scan_error::code` have new values.
  * In a character set (`{:[...]}`), a backslash followed by a letter (like `\d`),
    or something that looks like a character class (like `[:alpha:]`), is now a format string error.
    Previously, they were matched as literal characters.
@@ -199,10 +201,9 @@ scn::scan<...>(strm, ...);
  * Fix argument tracking in format strings with 64 or more arguments,
    and report the first error in a format string, instead of the last
  * Overlong UTF-8 sequences, encoded surrogate code points, and unpaired UTF-16 surrogates are now treated as invalid
- * Fix scanning a `char32_t`, or a `wchar_t` from a narrow source: empty input, or input with only fill characters,
+ * Fix scanning a `char32_t`, or a `wchar_t` from a narrow source: empty input
    was read out of bounds, and invalid or truncated UTF-8, surrogates, and values above U+10FFFF weren't rejected
- * Fix wide fill characters above U+00FF (and all wide fill characters on big-endian platforms),
-   fill characters encoded as a UTF-16 surrogate pair, and character set ranges crossing the ASCII boundary
+ * Fix character set ranges crossing the ASCII boundary
  * Fix characters outside the BMP being transcoded with an invalid low surrogate when scanning a narrow source
    into a wide string with a 16-bit `wchar_t` (Windows)
  * `scn::scan_int` returns an error for an invalid base, and rejects unsupported types at compile time instead of failing to link.
