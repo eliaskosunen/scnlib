@@ -55,16 +55,16 @@ bool has_nonascii_char_64(R source)
     const auto* data = source.data();
     const auto size = source.size();
     if (size == 8) {
-        uint64_t word{};
+        std::uint64_t word{};
         std::memcpy(&word, data, 8);
         return has_byte_greater(word, 127) != 0;
     }
     if (size >= 4) {
         // Two overlapping loads cover all 4 to 7 bytes
-        uint32_t first{}, last{};
+        std::uint32_t first{}, last{};
         std::memcpy(&first, data, 4);
         std::memcpy(&last, data + size - 4, 4);
-        return has_byte_greater(uint64_t{first | last}, 127) != 0;
+        return has_byte_greater(std::uint64_t{first | last}, 127) != 0;
     }
     for (std::size_t i = 0; i < size; ++i) {
         if (static_cast<unsigned char>(data[i]) > 127) {
@@ -142,7 +142,7 @@ bool is_decimal_digit(char ch) noexcept
          false, false, false, false, false, false, false, false, false, false,
          false, false, false, false, false, false}};
 
-    return lookup[static_cast<size_t>(static_cast<unsigned char>(ch))];
+    return lookup[static_cast<std::size_t>(static_cast<unsigned char>(ch))];
 }
 
 std::string_view::iterator find_nondecimal_digit_simple_impl(
@@ -884,7 +884,7 @@ struct convert_custom_hex {
         std::int64_t dropped_significand_digits{};
         bool sticky = false;
 
-        auto add_digit = [&](uint8_t d) {
+        auto add_digit = [&](std::uint8_t d) {
             if ((significand >> static_cast<unsigned>(total_bits - 4)) !=
                 significand_int_type{0u}) {
                 // significand is full, this digit is a dropped lower-order bit
@@ -1454,28 +1454,30 @@ SCN_DEFINE_FAST_FLOAT_CONVERT(std::bfloat16_t)
 namespace impl {
 
 namespace {
-uint64_t get_eight_digits_word(const char* input)
+std::uint64_t get_eight_digits_word(const char* input)
 {
-    uint64_t val{};
-    std::memcpy(&val, input, sizeof(uint64_t));
+    std::uint64_t val{};
+    std::memcpy(&val, input, sizeof(std::uint64_t));
     if constexpr (SCN_IS_BIG_ENDIAN) {
         val = byteswap(val);
     }
     return val;
 }
 
-constexpr uint32_t parse_eight_decimal_digits_unrolled_fast(uint64_t word)
+constexpr std::uint32_t parse_eight_decimal_digits_unrolled_fast(
+    std::uint64_t word)
 {
-    constexpr uint64_t mask = 0x000000FF000000FF;
-    constexpr uint64_t mul1 = 0x000F424000000064;  // 100 + (1000000ULL << 32)
-    constexpr uint64_t mul2 = 0x0000271000000001;  // 1 + (10000ULL << 32)
+    constexpr std::uint64_t mask = 0x000000FF000000FF;
+    constexpr std::uint64_t mul1 =
+        0x000F424000000064;  // 100 + (1000000ULL << 32)
+    constexpr std::uint64_t mul2 = 0x0000271000000001;  // 1 + (10000ULL << 32)
     word -= 0x3030303030303030;
     word = (word * 10) + (word >> 8);  // val = (val * 2561) >> 8;
     word = (((word & mask) * mul1) + (((word >> 16) & mask) * mul2)) >> 32;
-    return static_cast<uint32_t>(word);
+    return static_cast<std::uint32_t>(word);
 }
 
-constexpr bool is_word_made_of_eight_decimal_digits_fast(uint64_t word)
+constexpr bool is_word_made_of_eight_decimal_digits_fast(std::uint64_t word)
 {
     return !((((word + 0x4646464646464646) | (word - 0x3030303030303030)) &
               0x8080808080808080));
@@ -1483,7 +1485,7 @@ constexpr bool is_word_made_of_eight_decimal_digits_fast(uint64_t word)
 
 void loop_parse_if_eight_decimal_digits(const char*& p,
                                         const char* const end,
-                                        uint64_t& val)
+                                        std::uint64_t& val)
 {
     while (
         std::distance(p, end) >= 8 &&
@@ -1496,7 +1498,7 @@ void loop_parse_if_eight_decimal_digits(const char*& p,
 
 const char* parse_decimal_integer_fast_impl(const char* begin,
                                             const char* const end,
-                                            uint64_t& val)
+                                            std::uint64_t& val)
 {
     loop_parse_if_eight_decimal_digits(begin, end, val);
 
@@ -1505,21 +1507,21 @@ const char* parse_decimal_integer_fast_impl(const char* begin,
         if (digit >= 10) {
             break;
         }
-        val = 10ull * val + static_cast<uint64_t>(digit);
+        val = 10ull * val + static_cast<std::uint64_t>(digit);
         ++begin;
     }
 
     return begin;
 }
 
-constexpr size_t maxdigits_u64_table[] = {
+constexpr std::size_t maxdigits_u64_table[] = {
     0,  0,  64, 41, 32, 28, 25, 23, 22, 21, 20, 19, 18, 18, 17, 17, 16, 16, 16,
     16, 15, 15, 15, 15, 14, 14, 14, 14, 14, 14, 14, 13, 13, 13, 13, 13, 13};
 
-SCN_FORCE_INLINE constexpr size_t maxdigits_u64(int base)
+SCN_FORCE_INLINE constexpr std::size_t maxdigits_u64(int base)
 {
     SCN_EXPECT(base >= 2 && base <= 36);
-    return maxdigits_u64_table[static_cast<size_t>(base)];
+    return maxdigits_u64_table[static_cast<std::size_t>(base)];
 }
 
 // `digits` must not have leading zeroes, and must have exactly
@@ -1530,28 +1532,29 @@ constexpr bool does_max_length_integer_overflow_u64(const CharT* digits,
 {
     // `max_digits - 1` digits always fit in an uint64_t
     const auto max_digits = maxdigits_u64(base);
-    const auto unsigned_base = static_cast<uint64_t>(base);
-    uint64_t high{};
-    for (size_t i = 0; i + 1 < max_digits; ++i) {
+    const auto unsigned_base = static_cast<std::uint64_t>(base);
+    std::uint64_t high{};
+    for (std::size_t i = 0; i + 1 < max_digits; ++i) {
         high = unsigned_base * high +
-               static_cast<uint64_t>(char_to_int(digits[i]));
+               static_cast<std::uint64_t>(char_to_int(digits[i]));
     }
     const auto last =
-        static_cast<uint64_t>(char_to_int(digits[max_digits - 1]));
-    return high > (std::numeric_limits<uint64_t>::max() - last) / unsigned_base;
+        static_cast<std::uint64_t>(char_to_int(digits[max_digits - 1]));
+    return high >
+           (std::numeric_limits<std::uint64_t>::max() - last) / unsigned_base;
 }
 
 // `val` is the value of the `digits_count` digits starting at `digits`,
 // accumulated into an uint64_t without checking for wraparound.
 // `digits` must not have leading zeroes.
 template <typename T, typename CharT>
-constexpr bool check_integer_overflow(uint64_t val,
+constexpr bool check_integer_overflow(std::uint64_t val,
                                       const CharT* digits,
-                                      size_t digits_count,
+                                      std::size_t digits_count,
                                       int base,
                                       bool is_negative)
 {
-    static_assert(sizeof(T) <= sizeof(uint64_t));
+    static_assert(sizeof(T) <= sizeof(std::uint64_t));
 
     const auto max_digits = maxdigits_u64(base);
     if (digits_count > max_digits) {
@@ -1563,9 +1566,9 @@ constexpr bool check_integer_overflow(uint64_t val,
     }
 
     // `val` is now known to be exact
-    if constexpr (std::is_signed_v<T> || sizeof(T) < sizeof(uint64_t)) {
-        if (val > static_cast<uint64_t>(std::numeric_limits<T>::max()) +
-                      static_cast<uint64_t>(is_negative)) {
+    if constexpr (std::is_signed_v<T> || sizeof(T) < sizeof(std::uint64_t)) {
+        if (val > static_cast<std::uint64_t>(std::numeric_limits<T>::max()) +
+                      static_cast<std::uint64_t>(is_negative)) {
             SCN_UNLIKELY_ATTR
             return true;
         }
@@ -1604,11 +1607,11 @@ auto parse_decimal_integer_fast(std::string_view input,
 {
     static_assert(sizeof(T) <= sizeof(std::uint64_t));
 
-    uint64_t u64val{};
+    std::uint64_t u64val{};
     auto ptr = parse_decimal_integer_fast_impl(
         input.data(), input.data() + input.size(), u64val);
 
-    auto digits_count = static_cast<size_t>(ptr - input.data());
+    auto digits_count = static_cast<std::size_t>(ptr - input.data());
     if (SCN_UNLIKELY(check_integer_overflow<T>(
             u64val, input.data(), digits_count, 10, is_negative))) {
         return detail::unexpected_scan_error(
@@ -1627,7 +1630,7 @@ auto parse_regular_integer(std::basic_string_view<CharT> input,
                            int base,
                            bool is_negative) -> scan_expected<const CharT*>
 {
-    uint64_t u64val{};
+    std::uint64_t u64val{};
     const CharT* begin = input.data();
     const CharT* const end = input.data() + input.size();
 
@@ -1636,12 +1639,12 @@ auto parse_regular_integer(std::basic_string_view<CharT> input,
         if (digit >= base) {
             break;
         }
-        u64val =
-            static_cast<uint64_t>(base) * u64val + static_cast<uint64_t>(digit);
+        u64val = static_cast<std::uint64_t>(base) * u64val +
+                 static_cast<std::uint64_t>(digit);
         ++begin;
     }
 
-    auto digits_count = static_cast<size_t>(begin - input.data());
+    auto digits_count = static_cast<std::size_t>(begin - input.data());
     if (SCN_UNLIKELY(check_integer_overflow<T>(
             u64val, input.data(), digits_count, base, is_negative))) {
         return detail::unexpected_scan_error(
@@ -1801,7 +1804,7 @@ void parse_integer_value_exhaustive_valid(std::string_view source, T& value)
     const char* p = source.data();
     const char* const end = source.data() + source.size();
 
-    uint64_t u64val{};
+    std::uint64_t u64val{};
     while (std::distance(p, end) >= 8) {
         SCN_ASSERT(is_word_made_of_eight_decimal_digits_fast(
             get_eight_digits_word(p)));
@@ -1814,7 +1817,7 @@ void parse_integer_value_exhaustive_valid(std::string_view source, T& value)
     while (p != end) {
         const auto digit = char_to_int(*p);
         SCN_ASSERT(digit < 10);
-        u64val = 10ull * u64val + static_cast<uint64_t>(digit);
+        u64val = 10ull * u64val + static_cast<std::uint64_t>(digit);
         ++p;
     }
     SCN_ASSERT(p == end);
@@ -2076,7 +2079,7 @@ private:
 };
 
 struct format_handler_base {
-    format_handler_base(size_t argcount) : args_count(argcount)
+    format_handler_base(std::size_t argcount) : args_count(argcount)
     {
         if (SCN_UNLIKELY(args_count >= 64)) {
             visited_args_upper.resize((args_count - 64 + 7) / 8);
@@ -2087,9 +2090,10 @@ struct format_handler_base {
     {
         {
             const auto args_count_lower64 = args_count >= 64 ? 64 : args_count;
-            const uint64_t mask = args_count_lower64 == 64
-                                      ? std::numeric_limits<uint64_t>::max()
-                                      : (1ull << args_count_lower64) - 1;
+            const std::uint64_t mask =
+                args_count_lower64 == 64
+                    ? std::numeric_limits<std::uint64_t>::max()
+                    : (1ull << args_count_lower64) - 1;
 
             if (visited_args_lower64 != mask) {
                 return on_error({scan_error::invalid_format_string,
@@ -2104,7 +2108,7 @@ struct format_handler_base {
         auto remaining_args_count = args_count - 64;
         for (auto visited : visited_args_upper) {
             const auto bits = std::min(remaining_args_count, std::size_t{8});
-            const auto mask = static_cast<uint8_t>((1u << bits) - 1u);
+            const auto mask = static_cast<std::uint8_t>((1u << bits) - 1u);
             if (visited != mask) {
                 return on_error({scan_error::invalid_format_string,
                                  "Argument list not exhausted"});
@@ -2132,7 +2136,7 @@ struct format_handler_base {
         return error;
     }
 
-    SCN_NODISCARD bool has_arg_been_visited(size_t id)
+    SCN_NODISCARD bool has_arg_been_visited(std::size_t id)
     {
         if (SCN_UNLIKELY(id >= args_count)) {
             on_error({scan_error::invalid_format_string,
@@ -2148,7 +2152,7 @@ struct format_handler_base {
         return (visited_args_upper[id / 8] >> (id % 8)) & 1ull;
     }
 
-    void set_arg_as_visited(size_t id)
+    void set_arg_as_visited(std::size_t id)
     {
         if (SCN_UNLIKELY(id >= args_count)) {
             on_error({scan_error::invalid_format_string,
@@ -2167,13 +2171,14 @@ struct format_handler_base {
         }
 
         id -= 64u;
-        visited_args_upper[id / 8u] |= static_cast<uint8_t>(1u << (id % 8u));
+        visited_args_upper[id / 8u] |=
+            static_cast<std::uint8_t>(1u << (id % 8u));
     }
 
     std::size_t args_count;
     scan_expected<void> error{};
-    uint64_t visited_args_lower64{0};
-    std::vector<uint8_t> visited_args_upper{};
+    std::uint64_t visited_args_lower64{0};
+    std::vector<std::uint8_t> visited_args_upper{};
 };
 
 template <typename CharT>

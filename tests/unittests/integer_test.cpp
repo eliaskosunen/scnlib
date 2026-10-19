@@ -81,14 +81,14 @@ unsigned char_to_digit(char ch)
                      : static_cast<unsigned>(ch - 'a' + 10);
 }
 
-std::string to_base(uint64_t value, int base)
+std::string to_base(std::uint64_t value, int base)
 {
     std::string result;
     do {
         result.insert(result.begin(),
                       digit_to_char(static_cast<unsigned>(
-                          value % static_cast<uint64_t>(base))));
-        value /= static_cast<uint64_t>(base);
+                          value % static_cast<std::uint64_t>(base))));
+        value /= static_cast<std::uint64_t>(base);
     } while (value != 0);
     return result;
 }
@@ -98,7 +98,7 @@ std::string add_in_base(std::string_view lhs, std::string_view rhs, int base)
 {
     std::string result;
     unsigned carry = 0;
-    for (size_t i = 0; i < std::max(lhs.size(), rhs.size()) || carry != 0;
+    for (std::size_t i = 0; i < std::max(lhs.size(), rhs.size()) || carry != 0;
          ++i) {
         unsigned sum = carry;
         if (i < lhs.size()) {
@@ -150,9 +150,9 @@ std::vector<base_format> get_formats_for_all_bases()
 // Values around the limits of 64-bit integers, as digit strings in `base`
 struct limit_digits {
     explicit limit_digits(int base)
-        : u64_max(to_base(std::numeric_limits<uint64_t>::max(), base)),
+        : u64_max(to_base(std::numeric_limits<std::uint64_t>::max(), base)),
           u64_max_plus_one(add_in_base(u64_max, "1", base)),
-          i64_max(to_base(std::numeric_limits<int64_t>::max(), base)),
+          i64_max(to_base(std::numeric_limits<std::int64_t>::max(), base)),
           i64_max_plus_one(add_in_base(i64_max, "1", base)),
           i64_max_plus_two(add_in_base(i64_max, "2", base)),
           // 2^64 + base^(max_digits-1): has max_digits digits in most bases,
@@ -997,7 +997,7 @@ TEST(ScanIntTest, LimitsInAllBases)
 
         auto result = scn::scan_int<unsigned long long>(digits.u64_max, base);
         ASSERT_THAT(result, Succeeded()) << base;
-        EXPECT_EQ(result->value(), std::numeric_limits<uint64_t>::max());
+        EXPECT_EQ(result->value(), std::numeric_limits<std::uint64_t>::max());
         EXPECT_THAT(
             scn::scan_int<unsigned long long>(digits.u64_max_plus_one, base),
             FailedWith(scn::scan_error::value_positive_overflow))
@@ -1111,13 +1111,13 @@ TEST(IntegerArbitraryBaseTest, LocalizedNotSupported)
 TEST(IntegerOverflowTest, Signed64BitLimitsInAllBases)
 {
     test_signed_64bit_limits<long long>();
-    test_signed_64bit_limits<int64_t>();
+    test_signed_64bit_limits<std::int64_t>();
 }
 
 TEST(IntegerOverflowTest, Unsigned64BitLimitsInAllBases)
 {
     test_unsigned_64bit_limits<unsigned long long>();
-    test_unsigned_64bit_limits<uint64_t>();
+    test_unsigned_64bit_limits<std::uint64_t>();
 }
 
 TEST(IntegerOverflowTest, WrappingIsDetectedOnlyInBasesWithRoom)
@@ -1151,23 +1151,29 @@ TEST(IntegerOverflowTest, NarrowerTypeLimits)
     for (int base : bases) {
         const auto format = "{:r" + std::to_string(base) + "}";
 
-        check_scan_succeeds<uint32_t>(to_base(0xffffffff, base), format,
-                                      0xffffffff);
-        check_scan_fails<uint32_t>(to_base(0x100000000, base), format,
-                                   scn::scan_error::value_positive_overflow);
+        check_scan_succeeds<std::uint32_t>(to_base(0xffffffff, base), format,
+                                           0xffffffff);
+        check_scan_fails<std::uint32_t>(
+            to_base(0x100000000, base), format,
+            scn::scan_error::value_positive_overflow);
 
-        check_scan_succeeds<int32_t>("-" + to_base(0x80000000, base), format,
-                                     std::numeric_limits<int32_t>::min());
-        check_scan_fails<int32_t>("-" + to_base(0x80000001, base), format,
-                                  scn::scan_error::value_negative_overflow);
+        check_scan_succeeds<std::int32_t>(
+            "-" + to_base(0x80000000, base), format,
+            std::numeric_limits<std::int32_t>::min());
+        check_scan_fails<std::int32_t>(
+            "-" + to_base(0x80000001, base), format,
+            scn::scan_error::value_negative_overflow);
 
-        check_scan_succeeds<uint8_t>(to_base(255, base), format, 255);
-        check_scan_fails<uint8_t>(to_base(256, base), format,
-                                  scn::scan_error::value_positive_overflow);
+        check_scan_succeeds<std::uint8_t>(to_base(255, base), format, 255);
+        check_scan_fails<std::uint8_t>(
+            to_base(256, base), format,
+            scn::scan_error::value_positive_overflow);
 
-        check_scan_succeeds<int16_t>("-" + to_base(32768, base), format,
-                                     std::numeric_limits<int16_t>::min());
-        check_scan_fails<int16_t>("-" + to_base(32769, base), format,
-                                  scn::scan_error::value_negative_overflow);
+        check_scan_succeeds<std::int16_t>(
+            "-" + to_base(32768, base), format,
+            std::numeric_limits<std::int16_t>::min());
+        check_scan_fails<std::int16_t>(
+            "-" + to_base(32769, base), format,
+            scn::scan_error::value_negative_overflow);
     }
 }

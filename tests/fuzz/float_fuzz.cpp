@@ -44,7 +44,7 @@ void do_basic_run_for_source(Source&& source,
 }
 
 namespace {
-void run(const uint8_t* data, size_t size)
+void run(const std::uint8_t* data, std::size_t size)
 {
     if (size > max_input_bytes || size == 0) {
         return;
@@ -67,7 +67,8 @@ void run(const uint8_t* data, size_t size)
 }  // namespace
 }  // namespace scn::fuzz
 
-extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size)
+extern "C" int LLVMFuzzerTestOneInput(const std::uint8_t* data,
+                                      std::size_t size)
 {
     scn::fuzz::run(data, size);
     return 0;

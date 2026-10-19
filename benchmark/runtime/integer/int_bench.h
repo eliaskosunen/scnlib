@@ -29,7 +29,7 @@ std::vector<std::string> make_integer_list(std::size_t n)
     static std::uniform_int_distribution<Int> dist(
         std::numeric_limits<Int>::min(), std::numeric_limits<Int>::max());
     std::vector<std::string> result{};
-    for (size_t i = 0; i < n; ++i) {
+    for (std::size_t i = 0; i < n; ++i) {
         std::ostringstream oss;
         oss << dist(get_rng());
         result.push_back(SCN_MOVE(oss.str()));
@@ -51,7 +51,7 @@ std::string make_integer_string(std::size_t n)
         std::numeric_limits<Int>::min(), std::numeric_limits<Int>::max());
 
     std::ostringstream oss;
-    for (size_t i = 0; i < n; ++i) {
+    for (std::size_t i = 0; i < n; ++i) {
         oss << dist(get_rng()) << " ";
     }
     return oss.str();

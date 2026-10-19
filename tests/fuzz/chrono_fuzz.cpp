@@ -45,7 +45,7 @@ namespace {
 // If the first byte of the input is this, the input is
 // `format string NUL data`, instead of just data
 // scanned with a fixed set of format strings
-constexpr uint8_t custom_format_mode = 1;
+constexpr std::uint8_t custom_format_mode = 1;
 
 template <typename CharT>
 std::basic_string<CharT> widen(std::string_view str)
@@ -70,7 +70,7 @@ void run_with_custom_format(std::string_view format, std::string_view data)
     do_basic_run(widen<CharT>(data), formats);
 }
 
-void run_with_custom_format(const uint8_t* data, size_t size)
+void run_with_custom_format(const std::uint8_t* data, std::size_t size)
 {
     const std::string_view input{reinterpret_cast<const char*>(data) + 1,
                                  size - 1};
@@ -83,7 +83,7 @@ void run_with_custom_format(const uint8_t* data, size_t size)
     run_with_custom_format<wchar_t>(format, rest);
 }
 
-void run(const uint8_t* data, size_t size)
+void run(const std::uint8_t* data, std::size_t size)
 {
     if (size > max_input_bytes || size == 0) {
         return;
@@ -129,7 +129,8 @@ void run(const uint8_t* data, size_t size)
 }  // namespace
 }  // namespace scn::fuzz
 
-extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size)
+extern "C" int LLVMFuzzerTestOneInput(const std::uint8_t* data,
+                                      std::size_t size)
 {
     scn::fuzz::run(data, size);
     return 0;

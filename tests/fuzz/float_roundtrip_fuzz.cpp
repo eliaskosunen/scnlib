@@ -50,17 +50,17 @@ void run_single(
 }
 
 template <typename T>
-void run(const uint8_t* data, size_t size)
+void run(const std::uint8_t* data, std::size_t size)
 {
     SCN_EXPECT(size == sizeof(T));
 
     if constexpr (std::numeric_limits<T>::digits == 64) {
         // x87 long double, check for invalid bit patterns
         struct x87_long_double {
-            uint64_t significand{};
-            uint16_t exponent_and_sign{};
+            std::uint64_t significand{};
+            std::uint16_t exponent_and_sign{};
 
-            uint16_t exponent() const
+            std::uint16_t exponent() const
             {
                 return exponent_and_sign & 0x7fffu;
             }
@@ -72,7 +72,7 @@ void run(const uint8_t* data, size_t size)
             {
                 return (significand & (1ull << 63)) != 0;
             }
-            uint64_t fraction() const
+            std::uint64_t fraction() const
             {
                 return significand & 0x7fffffffffffffffull;
             }
@@ -139,7 +139,8 @@ void run(const uint8_t* data, size_t size)
 
 }  // namespace
 
-extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size)
+extern "C" int LLVMFuzzerTestOneInput(const std::uint8_t* data,
+                                      std::size_t size)
 {
     if (size == sizeof(float)) {
         run<float>(data, size);

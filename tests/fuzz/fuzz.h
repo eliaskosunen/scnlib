@@ -44,7 +44,7 @@ constexpr auto get_default_format_string()
     }
 }
 
-inline constexpr const size_t max_input_bytes = 4096;
+inline constexpr const std::size_t max_input_bytes = 4096;
 
 struct input_views {
     std::string narrow;
@@ -56,7 +56,7 @@ struct input_views {
     std::wstring wide_transcoded;
 };
 
-inline input_views make_input_views(const uint8_t* data, size_t size)
+inline input_views make_input_views(const std::uint8_t* data, std::size_t size)
 {
     SCN_EXPECT(size <= max_input_bytes);
 
