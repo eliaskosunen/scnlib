@@ -437,7 +437,7 @@ protected:
         m_state.fail_with_error = fail_with_error;
         cookie_io_functions_t functions{interrupted_cookie_read, nullptr,
                                         nullptr, nullptr};
-        m_handle = fopencookie(&m_state, "r", functions);
+        m_handle = ::fopencookie(&m_state, "r", functions);
     }
     void TearDown() override
     {

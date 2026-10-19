@@ -26,7 +26,8 @@ void do_find(std::string_view sv, Cb cb)
     auto it = sv.begin();
     while (it != sv.end()) {
         SCN_EXPECT(it < sv.end());
-        auto in = std::string_view{&*it, static_cast<size_t>(sv.end() - it)};
+        auto in =
+            std::string_view{&*it, static_cast<std::size_t>(sv.end() - it)};
         SCN_EXPECT(!in.empty());
         it = cb(in);
         SCN_ENSURE(it <= sv.end());
@@ -37,7 +38,8 @@ void do_find(std::string_view sv, Cb cb)
 }
 }  // namespace
 
-extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size)
+extern "C" int LLVMFuzzerTestOneInput(const std::uint8_t* data,
+                                      std::size_t size)
 {
     auto sv = std::string_view{reinterpret_cast<const char*>(data), size};
     do_find(sv, scn::impl::find_classic_space_narrow_fast);

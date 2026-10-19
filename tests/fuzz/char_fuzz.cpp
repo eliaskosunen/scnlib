@@ -20,7 +20,7 @@
 #include <array>
 
 namespace {
-constexpr size_t max_input_bytes = 1024;
+constexpr std::size_t max_input_bytes = 1024;
 
 template <typename T, typename Source>
 void scan_all(Source& source)
@@ -41,7 +41,7 @@ void scan_all_types(Source&& source)
     scan_all<std::wstring>(source);
 }
 
-void run(const uint8_t* data, size_t size)
+void run(const std::uint8_t* data, std::size_t size)
 {
     if (size > max_input_bytes) {
         return;
@@ -55,7 +55,8 @@ void run(const uint8_t* data, size_t size)
 }
 }  // namespace
 
-extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size)
+extern "C" int LLVMFuzzerTestOneInput(const std::uint8_t* data,
+                                      std::size_t size)
 {
     run(data, size);
     return 0;

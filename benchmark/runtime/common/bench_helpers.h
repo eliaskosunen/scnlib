@@ -67,7 +67,7 @@ inline bool is_classic_ascii_space(char ch)
          false, false, false, false, false, false, false, false, false, false,
          false, false, false, false, false, false}};
 
-    return lookup[static_cast<size_t>(static_cast<unsigned char>(ch))];
+    return lookup[static_cast<std::size_t>(static_cast<unsigned char>(ch))];
 }
 
 template <typename T>
@@ -90,9 +90,9 @@ struct single_state {
         ++it;
     }
 
-    static int64_t get_bytes_processed(benchmark::State& state)
+    static std::int64_t get_bytes_processed(benchmark::State& state)
     {
-        return state.iterations() * static_cast<int64_t>(sizeof(T));
+        return state.iterations() * static_cast<std::int64_t>(sizeof(T));
     }
 
     const std::vector<std::string>& source;
@@ -131,9 +131,9 @@ struct repeated_state {
         benchmark::DoNotOptimize(i);
     }
 
-    static int64_t get_bytes_processed(benchmark::State& state)
+    static std::int64_t get_bytes_processed(benchmark::State& state)
     {
-        return state.iterations() * static_cast<int64_t>(sizeof(T));
+        return state.iterations() * static_cast<std::int64_t>(sizeof(T));
     }
 
     const std::string& source;

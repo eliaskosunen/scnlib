@@ -305,8 +305,8 @@ TEST(ScanTest, Pointer)
         scn::scan<void*, const void*>("0xdeadbeef 0XABBAABBA", "{} {:p}");
     ASSERT_THAT(res, Succeeded());
     auto [a, b] = res->values();
-    EXPECT_EQ(reinterpret_cast<uintptr_t>(a), 0xdeadbeef);
-    EXPECT_EQ(reinterpret_cast<uintptr_t>(b), 0xABBAABBA);
+    EXPECT_EQ(reinterpret_cast<std::uintptr_t>(a), 0xdeadbeef);
+    EXPECT_EQ(reinterpret_cast<std::uintptr_t>(b), 0xABBAABBA);
 }
 
 TEST(ScanTest, ScanValueWithDefaultSuccess)

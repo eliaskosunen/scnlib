@@ -306,10 +306,10 @@ TEST(CharTest, CodePointFromWideInvalid)
         const auto unit = static_cast<wchar_t>(cp);
         EXPECT_THAT(scn::scan<char32_t>(std::wstring{unit}, L"{}"),
                     FailedWith(scn::scan_error::invalid_scanned_value))
-            << static_cast<uint32_t>(cp);
+            << static_cast<std::uint32_t>(cp);
         EXPECT_THAT(scn::scan<char32_t>(std::wstring{unit, L'a'}, L"{}"),
                     FailedWith(scn::scan_error::invalid_scanned_value))
-            << static_cast<uint32_t>(cp);
+            << static_cast<std::uint32_t>(cp);
     }
 }
 

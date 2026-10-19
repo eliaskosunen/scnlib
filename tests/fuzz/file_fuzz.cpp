@@ -192,7 +192,7 @@ void run_fstream(std::string_view expected, bool is_valid_unicode)
     }
 }
 
-void run(const uint8_t* data, size_t size)
+void run(const std::uint8_t* data, std::size_t size)
 {
     if (size > max_input_bytes || size == 0) {
         return;
@@ -217,7 +217,8 @@ void run(const uint8_t* data, size_t size)
 
 }  // namespace
 
-extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size)
+extern "C" int LLVMFuzzerTestOneInput(const std::uint8_t* data,
+                                      std::size_t size)
 {
     run(data, size);
     return 0;

@@ -26,9 +26,9 @@
 template <typename T>
 T generate_single_float()
 {
-    static std::uniform_int_distribution<uint16_t> dist(
-        static_cast<uint16_t>(std::numeric_limits<uint8_t>::min()),
-        static_cast<uint16_t>(std::numeric_limits<uint8_t>::max()));
+    static std::uniform_int_distribution<std::uint16_t> dist(
+        static_cast<std::uint16_t>(std::numeric_limits<std::uint8_t>::min()),
+        static_cast<std::uint16_t>(std::numeric_limits<std::uint8_t>::max()));
 
     unsigned char bytes[sizeof(T)]{};
 
@@ -59,7 +59,7 @@ template <typename Float>
 std::vector<std::string> make_float_list(std::size_t n)
 {
     std::vector<std::string> result{};
-    for (size_t i = 0; i < n; ++i) {
+    for (std::size_t i = 0; i < n; ++i) {
         std::ostringstream oss;
         oss << generate_single_float<Float>();
         result.push_back(SCN_MOVE(oss.str()));
@@ -78,7 +78,7 @@ template <typename Float>
 std::string make_float_string(std::size_t n)
 {
     std::ostringstream oss;
-    for (size_t i = 0; i < n; ++i) {
+    for (std::size_t i = 0; i < n; ++i) {
         oss << generate_single_float<Float>() << ' ';
     }
     return oss.str();

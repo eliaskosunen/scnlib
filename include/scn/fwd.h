@@ -206,7 +206,7 @@ template <typename T>
 struct discard;
 
 namespace detail {
-template <typename T, size_t N>
+template <typename T, std::size_t N>
 class basic_buffer;
 }  // namespace detail
 

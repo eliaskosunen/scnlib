@@ -69,7 +69,7 @@ inline bool is_verbose_test_output()
 #if defined(_MSC_VER)
     char* buffer = nullptr;
     std::size_t size = 0;
-    if (_dupenv_s(&buffer, &size, "SCN_TEST_VERBOSE") == 0 &&
+    if (::_dupenv_s(&buffer, &size, "SCN_TEST_VERBOSE") == 0 &&
         buffer != nullptr) {
         value = buffer;
     }

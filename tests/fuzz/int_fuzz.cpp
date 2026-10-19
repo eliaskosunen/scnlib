@@ -82,9 +82,9 @@ void check_against_from_chars(std::string_view token, int base)
     }
 }
 
-void run_from_chars_comparison(const uint8_t* data, size_t size)
+void run_from_chars_comparison(const std::uint8_t* data, std::size_t size)
 {
-    constexpr size_t max_digits = 80;
+    constexpr std::size_t max_digits = 80;
     if (size < 3) {
         return;
     }
@@ -98,25 +98,25 @@ void run_from_chars_comparison(const uint8_t* data, size_t size)
     if (negative && is_signed) {
         token.push_back('-');
     }
-    for (size_t i = 2; i < size && i < max_digits + 2; ++i) {
-        token.push_back(digits[data[i] % static_cast<size_t>(base)]);
+    for (std::size_t i = 2; i < size && i < max_digits + 2; ++i) {
+        token.push_back(digits[data[i] % static_cast<std::size_t>(base)]);
     }
 
     switch (type_index) {
         case 0:
-            return check_against_from_chars<int64_t>(token, base);
+            return check_against_from_chars<std::int64_t>(token, base);
         case 1:
-            return check_against_from_chars<uint64_t>(token, base);
+            return check_against_from_chars<std::uint64_t>(token, base);
         case 2:
-            return check_against_from_chars<int32_t>(token, base);
+            return check_against_from_chars<std::int32_t>(token, base);
         default:
-            return check_against_from_chars<uint32_t>(token, base);
+            return check_against_from_chars<std::uint32_t>(token, base);
     }
 }
 }  // namespace
 
 namespace {
-void run(const uint8_t* data, size_t size)
+void run(const std::uint8_t* data, std::size_t size)
 {
     if (size > max_input_bytes || size == 0) {
         return;
@@ -143,7 +143,8 @@ void run(const uint8_t* data, size_t size)
 }  // namespace
 }  // namespace scn::fuzz
 
-extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size)
+extern "C" int LLVMFuzzerTestOneInput(const std::uint8_t* data,
+                                      std::size_t size)
 {
     scn::fuzz::run(data, size);
     return 0;

@@ -3289,12 +3289,13 @@ private:
               typename D = decltype(static_cast<std::size_t>(SCN_DECLVAL(S) -
                                                              SCN_DECLVAL(I)))>
     static constexpr auto impl(T&& t, priority_tag<0>) noexcept(noexcept(
-        static_cast<size_t>(scn::ranges::end(t) - scn::ranges::begin(t))))
+        static_cast<std::size_t>(scn::ranges::end(t) - scn::ranges::begin(t))))
         -> std::enable_if_t<!std::is_array_v<remove_cvref_t<T>> &&
                                 sized_sentinel_for<S, I> && forward_iterator<I>,
                             D>
     {
-        return static_cast<size_t>(scn::ranges::end(t) - scn::ranges::begin(t));
+        return static_cast<std::size_t>(scn::ranges::end(t) -
+                                        scn::ranges::begin(t));
     }
 
 public:
@@ -3733,7 +3734,7 @@ public:
               std::enable_if_t<sized_sentinel_for<S, I_>>* = nullptr>
     SCN_NODISCARD constexpr std::size_t size() const noexcept
     {
-        return static_cast<size_t>(this->m_sentinel - this->m_iterator);
+        return static_cast<std::size_t>(this->m_sentinel - this->m_iterator);
     }
 };
 
@@ -5544,7 +5545,7 @@ inline const char* find<false, char>(const char* first,
                                      char value)
 {
     auto ptr = static_cast<const char*>(
-        std::memchr(first, value, static_cast<size_t>(last - first)));
+        std::memchr(first, value, static_cast<std::size_t>(last - first)));
     return ptr != nullptr ? ptr : last;
 }
 
@@ -5867,7 +5868,7 @@ constexpr std::basic_string_view<CharT> make_string_view_from_iterators(
         return {first, last};
     }
     else {
-        return {to_address(first), static_cast<size_t>(std::distance(
+        return {to_address(first), static_cast<std::size_t>(std::distance(
                                        to_address(first), to_address(last)))};
     }
 }
@@ -5882,7 +5883,7 @@ constexpr std::basic_string_view<CharT> make_string_view_from_pointers(
         return {first, last};
     }
     else {
-        return {first, static_cast<size_t>(std::distance(first, last))};
+        return {first, static_cast<std::size_t>(std::distance(first, last))};
     }
 }
 
@@ -5954,7 +5955,7 @@ constexpr std::size_t utf16_code_point_length_by_starting_code_unit(U16 ch)
 {
     static_assert(sizeof(U16) == 2);
 
-    const auto lead = static_cast<uint16_t>(0xffff & ch);
+    const auto lead = static_cast<std::uint16_t>(0xffff & ch);
     if (lead >= 0xd800 && lead <= 0xdbff) {
         // high surrogate
         return 2;
@@ -6150,8 +6151,8 @@ inline constexpr char32_t decode_utf16_code_point_exhaustive(
         return cp;
     }
 
-    const auto lead = static_cast<uint32_t>(input[0]);
-    const auto trail = static_cast<uint32_t>(input[1]);
+    const auto lead = static_cast<std::uint32_t>(input[0]);
+    const auto trail = static_cast<std::uint32_t>(input[1]);
     if (lead < 0xd800 || lead > 0xdbff || trail < 0xdc00 || trail > 0xdfff) {
         SCN_UNLIKELY_ATTR
         return invalid_code_point;
@@ -6173,8 +6174,8 @@ inline constexpr char32_t decode_utf16_code_point_exhaustive_valid(
         return static_cast<char32_t>(input[0]);
     }
 
-    const auto lead = static_cast<uint32_t>(input[0]);
-    const auto trail = static_cast<uint32_t>(input[1]);
+    const auto lead = static_cast<std::uint32_t>(input[0]);
+    const auto trail = static_cast<std::uint32_t>(input[1]);
     SCN_EXPECT(lead >= 0xd800);
     SCN_EXPECT(lead <= 0xdbff);
     SCN_EXPECT(trail >= 0xdc00);
@@ -7779,19 +7780,19 @@ inline constexpr std::size_t has_custom_types_bit = std::size_t{1}
                                                     << (bits_in_sz - 2);
 
 template <typename>
-constexpr size_t encode_types_impl()
+constexpr std::size_t encode_types_impl()
 {
     return 0;
 }
 template <typename CharT, typename T, typename... Others>
-constexpr size_t encode_types_impl()
+constexpr std::size_t encode_types_impl()
 {
     return static_cast<unsigned>(mapped_type_constant<T, CharT>::value) |
            (encode_types_impl<CharT, Others...>() << packed_arg_bits);
 }
 
 template <typename CharT, typename... Ts>
-constexpr size_t encode_types()
+constexpr std::size_t encode_types()
 {
     if constexpr (sizeof...(Ts) < (1 << packed_arg_bits)) {
         return sizeof...(Ts) |
@@ -8103,7 +8104,7 @@ constexpr scan_arg_store_kind determine_arg_store_kind() noexcept
 }
 
 template <scan_arg_store_kind Kind, typename CharT, typename... Args>
-constexpr size_t compute_arg_store_desc() noexcept
+constexpr std::size_t compute_arg_store_desc() noexcept
 {
     if constexpr (Kind == scan_arg_store_kind::builtin) {
         return encode_types<CharT, Args...>();
@@ -8121,7 +8122,7 @@ class scan_arg_store {
 public:
     static constexpr scan_arg_store_kind kind =
         determine_arg_store_kind<typename Context::char_type, Args...>();
-    static constexpr size_t desc =
+    static constexpr std::size_t desc =
         compute_arg_store_desc<kind, typename Context::char_type, Args...>();
 
     using argptr_type = std::conditional_t<
@@ -8230,16 +8231,16 @@ public:
     }
 
 private:
-    constexpr explicit basic_scan_args(size_t desc, void* const* data)
+    constexpr explicit basic_scan_args(std::size_t desc, void* const* data)
         : m_desc(desc), m_builtin_values(data)
     {
     }
-    constexpr explicit basic_scan_args(size_t desc,
+    constexpr explicit basic_scan_args(std::size_t desc,
                                        const detail::arg_value* data)
         : m_desc(desc), m_values(data)
     {
     }
-    constexpr explicit basic_scan_args(size_t desc,
+    constexpr explicit basic_scan_args(std::size_t desc,
                                        const basic_scan_arg<Context>* data)
         : m_desc(desc), m_args(data)
     {
@@ -8269,7 +8270,7 @@ private:
                                           ~detail::has_custom_types_bit);
     }
 
-    size_t m_desc{0};
+    std::size_t m_desc{0};
     union {
         void* const* m_builtin_values;
         const detail::arg_value* m_values;
@@ -8385,7 +8386,7 @@ public:
             static_cast<std::size_t>(std::distance(begin(), it)));
     }
 
-    constexpr size_t next_arg_id()
+    constexpr std::size_t next_arg_id()
     {
         if (SCN_UNLIKELY(m_next_arg_id < 0)) {
             // clang-format off
@@ -8394,7 +8395,7 @@ public:
             return 0;
         }
 
-        auto id = static_cast<size_t>(m_next_arg_id++);
+        auto id = static_cast<std::size_t>(m_next_arg_id++);
         do_check_arg_id(id);
         return id;
     }
@@ -8445,7 +8446,7 @@ public:
     }
 
 protected:
-    constexpr void do_check_arg_id(size_t id);
+    constexpr void do_check_arg_id(std::size_t id);
 
     // Out of line: when inlined into on_error, it made Clang's code for the
     // callers of on_error, which run for every replacement field, slower
@@ -8985,25 +8986,29 @@ public:
     }
 
     /// Access the single scanned value
-    template <size_t N = sizeof...(Args), std::enable_if_t<N == 1>* = nullptr>
+    template <std::size_t N = sizeof...(Args),
+              std::enable_if_t<N == 1>* = nullptr>
     decltype(auto) value() &
     {
         return std::get<0>(m_values);
     }
     /// Access the single scanned value
-    template <size_t N = sizeof...(Args), std::enable_if_t<N == 1>* = nullptr>
+    template <std::size_t N = sizeof...(Args),
+              std::enable_if_t<N == 1>* = nullptr>
     decltype(auto) value() const&
     {
         return std::get<0>(m_values);
     }
     /// Access the single scanned value
-    template <size_t N = sizeof...(Args), std::enable_if_t<N == 1>* = nullptr>
+    template <std::size_t N = sizeof...(Args),
+              std::enable_if_t<N == 1>* = nullptr>
     decltype(auto) value() &&
     {
         return SCN_MOVE(std::get<0>(m_values));
     }
     /// Access the single scanned value
-    template <size_t N = sizeof...(Args), std::enable_if_t<N == 1>* = nullptr>
+    template <std::size_t N = sizeof...(Args),
+              std::enable_if_t<N == 1>* = nullptr>
     decltype(auto) value() const&&
     {
         return SCN_MOVE(std::get<0>(m_values));
@@ -9158,7 +9163,7 @@ auto make_vscan_result_end(SourceRange& source)
 {
     return ranges::end(source);
 }
-template <typename CharT, size_t N>
+template <typename CharT, std::size_t N>
 auto make_vscan_result_end(CharT (&source)[N])
     -> ranges::sentinel_t<CharT (&)[N]>
 {
@@ -9289,7 +9294,7 @@ public:
     constexpr std::size_t next_arg_id()
     {
         auto id = base::next_arg_id();
-        if (SCN_UNLIKELY(id >= static_cast<size_t>(m_num_args))) {
+        if (SCN_UNLIKELY(id >= static_cast<std::size_t>(m_num_args))) {
             this->on_error("Argument ID out of range");
         }
         return id;
@@ -9298,7 +9303,7 @@ public:
     constexpr void check_arg_id(std::size_t id)
     {
         base::check_arg_id(id);
-        if (SCN_UNLIKELY(id >= static_cast<size_t>(m_num_args))) {
+        if (SCN_UNLIKELY(id >= static_cast<std::size_t>(m_num_args))) {
             this->on_error("Argument ID out of range");
         }
     }
@@ -9323,7 +9328,7 @@ constexpr inline bool is_constant_evaluated(bool default_value = false) noexcept
 }  // namespace detail
 
 template <typename CharT>
-constexpr void basic_scan_parse_context<CharT>::do_check_arg_id(size_t id)
+constexpr void basic_scan_parse_context<CharT>::do_check_arg_id(std::size_t id)
 {
     if (detail::is_constant_evaluated() &&
         (!SCN_GCC || SCN_GCC >= SCN_COMPILER(12, 0, 0))) {
@@ -9430,7 +9435,7 @@ public:
             // Bounded by max_size, too: GCC can't see the precondition, and
             // warns about an overflow (-Wstringop-overflow) in LTO builds
             const auto size = detail::min(s.size(), max_size);
-            for (size_t i = 0; i < size; ++i) {
+            for (std::size_t i = 0; i < size; ++i) {
                 m_data[i] = s[i];
             }
             m_size = static_cast<unsigned char>(size);
@@ -9451,7 +9456,7 @@ public:
     }
 
     /// Size in bytes
-    constexpr size_t size() const
+    constexpr std::size_t size() const
     {
         return m_size;
     }
@@ -9480,16 +9485,16 @@ public:
 private:
     // Stores `value` into `m_data` in native byte order,
     // so that it can be read back with `memcpy`
-    template <size_t Width>
-    constexpr void store_code_unit(size_t offset, unsigned value)
+    template <std::size_t Width>
+    constexpr void store_code_unit(std::size_t offset, unsigned value)
     {
-        for (size_t i = 0; i < Width; ++i) {
+        for (std::size_t i = 0; i < Width; ++i) {
             const auto shift = SCN_IS_BIG_ENDIAN ? (Width - 1 - i) * 8 : i * 8;
             m_data[offset + i] = static_cast<char>(value >> shift);
         }
     }
 
-    static constexpr size_t max_size = 4;
+    static constexpr std::size_t max_size = 4;
     alignas(char32_t) char m_data[max_size] = {' '};
     unsigned char m_size{1};
 };
@@ -9519,8 +9524,8 @@ struct format_specs {
         const char* charset_string{nullptr};
         const wchar_t* charset_wstring;
     };
-    size_t charset_string_size{0};
-    std::array<uint8_t, 128 / 8> charset_literals{0};
+    std::size_t charset_string_size{0};
+    std::array<std::uint8_t, 128 / 8> charset_literals{0};
 
     constexpr format_specs() = default;
 
@@ -9876,7 +9881,7 @@ constexpr const CharT* parse_align(const CharT* begin,
     }
 
     auto potential_fill = std::basic_string_view<CharT>{
-        begin, static_cast<size_t>(potential_fill_len)};
+        begin, static_cast<std::size_t>(potential_fill_len)};
     if (SCN_UNLIKELY(decode_code_point_exhaustive(potential_fill) >=
                      invalid_code_point)) {
         handler.on_error("Invalid encoding in fill character");
@@ -9971,7 +9976,7 @@ constexpr char32_t parse_presentation_set_code_point(const CharT*& begin,
     SCN_EXPECT(begin != end);
 
     auto len = code_point_length_by_starting_code_unit(*begin);
-    if (SCN_UNLIKELY(len == 0 || static_cast<size_t>(end - begin) < len)) {
+    if (SCN_UNLIKELY(len == 0 || static_cast<std::size_t>(end - begin) < len)) {
         handler.on_error("Invalid encoding in format string");
         return invalid_code_point;
     }
@@ -10026,7 +10031,7 @@ template <typename CharT>
 constexpr bool presentation_set_has_backslash_escape(
     std::basic_string_view<CharT> set)
 {
-    for (size_t i = 0; i + 1 < set.size(); ++i) {
+    for (std::size_t i = 0; i + 1 < set.size(); ++i) {
         if (set[i] == CharT{'\\'} && is_ascii_letter(set[i + 1])) {
             return true;
         }
@@ -10038,18 +10043,18 @@ template <typename CharT>
 constexpr bool presentation_set_has_character_class(
     std::basic_string_view<CharT> set)
 {
-    for (size_t i = 0; i < set.size(); ++i) {
+    for (std::size_t i = 0; i < set.size(); ++i) {
         if (set[i] != CharT{'['}) {
             continue;
         }
-        size_t colon = i + 1;
+        std::size_t colon = i + 1;
         if (i == 0 && colon < set.size() && set[colon] == CharT{'^'}) {
             ++colon;
         }
         if (colon >= set.size() || set[colon] != CharT{':'}) {
             continue;
         }
-        for (size_t j = colon + 1; j + 1 < set.size(); ++j) {
+        for (std::size_t j = colon + 1; j + 1 < set.size(); ++j) {
             if (set[j] == CharT{':'} && set[j + 1] == CharT{']'}) {
                 return true;
             }
@@ -10100,7 +10105,7 @@ constexpr std::basic_string_view<CharT> parse_presentation_set(
 
         if (*begin == CharT{']'}) {
             const std::basic_string_view<CharT> set{
-                start, static_cast<size_t>(std::distance(start, ++begin))};
+                start, static_cast<std::size_t>(std::distance(start, ++begin))};
             if (SCN_UNLIKELY(presentation_set_has_backslash_escape(set))) {
                 // clang-format off
                 handler.on_error("Backslash escapes are not supported in [character set]");
@@ -11309,7 +11314,7 @@ public:
         while (begin != end) {
             const auto len = code_point_length_by_starting_code_unit(*begin);
             if (SCN_UNLIKELY(len == 0 ||
-                             static_cast<size_t>(end - begin) < len)) {
+                             static_cast<std::size_t>(end - begin) < len)) {
                 return on_error("Invalid encoding in format string");
             }
 
@@ -11333,7 +11338,7 @@ public:
         return id;
     }
 
-    constexpr void on_replacement_field(size_t id, const CharT* begin)
+    constexpr void on_replacement_field(std::size_t id, const CharT* begin)
     {
         set_arg_as_read(id);
 
@@ -11390,7 +11395,7 @@ public:
     }
 
 private:
-    constexpr void set_arg_as_read(size_t id)
+    constexpr void set_arg_as_read(std::size_t id)
     {
         if (id >= num_args) {
             return on_error("Argument ID out of range");
@@ -11582,7 +11587,7 @@ template <typename Args>
 class scan_context_base {
 public:
     /// Get argument at index `id`
-    constexpr auto arg(size_t id) const noexcept
+    constexpr auto arg(std::size_t id) const noexcept
     {
         return m_args.get(id);
     }

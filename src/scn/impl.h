@@ -414,7 +414,7 @@ inline constexpr std::array<bool, 256> is_ascii_space_lookup = {
 
 constexpr bool is_ascii_space(char ch) noexcept
 {
-    return is_ascii_space_lookup[static_cast<size_t>(
+    return is_ascii_space_lookup[static_cast<std::size_t>(
         static_cast<unsigned char>(ch))];
 }
 
@@ -448,7 +448,7 @@ constexpr bool is_ascii_char(char32_t cp) noexcept
 
 template <typename T,
           std::enable_if_t<std::is_unsigned_v<T> &&
-                           sizeof(T) <= sizeof(uint64_t)>* = nullptr>
+                           sizeof(T) <= sizeof(std::uint64_t)>* = nullptr>
 int count_trailing_zeroes(T val)
 {
     SCN_EXPECT(val != 0);
@@ -471,30 +471,30 @@ int count_trailing_zeroes(T val)
 
 #elif SCN_MSVC && SCN_WINDOWS_64BIT
     // 64-bit MSVC, use BitScanForward(64)
-    if constexpr (sizeof(T) == sizeof(uint64_t)) {
+    if constexpr (sizeof(T) == sizeof(std::uint64_t)) {
         DWORD ret{};
-        _BitScanForward64(&ret, val);
+        ::_BitScanForward64(&ret, val);
         return static_cast<int>(ret);
     }
     else {
         DWORD ret{};
-        _BitScanForward(&ret, static_cast<uint32_t>(val));
+        ::_BitScanForward(&ret, static_cast<std::uint32_t>(val));
         return static_cast<int>(ret);
     }
 
 #elif SCN_MSVC && !SCN_WINDOWS_64BIT
     // 32-bit MSVC, need custom behavior for 64-bit integers
-    if constexpr (sizeof(T) == sizeof(uint64_t)) {
+    if constexpr (sizeof(T) == sizeof(std::uint64_t)) {
         DWORD ret{};
-        if (_BitScanForward(&ret, static_cast<uint32_t>(val))) {
+        if (::_BitScanForward(&ret, static_cast<std::uint32_t>(val))) {
             return static_cast<int>(ret);
         }
-        _BitScanForward(&ret, static_cast<uint32_t>(val >> 32));
+        ::_BitScanForward(&ret, static_cast<std::uint32_t>(val >> 32));
         return static_cast<int>(ret);
     }
     else {
         DWORD ret{};
-        _BitScanForward(&ret, static_cast<uint32_t>(val));
+        ::_BitScanForward(&ret, static_cast<std::uint32_t>(val));
         return static_cast<int>(ret);
     }
 
@@ -526,9 +526,10 @@ auto count_trailing_zeroes(T val) -> decltype(val.high, val.low, int{})
 template <typename T, std::enable_if_t<std::is_same_v<T, uint128>>* = nullptr>
 int count_trailing_zeroes(T val)
 {
-    const auto low = static_cast<uint64_t>(val);
+    const auto low = static_cast<std::uint64_t>(val);
     if (low == 0) {
-        return count_trailing_zeroes(static_cast<uint64_t>(val >> 64u)) + 64;
+        return count_trailing_zeroes(static_cast<std::uint64_t>(val >> 64u)) +
+               64;
     }
     return count_trailing_zeroes(low);
 }
@@ -536,7 +537,7 @@ int count_trailing_zeroes(T val)
 
 template <typename T,
           std::enable_if_t<std::is_unsigned_v<T> &&
-                           sizeof(T) <= sizeof(uint64_t)>* = nullptr>
+                           sizeof(T) <= sizeof(std::uint64_t)>* = nullptr>
 int count_leading_zeroes(T val)
 {
     SCN_EXPECT(val != 0);
@@ -562,32 +563,32 @@ int count_leading_zeroes(T val)
     // 64-bit MSVC, use BitScanReverse(64)
     // _BitScanReverse returns the index of the MSB, so we need to convert:
     // count_leading_zeros = (total_bits - 1) - msb_index
-    if constexpr (sizeof(T) == sizeof(uint64_t)) {
+    if constexpr (sizeof(T) == sizeof(std::uint64_t)) {
         DWORD ret{};
-        _BitScanReverse64(&ret, val);
+        ::_BitScanReverse64(&ret, val);
         return 63 - static_cast<int>(ret);
     }
     else {
         DWORD ret{};
-        _BitScanReverse(&ret, static_cast<uint32_t>(val));
+        ::_BitScanReverse(&ret, static_cast<std::uint32_t>(val));
         return 31 - static_cast<int>(ret) - (sizeof(unsigned) - sizeof(T)) * 8;
     }
 
 #elif SCN_MSVC && !SCN_WINDOWS_64BIT
     // 32-bit MSVC, need custom behavior for 64-bit integers
-    if constexpr (sizeof(T) == sizeof(uint64_t)) {
+    if constexpr (sizeof(T) == sizeof(std::uint64_t)) {
         DWORD ret{};
-        const auto high = static_cast<uint32_t>(val >> 32);
+        const auto high = static_cast<std::uint32_t>(val >> 32);
         if (high != 0) {
-            _BitScanReverse(&ret, high);
+            ::_BitScanReverse(&ret, high);
             return 31 - static_cast<int>(ret);
         }
-        _BitScanReverse(&ret, static_cast<uint32_t>(val));
+        ::_BitScanReverse(&ret, static_cast<std::uint32_t>(val));
         return 63 - static_cast<int>(ret);
     }
     else {
         DWORD ret{};
-        _BitScanReverse(&ret, static_cast<uint32_t>(val));
+        ::_BitScanReverse(&ret, static_cast<std::uint32_t>(val));
         return 31 - static_cast<int>(ret) - (sizeof(unsigned) - sizeof(T)) * 8;
     }
 
@@ -618,9 +619,9 @@ auto count_leading_zeroes(T val) -> decltype(val.high, val.low, int{})
 template <typename T, std::enable_if_t<std::is_same_v<T, uint128>>* = nullptr>
 int count_leading_zeroes(T val)
 {
-    const auto high = static_cast<uint64_t>(val >> 64u);
+    const auto high = static_cast<std::uint64_t>(val >> 64u);
     if (high == 0) {
-        return count_leading_zeroes(static_cast<uint64_t>(val)) + 64;
+        return count_leading_zeroes(static_cast<std::uint64_t>(val)) + 64;
     }
     return count_leading_zeroes(high);
 }
@@ -630,21 +631,23 @@ int count_leading_zeroes(T val)
 #define SCN_HAS_NATIVE_BITS_IMPL 1
 #endif
 
-constexpr uint64_t has_zero_byte(uint64_t word)
+constexpr std::uint64_t has_zero_byte(std::uint64_t word)
 {
     return (word - 0x0101010101010101ull) & ~word & 0x8080808080808080ull;
 }
 
-constexpr uint64_t has_byte_between(uint64_t word, uint8_t a, uint8_t b)
+constexpr std::uint64_t has_byte_between(std::uint64_t word,
+                                         std::uint8_t a,
+                                         std::uint8_t b)
 {
-    const auto m = static_cast<uint64_t>(a) - 1,
-               n = static_cast<uint64_t>(b) + 1;
+    const auto m = static_cast<std::uint64_t>(a) - 1,
+               n = static_cast<std::uint64_t>(b) + 1;
     return (((~0ull / 255 * (127 + n) - (word & ~0ull / 255 * 127)) & ~word &
              ((word & ~0ull / 255 * 127) + ~0ull / 255 * (127 - m))) &
             (~0ull / 255 * 128));
 }
 
-constexpr uint64_t has_byte_greater(uint64_t word, uint8_t n)
+constexpr std::uint64_t has_byte_greater(std::uint64_t word, std::uint8_t n)
 {
     SCN_GCC_PUSH
     SCN_GCC_IGNORE("-Wsign-conversion")
@@ -652,29 +655,30 @@ constexpr uint64_t has_byte_greater(uint64_t word, uint8_t n)
     SCN_GCC_POP
 }
 
-inline size_t get_index_of_first_nonmatching_byte(uint64_t word)
+inline std::size_t get_index_of_first_nonmatching_byte(std::uint64_t word)
 {
     word ^= 0x8080808080808080ull;
     if (word == 0) {
         return 8;
     }
-    return static_cast<size_t>(count_trailing_zeroes(word)) / 8;
+    return static_cast<std::size_t>(count_trailing_zeroes(word)) / 8;
 }
 
-inline size_t get_index_of_first_matching_byte(uint64_t word, uint64_t pattern)
+inline std::size_t get_index_of_first_matching_byte(std::uint64_t word,
+                                                    std::uint64_t pattern)
 {
     constexpr auto mask = 0x7f7f7f7f7f7f7f7full;
     auto input = word ^ pattern;
     auto tmp = (input & mask) + mask;
     tmp = ~(tmp | input | mask);
-    return static_cast<size_t>(count_trailing_zeroes(tmp)) / 8;
+    return static_cast<std::size_t>(count_trailing_zeroes(tmp)) / 8;
 }
 
-constexpr uint32_t log2_fast(uint32_t val)
+constexpr std::uint32_t log2_fast(std::uint32_t val)
 {
-    constexpr uint8_t lookup[] = {0,  9,  1,  10, 13, 21, 2,  29, 11, 14, 16,
-                                  18, 22, 25, 3,  30, 8,  12, 20, 28, 15, 17,
-                                  24, 7,  19, 27, 23, 6,  26, 5,  4,  31};
+    constexpr std::uint8_t lookup[] = {
+        0, 9,  1,  10, 13, 21, 2,  29, 11, 14, 16, 18, 22, 25, 3, 30,
+        8, 12, 20, 28, 15, 17, 24, 7,  19, 27, 23, 6,  26, 5,  4, 31};
 
     val |= val >> 1;
     val |= val >> 2;
@@ -682,19 +686,19 @@ constexpr uint32_t log2_fast(uint32_t val)
     val |= val >> 8;
     val |= val >> 16;
 
-    return static_cast<uint32_t>(lookup[(val * 0x07c4acddu) >> 27]);
+    return static_cast<std::uint32_t>(lookup[(val * 0x07c4acddu) >> 27]);
 }
 
-constexpr uint32_t log2_pow2_fast(uint32_t val)
+constexpr std::uint32_t log2_pow2_fast(std::uint32_t val)
 {
-    constexpr uint8_t lookup[] = {0,  1,  28, 2,  29, 14, 24, 3,  30, 22, 20,
-                                  15, 25, 17, 4,  8,  31, 27, 13, 23, 21, 19,
-                                  16, 7,  26, 12, 18, 6,  11, 5,  10, 9};
+    constexpr std::uint8_t lookup[] = {
+        0,  1,  28, 2,  29, 14, 24, 3, 30, 22, 20, 15, 25, 17, 4,  8,
+        31, 27, 13, 23, 21, 19, 16, 7, 26, 12, 18, 6,  11, 5,  10, 9};
 
-    return static_cast<uint32_t>(lookup[(val * 0x077cb531u) >> 27]);
+    return static_cast<std::uint32_t>(lookup[(val * 0x077cb531u) >> 27]);
 }
 
-constexpr uint64_t byteswap(uint64_t val)
+constexpr std::uint64_t byteswap(std::uint64_t val)
 {
     return (val & 0xFF00000000000000) >> 56 | (val & 0x00FF000000000000) >> 40 |
            (val & 0x0000FF0000000000) >> 24 | (val & 0x000000FF00000000) >> 8 |
@@ -1192,6 +1196,11 @@ struct stdio_file_interface_impl<File, default_file_tag>
     }
 };
 
+// The platform-specific functions below (e.g., `getc_unlocked`, `__uflow`,
+// `_lock_file`) are called without `::` on purpose. Every specialization is
+// parsed on every platform, and only an unqualified call with a dependent
+// argument defers the lookup to instantiation. Some of them are also macros on
+// the BSDs and macOS.
 template <typename File>
 struct posix_stdio_file_interface : stdio_file_interface_base<File> {
     using stdio_file_interface_base<File>::stdio_file_interface_base;
@@ -1363,7 +1372,7 @@ struct stdio_file_interface_impl<File, win32_file_tag>
         auto res = _fgetc_nolock(this->file);
         if (res == EOF) {
             unlock();
-            const bool is_eof = feof(this->file);
+            const bool is_eof = std::feof(this->file);
             lock();
             return unexpected(is_eof ? stdio_file_error::eof
                                      : stdio_file_error::error);
@@ -1537,8 +1546,8 @@ constexpr auto range_nocopy_size(const R& r) noexcept
 {
     static_assert(range_supports_nocopy<R>());
 #if SCN_NEED_MS_DEBUG_ITERATOR_WORKAROUND
-    return static_cast<size_t>(ranges::distance(detail::to_address(r.begin()),
-                                                detail::to_address(r.end())));
+    return static_cast<std::size_t>(ranges::distance(
+        detail::to_address(r.begin()), detail::to_address(r.end())));
 #else
     return r.size();
 #endif
@@ -1612,7 +1621,7 @@ std::size_t contiguous_beginning_size(Range r)
         if constexpr (ranges::common_range<Range>) {
             auto seg = r.begin().contiguous_segment();
             auto dist =
-                static_cast<size_t>(ranges::distance(r.begin(), r.end()));
+                static_cast<std::size_t>(ranges::distance(r.begin(), r.end()));
             return std::min(seg.size(), dist);
         }
         else {
@@ -1639,7 +1648,7 @@ auto get_contiguous_beginning(Range r)
         if constexpr (ranges::common_range<Range>) {
             auto seg = r.begin().contiguous_segment();
             auto dist =
-                static_cast<size_t>(ranges::distance(r.begin(), r.end()));
+                static_cast<std::size_t>(ranges::distance(r.begin(), r.end()));
             return seg.substr(0, std::min(seg.size(), dist));
         }
         else {
@@ -1690,11 +1699,12 @@ std::size_t guaranteed_minimum_size(Range r)
                                       typename detail::basic_scan_buffer<
                                           detail::char_t<Range>>::iterator>) {
         if constexpr (ranges::common_range<Range>) {
-            return static_cast<size_t>(ranges::distance(r.begin(), r.end()));
+            return static_cast<std::size_t>(
+                ranges::distance(r.begin(), r.end()));
         }
         else {
             if (r.begin().stores_parent()) {
-                return static_cast<size_t>(
+                return static_cast<std::size_t>(
                     r.begin().parent()->chars_available() -
                     r.begin().position());
             }
@@ -1831,7 +1841,7 @@ inline constexpr scan_expected<wchar_t> encode_code_point_as_wide_character(
         }
         // Return the lead surrogate
         return static_cast<wchar_t>(
-            (static_cast<uint32_t>(cp) - 0x10000) / 0x400 + 0xd800);
+            (static_cast<std::uint32_t>(cp) - 0x10000) / 0x400 + 0xd800);
     }
 }
 
@@ -1881,7 +1891,7 @@ void transcode_to_string_impl_32to8(std::basic_string_view<SourceCharT> src,
     static_assert(sizeof(DestCharT) == 1);
 
     for (auto cp : src) {
-        const auto u32cp = static_cast<uint32_t>(cp);
+        const auto u32cp = static_cast<std::uint32_t>(cp);
         if (SCN_UNLIKELY(!VerifiedValid && static_cast<char32_t>(cp) >=
                                                detail::invalid_code_point)) {
             // Replacement character
@@ -1927,7 +1937,7 @@ void transcode_to_string_impl_32to16(std::basic_string_view<SourceCharT> src,
     static_assert(sizeof(DestCharT) == 2);
 
     for (auto cp : src) {
-        const auto u32cp = static_cast<uint32_t>(cp);
+        const auto u32cp = static_cast<std::uint32_t>(cp);
         if (SCN_UNLIKELY(!VerifiedValid && cp >= detail::invalid_code_point)) {
             dest.push_back(char16_t{0xfffd});
         }
@@ -2895,7 +2905,7 @@ auto read_matching_string_classic(Range range, std::string_view str)
     }
     else {
         auto range_it = range.begin();
-        for (size_t i = 0; i < str.size(); ++i, (void)++range_it) {
+        for (std::size_t i = 0; i < str.size(); ++i, (void)++range_it) {
             if (SCN_UNLIKELY(*range_it !=
                              static_cast<detail::char_t<Range>>(str[i]))) {
                 return unexpected(parse_error::error);
@@ -2906,10 +2916,10 @@ auto read_matching_string_classic(Range range, std::string_view str)
 }
 
 // Ripped from fast_float
-constexpr bool fast_streq_nocase(const char* a, const char* b, size_t len)
+constexpr bool fast_streq_nocase(const char* a, const char* b, std::size_t len)
 {
     unsigned char running_diff{0};
-    for (size_t i = 0; i < len; ++i) {
+    for (std::size_t i = 0; i < len; ++i) {
         running_diff |= static_cast<unsigned char>(a[i] ^ b[i]);
     }
     return running_diff == 0 || running_diff == 32;
@@ -3022,7 +3032,7 @@ constexpr std::size_t calculate_valid_text_width(char32_t cp)
 template <typename CharT>
 std::size_t calculate_valid_text_width(std::basic_string_view<CharT> input)
 {
-    size_t count{0};
+    std::size_t count{0};
     for_each_code_point_valid(input, [&count](char32_t cp) {
         count += calculate_text_width_for_fmt_v10(cp);
     });
@@ -3037,7 +3047,7 @@ constexpr std::size_t calculate_text_width(char32_t cp)
 template <typename CharT>
 std::size_t calculate_text_width(std::basic_string_view<CharT> input)
 {
-    size_t count{0};
+    std::size_t count{0};
     for_each_code_point(input, [&count](char32_t cp) {
         count += calculate_text_width_for_fmt_v10(cp);
     });
@@ -3792,7 +3802,7 @@ public:
 
 enum class sign_type { default_sign = -1, minus_sign = 0, plus_sign = 1 };
 
-inline constexpr std::array<uint8_t, 256> char_to_int_table = {
+inline constexpr std::array<std::uint8_t, 256> char_to_int_table = {
     255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255,
     255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255,
     255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255,
@@ -3812,11 +3822,11 @@ inline constexpr std::array<uint8_t, 256> char_to_int_table = {
     255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255,
     255};
 
-SCN_NODISCARD SCN_FORCE_INLINE constexpr uint8_t char_to_int(char ch)
+SCN_NODISCARD SCN_FORCE_INLINE constexpr std::uint8_t char_to_int(char ch)
 {
     return char_to_int_table[static_cast<unsigned char>(ch)];
 }
-SCN_NODISCARD SCN_FORCE_INLINE constexpr uint8_t char_to_int(wchar_t ch)
+SCN_NODISCARD SCN_FORCE_INLINE constexpr std::uint8_t char_to_int(wchar_t ch)
 {
 #if WCHAR_MIN < 0
     if (ch >= 0 && ch <= 255) {
@@ -5551,7 +5561,7 @@ scan_expected<void> simple_decimal_conversion(T& result,
                 ? powers_of_two[static_cast<std::size_t>(value.decimal_point)]
                 : 60u;
         value.right_shift(shift);
-        exp2 += static_cast<int32_t>(shift);
+        exp2 += static_cast<std::int32_t>(shift);
     }
 
     // "Repeatedly do Non-Rounding left-shifts until the HPD represents
@@ -5565,7 +5575,7 @@ scan_expected<void> simple_decimal_conversion(T& result,
                 ? powers_of_two[static_cast<std::size_t>(-value.decimal_point)]
                 : 60u;
         value.left_shift(shift);
-        exp2 -= static_cast<int32_t>(shift);
+        exp2 -= static_cast<std::int32_t>(shift);
     }
     // We're in [0.1, 0.5), repeatedly shift left until we're in [0.5, 1)
     while (value.decimal_point == 0 && value.digits[0] < 5u) {
@@ -7064,7 +7074,7 @@ auto read_regex_matches_impl(std::basic_string_view<CharT> pattern,
     return std::next(input.begin(), matches.length(0));
 #elif SCN_REGEX_BACKEND == SCN_REGEX_BACKEND_BOOST
     std::vector<std::basic_string<CharT>> names;
-    for (size_t i = 0; i < pattern.size();) {
+    for (std::size_t i = 0; i < pattern.size();) {
         if constexpr (std::is_same_v<CharT, char>) {
             i = pattern.find("(?<", i);
         }
@@ -7274,7 +7284,7 @@ SCN_GCC_IGNORE("-Wrestrict")
 inline std::string get_unescaped_regex_pattern(std::string_view pattern)
 {
     std::string result{pattern};
-    for (size_t n = 0; (n = result.find("\\/", n)) != std::string::npos;) {
+    for (std::size_t n = 0; (n = result.find("\\/", n)) != std::string::npos;) {
         result.replace(n, 2, "/");
         ++n;
     }
@@ -7283,7 +7293,8 @@ inline std::string get_unescaped_regex_pattern(std::string_view pattern)
 inline std::wstring get_unescaped_regex_pattern(std::wstring_view pattern)
 {
     std::wstring result{pattern};
-    for (size_t n = 0; (n = result.find(L"\\/", n)) != std::wstring::npos;) {
+    for (std::size_t n = 0;
+         (n = result.find(L"\\/", n)) != std::wstring::npos;) {
         result.replace(n, 2, L"/");
         ++n;
     }
@@ -7698,13 +7709,15 @@ private:
                 return false;
             }
 
-            const auto cp_val = static_cast<uint32_t>(cp);
+            const auto cp_val = static_cast<std::uint32_t>(cp);
             return std::find_if(
                        nonascii.extra_ranges.begin(),
                        nonascii.extra_ranges.end(),
                        [cp_val](const auto& pair) noexcept {
-                           return static_cast<uint32_t>(pair.first) <= cp_val &&
-                                  static_cast<uint32_t>(pair.second) > cp_val;
+                           return static_cast<std::uint32_t>(pair.first) <=
+                                      cp_val &&
+                                  static_cast<std::uint32_t>(pair.second) >
+                                      cp_val;
                        }) != nonascii.extra_ranges.end();
         }
 

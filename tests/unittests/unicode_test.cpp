@@ -28,16 +28,16 @@ TEST(UnicodeTest, Utf8CpLength)
     EXPECT_EQ(scn::detail::utf8_code_point_length_by_starting_code_unit('a'),
               1);
     EXPECT_EQ(scn::detail::utf8_code_point_length_by_starting_code_unit(
-                  uint8_t{0xc4}),
+                  std::uint8_t{0xc4}),
               2);
     EXPECT_EQ(scn::detail::utf8_code_point_length_by_starting_code_unit(
-                  uint8_t{0xe4}),
+                  std::uint8_t{0xe4}),
               3);
     EXPECT_EQ(scn::detail::utf8_code_point_length_by_starting_code_unit(
-                  uint8_t{0xf4}),
+                  std::uint8_t{0xf4}),
               4);
     EXPECT_EQ(scn::detail::utf8_code_point_length_by_starting_code_unit(
-                  uint8_t{0xa4}),
+                  std::uint8_t{0xa4}),
               0);
 }
 
@@ -67,16 +67,16 @@ TEST(UnicodeTest, Utf8Decode)
 TEST(UnicodeTest, Utf16CpLength)
 {
     EXPECT_EQ(scn::detail::utf16_code_point_length_by_starting_code_unit(
-                  uint16_t{'a'}),
+                  std::uint16_t{'a'}),
               1);
     EXPECT_EQ(scn::detail::utf16_code_point_length_by_starting_code_unit(
-                  uint16_t{0xe4}),
+                  std::uint16_t{0xe4}),
               1);
     EXPECT_EQ(scn::detail::utf16_code_point_length_by_starting_code_unit(
-                  uint16_t{0xdaaa}),
+                  std::uint16_t{0xdaaa}),
               2);
     EXPECT_EQ(scn::detail::utf16_code_point_length_by_starting_code_unit(
-                  uint16_t{0xdeee}),
+                  std::uint16_t{0xdeee}),
               0);
 }
 

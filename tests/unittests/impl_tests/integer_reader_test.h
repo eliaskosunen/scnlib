@@ -215,8 +215,8 @@ protected:
 
     static constexpr bool has_four_digits()
     {
-        return static_cast<uint64_t>(std::numeric_limits<int_type>::max()) >=
-               1234ull;
+        return static_cast<std::uint64_t>(
+                   std::numeric_limits<int_type>::max()) >= 1234ull;
     }
     static auto get_four_digits()
     {
@@ -230,8 +230,8 @@ protected:
 
     static constexpr bool has_eight_digits()
     {
-        return static_cast<uint64_t>(std::numeric_limits<int_type>::max()) >=
-               12345678ull;
+        return static_cast<std::uint64_t>(
+                   std::numeric_limits<int_type>::max()) >= 12345678ull;
     }
     static auto get_eight_digits()
     {
@@ -245,8 +245,8 @@ protected:
 
     static constexpr bool has_nine_digits()
     {
-        return static_cast<uint64_t>(std::numeric_limits<int_type>::max()) >=
-               123456789ull;
+        return static_cast<std::uint64_t>(
+                   std::numeric_limits<int_type>::max()) >= 123456789ull;
     }
     static auto get_nine_digits()
     {
@@ -260,8 +260,8 @@ protected:
 
     static constexpr bool has_sixteen_digits()
     {
-        return static_cast<uint64_t>(std::numeric_limits<int_type>::max()) >=
-               1122334455667788ull;
+        return static_cast<std::uint64_t>(
+                   std::numeric_limits<int_type>::max()) >= 1122334455667788ull;
     }
     static auto get_sixteen_digits()
     {
@@ -276,7 +276,8 @@ protected:
 
     static constexpr bool has_seventeen_digits()
     {
-        return static_cast<uint64_t>(std::numeric_limits<int_type>::max()) >=
+        return static_cast<std::uint64_t>(
+                   std::numeric_limits<int_type>::max()) >=
                11223344556677889ull;
     }
     static auto get_seventeen_digits()
@@ -307,8 +308,8 @@ protected:
 
     static constexpr bool has_thsep_value()
     {
-        return static_cast<uint64_t>(std::numeric_limits<int_type>::max()) >=
-               123456ull;
+        return static_cast<std::uint64_t>(
+                   std::numeric_limits<int_type>::max()) >= 123456ull;
     }
     static auto get_thsep_value()
     {
@@ -479,7 +480,7 @@ protected:
 
     scn::detail::format_specs make_format_specs_with_presentation_and_base(
         scn::detail::presentation_type type,
-        uint8_t arb_base = 0,
+        std::uint8_t arb_base = 0,
         bool thsep = false) const
     {
         scn::detail::format_specs specs{};
