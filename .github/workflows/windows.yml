@@ -148,7 +148,7 @@ jobs:
         working-directory: ${{ runner.workspace }}/build
         shell: bash
         run: |
-          cmake -A ${{ matrix.platform }} ${{ matrix.toolset != 'default' && format('-T {0}', matrix.toolset) || '' }} \
+          cmake -A ${{ matrix.platform }} ${{ matrix.toolset && matrix.toolset != 'default' && format('-T {0}', matrix.toolset) || '' }} \
             -DCMAKE_CXX_STANDARD=${{ matrix.std }} -DSCN_CI=ON $GITHUB_WORKSPACE
 
       - name: Build
