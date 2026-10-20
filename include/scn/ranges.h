@@ -232,7 +232,6 @@ DiffT range_max_size(const Range& r)
 template <typename CharT, char Ch>
 inline constexpr CharT single_char_storage = static_cast<CharT>(Ch);
 
-// String view of the single ASCII character `Ch`, in any character type
 template <typename CharT, char Ch>
 constexpr std::basic_string_view<CharT> single_char_view() noexcept
 {

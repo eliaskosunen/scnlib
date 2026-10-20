@@ -5590,11 +5590,11 @@ public:
         invalid_source_state,
 
         /// Value out of range, too large (higher than the maximum value)
-        /// i.e. >2^31-1 for int32
+        /// i.e., >2^31-1 for int32
         value_positive_overflow,
 
         /// Value out of range, too small (lower than the minimum value)
-        /// i.e. <-2^31 for int32
+        /// i.e., <-2^31 for int32
         value_negative_overflow,
 
         /// Value out of range, magnitude too small, sign +
@@ -7243,7 +7243,7 @@ auto impl(const Range& r, priority_tag<2>)
 }
 
 // input_range, or a forward_range only when non-const
-// (e.g. `views::filter`)
+// (e.g., `views::filter`)
 // -> input_range_buffer
 template <typename Range,
           std::enable_if_t<
@@ -8308,10 +8308,7 @@ namespace detail {
  * function that could be a constant expression. They then show the call to
  * `on_error`, with `msg`, in the diagnostic.
  */
-inline void invalid_format_string()
-{
-    // no-op
-}
+inline void invalid_format_string() {}
 }  // namespace detail
 
 template <typename T>
@@ -10840,8 +10837,8 @@ SCN_CLANG_IGNORE("-Wdocumentation-unknown-command")
  * Doesn't skip preceding whitespace.
  * Like `%[` in `scanf`, matching zero characters is an error.
  * Character classes (like `[:alpha:]`) and backslash escapes followed by
- * a letter (like `\d`) are not supported, and to catch user errors,
- * are rejected in the format string.
+ * a letter (like `\d`) are not supported.
+ * To catch user errors, they're rejected in the format string.
  * To match a literal backslash, put it last in the set (like `[abc\]`),
  * so that no letter follows it.
  * Like in `scanf`, a `]` immediately after the opening `[` (or `[^`) is
@@ -12145,7 +12142,7 @@ using scan_result_value_type = typename mp_cond<
  * Result type returned by `vscan`.
  *
  * The value type of the `scan_expected` is the type of the source stored
- * in `scan_result`, see `scn::scan_result`: e.g.
+ * in `scan_result` (see `scn::scan_result`), e.g.,
  * `detail::borrowed_tail_subrange_t<Source>` if `Source` is a forward range,
  * or `FILE*` if `Source` is `FILE*`.
  *

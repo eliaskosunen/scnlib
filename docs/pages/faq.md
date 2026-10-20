@@ -38,7 +38,8 @@ Depending on the standard mode, `scn::month`, `scn::weekday` and the other calen
 are either the C++20 `std::chrono` types, or scnlib's own types.
 These are passed to the compiled part of the library,
 so the library and the code using it must be compiled in the same C++ standard mode
-(`CMAKE_CXX_STANDARD`): for example, a C++17 build of the library used from C++20 code isn't supported.
+(`CMAKE_CXX_STANDARD`).
+For example, a C++17 build of the library used from C++20 code isn't supported.
 
 \section faq-fixed-width How do I scan fixed-width fields?
 
@@ -69,40 +70,46 @@ For others, like `std::cin`, read the field into a `std::string` instead.
 
 Not with the `std::regex` or Boost.Regex backends, which are backtracking engines:
 a crafted pattern and input can take exponential time.
-If either the pattern or the input is untrusted, use the `re2` backend (`SCN_REGEX_BACKEND=re2`),
-which guarantees linear-time matching.
+If either the pattern or the input is untrusted, use the `re2` backend
+(`SCN_REGEX_BACKEND=re2`), which guarantees linear-time matching.
 
 \section faq-input-retry Why does my scn::input retry loop never end?
 
-A failed `scn::input` doesn't consume any input, so the next call sees the same input again:
-`while (!scn::input<int>("{}")) {}` loops forever on `abc`.
+A failed `scn::input` doesn't consume any input, so the next call sees the same input again.
+For example, `while (!scn::input<int>("{}")) {}` loops forever on `abc`.
 Discard the rest of the line before retrying, for example with
 `std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n')`
 (`scn::input` reads from `std::cin`, unless iostreams are disabled).
 
 Also, like with `scanf("%d\n")`, whitespace at the end of a format string (like in `"{}\n"`)
-keeps reading until a non-whitespace character or the end of the input,
-which waits for more input when reading from a terminal.
+keeps reading until a non-whitespace character or the end of the input.
+When reading from a terminal, this waits for more input.
 
 \section faq-input-nested Can I call scn::input inside a custom scanner?
 
-No. `scn::input`, `scn::prompt` and the other functions scanning from stdin hold a lock while they run,
-so calling one of them from a scanner used by another one is undefined behavior (in practice, a deadlock).
+No.
+`scn::input`, `scn::prompt` and the other functions scanning from stdin
+hold a lock while they run,
+so calling one of them from a scanner used by another one is undefined behavior
+(in practice, a deadlock).
 Read all the values you need in a single call instead.
 
 \section faq-ranges Can I scan containers, tuples and pairs with scn/ranges.h?
 
 `<scn/ranges.h>` is experimental, and its behavior may change.
-It lets `scn::scan` read ranges (like `std::vector<int>`), sets, maps, pairs and tuples
+It lets `scn::scan` read ranges (like `std::vector<int>`), sets, maps, pairs, and tuples
 in the `[1, 2, 3]` and `(1, 2)` notation of `std::format`.
-Limits:
+It has the following limitations:
  - Elements that read past the separator or the closing bracket don't work.
-   Strings are read until whitespace, so scanning a `std::vector<std::string>` from `[a, b, c]`
-   fails with "Expected a range bracket or separator", and so does a `std::vector<char>`,
-   because a `char` reads the space after a separator.
+   Strings are read until whitespace,
+   so scanning a `std::vector<std::string>` from `[a, b, c]`
+   fails with "Expected a range bracket or separator".
+   So does a `std::vector<char>`, because a `char` reads the space after a separator.
    In practice, only element types like numbers work reliably.
- - The range format specifiers of `std::format` (like `n` and separator options) are not supported.
+ - The range format specifiers of `std::format` (like `n` and the separator options)
+   are not supported.
  - A range type with its own `scn::scanner` partial specialization
    (like `template <typename T> struct scn::scanner<my_range<T>, char>`)
-   becomes ambiguous when `<scn/ranges.h>` is included. Specialize `scn::range_format_kind` for it,
+   becomes ambiguous when `<scn/ranges.h>` is included.
+   To fix that, specialize `scn::range_format_kind` for it,
    inheriting from `std::integral_constant<scn::range_format, scn::range_format::disabled>`.

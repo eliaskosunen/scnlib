@@ -43,8 +43,8 @@ void do_basic_run_for_source(Source&& source,
 
 namespace {
 // If the first byte of the input is this, the input is
-// `format string NUL data`, instead of just data
-// scanned with a fixed set of format strings
+// `format string NUL data`. Otherwise, the data is scanned with a fixed set of
+// format strings.
 constexpr std::uint8_t custom_format_mode = 1;
 
 template <typename CharT>

@@ -57,7 +57,7 @@ env:
 
 jobs:
   # recent gcc versions and pre-installed clang versions on native ubuntu 24.04 and 26.04
-  # 22.04 images will have been deprecated on 2026-09-17 and removed on 2027-04-17.
+  # 22.04 images were deprecated on 2026-09-17 and will be removed on 2027-04-17.
   ubuntu:
     runs-on: ubuntu-${{ matrix.os }}
     strategy:
@@ -464,7 +464,7 @@ jobs:
         run: |
           mkdir -p ${{ runner.workspace }}/build
 
-          # libc++ we get through apt on 24.04 is v18
+          # The libc++ from apt on 24.04 is v18
           ${APT_INSTALL} ccache libc++-dev libc++abi-dev
 
           sudo locale-gen en_US.UTF-8

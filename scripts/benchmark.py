@@ -10,12 +10,12 @@ The workflow has three stages, each runnable on its own:
   build    configure and build the benchmark binaries, once for each compiler
            (build/bench-<compiler>, and build/bench-<compiler>-<build type> for
            the binary size and build time benchmarks)
-  run      run the benchmarks and save the raw results, with metadata
-           (commit, compilers, flags, CPU, kernel, governor, date), as one JSON file.
-           The metadata is stored for each benchmark separately, so that running
-           only some of them (--what) does not relabel the results of the others
+  run      run the benchmarks and save the raw results as one JSON file, with
+           metadata (commit, compilers, flags, CPU, kernel, governor, date).
+           The metadata is stored for each benchmark separately, so running
+           only some of them (--what) doesn't relabel the results of the others
   render   read a saved JSON file, print Markdown tables to stdout, and write the
-           charts (render needs matplotlib and nothing else)
+           charts (needs matplotlib, and nothing else)
   all      build, run and render
 
 Typical usage (from the repository root):
@@ -34,10 +34,14 @@ Without --output-dir, render overwrites the charts that the README links to:
 benchmark/runtime/results/{int,float,string}.png and
 benchmark/binarysize/graph-{debug,minsizerel,release}.png.
 
-Requirements (all needs matplotlib too): CMake, Ninja, taskset (optional), /usr/bin/time (GNU), size (binutils), strip, and
-pip install -r scripts/benchmark-requirements.txt for render. The CPU frequency
-governor is not changed. Set it to "performance" and disable boost before a
-real measurement. Run-time benchmarks are pinned to one CPU with taskset.
+Requirements: CMake, Ninja, taskset (optional), git (optional, for the
+metadata), GNU /usr/bin/time, size (binutils), and strip. Rendering, and thus
+`all`, also needs matplotlib
+(`pip install -r scripts/benchmark-requirements.txt`).
+
+Run-time benchmarks are pinned to one CPU with taskset. The CPU frequency
+governor is not changed: set it to "performance" and disable boost before a
+real measurement.
 """
 
 import argparse
@@ -101,8 +105,7 @@ BUILDTIME_FLAGS = {"debug": ["-g"], "release": ["-O3", "-DNDEBUG"]}
 
 STAGES = ("runtime", "binarysize", "buildtime")
 
-# The library is the identity that a color encodes. The same library has the same
-# color in every chart.
+# Each library has the same color in every chart.
 # Slots 1 to 6 of the validated categorical palette, in order.
 LIBRARY_COLORS = {
     "scnlib": "#2a78d6",
@@ -204,7 +207,7 @@ def build_runtime(args, compiler):
 
 
 def build_binarysize_and_buildtime(args, compiler, build_type, stages):
-    # The build time benchmark only needs the library, so it can share the
+    # The build time benchmark only needs the library, so it shares the
     # binary size build directories (shared library, Debug and Release)
     if "binarysize" in stages:
         targets = [f"scn_benchmark_binarysize_{test}" for test in BINARYSIZE_TESTS]
@@ -453,8 +456,8 @@ def strip_size(path):
 
 
 def section_sizes(path):
-    """Berkeley format output of `size`: text (code and read-only data), data
-    (initialized data) and bss (zero-initialized data), in bytes"""
+    """Section sizes in bytes from `size --format=berkeley`: text (code and
+    read-only data), data (initialized data) and bss (zero-initialized data)"""
     output = command_output(["size", "--format=berkeley", path])
     if output is None:
         fail("Could not run `size` (binutils)")
@@ -771,7 +774,7 @@ def average(values):
 
 def runtime_table(benchmarks, rows, kinds, headers):
     """Medians of the CPU time, in nanoseconds. If kinds has two entries, adds a
-    column for their average, like the README does."""
+    column for their average, as the README does."""
     body = []
     for row in rows:
         values = row_values(benchmarks, row, kinds)

@@ -101,8 +101,8 @@ By default, the CMake machinery automatically fetches, builds, and links them wi
 They're only used in the implementation, and they aren't visible to the users of the library.
 
 Alternatively, by setting the CMake options `SCN_USE_EXTERNAL_FAST_FLOAT` and `SCN_USE_EXTERNAL_EKNAN` to `ON`,
-fast_float and eknan are searched for using `find_package`. Use these options
-if you already have the libraries installed.
+fast_float and eknan are searched for using `find_package`.
+Use these options if you already have the libraries installed.
 
 Both dependencies can be disabled, with `SCN_DISABLE_FAST_FLOAT` and `SCN_DISABLE_EKNAN`.
 Without fast_float, floating-point value parsing will be slower, but the behavior isn't affected.
@@ -332,7 +332,8 @@ scnlib configuration options
 <sup>1</sup>: `std::from_chars` with floating-point values is supported on libstdc++ v11 and newer,
 MSVC 19.24 (VS 2019 16.4) or newer, and libc++ 20 or newer (`float` and `double` only, not `long double`).
 
-<sup>2</sup>: This is done automatically by CMake. When building without CMake, `SCN_DISABLE_REGEX` needs to be set manually.
+<sup>2</sup>: This is done automatically by CMake.
+When building without CMake, `SCN_DISABLE_REGEX` needs to be set manually.
 
 <sup>3</sup>: scnlib converts `float` and `double` itself if they're IEEE 754 binary32 or binary64,
 and `long double` if it's binary32, binary64, x87 or m68k extended precision, binary128, or double-double.

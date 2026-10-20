@@ -454,11 +454,9 @@ int count_trailing_zeroes(T val)
     SCN_EXPECT(val != 0);
 
 #if SCN_HAS_BITOPS
-    // Simple case: has C++20 <bit>
     return std::countr_zero(val);
 
 #elif SCN_GCC_COMPAT
-    // Has GCC builtins for int, long, and long long
     if constexpr (std::is_same_v<T, unsigned long long>) {
         return __builtin_ctzll(val);
     }
@@ -470,7 +468,6 @@ int count_trailing_zeroes(T val)
     }
 
 #elif SCN_MSVC && SCN_WINDOWS_64BIT
-    // 64-bit MSVC, use BitScanForward(64)
     if constexpr (sizeof(T) == sizeof(std::uint64_t)) {
         DWORD ret{};
         ::_BitScanForward64(&ret, val);
@@ -483,7 +480,7 @@ int count_trailing_zeroes(T val)
     }
 
 #elif SCN_MSVC && !SCN_WINDOWS_64BIT
-    // 32-bit MSVC, need custom behavior for 64-bit integers
+    // No 64-bit intrinsic on 32-bit MSVC
     if constexpr (sizeof(T) == sizeof(std::uint64_t)) {
         DWORD ret{};
         if (::_BitScanForward(&ret, static_cast<std::uint32_t>(val))) {
@@ -499,7 +496,6 @@ int count_trailing_zeroes(T val)
     }
 
 #else
-    // Polyfill with a custom loop
     int ret{};
     std::uint64_t mask{1};
     while ((val & mask) == 0u) {
@@ -543,11 +539,9 @@ int count_leading_zeroes(T val)
     SCN_EXPECT(val != 0);
 
 #if SCN_HAS_BITOPS
-    // Simple case: has C++20 <bit>
     return std::countl_zero(val);
 
 #elif SCN_GCC_COMPAT
-    // Has GCC builtins for int, long, and long long
     if constexpr (std::is_same_v<T, unsigned long long>) {
         return __builtin_clzll(val);
     }
@@ -560,8 +554,7 @@ int count_leading_zeroes(T val)
     }
 
 #elif SCN_MSVC && SCN_WINDOWS_64BIT
-    // 64-bit MSVC, use BitScanReverse(64)
-    // _BitScanReverse returns the index of the MSB, so we need to convert:
+    // _BitScanReverse returns the index of the MSB, so convert:
     // count_leading_zeros = (total_bits - 1) - msb_index
     if constexpr (sizeof(T) == sizeof(std::uint64_t)) {
         DWORD ret{};
@@ -575,7 +568,7 @@ int count_leading_zeroes(T val)
     }
 
 #elif SCN_MSVC && !SCN_WINDOWS_64BIT
-    // 32-bit MSVC, need custom behavior for 64-bit integers
+    // No 64-bit intrinsic on 32-bit MSVC
     if constexpr (sizeof(T) == sizeof(std::uint64_t)) {
         DWORD ret{};
         const auto high = static_cast<std::uint32_t>(val >> 32);
@@ -593,7 +586,6 @@ int count_leading_zeroes(T val)
     }
 
 #else
-    // Polyfill with a custom loop
     int ret{};
     std::uint64_t mask = std::uint64_t{1} << (sizeof(T) * 8 - 1);
     while ((val & mask) == 0u) {
@@ -1474,7 +1466,6 @@ struct file_buffer_interface {
             const auto position_in_view =
                 position - static_cast<std::ptrdiff_t>(putback_buffer.size());
             if (position_in_view >= 0) {
-                // Keep `current_view` as the unconsumed part of the file buffer
                 const auto consumed = current_view.substr(
                     0, static_cast<std::size_t>(position_in_view));
                 putback_buffer.append(consumed.begin(), consumed.end());
@@ -4439,7 +4430,7 @@ struct float_traits_impl_doubledouble {
     // below that, the low double of a 106-bit value would be subnormal,
     // and precision gets lost. The granularity of the "subnormal" range is
     // 2^-1074, the same as with a double.
-    // Values overflow at 2^1024, again, the same as with a double.
+    // Values overflow at 2^1024, like with a double.
     //
     // A (biased exponent, 106-bit significand) pair is converted
     // to an actual double-double value with `make_parts`.
@@ -4456,9 +4447,7 @@ struct float_traits_impl_doubledouble {
         bool overflow;
     };
 
-    // Build the high and low doubles of a double-double,
-    // from a biased exponent and a significand
-    // (with or without the implicit leading bit).
+    // The implicit leading bit of `significand` is optional.
     // A biased exponent of 0 denotes a subnormal value,
     // and `max_biased_exponent` infinity.
     static parts make_parts(int biased_exponent,
@@ -5269,7 +5258,7 @@ scan_expected<void> simple_decimal_conversion(T& result,
         // the exponent was in range (positive).
         // This might end with the mantissa below 1/2,
         // so that the parsed [value] is zero,
-        // but otherwise we'd return a subnormal [value].
+        // but otherwise we'd return a subnormal [value]."
 
         was_subnormal = true;
         while (biased_exponent < 0) {
@@ -5312,7 +5301,6 @@ scan_expected<void> simple_decimal_conversion(T& result,
             "Floating-point value too small");
     }
 
-    // Build resulting value
     SCN_ASSERT(biased_exponent >= 0);
     return compute_float_value(result, biased_exponent, significand);
 }
@@ -5466,7 +5454,6 @@ auto prepare_read_source(Source& source, unsigned flags, CharT radix_point)
     };
 
     if (allowed_hex && !allowed_nonhex) {
-        // Only hex allowed:
         // Prefix "0x" allowed, but not required
         if (auto after_prefix = read_matching_string_classic_nocase(
                 ranges::subrange{start, source.end()}, "0x");
@@ -5478,9 +5465,7 @@ auto prepare_read_source(Source& source, unsigned flags, CharT radix_point)
                            start, std::nullopt};
     }
     if (allowed_hex && allowed_nonhex) {
-        // Both hex and nonhex allowed:
-        // Check for a "0x" prefix -> hex,
-        // nonhex otherwise
+        // A "0x" prefix means hex, otherwise nonhex
         if (auto after_prefix = read_matching_string_classic_nocase(
                 ranges::subrange{start, source.end()}, "0x");
             after_prefix && check_following_digit(*after_prefix, 16)) {
@@ -5531,7 +5516,6 @@ struct source_reader {
         auto it = source.begin();
 
         if (initial_kind == kind_type::decimal) {
-            // Nonhex
             const bool exponent_allowed = m_options.flags & allow_scientific;
             const bool exponent_required =
                 exponent_allowed && !(m_options.flags & allow_fixed);
@@ -5561,7 +5545,6 @@ struct source_reader {
         }
 
         {
-            // Hex
             SCN_ASSERT(initial_kind == kind_type::hex_with_prefix ||
                        initial_kind == kind_type::hex_without_prefix);
 
@@ -5791,7 +5774,7 @@ inline constexpr bool has_charconv_for<std::bfloat16_t, void> = false;
 // MinGW-w64 uses a 64-bit representation for long double in its stdlib,
 // but may report 80-bit x87 format via std::numeric_limits.
 // std::from_chars for long double uses the 64-bit representation,
-// causing a mismatch. Disable it and use the fallback instead.
+// which doesn't match. Disable it and use the fallback instead.
 #if SCN_MINGW && !SCN_DISABLE_TYPE_LONG_DOUBLE
 template <>
 inline constexpr bool has_charconv_for<long double, void> = false;

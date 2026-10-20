@@ -73,9 +73,9 @@ SCN_BEGIN_NAMESPACE
  *
  * Numeric fields accept between one and the maximum number of digits,
  * unless otherwise noted.
- * Field values are range-checked (e.g. `%%H` accepts `0` to `23`).
+ * Field values are range-checked (e.g., `%%H` accepts `0` to `23`).
  * When scanning a `month_day`, `year_month_day`, or `time_point`, the day is
- * also checked to exist in its month (e.g. February 30th is an error),
+ * also checked to exist in its month (e.g., February 30th is an error),
  * like `std::chrono::parse` does.
  * When the year, month, and day are all scanned into a `year_month_day` or
  * a `time_point`, a scanned weekday must match the date, or it's an error.
@@ -142,7 +142,7 @@ SCN_BEGIN_NAMESPACE
  *
  * The `L` flag makes the names (`%%a`, `%%b`), and the composite specifiers
  * `%%c`, `%%x`, `%%X`, and `%%r` follow the locale passed to `scn::scan`.
- * Together with `E` or `O` (e.g. `%.ES`), it also makes the decimal
+ * Together with `E` or `O` (e.g., `%.ES`), it also makes the decimal
  * separator of a fractional second follow the locale.
  * The `E` and `O` modifiers select the locale's alternative representation,
  * and, except for `%%Ez` and `%%Oz`, only have an effect together with `L`.
@@ -535,7 +535,7 @@ inline bool is_weekday_consistent(const datetime_components& dt)
 // `sec` seconds and `ns` nanoseconds (non-negative) as a `Duration`,
 // rounded down.
 // Unlike `std::chrono::floor`, fails instead of overflowing,
-// e.g. with `nanoseconds` beyond the year 2262.
+// e.g., with `nanoseconds` beyond the year 2262.
 template <typename Duration>
 scan_expected<Duration> floor_to_duration(std::int64_t sec, std::int64_t ns)
 {
@@ -565,7 +565,7 @@ scan_expected<Duration> floor_to_duration(std::int64_t sec, std::int64_t ns)
     }
     if (sec < limits::min() / num) {
         // `limits::min() / num` is rounded toward zero, so the second below
-        // it can still contain representable instants, e.g.
+        // it can still contain representable instants, e.g.,
         // `nanoseconds::min()`. `sec * num` would overflow, so count
         // from the next second, and subtract the rest of this one.
         if (sec + 1 != limits::min() / num) {
@@ -645,7 +645,7 @@ scan_expected<Duration> time_since_unix_epoch(const datetime_components& dt)
     // A fraction doesn't affect the result if `Duration` is seconds or larger
     std::int64_t subsec_in_ns = 0;
     if (dt.subsec) {
-        // Rounded, because truncating would turn e.g. 0.000065 into
+        // Rounded, because truncating would turn, e.g., 0.000065 into
         // 64999 ns, and then into 64 us
         subsec_in_ns =
             std::llround(*dt.subsec * static_cast<double>(std::nano::den));
@@ -2069,7 +2069,7 @@ struct scanner<year_month_day, CharT>
  * The scanned date and time are interpreted as UTC, unless a timezone offset
  * is scanned with `%%z`, in which case it's applied.
  * Unset fields default to 1970-01-01 00:00:00.
- * Invalid dates (e.g. February 30th) and leap seconds (second `60`) are
+ * Invalid dates (e.g., February 30th) and leap seconds (second `60`) are
  * errors.
  * Timezone names (`%%Z`) and days of the year (`%%j`) are not supported,
  * and are format string errors.
