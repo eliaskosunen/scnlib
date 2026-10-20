@@ -188,7 +188,7 @@
 // If 1, disallows the float scanner from falling back on strtof, strtod,
 // and strtold (and wcstof, wcstod, and wcstold).
 // They're only used for a float, double, or long double with a binary format
-// without a custom conversion, i.e. not binary32 or binary64 (or, for long
+// without a custom conversion, i.e., not binary32 or binary64 (or, for long
 // double, x87 or m68k extended, binary128, or double-double).
 // With SCN_DISABLE_STRTOD, scanning such a type is a compile-time error.
 #ifndef SCN_DISABLE_STRTOD
@@ -509,7 +509,6 @@
 #define SCN_HAS_ATTRIBUTE(x) 0
 #endif
 
-// Thread safety annotation for Clang's thread safety analysis
 #if SCN_CLANG && SCN_HAS_ATTRIBUTE(no_thread_safety_analysis)
 #define SCN_THREADSAFETY_NO_ANALYSIS __attribute__((no_thread_safety_analysis))
 #else

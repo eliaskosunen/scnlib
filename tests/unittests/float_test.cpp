@@ -149,7 +149,8 @@ TEST(FloatTest, NaNWithPayloadFromNonContiguousSource)
     ASSERT_NE(result->begin(), input.end());
     EXPECT_EQ(*result->begin(), ' ');
 
-    // No payloads for a type without a custom conversion
+    // Payloads are ignored without eknan, and for a type without a custom
+    // conversion (`SCN_FORCE_STRTOD_FALLBACK`)
     constexpr bool has_payloads =
         !SCN_DISABLE_EKNAN && !SCN_FORCE_STRTOD_FALLBACK;
     EXPECT_TRUE(check_nan(

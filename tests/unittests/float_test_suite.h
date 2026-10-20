@@ -1110,9 +1110,9 @@ TYPED_TEST_P(FloatTestSuite, SubnormalHex)
 
 // libstdc++ before 13.4 and 14.3 (GCC PR117321) guards the 16-bit float
 // std::nextafter overloads with if (__is_constant_evaluated()), which isn't
-// folded at -O0, leaving calls to nonexistent nextafterf16 and
-// __builtin_nextafterf16b, leading to linker errors. However, on GCC,
-// we can instead evaluate these at compile time.
+// folded at -O0. The calls then refer to nonexistent nextafterf16 and
+// __builtin_nextafterf16b, which causes linker errors.
+// On GCC, these can be evaluated at compile time instead.
 template <typename T>
 inline constexpr bool evaluate_nextafter_at_compile_time =
     SCN_GCC && (float_kind_for<T> == float_kind::f16 ||
@@ -1194,8 +1194,8 @@ TYPED_TEST_P(FloatTestSuite, HexRoundingToSubnormalMin)
     }
 
     // Hexfloats with exactly `bits` significant bits, scaled so that the
-    // smallest subnormal is 2^bits units: the custom parser has to shift
-    // all of the bits out when rounding
+    // smallest subnormal is 2^bits units. The custom parser has to shift
+    // all of the bits out when rounding.
     constexpr int bits = hex_significand_bits<Float>;
     constexpr int digits = bits / 4;
     constexpr int exponent = std::numeric_limits<Float>::min_exponent -

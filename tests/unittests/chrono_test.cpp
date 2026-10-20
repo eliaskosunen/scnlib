@@ -448,8 +448,8 @@ TEST(ChronoScanTest, ChronoTimePointOutOfRange)
                                             "{:%Y-%m-%d %H:%M:%S}");
     ASSERT_THAT(later, FailedWith(scn::scan_error::value_positive_overflow));
 
-    // The range of nanoseconds in int64_t starts at 1677-09-21
-    // 00:12:43.145224192
+    // The range of nanoseconds in int64_t starts at
+    // 1677-09-21 00:12:43.145224192
     auto min = scn::scan<sys_nanoseconds>("1677-09-21 00:12:43.145224192",
                                           "{:%Y-%m-%d %H:%M:%S}");
     ASSERT_THAT(min, Succeeded());
@@ -499,7 +499,7 @@ TEST(ChronoScanTest, ChronoTimePointWithContradictingWeekday)
                                                               "{:%u %F}");
     ASSERT_THAT(result, FailedWith(scn::scan_error::invalid_scanned_value));
 
-    // Sunday is both 0 and 7, dates before the epoch are checked too
+    // Sunday is both 0 and 7. Dates before the epoch are checked too.
     result = scn::scan<std::chrono::system_clock::time_point>("0 2024-09-08",
                                                               "{:%w %F}");
     EXPECT_THAT(result, Succeeded());

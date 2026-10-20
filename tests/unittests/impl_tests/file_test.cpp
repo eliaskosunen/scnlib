@@ -139,7 +139,6 @@ struct unbuffered_mock_file : mock_file_base {
         return true;
     }
 
-    // What would be read from the file next
     SCN_NODISCARD std::string remaining() const
     {
         return m_contents.substr(m_position);
@@ -246,7 +245,6 @@ struct buffered_mock_file : mock_file_base {
             std::string{});
     }
 
-    // What would be read from the file next
     SCN_NODISCARD std::string remaining() const
     {
         std::string result{m_backup};
@@ -485,7 +483,6 @@ public:
         return m_handle;
     }
 
-    // Reads everything left in the file
     std::string read_rest() const
     {
         std::string result;

@@ -163,7 +163,6 @@ struct pair_concat_storage_access
 };
 }  // namespace
 
-// Test ranges::distance
 TEST(RangesUtilTest, DistanceEmpty)
 {
     std::string_view sv = "";
@@ -178,7 +177,6 @@ TEST(RangesUtilTest, DistanceNonEmpty)
     EXPECT_EQ(dist, 5);
 }
 
-// Test ranges::advance
 TEST(RangesUtilTest, AdvanceByZero)
 {
     std::string_view sv = "test";
@@ -267,7 +265,6 @@ TEST(RangesUtilTest, ScanBufferIterator)
               static_cast<std::ptrdiff_t>(src.size()));
 }
 
-// Test ranges::next
 TEST(RangesUtilTest, NextDefault)
 {
     std::string_view sv = "test";

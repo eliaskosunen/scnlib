@@ -131,9 +131,9 @@ using scn::ranges::views::istreambuf;
 }  // namespace ranges
 
 // Not part of the public API.
-// `scn::scan` finds these overloads by ADL from templates in the
-// global module fragment, and MSVC's ADL in importers only sees exported
-// declarations, so e.g. scanning from a `std::istream` would fail otherwise.
+// `scn::scan` finds these overloads by ADL from templates in the global module
+// fragment. MSVC's ADL in importers only sees exported declarations, so without
+// these, e.g., scanning from a `std::istream` would fail.
 namespace detail {
 using scn::detail::make_scan_buffer;
 using scn::detail::make_vscan_result;

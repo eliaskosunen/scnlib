@@ -346,8 +346,9 @@ GCC 16.2.1:
   `scn::scan_int` is faster still, and slightly faster than `strtol`.
 * `scn::scan_int_exhaustive_valid` takes 3 to 7 ns.
 * Scanning an `int` with `{:d}` takes about 50% longer than with `{}`.
-* When reading words, `std::stringstream` is about as fast as `scn::scan_value<string_view>`
-  with the ASCII text, and faster than any of the scnlib functions with the Unicode text.
+* When reading words, `std::stringstream` is about as fast as
+  `scn::scan_value<string_view>` with the ASCII text,
+  and faster than any of the scnlib functions with the Unicode text.
 * The two compilers are about equal with integers.
   With GCC, `scn::scan` is about 15% slower with floating-point numbers,
   and about 30% slower in the basic test.
@@ -366,9 +367,10 @@ Above,
   spaces. The time used for creating any state needed for the scanner
   is not included. This test is called `"repeated"` in the benchmark sources.
 * The string test is an exception: whitespace-separated words are read one
-  after another from a sample text. "Lorem Ipsum" is ASCII-only, and "Unicode"
-  is Markus Kuhn's UTF-8 demo (`benchmark/runtime/string/unicode.txt`), with
-  mathematical notation, many languages and scripts, and box-drawing characters.
+  after another from a sample text.
+  "Lorem Ipsum" is ASCII-only.
+  "Unicode" is Markus Kuhn's UTF-8 demo (`benchmark/runtime/string/unicode.txt`),
+  with mathematical notation, many languages and scripts, and box-drawing characters.
 * The basic test scans an `int` from `"123"`.
   "With options" uses `{:i}`, "with locale" passes a `std::locale` but scans with `{}`,
   and "localized" uses `{:L}`.
@@ -376,8 +378,9 @@ Above,
 The difference between "Test 1" and "Test 2" is most pronounced when using
 a `stringstream`, which is relatively expensive to construct,
 and adds about 70 to 115 ns.
-With `sscanf`, "Test 2" is slower instead, because glibc's `sscanf` goes through
-the whole remaining input on every call, and the input of "Test 2" has 8192 values.
+With `sscanf`, "Test 2" is slower instead,
+because glibc's `sscanf` goes through the whole remaining input on every call,
+and the input of "Test 2" has 8192 values.
 For the same reason, the `sscanf` string results depend on the length of the text:
 the Lorem Ipsum text is 64 KiB, and the Unicode text is 13 KiB.
 With `scn::scan` and `std::from_chars`, there's really no state to construct,
@@ -387,7 +390,8 @@ The benchmarks were compiled with `-O3 -DNDEBUG -march=x86-64-v3` and LTO enable
 
 The source code for these benchmarks can be found in the `benchmark` directory.
 All benchmarks in this section, and the charts and tables, are produced by
-`scripts/benchmark.py`. It builds with Clang and GCC, runs the benchmarks,
+`scripts/benchmark.py`.
+It builds with Clang and GCC, runs the benchmarks,
 saves the results as JSON, and renders the charts and tables from it
 (see `scripts/benchmark.py --help`):
 
@@ -413,9 +417,9 @@ $ ./benchmark/runtime/integer/scn_int_bench
 
 ### Executable size
 
-All sizes below are in kibibytes (KiB). "Code + data" is the size of the
-`text` and `data` sections of the compiled executable, as reported by `size`:
-the machine code and the read-only and initialized data.
+All sizes below are in kibibytes (KiB).
+"Code + data" is the size of the `text` and `data` sections of the compiled executable,
+as reported by `size`: the machine code and the read-only and initialized data.
 Debug information and symbol tables are not included.
 Lower is better.
 
@@ -502,7 +506,8 @@ Size of `scnlib` shared library (`.so`): 20M
 With GCC, the code using scnlib is slightly smaller than with `scanf` or `<iostream>`,
 in both Release and MinSizeRel builds.
 With Clang, it's about 5% bigger in a MinSizeRel build,
-and about 75% bigger in a Release build, where Clang inlines more of scnlib at each call site.
+and about 75% bigger in a Release build,
+where Clang inlines more of scnlib at each call site.
 In a Debug build, scnlib is 3x to 5x bigger than `scanf`,
 and 5x to 11x bigger than `<iostream>`.
 
@@ -518,8 +523,8 @@ The code was compiled with `-march=x86-64-v3`, in addition to the flags above.
 See the directory `benchmark/binarysize` for the source code.
 
 The executables are built with the CMake variable `SCN_BENCHMARKS_BINARYSIZE`
-and `BUILD_SHARED_LIBS=ON`, in Debug, Release and MinSizeRel, the latter two
-with LTO. `scripts/benchmark.py all --what binarysize` builds and measures them.
+and `BUILD_SHARED_LIBS=ON`, in Debug, Release and MinSizeRel, the latter two with LTO.
+`scripts/benchmark.py all --what binarysize` builds and measures them.
 
 ### Build time
 
@@ -586,11 +591,13 @@ The compiler flags used for a Debug build were `-g`, and `-O3 -DNDEBUG` for a
 Release build.
 
 `scripts/benchmark.py all --what buildtime` compiles the sources in
-`benchmark/buildtime` and measures them. It needs GNU `/usr/bin/time`.
+`benchmark/buildtime` and measures them.
+It needs GNU `/usr/bin/time`.
 
 ## Development
 
-C++, Python, CMake and shell files are formatted with pinned formatter versions, and CI checks the formatting.
+C++, Python, CMake and shell files are formatted with pinned formatter versions,
+and CI checks the formatting.
 
 ```sh
 # Install the formatters

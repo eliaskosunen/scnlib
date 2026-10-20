@@ -192,7 +192,7 @@ struct scanner {
      * using the format specs in `*this`, populated by `parse()`.
      *
      * `value` is default initialized, unless an initial value was supplied
-     * (e.g. to `scn::scan` or `scn::scan_value`).
+     * (e.g., to `scn::scan` or `scn::scan_value`).
      *
      * \return On success, an iterator pointing past the last character consumed
      * from `ctx`.

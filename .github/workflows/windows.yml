@@ -75,7 +75,7 @@ jobs:
             type: Release
             std: 17
 
-          # C++23  on 2025
+          # C++23 on 2025
           - os: 2025
             platform: x64
             type: Debug
