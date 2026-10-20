@@ -151,7 +151,8 @@ using wscan_buffer = basic_scan_buffer<wchar_t>;
 }  // namespace detail
 
 /**
- * Scanner type, can be customized to enable scanning of user-defined types
+ * Scanner type, which can be customized to enable scanning of user-defined
+ * types
  *
  * \ingroup ctx
  */
@@ -180,7 +181,7 @@ struct scanner {
      *
      * \return On success, an iterator pointing to the `}` character at the end
      * of the replacement field in the format string.
-     * Will cause an error, if the returned iterator doesn't point to a `}`
+     * Will cause an error if the returned iterator doesn't point to a `}`
      * character.
      */
     template <typename ParseContext>

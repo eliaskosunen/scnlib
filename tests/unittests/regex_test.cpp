@@ -356,7 +356,7 @@ TEST(RegexTest, AlphaCharacterClassWithNonAscii)
     EXPECT_THAT(r->range(), ::testing::Not(IsEmptyRange()));
     EXPECT_EQ(r->value(), "fööbär");
 #else
-    // [[:alpha:]] is ASCII only with
+    // [[:alpha:]] is ASCII-only with
     // std::regex and re2, and Boost.Regex without ICU
     auto r = scn::scan<std::string_view>("fööbär123", "{:/[[:alpha:]]+/}");
     ASSERT_THAT(r, Succeeded());
@@ -366,7 +366,7 @@ TEST(RegexTest, AlphaCharacterClassWithNonAscii)
 }
 
 #if SCN_REGEX_BACKEND != SCN_REGEX_BACKEND_STD
-// std::regex doesnt support Unicode character classes
+// std::regex doesn't support Unicode character classes
 TEST(RegexTest, LetterUnicodeCharacterClass)
 {
     // L = Letter

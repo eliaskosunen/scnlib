@@ -338,7 +338,7 @@ if(NOT SCN_DISABLE_REGEX AND SCN_REGEX_BACKEND STREQUAL "Boost")
             # which would use the BoostConfig.cmake file shipped with Boost.
             # However, that file appeared in Boost v1.70, which was released in 2019,
             # and we want to support Boost versions older than that.
-            # For that reason, we're explicitly opting-in to not using that,
+            # For that reason, we're explicitly opting in to not using that,
             # while it's still possible.
             cmake_policy(SET CMP0167 OLD)
         endif()

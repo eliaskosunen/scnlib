@@ -27,14 +27,14 @@ int main() {
 
 \section main-about About this documentation
 
-This documentation is for the version 4.0 of the library.
+This documentation is for version 4.0 of the library.
 For other versions, see the dropdown in the upper right corner of the website.
 See <b><a href="./poxy_changelog.html">Changelog</a></b> for more.
 
 An introductory guide to the library can be found at \ref guide "Guide".
 Answers to frequently asked questions are listed at \ref faq "FAQ".
 
-The API documentation is organized into modules, that can be found under Modules, behind the link at the top of the page.
+The API documentation is organized into modules that can be found under Modules, behind the link at the top of the page.
 It can be searched directly using the search function in the navbar, or by pressing the TAB key.
 The most important modules are probably:
 
@@ -48,7 +48,7 @@ The most important modules are probably:
 \section main-install Installation
 
 \note The following instructions assume a Unix-like system with a command line.
-If your development environment is different (e.g. Visual Studio), these steps cannot be followed verbatim.
+If your development environment is different (e.g., Visual Studio), these steps cannot be followed verbatim.
 Some IDEs, like Visual Studio and CLion, have CMake integration built into them.
 In some other environments, you may have to use the CMake GUI or your system's command line.
 To build a CMake project without `make`, use `cmake --build .`.
@@ -197,7 +197,7 @@ make them available for the build, or disable them by defining
 `SCN_DISABLE_FAST_FLOAT=1` or `SCN_DISABLE_EKNAN=1`.
 Since fast_float and eknan are header-only libraries, they don't need to be built.
 
-Headers for scnlib can be found from the `include/` directory, and source files from the `src/` directory.
+Headers for scnlib can be found in the `include/` directory, and source files in the `src/` directory.
 Without CMake, only building scnlib as a static library is supported.
 Any configuration macros (see \ref configuration) need to be defined identically
 both when building scnlib, and when compiling code that uses it.
@@ -218,14 +218,14 @@ $ ar rcs libscn.a *.o
 $ c++ ... -Lpath-to-scn/build -lscn
 \endcode
 
-Note, that scnlib requires at least C++17,
+Note that scnlib requires at least C++17,
 so `-std=c++17` (or equivalent, or newer) may need to be included in the build flags.
 
 \subsection configuration Configuration
 
 There are numerous flags that can be used to configure the build of the library.
 All of them can be set through CMake at library build time, and some of them
-directly on the compiler command line, as indicated on the tables below.
+directly on the compiler command line, as indicated in the tables below.
 
 <table>
 <caption>

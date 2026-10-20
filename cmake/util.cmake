@@ -5,8 +5,8 @@ function(set_policy POL VAL)
     endif()
 endfunction()
 
-# Define function "source_group_by_path with three mandatory arguments (PARENT_PATH, REGEX, GROUP, ...)
-# to group source files in folders (e.g. for MSVC solutions).
+# Define function "source_group_by_path" with three mandatory arguments (PARENT_PATH, REGEX, GROUP, ...)
+# to group source files in folders (e.g., for MSVC solutions).
 #
 # Example:
 # source_group_by_path("${CMAKE_CURRENT_SOURCE_DIR}/src" "\\\\.h$|\\\\.inl$|\\\\.cpp$|\\\\.c$|\\\\.ui$|\\\\.qrc$" "Source Files" ${sources})
@@ -26,7 +26,7 @@ function(source_group_by_path PARENT_PATH REGEX GROUP)
     endforeach()
 endfunction()
 
-# Function that extract entries matching a given regex from a list.
+# Function that extracts entries matching a given regex from a list.
 # ${OUTPUT} will store the list of matching filenames.
 function(list_extract OUTPUT REGEX)
     foreach(FILENAME ${ARGN})

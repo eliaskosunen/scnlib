@@ -8,11 +8,11 @@ _Release 2026-xx-xx_
 
  * `scn::input` and `scn::prompt` now internally use `std::cin` (if iostreams haven't been disabled)
    instead of `stdin`.
- * The return type of `scn::input` and `scn::prompt` now use `scn::stdin_tag_t` as the source type,
+ * The return type of `scn::input` and `scn::prompt` now uses `scn::stdin_tag_t` as the source type,
    instead of giving access to a `FILE*` directly.
  * The return type of `scn::vinput` is now `scn::vscan_result<scn::stdin_tag_t>`, instead of `scn::scan_expected<void>`.
 
- * C `FILE`s as sources deprecated. Use `scn::scan_file`s or `std::istream`s instead.
+ * C `FILE`s as sources are deprecated. Use `scn::scan_file`s or `std::istream`s instead.
    This is to prevent problems with failures to sync with the underlying `FILE`,
    since `FILE`s are only guaranteed to support a single character's worth of putback.
 
@@ -30,7 +30,7 @@ scn::scan<...>(strm, ...);
 
  * Previously deprecated `scn::visit_scan_arg` is now removed. Use `scn::basic_scan_arg::visit` instead.
  * The `basic_scan_context` constructor only taking an iterator is now deprecated.
-   Instead, use the new constructors that take a range, or both an interator and a sentinel.
+   Instead, use the new constructors that take a range, or both an iterator and a sentinel.
  * `scn::invalid_input_range` is renamed to `scn::invalid_source`.
  * `file_marker` is removed as a return type of `scan`
  * The `basic_scan_parse_context` constructor only taking a format string is now deprecated.
@@ -156,13 +156,13 @@ scn::scan<...>(strm, ...);
      but another `input_range`.
  * `scn::basic_regex_matches` now has `front()`, `back()`, `cbegin()`, `cend()`, `str()`, and `operator==`
  * `scn::scan_file` has been added, to scan from a `FILE` more resiliently than from a `FILE*` directly
- * `std::istream`s can now be used as sources for `scn::scan`, if `"scn/istream.h"` is included.
+ * `std::istream`s can now be used as sources for `scn::scan` if `<scn/istream.h>` is included.
    * Instead of `.range()`, the member function to access the stream from a `scn::scan` result object is `.stream()`.
  * Locale-enabled overloads for `scn::input` have been added.
  * The `/m` regex flag is now supported with the `std` regex backend on MSVC Build Tools 14.50 (Visual Studio 2026) and later
- * Extended standard floating point types can now be scanned, if they're supported by the implementation
+ * Extended standard floating-point types can now be scanned if they're supported by the implementation
    (`std::float16_t`, `std::float32_t`, `std::float64_t`, `std::float128_t`, `std::bfloat16_t`)
- * `__int128` and `unsigned __int128` can now be scanned, if they're supported by the implementation.
+ * `__int128` and `unsigned __int128` can now be scanned if they're supported by the implementation.
    Aliases for these types are provided and used, with `scn::int128` and `scn::uint128`.
  * The payload of a NaN in floating-point values (like `nan(0x1234)`) is now parsed and stored in the scanned floating-point value.
    * This uses a new optional dependency, [eknan](https://github.com/eliaskosunen/eknan),

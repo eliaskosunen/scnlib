@@ -1333,7 +1333,7 @@ struct SCN_TRIVIAL_ABI expected_delete_ctor_base<T, E, false, false> {
 };
 
 // Implementation for types that are move constructible, but not
-// copy constructible Copy constructor is =deleted, but move
+// copy constructible. Copy constructor is =deleted, but move
 // constructor is =defaulted
 template <typename T, typename E>
 struct SCN_TRIVIAL_ABI expected_delete_ctor_base<T, E, false, true> {
@@ -1982,7 +1982,7 @@ public:
     }
 
     /// Returns the expected value if *this contains one, otherwise
-    /// returns default_value
+    /// returns `default_value`
     template <typename U,
               typename = std::enable_if_t<std::is_copy_constructible_v<T> &&
                                           std::is_convertible_v<U, T>>>
@@ -2405,7 +2405,7 @@ struct incrementable_traits_helper {};
 
 // Workaround for GCC silliness: void* has no difference_type
 // FIXME: This is required to stop WeaklyIncrementable<void*> being a hard
-// error Can we formulate the concept differently to avoid the need for this
+// error. Can we formulate the concept differently to avoid the need for this
 // hack?
 template <>
 struct incrementable_traits_helper<void*> {};
@@ -2555,8 +2555,8 @@ struct readable_traits_helper<T,
                                                !has_member_value_type_v<T>>>
     : member_element_type<T> {};
 
-// A type which has both value_type and element_type members must specialise
-// readable_traits to tell us which one to prefer -- see
+// A type which has both value_type and element_type members must specialize
+// readable_traits to tell us which one to prefer: see
 // https://github.com/ericniebler/stl2/issues/562
 template <typename T>
 struct readable_traits_helper<T,
@@ -3491,7 +3491,7 @@ inline constexpr bool random_access_range =
 namespace detail {
 // FIXME: Not to spec
 // We only require random_access_iterator, not contiguous_iterator
-// This is so that vector::iterator, string::iterator etc can model
+// This is so that vector::iterator, string::iterator, etc. can model
 // contiguous_range.
 // If we do range-v3-style deep integration with iterator_traits then
 // this could be fixed
@@ -5606,7 +5606,7 @@ public:
         value_negative_underflow,
 
         /// Source type used can't be used to scan this value
-        /// (i.e., string_view from a non-contiguous and non-borrowed source)
+        /// (e.g., `string_view` from a non-contiguous and non-borrowed source)
         insufficient_source,
 
         max_error
@@ -7053,7 +7053,7 @@ auto make_range_scan_buffer(Range&& range)
  * \brief Description of the `scannable_range` and `scannable_source`
  * concepts.
  *
- * A range is considered scannable, if it models at least `input_range`,
+ * A range is considered scannable if it models at least `input_range`,
  * and its character type is correct (its value type is the same as the one
  * of the format string, and is either `char` or `wchar_t`).
  * Additional optimizations are enabled for "stronger" range concepts.
@@ -8425,7 +8425,7 @@ public:
     /**
      * Fail format string parsing with the message `msg`.
      * Calling this member function is not a constant expression,
-     * causing a compile-time error, if compile-time format string checking is
+     * causing a compile-time error if compile-time format string checking is
      * enabled. The compiler error will contain `msg`.
      * If parsing has already failed, the first error is kept.
      */
@@ -8443,13 +8443,13 @@ public:
         return m_error;
     }
 
-    /// Returns `true`, if the source is a `contiguous_range`
+    /// Returns `true` if the source is a `contiguous_range`
     SCN_NODISCARD constexpr bool is_source_contiguous() const
     {
         return m_is_contiguous;
     }
 
-    /// Returns `true`, if the source is a `borrowed_range`
+    /// Returns `true` if the source is a `borrowed_range`
     SCN_NODISCARD constexpr bool is_source_borrowed() const
     {
         return m_is_borrowed;
@@ -8844,8 +8844,8 @@ struct scan_result_alias_base<S, std::enable_if_t<ranges::range<S>>> {
  *     accessible with the `range()` member function.
  *     If `S` itself is a specialization of `ranges::pair_concat_view`,
  *     `ITER_T` and `SENT_T` are the iterator and sentinel types of
- *     the second range in `S`, respectively;
- *     otherwise `ITER_T` and `SENT_T` are
+ *     the second range in `S`, respectively.
+ *     Otherwise, `ITER_T` and `SENT_T` are
  *     `ranges::iterator_t<S>` and `ranges::sentinel_t<S>`, respectively.
  *  4. If `S` is (cvref-qualified) `scn::scan_file`, or a pointer to one,
  *     contains a reference to a `scn::scan_file`,
@@ -11160,8 +11160,8 @@ constexpr typename ParseCtx::iterator parse_format_specs(ParseCtx& parse_ctx)
         std::remove_reference_t<decltype(arg_mapper<char_type>().map(
             SCN_DECLVAL(T&)))>;
     if constexpr (std::is_base_of_v<unscannable, map_result>) {
-        // Error will be reported by static_assert in make_value(),
-        // let's not muddy the compiler error by making more of them.
+        // Error will be reported by static_assert in make_value().
+        // Let's not muddy the compiler error by making more of them.
         return parse_ctx.begin();
     }
     else {
@@ -12615,8 +12615,8 @@ SCN_NODISCARD auto scan(Source&& source,
 /**
  * `scan` using an explicit locale.
  *
- * Has no effect on its own, locale-specific scanning still needs to be
- * opted-into on an argument-by-argument basis, with the `L` format string
+ * Has no effect on its own: locale-specific scanning still needs to be
+ * opted into on an argument-by-argument basis, with the `L` format string
  * specifier.
  *
  * \code{.cpp}

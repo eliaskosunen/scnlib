@@ -83,7 +83,7 @@ SCN_BEGIN_NAMESPACE
  * </tr>
  *
  * <tr>
- * <td>Unicode character classes (i.e. `\pL`)</td>
+ * <td>Unicode character classes (e.g., `\pL`)</td>
  * <td>No</td>
  * <td>Yes-ish <sup>[1]</sup></td>
  * <td>Yes</td>
@@ -97,8 +97,8 @@ SCN_BEGIN_NAMESPACE
  * </tr>
  * </table>
  *
- * <sup>[1][2]</sup>: The behavior of Boost.Regex varies, whether it's
- * using the ICU or not. If it is, character classes like `\pL` and
+ * <sup>[1][2]</sup>: The behavior of Boost.Regex varies depending on whether
+ * it's using the ICU or not. If it is, character classes like `\pL` and
  * `[[:alpha:]]` can match any non-ASCII characters. Otherwise, only ASCII
  * characters are matched.
  *
@@ -225,7 +225,7 @@ private:
  * Can be used to get all subexpression captures of a regex match.
  * Interface similar to a
  * `const std::vector<std::optional<basic_regex_match<CharT>>>`,
- * except that elements are returned by value, and there is no `data()`
+ * except that elements are returned by value, and there are no `data()`
  * or reverse iterators.
  * Stores `[0]` as a string, and the other matches as views into that string.
  *
