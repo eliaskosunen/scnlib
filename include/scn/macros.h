@@ -92,13 +92,13 @@
 #endif
 
 // SCN_DISABLE_REGEX
-// If 1, disabled regular expression support
+// If 1, disables regular expression support
 #ifndef SCN_DISABLE_REGEX
 #define SCN_DISABLE_REGEX 0
 #endif
 
 // SCN_REGEX_BOOST_USE_ICU
-// If 1, use ICU for full Unicode support with the regex backend
+// If 1, use ICU for full Unicode support with the regex backend.
 // Only effective when SCN_REGEX_BACKEND is Boost
 #ifndef SCN_REGEX_BOOST_USE_ICU
 #define SCN_REGEX_BOOST_USE_ICU 0
@@ -156,7 +156,7 @@
 #endif
 
 // SCN_DISABLE_LOCALE
-// If 1, removes all references to std::locale, and C locale
+// If 1, removes all references to std::locale and the C locale
 #ifndef SCN_DISABLE_LOCALE
 #define SCN_DISABLE_LOCALE 0
 #endif
@@ -202,7 +202,7 @@
 #endif
 
 // SCN_DISABLE_TYPE_*
-// If 1, removes ability to scan type
+// If 1, removes the ability to scan the type
 #ifndef SCN_DISABLE_TYPE_SCHAR
 #define SCN_DISABLE_TYPE_SCHAR 0
 #endif

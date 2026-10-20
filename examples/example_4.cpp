@@ -25,7 +25,7 @@ int main()
 {
     std::string source{R"([{1: 2, 3: 4}, {5: 6}])"};
 
-    // Use monadic interface of scn::expected (return type of scn::scan)
+    // Use the monadic interface of scn::expected (the return type of scn::scan)
     scn::scan<std::vector<std::map<int, int>>>(source, "{}")
         .transform([](auto result) {
             const auto& data = result.value();

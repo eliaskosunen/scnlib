@@ -72,7 +72,7 @@ jobs:
         std: [ 17 ]
 
         include:
-          # Explicitly pick out pre-installed clang + os pairs -- apt.llvm.org likes to fail on us
+          # Explicitly pick out pre-installed clang + os pairs, as apt.llvm.org likes to fail on us
           - os: 26.04
             cxx: clang++-22
             std: 17

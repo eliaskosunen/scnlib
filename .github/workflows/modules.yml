@@ -79,7 +79,7 @@ jobs:
         with:
           cmakeVersion: ${{ matrix.cmake }}
 
-      # No ccache, don't want to add additional variables to already finicky modules stuff
+      # No ccache. Don't want to add additional variables to already finicky modules stuff
 
       - name: Checkout
         uses: actions/checkout@v7
@@ -197,7 +197,7 @@ jobs:
           # Can't find .ifc files, possibly the fault of our CMake
           # - "~3.27.0"
         generator:
-          # Can't find the stdlib headers, don't want to figure out why
+          # Can't find the stdlib headers. Don't want to figure out why
           # - Ninja Multi-Config
           - Visual Studio 17 2022
 
@@ -207,7 +207,7 @@ jobs:
         with:
           cmakeVersion: ${{ matrix.cmake }}
 
-      # No ccache, don't want to add additional variables to already finicky modules stuff
+      # No ccache. Don't want to add additional variables to already finicky modules stuff
 
       - name: Checkout
         uses: actions/checkout@v7

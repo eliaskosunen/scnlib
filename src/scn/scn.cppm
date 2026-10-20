@@ -21,7 +21,7 @@ module;
 
 #include <scn/macros.h>
 
-// Do `import std` if we're on MSVC or (non-apple) clang with libc++,
+// Do `import std` if we're on MSVC or (non-Apple) clang with libc++,
 // and have C++23
 #if defined(__cpp_lib_modules) && !defined(SCN_IMPORT_STD) && \
     SCN_STD >= SCN_STD_23 &&                                  \

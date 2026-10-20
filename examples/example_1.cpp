@@ -21,7 +21,7 @@ int main()
 {
     if (const auto result =
             scn::prompt<int>("What's your favorite number? ", "{}")) {
-        // `result` is true, we have a successful read.
+        // `result` is true, so we have a successful read.
         // Read the single parsed value with result->value()
         std::printf("%d, interesting\n", result->value());
     }

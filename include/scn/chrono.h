@@ -400,7 +400,7 @@ void assign_gmtoff(T& tm, std::chrono::seconds val)
 /**
  * An alternative to `std::tm`,
  * with support for subsecond precision, and
- * clear distinction between the value `0` and an unset field.
+ * a clear distinction between the value `0` and an unset field.
  *
  * \ingroup chrono
  */
@@ -418,7 +418,7 @@ struct datetime_components {
     /// Month (strongly typed)
     std::optional<month> mon;
     /// Year, without an offset
-    /// Note, `std::tm` stores years since 1900
+    /// Note that `std::tm` stores years since 1900
     std::optional<int> year;
     /// Day of week (strongly typed)
     std::optional<weekday> wday;

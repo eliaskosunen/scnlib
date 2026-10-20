@@ -23,7 +23,7 @@ the way values are scanned is only influenced by the type of the value to be sca
 and the options given in the replacement field (inside the `{}`).
 The context around the replacement field in the format string is not considered.
 It's a deliberate design choice that the format strings are not regular expressions,
-or can't be used to formulate a regular grammar.
+and can't be used to formulate a regular grammar.
 
 To scan until a <code>','</code>, one can do:
 `scn::scan<std::string, std::string>(input, "{:[^,]},{}")`.
@@ -88,7 +88,7 @@ When reading from a terminal, this waits for more input.
 \section faq-input-nested Can I call scn::input inside a custom scanner?
 
 No.
-`scn::input`, `scn::prompt` and the other functions scanning from stdin
+`scn::input`, `scn::prompt`, and the other functions scanning from stdin
 hold a lock while they run,
 so calling one of them from a scanner used by another one is undefined behavior
 (in practice, a deadlock).

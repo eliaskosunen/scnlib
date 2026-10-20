@@ -9,7 +9,7 @@ That source is commonly a range, but other sources are supported, too.
 First, we'll talk about ranges.
 A range is an object that has a beginning and an end,
 the notion of which has been codified in the C++20 standard.
-Examples of ranges are string literals, `std::string` and `std::vector<char>`.
+Examples of ranges are string literals, `std::string`, and `std::vector<char>`.
 Objects of these types, and more, can be passed to `scn::scan`.
 To learn more about the requirements on these ranges, see the API documentation on source ranges.
 
@@ -18,7 +18,7 @@ This is similar in nature to `std::scanf`, and has virtually the same syntax as 
 In the format string, arguments are marked with curly braces `{}`.
 Each `{}` means that a single value is to be scanned from the source range.
 Because scnlib uses templates, type information is not required in the format string,
-like it is with `std::scanf` (e.g. `%%d`).
+like it is with `std::scanf` (e.g., `%%d`).
 
 The types of the values to scan are given as template parameters to `scn::scan`.
 `scn::scan` returns an object, which contains the read value.
@@ -45,10 +45,10 @@ auto result = scn::scan<int, int>("0 1 2", "{} {}");
 auto& [a, b] = result->values();
 // a == 0
 // b == 1
-// Note, that " 2" was not scanned,
+// Note that " 2" was not scanned,
 // because only two integers were requested
 
-// Scanning a string means scanning a "word" --
+// Scanning a string means scanning a "word",
 //   that is, until the next whitespace character
 // this is the same behavior as with iostreams
 auto result = scn::scan<std::string>("hello world", "{}");
@@ -132,7 +132,7 @@ Either the entire scanning operation succeeds, or a failure is returned.
 \code{.cpp}
 // "foo" is still not an integer
 auto result = scn::scan<int, int>("123 foo", "{} {}");
-// fails -- result == false
+// fails, result == false
 \endcode
 
 Oftentimes, the entire source range is not scanned, and the remainder of the range may be useful later.
@@ -181,7 +181,7 @@ if (auto result = scn::input<int>("{}")) {
 
 `scn::input` uses the C++ standard input stream (`std::cin`) internally,
 and it's synchronized with `std::cin` automatically.
-If iostreams are disabled, the C standard input handle (`stdin`) is used, instead.
+If iostreams are disabled, the C standard input handle (`stdin`) is used instead.
 
 `scn::prompt` is similar to `scn::input`,
 but it also prints the prompt given to it as an argument to `std::cout`
@@ -251,7 +251,7 @@ auto result = scn::scan<char>("abc", "ab{}");
 // result->value() == 'c'
 \endcode
 
-Inside the curly braces `{}`, flags can be specified, that govern the way the value is parsed.
+Inside the curly braces `{}`, flags that govern the way the value is parsed can be specified.
 The flags start with a colon `:` character.
 See the API Documentation for full reference on format string flags.
 
@@ -283,9 +283,9 @@ except when reading a string with `c`, which copies code units verbatim.
 
 This guide has so far only used narrow (`char`) ranges as input.
 scnlib also supports wide (`wchar_t`) ranges to be used as source ranges,
-including wide string literals and `std::wstring` s.
+including wide string literals and `std::wstring`s.
 Wide strings are expected to be encoded in UTF-16 (with platform endianness), or UTF-32,
-depending on the width of `wchar_t` (2 byte `wchar_t` -> UTF-16, 4 byte `wchar_t` -> UTF-32).
+depending on the width of `wchar_t` (2-byte `wchar_t` -> UTF-16, 4-byte `wchar_t` -> UTF-32).
 Scanning with a wide format string requires including `<scn/xchar.h>`.
 
 Any other character types are currently not supported.
@@ -398,8 +398,9 @@ Because of the way `std::locale` and the facilities around it work,
 parsing using a locale is significantly slower compared to not using one.
 This is because the library effectively has to fall back on iostreams for parsing.
 
-Just passing a locale isn't enough, but you'll need to opt-in to locale-specific parsing,
-by using the `L` flag in the format string. Not every type supports localized parsing.
+Just passing a locale isn't enough: you'll need to opt in to locale-specific parsing
+by using the `L` flag in the format string.
+Not every type supports localized parsing.
 
 \code{.cpp}
 auto result = scn::scan<double>(std::locale{"fi_FI.UTF-8"}, "2,73", "{:L}");
