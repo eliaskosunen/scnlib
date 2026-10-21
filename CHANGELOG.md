@@ -289,6 +289,9 @@ scn::scan<...>(strm, ...);
    subnormal value gave 2^-970
  * `%Ou` is now accepted in chrono format strings, `%OW` is no longer scanned as a weekday,
    and `%z` rejects minutes above 59
+ * Fix a custom scanner that inherits from a built-in one (like `scn::scanner<int>`) accepting
+   invalid format specifiers (like `{:q}` or `{:5.}`) in a runtime format string.
+   Previously, they were only rejected at compile time.
  * Documentation fixes, and documentation for scanning dates and times
 
 ## 4.0.1

@@ -11712,8 +11712,11 @@ constexpr typename ParseCtx::iterator scanner_parse_for_builtin_type(
     auto checker =
         detail::specs_checker<handler_type>(handler_type(specs), type);
 
-    const auto it =
-        detail::parse_format_specs(to_address(begin), to_address(end), checker);
+    // An empty range has no specs (`{}`), which isn't an error
+    const auto it = begin == end
+                        ? to_address(begin)
+                        : detail::parse_format_specs(to_address(begin),
+                                                     to_address(end), checker);
 
     switch (type) {
         case arg_type::none_type:
@@ -11801,6 +11804,11 @@ constexpr typename ParseCtx::iterator scanner_parse_for_builtin_type(
 #endif
     }
 #endif
+
+    // At compile time, the checker has already failed the constant evaluation
+    if (auto e = checker.get_error(); SCN_UNLIKELY(!e)) {
+        pctx.on_error(e.error().msg());
+    }
 
     return it;
 }
