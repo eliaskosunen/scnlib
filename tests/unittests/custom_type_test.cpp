@@ -205,6 +205,33 @@ TEST(CustomTypeTest,
     EXPECT_EQ(val, 0x123);
 }
 
+TEST(CustomTypeTest, IntegerWrapperWithInvalidRuntimeFormatString)
+{
+    for (auto fmt : {"{:q}", "{:0}", "{:5.}", "{:.0}", "{:5.3}", "{:05}",
+                     "{:<5}", "{:3s}", "{0:5.}"}) {
+        auto result =
+            scn::scan<integer_wrapper>("12345", scn::runtime_format(fmt));
+        ASSERT_THAT(result, FailedWith(scn::scan_error::invalid_format_string))
+            << fmt;
+
+        // Same message as for the built-in type
+        auto int_result = scn::scan<int>("12345", scn::runtime_format(fmt));
+        ASSERT_THAT(int_result,
+                    FailedWith(scn::scan_error::invalid_format_string))
+            << fmt;
+        EXPECT_STREQ(result.error().msg(), int_result.error().msg()) << fmt;
+    }
+}
+
+TEST(CustomTypeTest, IntegerWrapperWithWidthInRuntimeFormatString)
+{
+    auto result =
+        scn::scan<integer_wrapper>("12345", scn::runtime_format("{:3}"));
+    ASSERT_THAT(result, Succeeded());
+    EXPECT_EQ(result->value().value, 123);
+    EXPECT_STREQ(result->begin(), "45");
+}
+
 // Wrapper over a variant,
 // with fully custom format string parsing
 struct variant_wrapper {
