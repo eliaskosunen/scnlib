@@ -5461,6 +5461,9 @@ auto prepare_read_source(Source& source, unsigned flags, CharT radix_point)
             return result_type{kind_type::hex_with_prefix, sign_result.second,
                                start, std::nullopt};
         }
+        if (auto r = check_following_digit(start, 16); !r) {
+            return unexpected(r.error());
+        }
         return result_type{kind_type::hex_without_prefix, sign_result.second,
                            start, std::nullopt};
     }
