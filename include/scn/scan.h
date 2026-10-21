@@ -11917,6 +11917,9 @@ internal_skip_classic_whitespace(Range r, bool allow_exhaustion);
 #define SCN_DECLARE_EXTERN_SCANNER_SCAN_FOR_CTX(Context)                  \
     SCN_DECLARE_EXTERN_SCANNER_SCAN_FOR_TYPE(char, Context)               \
     SCN_DECLARE_EXTERN_SCANNER_SCAN_FOR_TYPE(wchar_t, Context)            \
+    SCN_DECLARE_EXTERN_SCANNER_SCAN_FOR_TYPE(char32_t, Context)           \
+    SCN_DECLARE_EXTERN_SCANNER_SCAN_FOR_TYPE(bool, Context)               \
+    SCN_DECLARE_EXTERN_SCANNER_SCAN_FOR_TYPE(void*, Context)              \
     SCN_DECLARE_EXTERN_SCANNER_SCAN_FOR_TYPE(signed char, Context)        \
     SCN_DECLARE_EXTERN_SCANNER_SCAN_FOR_TYPE(short, Context)              \
     SCN_DECLARE_EXTERN_SCANNER_SCAN_FOR_TYPE(int, Context)                \
