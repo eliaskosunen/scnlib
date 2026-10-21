@@ -110,6 +110,23 @@ TEST(FloatTest, HexFloat)
     EXPECT_DOUBLE_EQ(result->value(), 2047.75);
 }
 
+TEST(FloatTest, HexFloatWithoutPrefix)
+{
+    auto result = scn::scan<double>("-1.8p3", "{:a}");
+    ASSERT_THAT(result, Succeeded());
+    EXPECT_DOUBLE_EQ(result->value(), -12.0);
+
+    for (std::string_view source : {"--2", "-+2", "+-2", "- 2", "-x2"}) {
+        EXPECT_THAT(scn::scan<double>(source, "{:a}"),
+                    FailedWith(scn::scan_error::invalid_scanned_value))
+            << source;
+        EXPECT_THAT(scn::scan<double>(
+                        std::deque<char>(source.begin(), source.end()), "{:a}"),
+                    FailedWith(scn::scan_error::invalid_scanned_value))
+            << source;
+    }
+}
+
 TEST(FloatTest, Infinity)
 {
     auto result = scn::scan<double>("inf", "{}");
