@@ -231,6 +231,50 @@ TEST(RangesTest, WideMap)
     EXPECT_THAT(result->range(), IsEmptyRange());
 }
 
+TEST(RangesTest, WcharVectorFromNarrowSource)
+{
+    auto result = scn::scan<std::vector<wchar_t>>("[65, 66]",
+                                                  scn::runtime_format("{:d}"));
+    ASSERT_THAT(result, Succeeded());
+    EXPECT_THAT(result->value(), testing::ElementsAre(L'A', L'B'));
+    EXPECT_THAT(result->range(), IsEmptyRange());
+
+    for (auto fmt : {"{}", "{:c}"}) {
+        EXPECT_THAT(
+            scn::scan<std::vector<wchar_t>>("[A, B]", scn::runtime_format(fmt)),
+            FailedWith(scn::scan_error::invalid_format_string))
+            << fmt;
+    }
+}
+
+// Each element type needs its scanner instantiated in the library
+TEST(RangesTest, VectorOfEachBuiltinType)
+{
+    auto bools = scn::scan<std::vector<bool>>("[1, 0]", "{}");
+    ASSERT_THAT(bools, Succeeded());
+    EXPECT_THAT(bools->value(), testing::ElementsAre(true, false));
+
+    auto code_points = scn::scan<std::vector<char32_t>>(L"[a]", L"{}");
+    ASSERT_THAT(code_points, Succeeded());
+    EXPECT_THAT(code_points->value(), testing::ElementsAre(U'a'));
+
+    auto pointers = scn::scan<std::vector<void*>>("[0x10]", "{}");
+    ASSERT_THAT(pointers, Succeeded());
+    EXPECT_THAT(pointers->value(),
+                testing::ElementsAre(reinterpret_cast<void*>(0x10)));
+
+#if SCN_HAS_INT128
+    auto int128s = scn::scan<std::vector<scn::int128>>("[-2]", "{}");
+    ASSERT_THAT(int128s, Succeeded());
+    EXPECT_THAT(int128s->value(), testing::ElementsAre(scn::int128{-2}));
+#endif
+#if SCN_HAS_STD_F32
+    auto float32s = scn::scan<std::vector<std::float32_t>>("[1.5]", "{}");
+    ASSERT_THAT(float32s, Succeeded());
+    EXPECT_THAT(float32s->value(), testing::ElementsAre(1.5f32));
+#endif
+}
+
 TEST(RangesTest, Tuple)
 {
     auto result = scn::scan<std::tuple<int, double>>("(1, 2.5) x", "{}");

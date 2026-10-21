@@ -110,6 +110,35 @@ TEST(CharTest, WcharFromNarrowWithIntegerPresentation)
     EXPECT_EQ(result->value(), static_cast<wchar_t>(42));
     EXPECT_THAT(result->range(), IsEmptyRange());
 }
+
+namespace {
+struct wchar_wrapper {
+    wchar_t value{};
+};
+}  // namespace
+
+template <>
+struct scn::scanner<wchar_wrapper, char> : scn::scanner<wchar_t, char> {
+    template <typename Context>
+    auto scan(wchar_wrapper& val, Context& ctx) const
+        -> scn::scan_expected<typename Context::iterator>
+    {
+        return scn::scanner<wchar_t, char>::scan(val.value, ctx);
+    }
+};
+
+TEST(CharTest, WcharScannerSubclassFromNarrowWithIntegerPresentation)
+{
+    auto result = scn::scan<wchar_wrapper>("42", scn::runtime_format("{:d}"));
+    ASSERT_THAT(result, Succeeded());
+    EXPECT_EQ(result->value().value, static_cast<wchar_t>(42));
+
+    for (auto fmt : {"{}", "{:c}"}) {
+        EXPECT_THAT(scn::scan<wchar_wrapper>("a", scn::runtime_format(fmt)),
+                    FailedWith(scn::scan_error::invalid_format_string))
+            << fmt;
+    }
+}
 TEST(CharTest, WcharFromWide)
 {
     auto result = scn::scan<wchar_t>(L"abc", L"{}");

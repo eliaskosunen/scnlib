@@ -206,8 +206,54 @@ scan_expected<ranges::iterator_t<Range>> internal_skip_classic_whitespace(
     template SCN_PUBLIC scan_expected<Context::iterator> \
     scanner_scan_for_builtin_type(T&, Context&, const format_specs&);
 
+#if SCN_HAS_INT128
+#define SCN_DEFINE_SCANNER_SCAN_FOR_INT128(Context)   \
+    SCN_DEFINE_SCANNER_SCAN_FOR_TYPE(int128, Context) \
+    SCN_DEFINE_SCANNER_SCAN_FOR_TYPE(uint128, Context)
+#else
+#define SCN_DEFINE_SCANNER_SCAN_FOR_INT128(Context) /* int128 */
+#endif
+
+#if SCN_HAS_STD_F16
+#define SCN_DEFINE_SCANNER_SCAN_FOR_F16(Context) \
+    SCN_DEFINE_SCANNER_SCAN_FOR_TYPE(std::float16_t, Context)
+#else
+#define SCN_DEFINE_SCANNER_SCAN_FOR_F16(Context) /* std::float16_t */
+#endif
+
+#if SCN_HAS_STD_F32
+#define SCN_DEFINE_SCANNER_SCAN_FOR_F32(Context) \
+    SCN_DEFINE_SCANNER_SCAN_FOR_TYPE(std::float32_t, Context)
+#else
+#define SCN_DEFINE_SCANNER_SCAN_FOR_F32(Context) /* std::float32_t */
+#endif
+
+#if SCN_HAS_STD_F64
+#define SCN_DEFINE_SCANNER_SCAN_FOR_F64(Context) \
+    SCN_DEFINE_SCANNER_SCAN_FOR_TYPE(std::float64_t, Context)
+#else
+#define SCN_DEFINE_SCANNER_SCAN_FOR_F64(Context) /* std::float64_t */
+#endif
+
+#if SCN_HAS_STD_F128
+#define SCN_DEFINE_SCANNER_SCAN_FOR_F128(Context) \
+    SCN_DEFINE_SCANNER_SCAN_FOR_TYPE(std::float128_t, Context)
+#else
+#define SCN_DEFINE_SCANNER_SCAN_FOR_F128(Context) /* std::float128_t */
+#endif
+
+#if SCN_HAS_STD_BF16
+#define SCN_DEFINE_SCANNER_SCAN_FOR_BF16(Context) \
+    SCN_DEFINE_SCANNER_SCAN_FOR_TYPE(std::bfloat16_t, Context)
+#else
+#define SCN_DEFINE_SCANNER_SCAN_FOR_BF16(Context) /* std::bfloat16_t */
+#endif
+
 #define SCN_DEFINE_SCANNER_SCAN_FOR_CTX(Context)                               \
     SCN_DEFINE_SCANNER_SCAN_FOR_TYPE(Context::char_type, Context)              \
+    SCN_DEFINE_SCANNER_SCAN_FOR_TYPE(char32_t, Context)                        \
+    SCN_DEFINE_SCANNER_SCAN_FOR_TYPE(bool, Context)                            \
+    SCN_DEFINE_SCANNER_SCAN_FOR_TYPE(void*, Context)                           \
     SCN_DEFINE_SCANNER_SCAN_FOR_TYPE(signed char, Context)                     \
     SCN_DEFINE_SCANNER_SCAN_FOR_TYPE(short, Context)                           \
     SCN_DEFINE_SCANNER_SCAN_FOR_TYPE(int, Context)                             \
@@ -227,11 +273,19 @@ scan_expected<ranges::iterator_t<Range>> internal_skip_classic_whitespace(
     SCN_DEFINE_SCANNER_SCAN_FOR_TYPE(std::wstring_view, Context)               \
     SCN_DEFINE_SCANNER_SCAN_FOR_TYPE(regex_matches, Context)                   \
     SCN_DEFINE_SCANNER_SCAN_FOR_TYPE(wregex_matches, Context)                  \
+    SCN_DEFINE_SCANNER_SCAN_FOR_INT128(Context)                                \
+    SCN_DEFINE_SCANNER_SCAN_FOR_F16(Context)                                   \
+    SCN_DEFINE_SCANNER_SCAN_FOR_F32(Context)                                   \
+    SCN_DEFINE_SCANNER_SCAN_FOR_F64(Context)                                   \
+    SCN_DEFINE_SCANNER_SCAN_FOR_F128(Context)                                  \
+    SCN_DEFINE_SCANNER_SCAN_FOR_BF16(Context)                                  \
     template SCN_PUBLIC scan_expected<ranges::iterator_t<Context::range_type>> \
     internal_skip_classic_whitespace(Context::range_type, bool);
 
 SCN_DEFINE_SCANNER_SCAN_FOR_CTX(scan_context)
 SCN_DEFINE_SCANNER_SCAN_FOR_CTX(wscan_context)
+// Only with an integer presentation type
+SCN_DEFINE_SCANNER_SCAN_FOR_TYPE(wchar_t, scan_context)
 
 /////////////////////////////////////////////////////////////////
 // File support

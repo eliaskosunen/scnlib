@@ -292,6 +292,9 @@ scn::scan<...>(strm, ...);
  * Fix a custom scanner that inherits from a built-in one (like `scn::scanner<int>`) accepting
    invalid format specifiers (like `{:q}` or `{:5.}`) in a runtime format string.
    Previously, they were only rejected at compile time.
+ * Fix linker errors when scanning a range or a custom scanner inheriting from a built-in one
+   uses the scanner of `bool`, `char32_t`, or `void*`,
+   or of `wchar_t` with a narrow source (like `scn::scan<std::vector<bool>>(...)`).
  * Documentation fixes, and documentation for scanning dates and times
 
 ## 4.0.1
