@@ -2956,11 +2956,25 @@ auto read_until_code_point(Range range, function_ref<bool(char32_t)> pred)
     return it;
 }
 
+// Unlike `read_until_code_point`, stops at an invalid code point
 template <typename Range>
 auto read_while_code_point(Range range, function_ref<bool(char32_t)> pred)
     -> ranges::iterator_t<Range>
 {
-    return read_until_code_point(range, std::not_fn(pred));
+    auto it = range.begin();
+    while (it != range.end()) {
+        const auto val =
+            read_code_point_into(ranges::subrange{it, range.end()});
+        if (!val.is_valid() ||
+            !pred(detail::decode_code_point_exhaustive(
+                std::basic_string_view<detail::char_t<Range>>{
+                    val.codepoint.data(), val.codepoint.size()}))) {
+            return it;
+        }
+        it = val.iterator;
+    }
+
+    return it;
 }
 
 // `segment` without its last code point, if that's incomplete:
@@ -3036,21 +3050,9 @@ auto read_while_classic_space(Range range) -> ranges::iterator_t<Range>
             ranges::advance(it, static_cast<std::ptrdiff_t>(seg.size()));
         }
 
-        // An invalid code point is not a space, like in the fast path above
-        // and for contiguous ranges.
-        // `read_while_code_point` would skip it, so it can't be used here.
-        while (it != range.end()) {
-            const auto val =
-                read_code_point_into(ranges::subrange{it, range.end()});
-            if (!val.is_valid() ||
-                !detail::is_cp_space(detail::decode_code_point_exhaustive(
-                    std::basic_string_view<detail::char_t<Range>>{
-                        val.codepoint.data(), val.codepoint.size()}))) {
-                return it;
-            }
-            it = val.iterator;
-        }
-        return it;
+        return read_while_code_point(
+            ranges::subrange{it, range.end()},
+            [](char32_t cp) noexcept { return detail::is_cp_space(cp); });
     }
 }
 

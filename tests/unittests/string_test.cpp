@@ -246,6 +246,79 @@ TEST(StringTest, CharacterSetRangeAcrossAsciiBoundaryInverted)
                  "b");
 }
 
+// An invalid code point is in no set: a non-inverted set stops before it,
+// with or without non-ASCII members
+TEST(StringTest, CharacterSetStopsAtInvalidCodePoint)
+{
+    const std::string_view input =
+        "ab\xff"
+        "cd";
+    for (auto fmt : {"{:[a-z]}", "{:[a-z\xc3\xa4]}"}) {
+        auto result = scn::scan<std::string>(input, scn::runtime_format(fmt));
+        ASSERT_THAT(result, Succeeded()) << fmt;
+        EXPECT_EQ(result->value(), "ab") << fmt;
+        EXPECT_EQ(result->begin(), input.begin() + 2) << fmt;
+
+        auto view =
+            scn::scan<std::string_view>(input, scn::runtime_format(fmt));
+        ASSERT_THAT(view, Succeeded()) << fmt;
+        EXPECT_EQ(view->value(), "ab") << fmt;
+    }
+}
+
+// Fails because nothing matched, not because of the invalid encoding
+TEST(StringTest, CharacterSetDoesNotMatchLeadingInvalidCodePoint)
+{
+    for (auto fmt : {"{:[a-z]}", "{:[a-z\xc3\xa4]}"}) {
+        auto result = scn::scan<std::string>(
+            "\xff"
+            "cd",
+            scn::runtime_format(fmt));
+        ASSERT_THAT(result, FailedWith(scn::scan_error::invalid_scanned_value))
+            << fmt;
+        EXPECT_STREQ(result.error().msg(),
+                     "No characters matched in [character set]")
+            << fmt;
+    }
+}
+
+// An inverted set consumes an invalid code point, and the result fails
+// validation
+TEST(StringTest, InvertedCharacterSetRejectsInvalidCodePoint)
+{
+    for (auto fmt : {"{:[^,]}", "{:[^,\xc3\xa4]}"}) {
+        EXPECT_THAT(scn::scan<std::string>("ab\xff"
+                                           "cd,x",
+                                           scn::runtime_format(fmt)),
+                    FailedWith(scn::scan_error::invalid_scanned_value))
+            << fmt;
+        EXPECT_THAT(scn::scan<std::string_view>("\xff"
+                                                "cd,x",
+                                                scn::runtime_format(fmt)),
+                    FailedWith(scn::scan_error::invalid_scanned_value))
+            << fmt;
+    }
+}
+
+// A low surrogate can't start a UTF-16 code point, unlike a high surrogate
+// followed by something else, so this was skipped with a 16-bit wchar_t
+TEST(StringTest, CharacterSetStopsAtLoneSurrogateWide)
+{
+    std::wstring input = L"ab";
+    input.push_back(static_cast<wchar_t>(0xdc00));
+    input += L"cd,x";
+    for (auto fmt : {L"{:[a-z]}", L"{:[a-zä]}"}) {
+        auto result = scn::scan<std::wstring>(input, scn::runtime_format(fmt));
+        ASSERT_THAT(result, Succeeded());
+        EXPECT_EQ(result->value(), L"ab");
+        EXPECT_EQ(result->begin(), input.begin() + 2);
+    }
+    for (auto fmt : {L"{:[^,]}", L"{:[^,ä]}"}) {
+        EXPECT_THAT(scn::scan<std::wstring>(input, scn::runtime_format(fmt)),
+                    FailedWith(scn::scan_error::invalid_scanned_value));
+    }
+}
+
 TEST(StringTest, CharacterSetLeadingBracket)
 {
     auto result = scn::scan<std::string>("a]bc]d", "{:[]abc]}");
