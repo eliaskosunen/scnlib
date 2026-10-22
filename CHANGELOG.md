@@ -233,6 +233,8 @@ scn::scan<...>(strm, ...);
  * Fix scanning a `char32_t`: empty input was read out of bounds,
    and invalid or truncated UTF-8, surrogates, and values above U+10FFFF weren't rejected
  * Fix character set ranges crossing the ASCII boundary
+ * An invalid code point no longer matches a character set (`{:[...]}`) with non-ASCII characters in it.
+   The value now ends before it, like with a set of only ASCII characters, instead of failing with `invalid_scanned_value`
  * Fix characters outside the BMP being transcoded with an invalid low surrogate when scanning a narrow source
    into a wide string with a 16-bit `wchar_t` (Windows)
  * `scn::scan_int` returns an error for an invalid base, and rejects unsupported types at compile time instead of failing to link.
