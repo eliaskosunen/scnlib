@@ -183,6 +183,160 @@ TEST(StringTest, CharacterPresentationWideStringFromNarrowSource)
     }
 }
 
+TEST(StringTest, UnicodePresentationRequiresWidthOrPrecision)
+{
+    EXPECT_THAT(scn::scan<std::string>("abc def", scn::runtime_format("{:U}")),
+                FailedWith(scn::scan_error::invalid_format_string));
+    EXPECT_THAT(
+        scn::scan<std::wstring>(L"abc def", scn::runtime_format(L"{:U}")),
+        FailedWith(scn::scan_error::invalid_format_string));
+}
+
+TEST(StringTest, UnicodePresentationWithWidth)
+{
+    auto result = scn::scan<std::string>("abc def", "{:5U}");
+    ASSERT_THAT(result, Succeeded());
+    EXPECT_STREQ(result->begin(), "ef");
+    EXPECT_EQ(result->value(), "abc d");
+
+    auto with_precision = scn::scan<std::string>("abc def", "{:2.5U}");
+    ASSERT_THAT(with_precision, Succeeded());
+    EXPECT_STREQ(with_precision->begin(), "ef");
+    EXPECT_EQ(with_precision->value(), "abc d");
+}
+
+// U+00E4 is two bytes, and `U` counts it as one
+TEST(StringTest, UnicodePresentationWithWidthFromNonContiguousSource)
+{
+    const auto input = std::string_view{
+        "a\xc3\xa4"
+        "bcd"};
+    const auto source = std::deque<char>(input.begin(), input.end());
+    auto result = scn::scan<std::string>(source, "{:4U}");
+    ASSERT_THAT(result, Succeeded());
+    EXPECT_EQ(result->value(),
+              "a\xc3\xa4"
+              "bc");
+    EXPECT_EQ(std::distance(source.begin(), result->begin()), 5);
+
+    const auto short_source = std::deque<char>{'a', 'b', 'c'};
+    EXPECT_THAT(scn::scan<std::string>(short_source, "{:4U}"),
+                FailedWith(scn::scan_error::length_too_short));
+}
+
+#if !SCN_DISABLE_IOSTREAM
+TEST(StringTest, UnicodePresentationWithWidthFromIstream)
+{
+    std::istringstream stream{
+        "a\xc3\xa4"
+        "bcd"};
+    auto result = scn::scan<std::string>(stream, "{:4U}");
+    ASSERT_THAT(result, Succeeded());
+    EXPECT_EQ(result->value(),
+              "a\xc3\xa4"
+              "bc");
+    std::string rest;
+    std::getline(stream, rest);
+    EXPECT_EQ(rest, "d");
+
+    std::istringstream short_stream{"abc"};
+    EXPECT_THAT(scn::scan<std::string>(short_stream, "{:4U}"),
+                FailedWith(scn::scan_error::length_too_short));
+}
+#endif
+
+TEST(StringTest, UnicodePresentationDoesNotSkipLeadingWhitespace)
+{
+    auto result = scn::scan<std::string>(" a b", "{:3U}");
+    ASSERT_THAT(result, Succeeded());
+    EXPECT_EQ(result->value(), " a ");
+}
+
+TEST(StringTest, UnicodePresentationNarrowStringFromNarrowSource)
+{
+    auto result = scn::scan<std::string>("abc def", "{:.4U}");
+    ASSERT_THAT(result, Succeeded());
+    EXPECT_STREQ(result->begin(), "def");
+    EXPECT_EQ(result->value(), "abc ");
+}
+TEST(StringTest, UnicodePresentationWideStringFromWideSource)
+{
+    auto result = scn::scan<std::wstring>(L"abc def", L"{:.4U}");
+    ASSERT_THAT(result, Succeeded());
+    EXPECT_STREQ(result->begin(), L"def");
+    EXPECT_EQ(result->value(), L"abc ");
+}
+
+// Unlike `c`, `U` transcodes
+TEST(StringTest, UnicodePresentationNarrowStringFromWideSource)
+{
+    auto result = scn::scan<std::string>(L"a\u00e4\u4e16x", L"{:3U}");
+    ASSERT_THAT(result, Succeeded());
+    EXPECT_EQ(result->value(), "a\xc3\xa4\xe4\xb8\x96");
+    EXPECT_STREQ(result->begin(), L"x");
+}
+TEST(StringTest, UnicodePresentationWideStringFromNarrowSource)
+{
+    auto result = scn::scan<std::wstring>(
+        "a\xc3\xa4\xe4\xb8\x96"
+        "x",
+        "{:3U}");
+    ASSERT_THAT(result, Succeeded());
+    EXPECT_EQ(result->value(), L"a\u00e4\u4e16");
+    EXPECT_STREQ(result->begin(), "x");
+}
+
+// Behaves like a character set of every valid code point
+TEST(StringTest, UnicodePresentationStopsAtInvalidCodePoint)
+{
+    const std::string_view input =
+        "ab\xff"
+        "cd";
+    auto result = scn::scan<std::string>(input, "{:.5U}");
+    ASSERT_THAT(result, Succeeded());
+    EXPECT_EQ(result->value(), "ab");
+    EXPECT_EQ(result->begin(), input.begin() + 2);
+
+    auto exact = scn::scan<std::string>(input, "{:2U}");
+    ASSERT_THAT(exact, Succeeded());
+    EXPECT_EQ(exact->value(), "ab");
+
+    EXPECT_THAT(scn::scan<std::string>(input, "{:5U}"),
+                FailedWith(scn::scan_error::length_too_short));
+    EXPECT_THAT(scn::scan<std::string>(input, "{:3.5U}"),
+                FailedWith(scn::scan_error::length_too_short));
+}
+
+TEST(StringTest, UnicodePresentationDoesNotMatchLeadingInvalidCodePoint)
+{
+    for (auto fmt : {"{:.5U}", "{:2U}", "{:1.5U}"}) {
+        auto result = scn::scan<std::string>(
+            "\xff"
+            "cd",
+            scn::runtime_format(fmt));
+        ASSERT_THAT(result, FailedWith(scn::scan_error::invalid_scanned_value))
+            << fmt;
+        EXPECT_STREQ(result.error().msg(), "Invalid encoding in scanned string")
+            << fmt;
+    }
+}
+
+TEST(StringTest, UnicodePresentationStopsAtLoneSurrogateWide)
+{
+    std::wstring input = L"ab";
+    input.push_back(static_cast<wchar_t>(0xdc00));
+    input += L"cd";
+    auto result = scn::scan<std::wstring>(input, L"{:.5U}");
+    ASSERT_THAT(result, Succeeded());
+    EXPECT_EQ(result->value(), L"ab");
+    EXPECT_EQ(result->begin(), input.begin() + 2);
+
+    EXPECT_THAT(scn::scan<std::wstring>(input, L"{:5U}"),
+                FailedWith(scn::scan_error::length_too_short));
+    EXPECT_THAT(scn::scan<std::wstring>(input.substr(2), L"{:.5U}"),
+                FailedWith(scn::scan_error::invalid_scanned_value));
+}
+
 TEST(StringTest, CharacterSetPresentationNarrowStringFromNarrowSource)
 {
     auto result = scn::scan<std::string>("abc def", "{:[a-z]}");

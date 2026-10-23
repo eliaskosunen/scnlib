@@ -279,7 +279,14 @@ auto result = scn::scan_value<int>("123");
 scnlib expects all input given to it to be Unicode.
 All input with the character/value type of `char` is always assumed to be UTF-8.
 Encoding errors are checked for and may cause scanning to fail,
-except when reading a string with `c`, which copies code units verbatim.
+except when reading a string with `c`.
+The width and precision of strings count code points, except with `c`, which counts code units.
+
+To read a given number of characters into a string, whitespace included, use `U`:
+`{:3U}` reads exactly three code points, and `{:.3U}` from one to three.
+Like `s`, it validates the encoding, and transcodes the value if the character types differ.
+`c` reads code units instead, and copies them verbatim.
+Use it when a field is measured in code units, or the input isn't necessarily valid Unicode.
 
 This guide has so far only used narrow (`char`) ranges as input.
 scnlib also supports wide (`wchar_t`) ranges to be used as source ranges,

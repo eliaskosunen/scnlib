@@ -7201,6 +7201,48 @@ public:
     }
 };
 
+// Reads like a character set that contains every valid code point:
+// stops before an invalid sequence.
+// arg_reader has bounded the range to the field width or precision.
+template <typename SourceCharT>
+class code_point_reader_impl {
+public:
+    template <typename Range, typename ValueCharT>
+    auto read(Range range, std::basic_string<ValueCharT>& value)
+        -> scan_expected<ranges::iterator_t<Range>>
+    {
+        SCN_TRY(it, read_source_impl(range));
+        return read_string_impl(range, it, value);
+    }
+
+    template <typename Range, typename ValueCharT>
+    auto read(Range range, std::basic_string_view<ValueCharT>& value)
+        -> scan_expected<ranges::iterator_t<Range>>
+    {
+        SCN_TRY(it, read_source_impl(range));
+        return read_string_view_impl(range, it, value);
+    }
+
+private:
+    template <typename Range>
+    static auto read_source_impl(Range range)
+        -> scan_expected<ranges::iterator_t<Range>>
+    {
+        auto it = read_while_code_point(range, [](char32_t cp) noexcept {
+            return cp < detail::invalid_code_point;
+        });
+        if (it == range.begin()) {
+            if (auto e = eof_check(range); SCN_UNLIKELY(!e)) {
+                return unexpected(make_eof_scan_error(e));
+            }
+            return detail::unexpected_scan_error(
+                scan_error::invalid_scanned_value,
+                "Invalid encoding in scanned string");
+        }
+        return it;
+    }
+};
+
 struct nonascii_specs_handler {
     void on_charset_single(char32_t cp)
     {
@@ -7447,6 +7489,10 @@ public:
                 m_type = reader_type::character;
                 break;
 
+            case detail::presentation_type::unicode:
+                m_type = reader_type::code_point;
+                break;
+
             case detail::presentation_type::string_set:
                 m_type = reader_type::character_set;
                 break;
@@ -7494,6 +7540,7 @@ protected:
     enum class reader_type {
         word,
         character,
+        code_point,
         character_set,
 #if !SCN_DISABLE_REGEX
         regex,
@@ -7514,6 +7561,9 @@ protected:
 
             case reader_type::character:
                 return character_reader_impl<SourceCharT>{}.read(range, value);
+
+            case reader_type::code_point:
+                return code_point_reader_impl<SourceCharT>{}.read(range, value);
 
             case reader_type::character_set:
                 return character_set_reader_impl<SourceCharT>{}.read(

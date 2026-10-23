@@ -38,6 +38,8 @@ TEST(FormatStringParserTest, ParsePresentationType)
               scn::detail::parse_presentation_type('A'));
     EXPECT_EQ(scn::detail::parse_presentation_type('e'),
               scn::detail::parse_presentation_type(L'E'));
+    EXPECT_EQ(scn::detail::parse_presentation_type('U'),
+              scn::detail::presentation_type::unicode);
     EXPECT_EQ(scn::detail::parse_presentation_type('z'),
               scn::detail::presentation_type::none);
 }

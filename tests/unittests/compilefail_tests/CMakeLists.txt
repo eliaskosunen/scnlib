@@ -8,6 +8,7 @@ set(buildfail_sources
     charset_empty.cpp
     charset_reversed_range.cpp
     charset_unterminated.cpp
+    code_point_with_character_presentation.cpp
     code_point_with_integer_presentation.cpp
     integer_base_leading_zero.cpp
     integer_with_string_presentation.cpp
@@ -24,8 +25,11 @@ set(buildfail_sources
     scan_int_unsupported_type.cpp
     string_character_presentation_narrow_string_from_wide_source.cpp
     string_character_presentation_wide_string_from_narrow_source.cpp
+    string_unicode_presentation_without_width.cpp
     string_view_non_contiguous_source.cpp
     unterminated_argument_id.cpp
+    unicode_presentation_on_character.cpp
+    unicode_presentation_on_integer.cpp
     unterminated_format_specifier.cpp
     usertype_non_contiguous_source.cpp
     wchar_from_narrow_source.cpp

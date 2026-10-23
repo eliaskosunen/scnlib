@@ -9373,6 +9373,7 @@ enum class presentation_type : unsigned char {
     regex_escaped,  // '/..\/../.'
 #endif
     character,          // 'c'
+    unicode,            // 'U'
     escaped_character,  // '?'
     pointer,            // 'p'
 };
@@ -9742,6 +9743,8 @@ constexpr presentation_type parse_presentation_type(CharT type)
             return presentation_type::string;
         case 'c':
             return presentation_type::character;
+        case 'U':
+            return presentation_type::unicode;
         case '?':
             return presentation_type::escaped_character;
         case 'p':
@@ -10466,6 +10469,11 @@ template <typename ValueCharT, typename SourceCharT, typename Handler>
 constexpr void check_char_type_specs(const format_specs& specs,
                                      Handler&& handler)
 {
+    if (SCN_UNLIKELY(specs.type == presentation_type::unicode)) {
+        // clang-format off
+        return handler.on_error("'U' type specifier is only supported for char32_t and strings, use 'c' for code units");
+        // clang-format on
+    }
     if ((specs.type > presentation_type::int_hex &&
          specs.type != presentation_type::character) ||
         specs.type == presentation_type::int_arbitrary_base) {
@@ -10499,10 +10507,10 @@ constexpr void check_code_point_type_specs(const format_specs& specs,
                                            Handler&& handler)
 {
     if (specs.type != presentation_type::none &&
-        specs.type != presentation_type::character) {
+        specs.type != presentation_type::unicode) {
         SCN_UNLIKELY_ATTR
         // clang-format off
-        return handler.on_error("Invalid type specifier for a code point type, expected: c");
+        return handler.on_error("Invalid type specifier for a code point type, expected: U");
         // clang-format on
     }
     if (specs.width != 0 || specs.precision != 0) {
@@ -10549,9 +10557,17 @@ constexpr void check_string_type_specs(const format_specs& specs,
         }
         return;
     }
+    if (specs.type == presentation_type::unicode) {
+        if (SCN_UNLIKELY(specs.width == 0 && specs.precision == 0)) {
+            // clang-format off
+            return handler.on_error("'U' type specifier for strings requires a field width or precision");
+            // clang-format on
+        }
+        return;
+    }
     SCN_UNLIKELY_ATTR
     // clang-format off
-    handler.on_error("Invalid type specifier for a string type, expected one of: s, c, [character set], /regex/");
+    handler.on_error("Invalid type specifier for a string type, expected one of: s, c, U, [character set], /regex/");
     // clang-format on
 }
 
@@ -10689,7 +10705,7 @@ SCN_CLANG_IGNORE("-Wdocumentation-unknown-command")
  * type                ::= 'a' | 'A' | 'b' | 'B' | 'c' | 'd' |
  *                         'e' | 'E' | 'f' | 'F' | 'g' | 'G' |
  *                         'o' | 'p' | 's' | 'x' | 'X' | 'i' | 'u' |
- *                         ('r' | 'R') radix | character-set | regex
+ *                         'U' | ('r' | 'R') radix | character-set | regex
  * radix               ::= integer in range [2, 36]
  * character-set       ::= '[' ['^'] character-set-items ']'
  * regex               ::= '/' regex-pattern '/' [regex-flags]
@@ -10740,7 +10756,8 @@ SCN_CLANG_IGNORE("-Wdocumentation-unknown-command")
  * What counts as a unit depends on the type:
  *
  *  * Strings with the `c` type specifier: code units.
- *  * Other strings and `scn::regex_matches`: code points.
+ *  * Other strings (including those with `U`) and `scn::regex_matches`:
+ *    code points.
  *  * Numbers, pointers, and characters and booleans with an integer
  *    presentation type: code units.
  *    Every character of the value counts: the sign, base prefix, digits,
@@ -10825,6 +10842,21 @@ SCN_CLANG_IGNORE("-Wdocumentation-unknown-command")
  * Requires a field width or precision: `{:5c}` reads exactly 5 code units,
  * and `{:.5c}` from 1 to 5.
  * Doesn't skip preceding whitespace.
+ * </td>
+ * </tr>
+ * <tr>
+ * <td>`U`</td>
+ * <td>
+ * Copies code points from the input, including any whitespace.
+ * The encoding is validated, and the result is transcoded to the character
+ * type of the string, like with `s`.
+ * Reading stops before an invalid code point, like in a character set that
+ * contains every valid code point.
+ * Requires a field width or precision, which count code points:
+ * `{:5U}` reads exactly 5 code points, and `{:.5U}` from 1 to 5.
+ * Doesn't skip preceding whitespace.
+ * Unlike the other case pairs (like `x` and `X`), `U` is not the uppercase
+ * of `u`: it stands for Unicode.
  * </td>
  * </tr>
  * <tr>
@@ -10936,11 +10968,19 @@ SCN_CLANG_IGNORE("-Wdocumentation-unknown-command")
  * <tr>
  * <td>none, `c`</td>
  * <td>
- * Copies a character from the input: a code unit for `char` and `wchar_t`,
- * and a code point for `char32_t`.
+ * Copies a code unit from the input.
  * Leading whitespace is not skipped, and width and precision are not allowed.
  * A `wchar_t` is a single wide code unit, so scanning one from a narrow
  * source is an error.
+ * Not allowed for `char32_t`.
+ * </td>
+ * </tr>
+ * <tr>
+ * <td>none, `U`</td>
+ * <td>
+ * Copies a code point from the input.
+ * Only allowed for `char32_t`, and the default for it.
+ * Leading whitespace is not skipped, and width and precision are not allowed.
  * </td>
  * </tr>
  * <tr>
