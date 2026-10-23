@@ -20,8 +20,13 @@
 #include <array>
 #include <map>
 #include <set>
+#include <string>
 #include <tuple>
 #include <vector>
+
+#if __has_include(<format>)
+#include <format>
+#endif
 
 #include <scn/ranges.h>
 #include <scn/scan.h>
@@ -55,6 +60,22 @@ struct scn::scanner<arrow_separated, char> {
     }
 
     scn::range_scanner<int, char> m_underlying;
+};
+
+namespace {
+struct quoted_name {
+    std::string value;
+};
+}  // namespace
+
+template <>
+struct scn::scanner<quoted_name, char> : scn::scanner<std::string, char> {
+    template <typename Context>
+    auto scan(quoted_name& val, Context& ctx) const
+        -> scn::scan_expected<typename Context::iterator>
+    {
+        return scn::scanner<std::string, char>::scan(val.value, ctx);
+    }
 };
 
 TEST(RangesTest, VectorSequence)
@@ -254,7 +275,7 @@ TEST(RangesTest, VectorOfEachBuiltinType)
     ASSERT_THAT(bools, Succeeded());
     EXPECT_THAT(bools->value(), testing::ElementsAre(true, false));
 
-    auto code_points = scn::scan<std::vector<char32_t>>(L"[a]", L"{}");
+    auto code_points = scn::scan<std::vector<char32_t>>(L"['a']", L"{}");
     ASSERT_THAT(code_points, Succeeded());
     EXPECT_THAT(code_points->value(), testing::ElementsAre(U'a'));
 
@@ -292,6 +313,289 @@ TEST(RangesTest, WideTuple)
     EXPECT_DOUBLE_EQ(std::get<1>(result->value()), 2.5);
     EXPECT_THAT(result->range(), IsEmptyRange());
 }
+
+TEST(RangesTest, TupleWithStringAndChar)
+{
+    auto result = scn::scan<std::tuple<std::string, char, int>>(
+        R"(("a b", 'c', 3))", "{}");
+    ASSERT_THAT(result, Succeeded());
+    EXPECT_EQ(std::get<0>(result->value()), "a b");
+    EXPECT_EQ(std::get<1>(result->value()), 'c');
+    EXPECT_EQ(std::get<2>(result->value()), 3);
+}
+
+TEST(RangesTest, VectorOfStrings)
+{
+    auto result = scn::scan<std::vector<std::string>>(R"(["a", "b, c"])", "{}");
+    ASSERT_THAT(result, Succeeded());
+    EXPECT_THAT(result->value(), testing::ElementsAre("a", "b, c"));
+    EXPECT_THAT(result->range(), IsEmptyRange());
+}
+
+TEST(RangesTest, VectorOfWideStrings)
+{
+    auto result =
+        scn::scan<std::vector<std::wstring>>(LR"(["a", "b, c"])", L"{}");
+    ASSERT_THAT(result, Succeeded());
+    EXPECT_THAT(result->value(), testing::ElementsAre(L"a", L"b, c"));
+    EXPECT_THAT(result->range(), IsEmptyRange());
+}
+
+TEST(RangesTest, VectorOfWideStringsFromNarrowSource)
+{
+    auto result =
+        scn::scan<std::vector<std::wstring>>("[\"a\", \"\\u{e4}\"]", "{}");
+    ASSERT_THAT(result, Succeeded());
+    EXPECT_THAT(result->value(), testing::ElementsAre(L"a", L"\u00e4"));
+}
+
+TEST(RangesTest, VectorOfStringsWithEscapes)
+{
+    auto result = scn::scan<std::vector<std::string>>(
+        R"(["a\"b", "line\nbreak", "]"])", "{}");
+    ASSERT_THAT(result, Succeeded());
+    EXPECT_THAT(result->value(),
+                testing::ElementsAre("a\"b", "line\nbreak", "]"));
+    EXPECT_THAT(result->range(), IsEmptyRange());
+}
+
+TEST(RangesTest, VectorOfChars)
+{
+    auto result = scn::scan<std::vector<char>>("['a', 'b', '\\'', ',']", "{}");
+    ASSERT_THAT(result, Succeeded());
+    EXPECT_THAT(result->value(), testing::ElementsAre('a', 'b', '\'', ','));
+    EXPECT_THAT(result->range(), IsEmptyRange());
+}
+
+TEST(RangesTest, VectorOfWideChars)
+{
+    auto result = scn::scan<std::vector<wchar_t>>(L"['a', 'b']", L"{}");
+    ASSERT_THAT(result, Succeeded());
+    EXPECT_THAT(result->value(), testing::ElementsAre(L'a', L'b'));
+}
+
+TEST(RangesTest, VectorOfCodePointsFromNarrowSource)
+{
+    auto result = scn::scan<std::vector<char32_t>>("['a', '\\u{e4}']", "{}");
+    ASSERT_THAT(result, Succeeded());
+    EXPECT_THAT(result->value(), testing::ElementsAre(U'a', U'\u00e4'));
+}
+
+TEST(RangesTest, SetOfStrings)
+{
+    auto result = scn::scan<std::set<std::string>>(R"({"b", "a"})", "{}");
+    ASSERT_THAT(result, Succeeded());
+    EXPECT_THAT(result->value(), testing::ElementsAre("a", "b"));
+}
+
+TEST(RangesTest, SetOfStringsSpecOverridesQuoting)
+{
+    auto result = scn::scan<std::set<std::string>>("{b , a }",
+                                                   scn::runtime_format("{:s}"));
+    ASSERT_THAT(result, Succeeded());
+    EXPECT_THAT(result->value(), testing::ElementsAre("a", "b"));
+}
+
+TEST(RangesTest, MapOfStringToInt)
+{
+    auto result =
+        scn::scan<std::map<std::string, int>>(R"({"a": 1, "b c": 2})", "{}");
+    ASSERT_THAT(result, Succeeded());
+    EXPECT_THAT(
+        result->value(),
+        testing::ElementsAre(std::pair<const std::string, int>{"a", 1},
+                             std::pair<const std::string, int>{"b c", 2}));
+    EXPECT_THAT(result->range(), IsEmptyRange());
+}
+
+TEST(RangesTest, MapOfCharToString)
+{
+    auto result = scn::scan<std::map<char, std::string>>(
+        R"({'a': "x y", 'b': "z"})", "{}");
+    ASSERT_THAT(result, Succeeded());
+    EXPECT_THAT(
+        result->value(),
+        testing::ElementsAre(std::pair<const char, std::string>{'a', "x y"},
+                             std::pair<const char, std::string>{'b', "z"}));
+}
+
+TEST(RangesTest, PairInVector)
+{
+    auto result = scn::scan<std::vector<std::pair<std::string, int>>>(
+        R"([("a", 1), ("b, c", 2)])", "{}");
+    ASSERT_THAT(result, Succeeded());
+    EXPECT_THAT(result->value(),
+                testing::ElementsAre(std::pair<std::string, int>{"a", 1},
+                                     std::pair<std::string, int>{"b, c", 2}));
+}
+
+TEST(RangesTest, NestedVectorOfStrings)
+{
+    auto result = scn::scan<std::vector<std::vector<std::string>>>(
+        R"([["a", "b"], [], ["c d"]])", "{}");
+    ASSERT_THAT(result, Succeeded());
+    EXPECT_THAT(
+        result->value(),
+        testing::ElementsAre(testing::ElementsAre("a", "b"), testing::IsEmpty(),
+                             testing::ElementsAre("c d")));
+}
+
+TEST(RangesTest, MapOfStringToVectorOfStrings)
+{
+    auto result = scn::scan<std::map<std::string, std::vector<std::string>>>(
+        R"({"k": ["a", "b"], "l": []})", "{}");
+    ASSERT_THAT(result, Succeeded());
+    EXPECT_THAT(
+        result->value(),
+        testing::ElementsAre(testing::Pair("k", testing::ElementsAre("a", "b")),
+                             testing::Pair("l", testing::IsEmpty())));
+}
+
+TEST(RangesTest, UnquotedStringElementsFail)
+{
+    EXPECT_THAT(scn::scan<std::vector<std::string>>("[a, b]", "{}"),
+                FailedWith(scn::scan_error::invalid_scanned_value));
+    EXPECT_THAT(scn::scan<std::vector<char>>("[a, b]", "{}"),
+                FailedWith(scn::scan_error::invalid_scanned_value));
+    EXPECT_THAT((scn::scan<std::map<std::string, int>>("{a: 1}", "{}")),
+                FailedWith(scn::scan_error::invalid_scanned_value));
+}
+
+TEST(RangesTest, StringElementsSpecOverridesQuoting)
+{
+    auto result = scn::scan<std::vector<std::string>>(
+        "[a , b ]", scn::runtime_format("{:s}"));
+    ASSERT_THAT(result, Succeeded());
+    EXPECT_THAT(result->value(), testing::ElementsAre("a", "b"));
+}
+
+TEST(RangesTest, CharElementsSpecOverridesQuoting)
+{
+    auto result =
+        scn::scan<std::vector<char>>("[a,b]", scn::runtime_format("{:c}"));
+    ASSERT_THAT(result, Succeeded());
+    EXPECT_THAT(result->value(), testing::ElementsAre('a', 'b'));
+}
+
+TEST(RangesTest, StringElementsWithEmptySpecAreQuoted)
+{
+    auto result = scn::scan<std::vector<std::string>>(
+        R"(["a", "b c"])", scn::runtime_format("{:}"));
+    ASSERT_THAT(result, Succeeded());
+    EXPECT_THAT(result->value(), testing::ElementsAre("a", "b c"));
+}
+
+TEST(RangesTest, StringElementsWithWidth)
+{
+    auto result = scn::scan<std::vector<std::string>>(
+        "[abcde, fghij]", scn::runtime_format("{:5}"));
+    ASSERT_THAT(result, Succeeded());
+    EXPECT_THAT(result->value(), testing::ElementsAre("abcde", "fghij"));
+}
+
+TEST(RangesTest, CustomElementWithDebugFormatIsQuoted)
+{
+    auto result = scn::scan<std::vector<quoted_name>>(R"(["a b", "c"])", "{}");
+    ASSERT_THAT(result, Succeeded());
+    ASSERT_EQ(result->value().size(), 2u);
+    EXPECT_EQ(result->value()[0].value, "a b");
+    EXPECT_EQ(result->value()[1].value, "c");
+}
+
+TEST(RangesTest, CustomTupleElementWithDebugFormatIsQuoted)
+{
+    auto result =
+        scn::scan<std::tuple<quoted_name, int>>(R"(("a b", 1))", "{}");
+    ASSERT_THAT(result, Succeeded());
+    EXPECT_EQ(std::get<0>(result->value()).value, "a b");
+    EXPECT_EQ(std::get<1>(result->value()), 1);
+}
+
+TEST(RangesTest, OtherStringTypesHaveNoDebugFormat)
+{
+    struct other_char_traits : std::char_traits<char> {};
+    static_assert(
+        !scn::detail::has_set_debug_format<scn::scanner<
+            std::basic_string<char, other_char_traits>, char>>::value);
+    static_assert(scn::detail::has_set_debug_format<
+                  scn::scanner<std::string, char>>::value);
+}
+
+#if defined(__cpp_lib_format_ranges)
+TEST(RangesTest, StdFormatRoundTripStrings)
+{
+    const std::vector<std::string> v{"", "a b", "q\"'\\", "t\tn\n", "]},"};
+    const auto formatted = std::format("{}", v);
+    auto result = scn::scan<std::vector<std::string>>(formatted, "{}");
+    ASSERT_THAT(result, Succeeded());
+    EXPECT_EQ(result->value(), v);
+}
+
+TEST(RangesTest, StdFormatRoundTripChars)
+{
+    const std::vector<char> v{'a', '\'', '"', '\n', ',', ' '};
+    const auto formatted = std::format("{}", v);
+    auto result = scn::scan<std::vector<char>>(formatted, "{}");
+    ASSERT_THAT(result, Succeeded());
+    EXPECT_EQ(result->value(), v);
+}
+
+TEST(RangesTest, StdFormatRoundTripSet)
+{
+    const std::set<std::string> v{"x y", "z"};
+    const auto formatted = std::format("{}", v);
+    auto result = scn::scan<std::set<std::string>>(formatted, "{}");
+    ASSERT_THAT(result, Succeeded());
+    EXPECT_EQ(result->value(), v);
+}
+
+TEST(RangesTest, StdFormatRoundTripMap)
+{
+    const std::map<std::string, int> v{{"a", 1}, {"b, c", 2}};
+    const auto formatted = std::format("{}", v);
+    auto result = scn::scan<std::map<std::string, int>>(formatted, "{}");
+    ASSERT_THAT(result, Succeeded());
+    EXPECT_EQ(result->value(), v);
+}
+
+TEST(RangesTest, StdFormatRoundTripCharMap)
+{
+    const std::map<char, std::string> v{{'a', "x y"}, {'\'', "z"}};
+    const auto formatted = std::format("{}", v);
+    auto result = scn::scan<std::map<char, std::string>>(formatted, "{}");
+    ASSERT_THAT(result, Succeeded());
+    EXPECT_EQ(result->value(), v);
+}
+
+TEST(RangesTest, StdFormatRoundTripNested)
+{
+    const std::vector<std::vector<std::string>> v{{"a", "b"}, {}, {"c d"}};
+    const auto formatted = std::format("{}", v);
+    auto result =
+        scn::scan<std::vector<std::vector<std::string>>>(formatted, "{}");
+    ASSERT_THAT(result, Succeeded());
+    EXPECT_EQ(result->value(), v);
+}
+
+TEST(RangesTest, StdFormatRoundTripPairs)
+{
+    const std::vector<std::pair<std::string, int>> v{{"a", 1}, {"b c", 2}};
+    const auto formatted = std::format("{}", v);
+    auto result =
+        scn::scan<std::vector<std::pair<std::string, int>>>(formatted, "{}");
+    ASSERT_THAT(result, Succeeded());
+    EXPECT_EQ(result->value(), v);
+}
+
+TEST(RangesTest, StdFormatRoundTripWide)
+{
+    const std::vector<std::wstring> v{L"", L"a b", L"q\"'\\", L"t\tn\n"};
+    const auto formatted = std::format(L"{}", v);
+    auto result = scn::scan<std::vector<std::wstring>>(formatted, L"{}");
+    ASSERT_THAT(result, Succeeded());
+    EXPECT_EQ(result->value(), v);
+}
+#endif
 
 TEST(RangesTest, MultiCharacterSeparatorAndBrackets)
 {

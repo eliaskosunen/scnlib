@@ -112,6 +112,27 @@ using range_scanner_type = scanner<
     remove_cvref_t<decltype(range_mapper<CharT>().map(SCN_DECLVAL(ElementT&)))>,
     CharT>;
 
+template <typename Scanner, typename = void>
+struct has_set_debug_format : std::false_type {};
+template <typename Scanner>
+struct has_set_debug_format<
+    Scanner,
+    std::void_t<decltype(SCN_DECLVAL(Scanner&).set_debug_format())>>
+    : std::true_type {};
+
+// Like std::format, which writes the elements of ranges and tuples with `?`
+// where they support it, i.e. strings and characters quoted and escaped.
+template <typename Scanner>
+constexpr void set_debug_format_for_element(Scanner& s)
+{
+    if constexpr (has_set_debug_format<Scanner>::value) {
+        s.set_debug_format();
+    }
+    else {
+        SCN_UNUSED(s);
+    }
+}
+
 template <typename T>
 struct is_tuple_like
     : std::integral_constant<bool,
@@ -122,7 +143,7 @@ template <typename T, typename CharT>
 struct is_tuple_scannable : detail::is_tuple_scannable_impl<T, CharT> {};
 
 template <typename Tuple, typename F, std::size_t... Is>
-void tuple_for_each(std::index_sequence<Is...>, Tuple&& tuple, F&& f)
+constexpr void tuple_for_each(std::index_sequence<Is...>, Tuple&& tuple, F&& f)
 {
     using std::get;
     SCN_CLANG_PUSH
@@ -132,7 +153,7 @@ void tuple_for_each(std::index_sequence<Is...>, Tuple&& tuple, F&& f)
     SCN_UNUSED(ignored);
 }
 template <typename Tuple, typename F>
-void tuple_for_each(Tuple&& tuple, F&& f)
+constexpr void tuple_for_each(Tuple&& tuple, F&& f)
 {
     tuple_for_each(
         std::make_index_sequence<std::tuple_size_v<remove_cvref_t<Tuple>>>{},
@@ -314,6 +335,14 @@ private:
     }
 };
 
+template <typename Tuple, typename CharT, typename Indices>
+struct tuple_element_scanners;
+template <typename Tuple, typename CharT, std::size_t... Is>
+struct tuple_element_scanners<Tuple, CharT, std::index_sequence<Is...>> {
+    using type = std::tuple<
+        scanner<remove_cvref_t<std::tuple_element_t<Is, Tuple>>, CharT>...>;
+};
+
 template <typename T>
 struct is_std_pair : std::false_type {};
 template <typename First, typename Second>
@@ -338,7 +367,20 @@ public:
     template <typename ParseCtx>
     constexpr typename ParseCtx::iterator parse(ParseCtx& pctx)
     {
-        return pctx.begin();
+        // Tuples have no specs, and a non-empty one is left to the caller to
+        // reject. Each element parses the same empty spec.
+        const auto spec_begin = pctx.begin();
+        if (spec_begin != pctx.end() &&
+            *spec_begin != typename ParseCtx::char_type{'}'}) {
+            return spec_begin;
+        }
+        detail::tuple_for_each(m_scanners, [&](auto& element_scanner) {
+            pctx.advance_to(spec_begin);
+            (void)element_scanner.parse(pctx);
+            detail::set_debug_format_for_element(element_scanner);
+        });
+        pctx.advance_to(spec_begin);
+        return spec_begin;
     }
 
     template <typename Context>
@@ -359,7 +401,10 @@ private:
         scan_expected<void> err{};
         int index{};
 
-        auto callback = [&](auto& val) {
+        auto callback = [&](auto index_constant) {
+            auto& val = std::get<decltype(index_constant)::value>(value);
+            auto& element_scanner =
+                std::get<decltype(index_constant)::value>(m_scanners);
             if (SCN_UNLIKELY(!err)) {
                 return;
             }
@@ -375,8 +420,7 @@ private:
                 }
             }
 
-            scanner<detail::remove_cvref_t<decltype(val)>, CharT> s{};
-            if (auto e = s.scan(val, ctx); SCN_LIKELY(e)) {
+            if (auto e = element_scanner.scan(val, ctx); SCN_LIKELY(e)) {
                 ctx.advance_to(*e);
                 ++index;
             }
@@ -385,12 +429,26 @@ private:
             }
         };
 
-        detail::tuple_for_each(value, callback);
+        detail::tuple_for_each(
+            indices{}, index_constants(std::make_index_sequence<size>{}),
+            callback);
         if (SCN_UNLIKELY(!err)) {
             return unexpected(err.error());
         }
         return ctx.range().begin();
     }
+
+    static constexpr std::size_t size = std::tuple_size_v<Tuple>;
+    using indices = std::make_index_sequence<size>;
+
+    template <std::size_t... Is>
+    static constexpr auto index_constants(std::index_sequence<Is...>)
+    {
+        return std::make_tuple(std::integral_constant<std::size_t, Is>{}...);
+    }
+
+    typename detail::tuple_element_scanners<Tuple, CharT, indices>::type
+        m_scanners{};
 };
 
 template <typename T, typename CharT, typename Enable = void>
@@ -414,8 +472,16 @@ public:
     template <typename ParseCtx>
     constexpr typename ParseCtx::iterator parse(ParseCtx& pctx)
     {
-        // TODO
-        return m_underlying.parse(pctx);
+        // For `{}` and `{:}`, begin() points at the closing `}`
+        const auto spec_begin = pctx.begin();
+        const bool empty_spec =
+            spec_begin == pctx.end() ||
+            *spec_begin == typename ParseCtx::char_type{'}'};
+        const auto result = m_underlying.parse(pctx);
+        if (empty_spec) {
+            detail::set_debug_format_for_element(m_underlying);
+        }
+        return result;
     }
 
     template <typename Range, typename Context>
