@@ -100,17 +100,21 @@ Read all the values you need in a single call instead.
 \section faq-ranges Can I scan containers, tuples and pairs with scn/ranges.h?
 
 `<scn/ranges.h>` is experimental, and its behavior may change.
-It lets `scn::scan` read ranges (like `std::vector<int>`), sets, maps, pairs, and tuples
+It lets `scn::scan` read sequences (like `std::vector<int>`), sets, maps, pairs, and tuples
 in the `[1, 2, 3]` and `(1, 2)` notation of `std::format`.
 It has the following limitations:
- - Elements that read past the separator or the closing bracket don't work.
-   Strings are read until whitespace,
-   so scanning a `std::vector<std::string>` from `[a, b, c]`
-   fails with "Expected a range bracket or separator".
-   So does a `std::vector<char>`, because a `char` reads the space after a separator.
-   In practice, only element types like numbers work reliably.
- - The range format specifiers of `std::format` (like `n` and the separator options)
-   are not supported.
+ - String and character elements are quoted and escaped, like `std::format` writes them:
+   a `std::vector<std::string>` is read from `["a", "b, c"]`, and a `std::map<char, int>` from `{'a': 1}`.
+   Unquoted input, like `[a, b]`, is an error.
+ - Format specifiers for the elements of a sequence or a set come after a second colon, like in `std::format`:
+   `{::x}` reads a `std::vector<int>` from `[a, ff]`.
+   With any element specifiers, even empty ones (`{::}`), string and character elements are read unquoted.
+   With `{::s}`, a string ends at whitespace, so each separator needs a space before it (`[a , b ]`).
+   With `{::c}`, a character reads the space after a separator, so there can't be one (`[a,b]`).
+ - Maps, pairs, and tuples take no format specifiers, and always read string and character elements quoted.
+ - Other elements that read past the separator or the closing bracket don't work.
+ - The range format specifiers of `std::format`, which come before the second colon
+   (like `n`, `s`, or a width), are not supported, and are an error.
  - A range type with its own `scn::scanner` partial specialization
    (like `template <typename T> struct scn::scanner<my_range<T>, char>`)
    becomes ambiguous when `<scn/ranges.h>` is included.

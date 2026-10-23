@@ -98,6 +98,15 @@ scn::scan<...>(strm, ...);
  * The CMake options `SCN_USE_RTTI`, `SCN_USE_NATIVE_ARCH`, and `SCN_USE_HASWELL_ARCH` were removed.
    Use `CMAKE_CXX_FLAGS` instead, for example `-fno-rtti` (`/GR-` with MSVC), `-march=native`, or `-march=haswell`.
    Unlike the options, the flags also apply to the code compiled from the headers in your own targets.
+ * `<scn/ranges.h>` now reads string and character elements quoted and escaped, like `std::format` writes them:
+   `["a", "b"]` instead of `[a, b]`, and `{'a': 1}` for a `std::map<char, int>`.
+   Unquoted input no longer scans with `{}`.
+   Like with `std::format`, any format specifiers for the elements of a sequence or a set turn this off,
+   so `{::s}` reads `[a , b ]` into a `std::vector<std::string>`.
+   Maps, pairs, and tuples take no format specifiers, and always read string and character elements quoted.
+ * In `<scn/ranges.h>`, the format specifiers for the elements of a sequence or a set now come after a second colon,
+   like in `std::format`: `{::x}` instead of `{:x}`.
+   Range format specifiers before it (like `n`, `s`, or a width) are not supported, and are an error.
  * The CMake option `SCN_BENCHMARKS_BUILDTIME` was removed. The build time benchmark is run with `scripts/benchmark.py`.
 
 ### Changes
@@ -162,6 +171,8 @@ scn::scan<...>(strm, ...);
    `\a`, `\b`, `\f`, `\v`, `\?`, octal (`\0`, `\o{...}`), `\x` and `\u` without braces, `\U`, and `\N{...}`.
    Width and precision are not allowed.
    Like `std::formatter`, the scanners of these types have a `set_debug_format()` member function.
+   `<scn/ranges.h>` calls it for the elements of sequences, sets, maps, pairs, and tuples,
+   so what `std::format` writes for them (`["a", "b"]`, `{'a': 1}`, `("a", 'b')`) scans back.
  * A character set (`{:[...]}`) can now contain `]`, by putting it first, like in `scanf`:
    `{:[]abc]}`. This already worked in inverted sets (`{:[^]abc]}`).
  * `ranges::input_range`s can now be used as sources for `scn::scan`
