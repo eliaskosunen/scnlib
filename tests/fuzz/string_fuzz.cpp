@@ -40,8 +40,9 @@ void run(const std::uint8_t* data, std::size_t size)
 
     const auto inputs = make_input_views(data, size);
 
-    auto f = format_strings_type<char>{
-        "{}", "{:s}", "{:.64c}", "{:64c}", "{:.64U}", "{:64U}", "{:[A-Za-z]}"};
+    auto f = format_strings_type<char>{"{}",     "{:s}",       "{:.64c}",
+                                       "{:64c}", "{:.64U}",    "{:64U}",
+                                       "{:?}",   "{:[A-Za-z]}"};
 #if !SCN_DISABLE_REGEX
     f.push_back("{:/[A-Za-z]+/}");
     f.push_back("{:/[[:alnum:]]+/}");
@@ -49,9 +50,9 @@ void run(const std::uint8_t* data, std::size_t size)
 #endif
     do_basic_run(inputs.narrow, f);
 
-    auto wf = format_strings_type<wchar_t>{
-        L"{}",      L"{:s}",   L"{:.64c}",    L"{:64c}",
-        L"{:.64U}", L"{:64U}", L"{:[A-Za-z]}"};
+    auto wf = format_strings_type<wchar_t>{L"{}",     L"{:s}",       L"{:.64c}",
+                                           L"{:64c}", L"{:.64U}",    L"{:64U}",
+                                           L"{:?}",   L"{:[A-Za-z]}"};
 #if !SCN_DISABLE_REGEX
     wf.push_back(L"{:/[A-Za-z]+/}");
     wf.push_back(L"{:/[[:alnum:]]+/}");

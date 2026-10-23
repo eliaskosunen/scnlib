@@ -24,6 +24,8 @@
 #include <deque>
 #include <limits>
 #include <string>
+#include <string_view>
+#include <utility>
 
 namespace {
 template <typename CharT>
@@ -262,8 +264,8 @@ TEST(CharTest, UnicodePresentationRejectedForOtherTypes)
 
 TEST(CharTest, CodePointRejectsIntegerPresentation)
 {
-    constexpr std::array<const char*, 5> formats{"{:d}", "{:x}", "{:b}", "{:s}",
-                                                 "{:?}"};
+    constexpr std::array<const char*, 4> formats{"{:d}", "{:x}", "{:b}",
+                                                 "{:s}"};
     for (auto fmt : formats) {
         EXPECT_THAT(scn::scan<char32_t>("a", scn::runtime_format(fmt)),
                     FailedWith(scn::scan_error::invalid_format_string))
@@ -355,7 +357,8 @@ TEST(CharTest, CodePointFromWideEmptyInput)
 
 TEST(CharTest, WidthAndPrecisionRejectedWithoutIntegerPresentation)
 {
-    for (auto fmt : {"{:3}", "{:.3}", "{:3c}", "{:.3c}", "{:2.3}"}) {
+    for (auto fmt :
+         {"{:3}", "{:.3}", "{:3c}", "{:.3c}", "{:2.3}", "{:3?}", "{:.3?}"}) {
         EXPECT_THAT(scn::scan<char>("abcd", scn::runtime_format(fmt)),
                     FailedWith(scn::scan_error::invalid_format_string))
             << fmt;
@@ -363,7 +366,8 @@ TEST(CharTest, WidthAndPrecisionRejectedWithoutIntegerPresentation)
                     FailedWith(scn::scan_error::invalid_format_string))
             << fmt;
     }
-    for (auto fmt : {L"{:3}", L"{:.3}", L"{:3c}", L"{:.3c}", L"{:2.3}"}) {
+    for (auto fmt : {L"{:3}", L"{:.3}", L"{:3c}", L"{:.3c}", L"{:2.3}",
+                     L"{:3?}", L"{:.3?}"}) {
         EXPECT_THAT(scn::scan<wchar_t>(L"abcd", scn::runtime_format(fmt)),
                     FailedWith(scn::scan_error::invalid_format_string));
     }
@@ -371,7 +375,7 @@ TEST(CharTest, WidthAndPrecisionRejectedWithoutIntegerPresentation)
 
 TEST(CharTest, WidthAndPrecisionRejectedForCodePoint)
 {
-    for (auto fmt : {"{:3}", "{:.3}", "{:3U}", "{:.3U}"}) {
+    for (auto fmt : {"{:3}", "{:.3}", "{:3U}", "{:.3U}", "{:3?}", "{:.3?}"}) {
         EXPECT_THAT(scn::scan<char32_t>("abcd", scn::runtime_format(fmt)),
                     FailedWith(scn::scan_error::invalid_format_string))
             << fmt;
@@ -424,4 +428,212 @@ TEST(CharTest, CharacterPresentationKeepsLeadingWhitespace)
     ASSERT_THAT(result, Succeeded());
     EXPECT_EQ(result->value(), ' ');
     EXPECT_STREQ(result->begin(), "a");
+}
+
+TEST(CharTest, EscapedPresentationChar)
+{
+    auto plain = scn::scan<char>("'a' rest", "{:?}");
+    ASSERT_THAT(plain, Succeeded());
+    EXPECT_EQ(plain->value(), 'a');
+    EXPECT_STREQ(plain->begin(), " rest");
+
+    constexpr std::array<std::pair<std::string_view, char>, 14> cases{{
+        {R"('\t')", '\t'},
+        {R"('\n')", '\n'},
+        {R"('\r')", '\r'},
+        {R"('\"')", '"'},
+        {R"('\'')", '\''},
+        {R"('\\')", '\\'},
+        {R"('"')", '"'},
+        {R"('\u{41}')", 'A'},
+        {R"('\u{7f}')", '\x7f'},
+        {R"('\x{41}')", 'A'},
+        {R"('\x{ff}')", '\xff'},
+        {R"('\x{c3}')", '\xc3'},
+        {"'\t'", '\t'},
+        {"'\r'", '\r'},
+    }};
+    for (const auto& [input, expected] : cases) {
+        auto result = scn::scan<char>(input, "{:?}");
+        ASSERT_THAT(result, Succeeded()) << input;
+        EXPECT_EQ(result->value(), expected) << input;
+        EXPECT_THAT(result->range(), IsEmptyRange()) << input;
+
+        auto source = std::deque<char>(input.begin(), input.end());
+        auto noncontiguous = scn::scan<char>(source, "{:?}");
+        ASSERT_THAT(noncontiguous, Succeeded()) << input;
+        EXPECT_EQ(noncontiguous->value(), expected) << input;
+    }
+}
+
+TEST(CharTest, EscapedPresentationSkipsLeadingWhitespace)
+{
+    auto result = scn::scan<char>(" \n 'a'", "{:?}");
+    ASSERT_THAT(result, Succeeded());
+    EXPECT_EQ(result->value(), 'a');
+}
+
+TEST(CharTest, EscapedPresentationCharEmptyInput)
+{
+    EXPECT_THAT(scn::scan<char>("", scn::runtime_format("{:?}")),
+                FailedWith(scn::scan_error::end_of_input));
+    EXPECT_THAT(scn::scan<char>("  ", scn::runtime_format("{:?}")),
+                FailedWith(scn::scan_error::end_of_input));
+}
+
+TEST(CharTest, EscapedPresentationCharErrors)
+{
+    for (std::string_view input :
+         {"a", "\"a\"", "'", "'a", "'a\\", "''", "'ab'", "'\\'", "'\\a'",
+          "'\\b'", "'\\f'", "'\\v'", "'\\?'", "'\\e'", "'\\0'", "'\\101'",
+          "'\\o{101}'", "'\\x41'", "'\\u0041'", "'\\U00000041'",
+          "'\\N{LATIN CAPITAL LETTER A}'", "'\\u{}'", "'\\u{110000}'",
+          "'\\u{d800}'", "'\\x{100}'", "'\\x{}'", "'\n'", "'\xff'", "'\xc3'",
+          // Does not fit one code unit
+          "'\\u{e4}'", "'\xc3\xa4'", "'\\u{1f600}'"}) {
+        EXPECT_THAT(scn::scan<char>(input, scn::runtime_format("{:?}")),
+                    FailedWith(scn::scan_error::invalid_scanned_value))
+            << input;
+    }
+}
+
+TEST(CharTest, EscapedPresentationWideChar)
+{
+    auto plain = scn::scan<wchar_t>(L"'a' rest", L"{:?}");
+    ASSERT_THAT(plain, Succeeded());
+    EXPECT_EQ(plain->value(), L'a');
+    EXPECT_STREQ(plain->begin(), L" rest");
+
+    auto escaped = scn::scan<wchar_t>(L"'\\u{e4}'", L"{:?}");
+    ASSERT_THAT(escaped, Succeeded());
+    EXPECT_EQ(escaped->value(), L'\u00e4');
+
+    auto raw = scn::scan<wchar_t>(L"'\u4e16'", L"{:?}");
+    ASSERT_THAT(raw, Succeeded());
+    EXPECT_EQ(raw->value(), L'\u4e16');
+
+    auto hex = scn::scan<wchar_t>(L"'\\x{ffff}'", L"{:?}");
+    ASSERT_THAT(hex, Succeeded());
+    EXPECT_EQ(hex->value(), static_cast<wchar_t>(0xffff));
+
+    auto newline = scn::scan<wchar_t>(L"'\\n'", L"{:?}");
+    ASSERT_THAT(newline, Succeeded());
+    EXPECT_EQ(newline->value(), L'\n');
+}
+
+TEST(CharTest, EscapedPresentationWideCharErrors)
+{
+    for (std::wstring_view input : {L"''", L"'ab'", L"\"a\"", L"'\n'"}) {
+        EXPECT_THAT(scn::scan<wchar_t>(input, scn::runtime_format(L"{:?}")),
+                    FailedWith(scn::scan_error::invalid_scanned_value));
+    }
+}
+
+TEST(CharTest, EscapedPresentationWideCharEmptyInput)
+{
+    EXPECT_THAT(scn::scan<wchar_t>(L"", scn::runtime_format(L"{:?}")),
+                FailedWith(scn::scan_error::end_of_input));
+}
+
+TEST(CharTest, EscapedPresentationWideCharAstral)
+{
+    auto result =
+        scn::scan<wchar_t>(L"'\\u{1f600}'", scn::runtime_format(L"{:?}"));
+    if constexpr (sizeof(wchar_t) == 2) {
+        // Needs a surrogate pair
+        EXPECT_THAT(result, FailedWith(scn::scan_error::invalid_scanned_value));
+    }
+    else {
+        ASSERT_THAT(result, Succeeded());
+        EXPECT_EQ(result->value(), static_cast<wchar_t>(0x1f600));
+    }
+}
+
+TEST(CharTest, EscapedPresentationWideCharFromNarrowSourceRejected)
+{
+    EXPECT_THAT(scn::scan<wchar_t>("'a'", scn::runtime_format("{:?}")),
+                FailedWith(scn::scan_error::invalid_format_string));
+}
+
+TEST(CharTest, EscapedPresentationCodePoint)
+{
+    auto plain = scn::scan<char32_t>("'a' rest", "{:?}");
+    ASSERT_THAT(plain, Succeeded());
+    EXPECT_EQ(plain->value(), U'a');
+    EXPECT_STREQ(plain->begin(), " rest");
+
+    constexpr std::array<std::pair<std::string_view, char32_t>, 5> cases{{
+        {R"('\n')", U'\n'},
+        {R"('\'')", U'\''},
+        {R"('\u{e4}')", 0xe4},
+        {R"('\u{1f600}')", 0x1f600},
+        {"'\xf0\x9f\x98\x80'", 0x1f600},
+    }};
+    for (const auto& [input, expected] : cases) {
+        auto result = scn::scan<char32_t>(input, "{:?}");
+        ASSERT_THAT(result, Succeeded()) << input;
+        EXPECT_EQ(result->value(), expected) << input;
+    }
+}
+
+TEST(CharTest, EscapedPresentationCodePointFromWide)
+{
+    auto result = scn::scan<char32_t>(L"'\u00e4'", L"{:?}");
+    ASSERT_THAT(result, Succeeded());
+    EXPECT_EQ(result->value(), char32_t{0xe4});
+}
+
+TEST(CharTest, EscapedPresentationCodePointHexEscapeFromWide)
+{
+    if constexpr (sizeof(wchar_t) == 4) {
+        // A 32-bit wchar_t is UTF-32, like char32_t, so `\x{..}` isn't
+        // transcoded
+        const std::array<std::pair<std::wstring_view, char32_t>, 3> cases{{
+            {LR"('\x{41}')", U'A'},
+            {LR"('\x{d800}')", 0xd800},
+            {LR"('\x{ffffffff}')", 0xffffffff},
+        }};
+        for (const auto& [input, expected] : cases) {
+            auto result = scn::scan<char32_t>(input, L"{:?}");
+            ASSERT_THAT(result, Succeeded());
+            EXPECT_EQ(result->value(), expected);
+        }
+    }
+    else {
+        EXPECT_THAT(scn::scan<char32_t>(LR"('\x{41}')", L"{:?}"),
+                    FailedWith(scn::scan_error::invalid_scanned_value));
+    }
+}
+
+TEST(CharTest, EscapedPresentationCodePointErrors)
+{
+    for (std::string_view input :
+         {"a", "''", "'ab'", "'\\u{d800}'", "'\\u{110000}'", "'\\x{41}'",
+          "'\\x{100000000}'", "'\xff'", "'\n'"}) {
+        EXPECT_THAT(scn::scan<char32_t>(input, scn::runtime_format("{:?}")),
+                    FailedWith(scn::scan_error::invalid_scanned_value))
+            << input;
+    }
+}
+
+TEST(CharTest, EscapedPresentationCodePointEmptyInput)
+{
+    EXPECT_THAT(scn::scan<char32_t>("", scn::runtime_format("{:?}")),
+                FailedWith(scn::scan_error::end_of_input));
+}
+
+TEST(CharTest, EscapedPresentationRejectsLocalized)
+{
+    EXPECT_THAT(scn::scan<char>("'a'", scn::runtime_format("{:L?}")),
+                FailedWith(scn::scan_error::invalid_format_string));
+}
+
+TEST(CharTest, EscapedPresentationRejectedForOtherTypes)
+{
+    EXPECT_THAT(scn::scan<int>("1", scn::runtime_format("{:?}")),
+                FailedWith(scn::scan_error::invalid_format_string));
+    EXPECT_THAT(scn::scan<bool>("1", scn::runtime_format("{:?}")),
+                FailedWith(scn::scan_error::invalid_format_string));
+    EXPECT_THAT(scn::scan<double>("1", scn::runtime_format("{:?}")),
+                FailedWith(scn::scan_error::invalid_format_string));
 }

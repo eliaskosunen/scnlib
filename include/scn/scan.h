@@ -10475,16 +10475,18 @@ constexpr void check_char_type_specs(const format_specs& specs,
         // clang-format on
     }
     if ((specs.type > presentation_type::int_hex &&
-         specs.type != presentation_type::character) ||
+         specs.type != presentation_type::character &&
+         specs.type != presentation_type::escaped_character) ||
         specs.type == presentation_type::int_arbitrary_base) {
         SCN_UNLIKELY_ATTR
         // clang-format off
-        return handler.on_error("Invalid type specifier for a character type, expected one of: c, b, B, d, i, u, o, x, X");
+        return handler.on_error("Invalid type specifier for a character type, expected one of: c, ?, b, B, d, i, u, o, x, X");
         // clang-format on
     }
     if ((specs.width != 0 || specs.precision != 0) &&
         (specs.type == presentation_type::none ||
-         specs.type == presentation_type::character)) {
+         specs.type == presentation_type::character ||
+         specs.type == presentation_type::escaped_character)) {
         SCN_UNLIKELY_ATTR
         // clang-format off
         return handler.on_error("Width and precision are not supported for characters, except with an integer presentation type");
@@ -10493,7 +10495,8 @@ constexpr void check_char_type_specs(const format_specs& specs,
     if constexpr (std::is_same_v<ValueCharT, wchar_t> &&
                   std::is_same_v<SourceCharT, char>) {
         if (specs.type == presentation_type::none ||
-            specs.type == presentation_type::character) {
+            specs.type == presentation_type::character ||
+            specs.type == presentation_type::escaped_character) {
             SCN_UNLIKELY_ATTR
             // clang-format off
             return handler.on_error("A wchar_t can't be scanned from a narrow source, except with an integer presentation type");
@@ -10507,10 +10510,11 @@ constexpr void check_code_point_type_specs(const format_specs& specs,
                                            Handler&& handler)
 {
     if (specs.type != presentation_type::none &&
-        specs.type != presentation_type::unicode) {
+        specs.type != presentation_type::unicode &&
+        specs.type != presentation_type::escaped_character) {
         SCN_UNLIKELY_ATTR
         // clang-format off
-        return handler.on_error("Invalid type specifier for a code point type, expected: U");
+        return handler.on_error("Invalid type specifier for a code point type, expected one of: U, ?");
         // clang-format on
     }
     if (specs.width != 0 || specs.precision != 0) {
@@ -10565,10 +10569,31 @@ constexpr void check_string_type_specs(const format_specs& specs,
         }
         return;
     }
+    if (specs.type == presentation_type::escaped_character) {
+        if (SCN_UNLIKELY(specs.width != 0 || specs.precision != 0)) {
+            // clang-format off
+            return handler.on_error("Width and precision are not supported for strings with the '?' type specifier");
+            // clang-format on
+        }
+        return;
+    }
     SCN_UNLIKELY_ATTR
     // clang-format off
-    handler.on_error("Invalid type specifier for a string type, expected one of: s, c, U, [character set], /regex/");
+    handler.on_error("Invalid type specifier for a string type, expected one of: s, c, U, ?, [character set], /regex/");
     // clang-format on
+}
+
+// Separate from check_string_type_specs, because that is shared between
+// strings and string views
+template <typename Handler>
+constexpr void check_string_view_type_specs(const format_specs& specs,
+                                            Handler&& handler)
+{
+    if (SCN_UNLIKELY(specs.type == presentation_type::escaped_character)) {
+        // clang-format off
+        return handler.on_error("'?' type specifier is not supported for string views, use a string");
+        // clang-format on
+    }
 }
 
 // Separate from check_string_type_specs, because the string reader, which
@@ -10705,7 +10730,8 @@ SCN_CLANG_IGNORE("-Wdocumentation-unknown-command")
  * type                ::= 'a' | 'A' | 'b' | 'B' | 'c' | 'd' |
  *                         'e' | 'E' | 'f' | 'F' | 'g' | 'G' |
  *                         'o' | 'p' | 's' | 'x' | 'X' | 'i' | 'u' |
- *                         'U' | ('r' | 'R') radix | character-set | regex
+ *                         'U' | '?' | ('r' | 'R') radix | character-set |
+ *                         regex
  * radix               ::= integer in range [2, 36]
  * character-set       ::= '[' ['^'] character-set-items ']'
  * regex               ::= '/' regex-pattern '/' [regex-flags]
@@ -10860,6 +10886,28 @@ SCN_CLANG_IGNORE("-Wdocumentation-unknown-command")
  * </td>
  * </tr>
  * <tr>
+ * <td>`?`</td>
+ * <td>
+ * Reads a string in double quotes and unescapes it, i.e., reads back what
+ * `std::format` writes with `{:?}`.
+ * The escape sequences are `\t`, `\n`, `\r`, `\"`, `\'`, `\\`, `\u{hex}`
+ * (a code point, other than a surrogate), and `\x{hex}` (a single code unit).
+ * Both `\"` and `\'` are accepted in either kind of quotes.
+ * Any other escape sequence is an error, including the rest of C++'s escapes:
+ * `\a`, `\b`, `\f`, `\v`, `\?`, octal (`\0`, `\o{...}`), `\x` and `\u` without
+ * braces, `\U`, and `\N{...}`.
+ * A missing quote, an unescaped newline, and invalid encoding are errors, too.
+ * Other characters, including control characters, are read as is.
+ * The result is transcoded to the character type of the string, like with `s`.
+ * A code unit from `\x{hex}` is stored as is, even if that makes the encoding
+ * invalid, so it can't be transcoded: it's an error when the string's code
+ * units aren't the same size as the source's.
+ * Skips preceding whitespace.
+ * Width and precision are not allowed, and neither are string views, since
+ * the unescaped value has to be stored somewhere.
+ * </td>
+ * </tr>
+ * <tr>
  * <td>`[...]`</td>
  * <td>
  * Character set matching: copies from the input until a character not specified
@@ -10892,7 +10940,7 @@ SCN_CLANG_IGNORE("-Wdocumentation-unknown-command")
  * </table>
  *
  * \note `std::basic_string_view` can only be scanned if the source is
- * contiguous.
+ * contiguous, and not with the `?` type specifier.
  *
  * \subsection type-int Type specifier: integers
  *
@@ -10981,6 +11029,19 @@ SCN_CLANG_IGNORE("-Wdocumentation-unknown-command")
  * Copies a code point from the input.
  * Only allowed for `char32_t`, and the default for it.
  * Leading whitespace is not skipped, and width and precision are not allowed.
+ * </td>
+ * </tr>
+ * <tr>
+ * <td>`?`</td>
+ * <td>
+ * Reads a character in single quotes and unescapes it, i.e., reads back what
+ * `std::format` writes with `{:?}`.
+ * The escape sequences are the same as for strings (see \ref type-string).
+ * The quotes must contain exactly one code unit for `char` and `wchar_t`, and
+ * one code point for `char32_t`.
+ * A `wchar_t` can't be scanned from a narrow source, and for `char32_t`,
+ * `\x{hex}` needs a wide source with a 32-bit `wchar_t`.
+ * Leading whitespace is skipped, and width and precision are not allowed.
  * </td>
  * </tr>
  * <tr>
@@ -11700,12 +11761,25 @@ template <typename T, typename Context>
 SCN_PUBLIC scan_expected<typename Context::iterator>
 scanner_scan_for_builtin_type(T& val, Context& ctx, const format_specs& specs);
 
+// Not string views, since the unescaped value has to be stored somewhere
+template <typename T>
+inline constexpr bool supports_debug_format =
+    std::is_same_v<T, char> || std::is_same_v<T, wchar_t> ||
+    std::is_same_v<T, char32_t> || is_specialization_of_v<T, std::basic_string>;
+
 template <typename T, typename CharT>
 struct builtin_scanner {
     template <typename ParseCtx>
     constexpr auto parse(ParseCtx& pctx) -> typename ParseCtx::iterator
     {
         return detail::scanner_parse_for_builtin_type<T>(pctx, m_specs);
+    }
+
+    template <typename U = T,
+              std::enable_if_t<supports_debug_format<U>, int> = 0>
+    constexpr void set_debug_format()
+    {
+        m_specs.type = presentation_type::escaped_character;
     }
 
     template <typename Context>
@@ -11725,6 +11799,11 @@ protected:
 
 /**
  * `scanner` specialization for all built-in types
+ *
+ * The scanners for `char`, `wchar_t`, `char32_t`, `std::string`, and
+ * `std::wstring` have the member function `set_debug_format()`, like
+ * `std::formatter`.
+ * It selects the `?` type specifier, as if it was given in the format string.
  *
  * \ingroup ctx
  */
@@ -11816,6 +11895,7 @@ constexpr typename ParseCtx::iterator scanner_parse_for_builtin_type(
             break;
         case arg_type::string_view_type:
             check_string_type_specs(specs, checker);
+            check_string_view_type_specs(specs, checker);
             break;
 
         case arg_type::pointer_type:
