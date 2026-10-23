@@ -263,6 +263,23 @@ auto result = scn::scan<double>(..., "{:a}");
 auto result = scn::scan<int>(..., "{:x}");
 \endcode
 
+To read back a string or a character that `std::format` wrote with `{:?}`, use `?`.
+It reads the value in quotes, and replaces escape sequences like `\n`, `\"`, and `\u{e4}`
+with the characters they stand for:
+
+\code{.cpp}
+auto result = scn::scan<std::string>(R"("a \"b\"\n")", "{:?}");
+// result->value() == "a \"b\"\n"
+
+auto ch = scn::scan<char>(R"('\t')", "{:?}");
+// ch->value() == '\t'
+\endcode
+
+`?` works with `char`, `wchar_t`, `char32_t`, `std::string`, and `std::wstring`.
+It doesn't work with string views, because the unescaped value isn't in the source as is.
+A custom scanner that uses one of these scanners can turn on `?` by calling `set_debug_format()`
+on it, like with `std::formatter`.
+
 \section g-scan_value Scanning a single value
 
 For simple cases, there's `scn::scan_value`.

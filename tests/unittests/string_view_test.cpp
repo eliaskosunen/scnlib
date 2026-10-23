@@ -166,3 +166,16 @@ TEST(StringViewTest, WonkyInput2)
     ASSERT_THAT(result, Succeeded());
     EXPECT_EQ(result->value(), input);
 }
+
+TEST(StringViewTest, EscapedPresentationRejected)
+{
+    EXPECT_THAT(
+        scn::scan<std::string_view>("\"abc\"", scn::runtime_format("{:?}")),
+        FailedWith(scn::scan_error::invalid_format_string));
+    EXPECT_THAT(
+        scn::scan<std::wstring_view>(L"\"abc\"", scn::runtime_format(L"{:?}")),
+        FailedWith(scn::scan_error::invalid_format_string));
+    EXPECT_THAT(
+        scn::scan<std::string_view>("\"abc\"", scn::runtime_format("{:5?}")),
+        FailedWith(scn::scan_error::invalid_format_string));
+}

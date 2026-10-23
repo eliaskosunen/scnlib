@@ -183,49 +183,6 @@ TEST(CustomPrecisionTest, LeadingWhitespaceNotCounted)
     EXPECT_STREQ(r->begin(), "");
 }
 
-namespace {
-// Checks that a contiguous and a non-contiguous source give the same result
-template <typename T, typename... Locale>
-void expect_value(std::string_view input,
-                  std::string_view format,
-                  const T& expected,
-                  std::string_view expected_rest,
-                  const Locale&... loc)
-{
-    auto contiguous = scn::scan<T>(loc..., input, scn::runtime_format(format));
-    ASSERT_THAT(contiguous, Succeeded()) << format << " " << input;
-    EXPECT_EQ(contiguous->value(), expected) << format << " " << input;
-    EXPECT_EQ(std::string_view(scn::detail::to_address(contiguous->begin()),
-                               contiguous->range().size()),
-              expected_rest)
-        << format << " " << input;
-
-    auto source = std::deque<char>(input.begin(), input.end());
-    auto noncontiguous =
-        scn::scan<T>(loc..., source, scn::runtime_format(format));
-    ASSERT_THAT(noncontiguous, Succeeded()) << format << " " << input;
-    EXPECT_EQ(noncontiguous->value(), expected) << format << " " << input;
-    EXPECT_EQ(std::string(noncontiguous->begin(), noncontiguous->end()),
-              expected_rest)
-        << format << " " << input;
-}
-
-template <typename T, typename... Locale>
-void expect_error(std::string_view input,
-                  std::string_view format,
-                  scn::scan_error::code_t expected,
-                  const Locale&... loc)
-{
-    auto contiguous = scn::scan<T>(loc..., input, scn::runtime_format(format));
-    EXPECT_THAT(contiguous, FailedWith(expected)) << format << " " << input;
-
-    auto source = std::deque<char>(input.begin(), input.end());
-    auto noncontiguous =
-        scn::scan<T>(loc..., source, scn::runtime_format(format));
-    EXPECT_THAT(noncontiguous, FailedWith(expected)) << format << " " << input;
-}
-}  // namespace
-
 TEST(WidthPrecisionTest, ExactWidthFields)
 {
     auto r = scn::scan<int, int, int>("20261020", "{:4}{:2}{:2}");

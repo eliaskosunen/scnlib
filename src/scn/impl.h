@@ -7163,6 +7163,239 @@ private:
 };
 #endif
 
+template <typename DestCharT>
+void append_code_point(std::basic_string<DestCharT>& dest, char32_t cp)
+{
+    if constexpr (sizeof(DestCharT) == 1) {
+        transcode_to_string_impl_32to8<true>(std::u32string_view{&cp, 1}, dest);
+    }
+    else if constexpr (sizeof(DestCharT) == 2) {
+        transcode_to_string_impl_32to16<true>(std::u32string_view{&cp, 1},
+                                              dest);
+    }
+    else {
+        dest.push_back(static_cast<DestCharT>(cp));
+    }
+}
+
+// Reads a value quoted with `quote` and escaped like the output of
+// std::format's `?`, and appends it to dest.
+// Works on any forward range, reading the source by code point.
+template <typename Range, typename DestCharT>
+auto read_escaped_into(Range range,
+                       std::basic_string<DestCharT>& dest,
+                       char32_t quote)
+    -> scan_expected<ranges::iterator_t<Range>>
+{
+    using source_char = detail::char_t<Range>;
+
+    auto it = range.begin();
+    const auto end = range.end();
+
+    auto next_code_point = [&]() -> scan_expected<char32_t> {
+        if (SCN_UNLIKELY(it == end)) {
+            return detail::unexpected_scan_error(
+                scan_error::invalid_scanned_value, "Unterminated quoted value");
+        }
+        const auto result = read_code_point_into(ranges::subrange{it, end});
+        if (SCN_UNLIKELY(!result.is_valid())) {
+            return detail::unexpected_scan_error(
+                scan_error::invalid_scanned_value,
+                "Invalid encoding in quoted value");
+        }
+        const auto cp = detail::decode_code_point_exhaustive(
+            std::basic_string_view<source_char>{result.codepoint.data(),
+                                                result.codepoint.size()});
+        if (SCN_UNLIKELY(cp >= detail::invalid_code_point)) {
+            return detail::unexpected_scan_error(
+                scan_error::invalid_scanned_value,
+                "Invalid encoding in quoted value");
+        }
+        it = result.iterator;
+        return cp;
+    };
+
+    auto read_braced_hex = [&]() -> scan_expected<std::uint32_t> {
+        SCN_TRY(opening_brace, next_code_point());
+        if (SCN_UNLIKELY(opening_brace != U'{')) {
+            return detail::unexpected_scan_error(
+                scan_error::invalid_scanned_value,
+                "Expected '{' in escape sequence");
+        }
+
+        std::uint32_t value = 0;
+        bool has_digits = false;
+        while (true) {
+            SCN_TRY(cp, next_code_point());
+            if (cp == U'}') {
+                break;
+            }
+
+            std::uint32_t digit{};
+            if (cp >= U'0' && cp <= U'9') {
+                digit = static_cast<std::uint32_t>(cp - U'0');
+            }
+            else if (cp >= U'a' && cp <= U'f') {
+                digit = static_cast<std::uint32_t>(cp - U'a') + 10;
+            }
+            else if (cp >= U'A' && cp <= U'F') {
+                digit = static_cast<std::uint32_t>(cp - U'A') + 10;
+            }
+            else {
+                return detail::unexpected_scan_error(
+                    scan_error::invalid_scanned_value,
+                    "Invalid digit in escape sequence");
+            }
+            if (SCN_UNLIKELY(value > (0xffffffffu >> 4))) {
+                return detail::unexpected_scan_error(
+                    scan_error::invalid_scanned_value,
+                    "Value in escape sequence is too large");
+            }
+            value = (value << 4) | digit;
+            has_digits = true;
+        }
+        if (SCN_UNLIKELY(!has_digits)) {
+            return detail::unexpected_scan_error(
+                scan_error::invalid_scanned_value,
+                "Escape sequence has no digits");
+        }
+        return value;
+    };
+
+    SCN_TRY(opening_quote, next_code_point());
+    if (SCN_UNLIKELY(opening_quote != quote)) {
+        return detail::unexpected_scan_error(scan_error::invalid_scanned_value,
+                                             "Expected an opening quote");
+    }
+
+    while (true) {
+        SCN_TRY(cp, next_code_point());
+        if (cp == quote) {
+            return it;
+        }
+        if (SCN_UNLIKELY(cp == U'\n')) {
+            return detail::unexpected_scan_error(
+                scan_error::invalid_scanned_value,
+                "Unescaped newline in quoted value");
+        }
+        if (cp != U'\\') {
+            append_code_point(dest, cp);
+            continue;
+        }
+
+        SCN_TRY(escape, next_code_point());
+        switch (escape) {
+            case U't':
+                dest.push_back(static_cast<DestCharT>('\t'));
+                break;
+            case U'n':
+                dest.push_back(static_cast<DestCharT>('\n'));
+                break;
+            case U'r':
+                dest.push_back(static_cast<DestCharT>('\r'));
+                break;
+            case U'"':
+                dest.push_back(static_cast<DestCharT>('"'));
+                break;
+            case U'\'':
+                dest.push_back(static_cast<DestCharT>('\''));
+                break;
+            case U'\\':
+                dest.push_back(static_cast<DestCharT>('\\'));
+                break;
+
+            case U'u': {
+                SCN_TRY(value, read_braced_hex());
+                if (SCN_UNLIKELY(value >= detail::invalid_code_point ||
+                                 (value >= 0xd800 && value <= 0xdfff))) {
+                    return detail::unexpected_scan_error(
+                        scan_error::invalid_scanned_value,
+                        "Invalid code point in escape sequence");
+                }
+                append_code_point(dest, static_cast<char32_t>(value));
+                break;
+            }
+
+            case U'x': {
+                SCN_TRY(value, read_braced_hex());
+                // std::format only writes `\x{..}` for invalid encoding,
+                // which can't be transcoded
+                if constexpr (sizeof(source_char) != sizeof(DestCharT)) {
+                    SCN_UNUSED(value);
+                    return detail::unexpected_scan_error(
+                        scan_error::invalid_scanned_value,
+                        "A \\x escape sequence can't be transcoded");
+                }
+                else {
+                    constexpr auto max_code_unit = static_cast<std::uint32_t>(
+                        std::numeric_limits<
+                            std::make_unsigned_t<DestCharT>>::max());
+                    if (SCN_UNLIKELY(value > max_code_unit)) {
+                        return detail::unexpected_scan_error(
+                            scan_error::invalid_scanned_value,
+                            "Value in escape sequence doesn't fit a code unit");
+                    }
+                    dest.push_back(static_cast<DestCharT>(value));
+                    break;
+                }
+            }
+
+            // This includes the rest of C++'s escapes (\a, \b, \f, \v, \?,
+            // octal, \x and \u without braces, \U, and \N{...}). Rejecting
+            // them now means they can be added later without changing the
+            // meaning of accepted input.
+            default:
+                return detail::unexpected_scan_error(
+                    scan_error::invalid_scanned_value,
+                    "Unknown escape sequence");
+        }
+    }
+}
+
+// A quoted character must hold exactly one code unit,
+// or one code point for char32_t
+template <typename Range, typename ValueCharT>
+auto read_escaped_character(Range range, ValueCharT& value)
+    -> scan_expected<ranges::iterator_t<Range>>
+{
+    std::basic_string<ValueCharT> tmp;
+    SCN_TRY(it, read_escaped_into(range, tmp, U'\''));
+    if (SCN_UNLIKELY(tmp.size() != 1)) {
+        return detail::unexpected_scan_error(
+            scan_error::invalid_scanned_value,
+            std::is_same_v<ValueCharT, char32_t>
+                ? "Quoted character doesn't hold exactly one code point"
+                : "Quoted character doesn't hold exactly one code unit");
+    }
+    value = tmp.front();
+    return it;
+}
+
+template <typename SourceCharT>
+class escaped_string_reader_impl {
+public:
+    template <typename Range, typename ValueCharT>
+    auto read(Range range, std::basic_string<ValueCharT>& value)
+        -> scan_expected<ranges::iterator_t<Range>>
+    {
+        std::basic_string<ValueCharT> tmp;
+        SCN_TRY(it, read_escaped_into(range, tmp, U'"'));
+        value = SCN_MOVE(tmp);
+        return it;
+    }
+
+    template <typename Range, typename ValueCharT>
+    auto read(Range, std::basic_string_view<ValueCharT>&)
+        -> scan_expected<ranges::iterator_t<Range>>
+    {
+        // Rejected before getting here
+        return detail::unexpected_scan_error(
+            scan_error::invalid_format_string,
+            "'?' type specifier is not supported for string views, use a "
+            "string");
+    }
+};
+
 template <typename SourceCharT>
 class character_reader_impl {
 public:
@@ -7493,6 +7726,10 @@ public:
                 m_type = reader_type::code_point;
                 break;
 
+            case detail::presentation_type::escaped_character:
+                m_type = reader_type::escaped;
+                break;
+
             case detail::presentation_type::string_set:
                 m_type = reader_type::character_set;
                 break;
@@ -7514,7 +7751,7 @@ public:
 
     bool skip_ws_before_read() const
     {
-        return m_type == reader_type::word;
+        return m_type == reader_type::word || m_type == reader_type::escaped;
     }
 
     template <typename Range, typename Value>
@@ -7541,6 +7778,7 @@ protected:
         word,
         character,
         code_point,
+        escaped,
         character_set,
 #if !SCN_DISABLE_REGEX
         regex,
@@ -7564,6 +7802,10 @@ protected:
 
             case reader_type::code_point:
                 return code_point_reader_impl<SourceCharT>{}.read(range, value);
+
+            case reader_type::escaped:
+                return escaped_string_reader_impl<SourceCharT>{}.read(range,
+                                                                      value);
 
             case reader_type::character_set:
                 return character_set_reader_impl<SourceCharT>{}.read(
@@ -7868,7 +8110,7 @@ public:
 
     bool skip_ws_before_read() const
     {
-        return m_is_integer;
+        return m_mode != mode::character;
     }
 
     scan_expected<void> check_specs(const detail::format_specs& specs)
@@ -7876,11 +8118,19 @@ public:
         reader_error_handler eh{};
         if constexpr (std::is_same_v<ValueCharT, char32_t>) {
             detail::check_code_point_type_specs(specs, eh);
+            if (specs.type == detail::presentation_type::escaped_character) {
+                m_mode = mode::escaped;
+            }
         }
         else {
             detail::check_char_type_specs<ValueCharT, SourceCharT>(specs, eh);
-            m_is_integer = specs.type != detail::presentation_type::none &&
-                           specs.type != detail::presentation_type::character;
+            if (specs.type == detail::presentation_type::escaped_character) {
+                m_mode = mode::escaped;
+            }
+            else if (specs.type != detail::presentation_type::none &&
+                     specs.type != detail::presentation_type::character) {
+                m_mode = mode::integer;
+            }
         }
         if (SCN_UNLIKELY(!eh)) {
             return detail::unexpected_scan_error(
@@ -7890,7 +8140,9 @@ public:
     }
 
 private:
-    bool m_is_integer{false};
+    enum class mode { character, integer, escaped };
+
+    mode m_mode{mode::character};
 };
 
 template <typename CharT>
@@ -7920,6 +8172,10 @@ public:
         if (specs.type == detail::presentation_type::none ||
             specs.type == detail::presentation_type::character) {
             return read_default(range, value, loc);
+        }
+
+        if (specs.type == detail::presentation_type::escaped_character) {
+            return read_escaped_character(range, value);
         }
 
         reader_impl_for_int<CharT> reader{};
@@ -7966,6 +8222,10 @@ public:
             return read_default(range, value, loc);
         }
 
+        if (specs.type == detail::presentation_type::escaped_character) {
+            return read_escaped_character(range, value);
+        }
+
         reader_impl_for_int<CharT> reader{};
         using integer_type = std::conditional_t<std::is_signed_v<wchar_t>,
                                                 std::make_signed_t<wchar_t>,
@@ -7995,7 +8255,9 @@ public:
                     detail::locale_ref loc)
         -> scan_expected<ranges::iterator_t<Range>>
     {
-        SCN_UNUSED(specs);
+        if (specs.type == detail::presentation_type::escaped_character) {
+            return read_escaped_character(range, value);
+        }
         return read_default(range, value, loc);
     }
 };
@@ -8371,6 +8633,15 @@ struct arg_reader {
             reader_error_handler eh{};
             detail::check_string_char_type_specs<typename T::value_type,
                                                  char_type>(specs, eh);
+            if (SCN_UNLIKELY(!eh)) {
+                return detail::unexpected_scan_error(
+                    scan_error::invalid_format_string, eh.m_msg);
+            }
+        }
+        else if constexpr (detail::is_specialization_of_v<
+                               T, std::basic_string_view>) {
+            reader_error_handler eh{};
+            detail::check_string_view_type_specs(specs, eh);
             if (SCN_UNLIKELY(!eh)) {
                 return detail::unexpected_scan_error(
                     scan_error::invalid_format_string, eh.m_msg);

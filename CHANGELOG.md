@@ -154,6 +154,14 @@ scn::scan<...>(strm, ...);
    It validates the encoding and transcodes like `s`, and stops before an invalid code point, like a character set.
    Like `c`, it requires a width or precision, which count code points: `{:5U}` reads exactly 5 code points.
    `U` is also allowed for `char32_t`, where it is the same as the default `{}`.
+ * The new `?` type specifier reads back what `std::format` writes with `{:?}`:
+   a quoted and escaped string (`"a\n\"b\""`) or character (`'\t'`).
+   It works with `std::string`, `std::wstring`, `char`, `wchar_t`, and `char32_t`, but not with string views.
+   The escape sequences are `\t`, `\n`, `\r`, `\"`, `\'`, `\\`, `\u{hex}`, and `\x{hex}`.
+   Other escape sequences are errors, including the rest of C++'s:
+   `\a`, `\b`, `\f`, `\v`, `\?`, octal (`\0`, `\o{...}`), `\x` and `\u` without braces, `\U`, and `\N{...}`.
+   Width and precision are not allowed.
+   Like `std::formatter`, the scanners of these types have a `set_debug_format()` member function.
  * A character set (`{:[...]}`) can now contain `]`, by putting it first, like in `scanf`:
    `{:[]abc]}`. This already worked in inverted sets (`{:[^]abc]}`).
  * `ranges::input_range`s can now be used as sources for `scn::scan`

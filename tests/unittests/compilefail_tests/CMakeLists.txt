@@ -10,6 +10,9 @@ set(buildfail_sources
     charset_unterminated.cpp
     code_point_with_character_presentation.cpp
     code_point_with_integer_presentation.cpp
+    escaped_presentation_on_character_with_precision.cpp
+    escaped_presentation_on_string_view.cpp
+    escaped_presentation_on_string_with_width.cpp
     integer_base_leading_zero.cpp
     integer_with_string_presentation.cpp
     invalid_unicode_in_format_string.cpp
@@ -34,6 +37,7 @@ set(buildfail_sources
     usertype_non_contiguous_source.cpp
     wchar_from_narrow_source.cpp
     wchar_from_narrow_source_with_character_presentation.cpp
+    wchar_from_narrow_source_with_escaped_presentation.cpp
     wchar_from_narrow_source_with_scan_value.cpp
     width_leading_zero.cpp
     width_on_bool.cpp
