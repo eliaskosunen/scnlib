@@ -202,7 +202,7 @@ TEST(CharTest, CharAfterInt)
 
 TEST(CharTest, CodePointFromNarrowEmptyInput)
 {
-    EXPECT_THAT(scn::scan<char32_t>("", scn::runtime_format("{:c}")),
+    EXPECT_THAT(scn::scan<char32_t>("", scn::runtime_format("{:U}")),
                 FailedWith(scn::scan_error::end_of_input));
 }
 
@@ -222,20 +222,42 @@ TEST(CharTest, CharacterPresentationWide)
     EXPECT_THAT(result->range(), IsEmptyRange());
 }
 
-TEST(CharTest, CharacterPresentationCodePointFromNarrow)
+TEST(CharTest, UnicodePresentationCodePointFromNarrow)
 {
-    auto result = scn::scan<char32_t>("\xc3\xa4", "{:c}");
+    auto result = scn::scan<char32_t>("\xc3\xa4", "{:U}");
     ASSERT_THAT(result, Succeeded());
     EXPECT_EQ(result->value(), char32_t{0xe4});
     EXPECT_THAT(result->range(), IsEmptyRange());
 }
 
-TEST(CharTest, CharacterPresentationCodePointFromWide)
+TEST(CharTest, UnicodePresentationCodePointFromWide)
 {
-    auto result = scn::scan<char32_t>(L"a", L"{:c}");
+    auto result = scn::scan<char32_t>(L"a", L"{:U}");
     ASSERT_THAT(result, Succeeded());
     EXPECT_EQ(result->value(), char32_t{'a'});
     EXPECT_THAT(result->range(), IsEmptyRange());
+}
+
+TEST(CharTest, CodePointRejectsCharacterPresentation)
+{
+    EXPECT_THAT(scn::scan<char32_t>("a", scn::runtime_format("{:c}")),
+                FailedWith(scn::scan_error::invalid_format_string));
+    EXPECT_THAT(scn::scan<char32_t>(L"a", scn::runtime_format(L"{:c}")),
+                FailedWith(scn::scan_error::invalid_format_string));
+}
+
+TEST(CharTest, UnicodePresentationRejectedForOtherTypes)
+{
+    EXPECT_THAT(scn::scan<char>("a", scn::runtime_format("{:U}")),
+                FailedWith(scn::scan_error::invalid_format_string));
+    EXPECT_THAT(scn::scan<wchar_t>(L"a", scn::runtime_format(L"{:U}")),
+                FailedWith(scn::scan_error::invalid_format_string));
+    EXPECT_THAT(scn::scan<int>("1", scn::runtime_format("{:U}")),
+                FailedWith(scn::scan_error::invalid_format_string));
+    EXPECT_THAT(scn::scan<bool>("1", scn::runtime_format("{:U}")),
+                FailedWith(scn::scan_error::invalid_format_string));
+    EXPECT_THAT(scn::scan<double>("1", scn::runtime_format("{:U}")),
+                FailedWith(scn::scan_error::invalid_format_string));
 }
 
 TEST(CharTest, CodePointRejectsIntegerPresentation)
@@ -294,7 +316,7 @@ TEST(CharTest, CodePointFromNarrowMultiByte)
         {"\xc3\xa4", 0xe4},
         {"\xe4\xb8\x96", 0x4e16},
         {"\xf0\x9f\x98\x80", 0x1f600}};
-    constexpr std::array<const char*, 2> formats{"{}", "{:c}"};
+    constexpr std::array<const char*, 2> formats{"{}", "{:U}"};
     for (const auto& [input, expected] : cases) {
         for (auto fmt : formats) {
             auto result = scn::scan<char32_t>(input, scn::runtime_format(fmt));
@@ -327,7 +349,7 @@ TEST(CharTest, CodePointFromWideInvalid)
 TEST(CharTest, CodePointFromWideEmptyInput)
 {
     EXPECT_THAT(
-        scn::scan<char32_t>(std::wstring_view{}, scn::runtime_format(L"{:c}")),
+        scn::scan<char32_t>(std::wstring_view{}, scn::runtime_format(L"{:U}")),
         FailedWith(scn::scan_error::end_of_input));
 }
 
@@ -349,7 +371,7 @@ TEST(CharTest, WidthAndPrecisionRejectedWithoutIntegerPresentation)
 
 TEST(CharTest, WidthAndPrecisionRejectedForCodePoint)
 {
-    for (auto fmt : {"{:3}", "{:.3}", "{:3c}", "{:.3c}"}) {
+    for (auto fmt : {"{:3}", "{:.3}", "{:3U}", "{:.3U}"}) {
         EXPECT_THAT(scn::scan<char32_t>("abcd", scn::runtime_format(fmt)),
                     FailedWith(scn::scan_error::invalid_format_string))
             << fmt;

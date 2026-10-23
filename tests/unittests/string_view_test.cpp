@@ -72,6 +72,49 @@ TEST(StringViewTest, CharacterPresentationWideStringViewFromWideSource)
     EXPECT_EQ(result->value(), L"abc ");
 }
 
+TEST(StringViewTest, UnicodePresentationRequiresWidthOrPrecision)
+{
+    auto result =
+        scn::scan<std::string_view>("abc def", scn::runtime_format("{:U}"));
+    ASSERT_THAT(result, FailedWith(scn::scan_error::invalid_format_string));
+}
+
+TEST(StringViewTest, UnicodePresentationNarrowStringViewFromNarrowSource)
+{
+    auto result = scn::scan<std::string_view>(
+        "\xc3\xa4"
+        "bcd",
+        "{:2U}");
+    ASSERT_THAT(result, Succeeded());
+    EXPECT_STREQ(result->begin(), "cd");
+    EXPECT_EQ(result->value(),
+              "\xc3\xa4"
+              "b");
+}
+TEST(StringViewTest, UnicodePresentationWideStringViewFromWideSource)
+{
+    auto result = scn::scan<std::wstring_view>(L"abc def", L"{:.4U}");
+    ASSERT_THAT(result, Succeeded());
+    EXPECT_STREQ(result->begin(), L"def");
+    EXPECT_EQ(result->value(), L"abc ");
+}
+
+TEST(StringViewTest, UnicodePresentationStopsAtInvalidCodePoint)
+{
+    const std::string_view input =
+        "ab\xff"
+        "cd";
+    auto result = scn::scan<std::string_view>(input, "{:.5U}");
+    ASSERT_THAT(result, Succeeded());
+    EXPECT_EQ(result->value(), "ab");
+    EXPECT_EQ(result->begin(), input.begin() + 2);
+
+    EXPECT_THAT(scn::scan<std::string_view>(input, "{:5U}"),
+                FailedWith(scn::scan_error::length_too_short));
+    EXPECT_THAT(scn::scan<std::string_view>("\xffzz", "{:.5U}"),
+                FailedWith(scn::scan_error::invalid_scanned_value));
+}
+
 TEST(StringViewTest, CharacterSetPresentationNarrowStringViewFromNarrowSource)
 {
     auto result = scn::scan<std::string_view>("abc def", "{:[a-z]}");

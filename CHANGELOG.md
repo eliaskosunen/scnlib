@@ -63,6 +63,8 @@ scn::scan<...>(strm, ...);
    `{:5c}` reads exactly 5 code units, and `{:.5c}` from 1 to 5.
    Previously, a precision was required, invalid encoding was an error,
    and the value was transcoded to the character type of the string.
+ * `c` for `char32_t` is now a format string error, since `c` always means code units.
+   Use `{}` or `{:U}` instead. Previously, `{:c}` read a code point.
  * Scanning a `wchar_t` from a narrow source with `{}` is now a format string error,
    and `scn::scan_value<wchar_t>` from a narrow source doesn't compile, since a `wchar_t` is a single wide code unit.
    `{:c}` is still an error, and integer presentation types, like `{:d}`, still work.
@@ -148,6 +150,10 @@ scn::scan<...>(strm, ...);
 
 ### Features
 
+ * The new `U` type specifier for strings reads code points, including whitespace.
+   It validates the encoding and transcodes like `s`, and stops before an invalid code point, like a character set.
+   Like `c`, it requires a width or precision, which count code points: `{:5U}` reads exactly 5 code points.
+   `U` is also allowed for `char32_t`, where it is the same as the default `{}`.
  * A character set (`{:[...]}`) can now contain `]`, by putting it first, like in `scanf`:
    `{:[]abc]}`. This already worked in inverted sets (`{:[^]abc]}`).
  * `ranges::input_range`s can now be used as sources for `scn::scan`

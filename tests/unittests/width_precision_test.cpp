@@ -422,6 +422,116 @@ TEST(WidthPrecisionTest, WideStringCharacters)
     EXPECT_EQ(view->value(), L"ab c");
 }
 
+// `U` on strings counts code points
+TEST(WidthPrecisionTest, StringUnicode)
+{
+    expect_value<std::string>("abc def", "{:1U}", "a", "bc def");
+    expect_value<std::string>("abc def", "{:5U}", "abc d", "ef");
+    expect_value<std::string>("abc def", "{:.5U}", "abc d", "ef");
+    expect_value<std::string>("ab", "{:.5U}", "ab", "");
+    expect_value<std::string>("abc def", "{:2.5U}", "abc d", "ef");
+    expect_value<std::string>("abc", "{:2.5U}", "abc", "");
+    expect_value<std::string>("abc", "{:3.5U}", "abc", "");
+}
+
+TEST(WidthPrecisionTest, StringUnicodeKeepsWhitespace)
+{
+    expect_value<std::string>(" a b", "{:3U}", " a ", "b");
+    expect_value<std::string>("\n", "{:1U}", "\n", "");
+}
+
+TEST(WidthPrecisionTest, StringUnicodeCountsCodePoints)
+{
+    expect_value<std::string>(
+        "\xc3\xa4\xe4\xb8\x96\xf0\x9f\x98\x80"
+        "x",
+        "{:3U}", "\xc3\xa4\xe4\xb8\x96\xf0\x9f\x98\x80", "x");
+    expect_value<std::string>(
+        "\xc3\xa4\xe4\xb8\x96\xf0\x9f\x98\x80"
+        "x",
+        "{:.2U}", "\xc3\xa4\xe4\xb8\x96",
+        "\xf0\x9f\x98\x80"
+        "x");
+}
+
+TEST(WidthPrecisionTest, StringUnicodeShorterThanWidth)
+{
+    expect_error<std::string>("abc", "{:5U}",
+                              scn::scan_error::length_too_short);
+    expect_error<std::string>("a", "{:2.5U}",
+                              scn::scan_error::length_too_short);
+    expect_error<std::string>("", "{:1U}", scn::scan_error::end_of_input);
+    expect_error<std::string>("", "{:5U}", scn::scan_error::end_of_input);
+    expect_error<std::string>("", "{:.5U}", scn::scan_error::end_of_input);
+}
+
+// The same results as a character set, see CharacterSetStopsAtInvalidCodePoint
+TEST(WidthPrecisionTest, StringUnicodeInvalidEncoding)
+{
+    const std::string_view input =
+        "ab\xff"
+        "cd";
+    expect_value<std::string>(input, "{:.5U}", "ab",
+                              "\xff"
+                              "cd");
+    expect_value<std::string>(input, "{:2U}", "ab",
+                              "\xff"
+                              "cd");
+    expect_value<std::string>(input, "{:1.5U}", "ab",
+                              "\xff"
+                              "cd");
+    expect_error<std::string>(input, "{:5U}",
+                              scn::scan_error::length_too_short);
+    expect_error<std::string>(input, "{:3.5U}",
+                              scn::scan_error::length_too_short);
+
+    // A truncated sequence is invalid too
+    expect_value<std::string>("a\xe4\xb8", "{:.5U}", "a", "\xe4\xb8");
+    expect_error<std::string>("\xe4\xb8", "{:.5U}",
+                              scn::scan_error::invalid_scanned_value);
+
+    for (auto fmt : {"{:.5U}", "{:2U}", "{:1.5U}", "{:5[a-z]}", "{:.5[a-z]}"}) {
+        expect_error<std::string>(
+            "\xff"
+            "cd",
+            fmt, scn::scan_error::invalid_scanned_value);
+    }
+}
+
+TEST(WidthPrecisionTest, StringViewUnicode)
+{
+    const std::string_view input = "a\xc3\xa4 b";
+    for (auto [fmt, expected] :
+         std::initializer_list<std::pair<const char*, std::string_view>>{
+             {"{:1U}", "a"},
+             {"{:2U}", "a\xc3\xa4"},
+             {"{:.3U}", "a\xc3\xa4 "},
+             {"{:2.8U}", input}}) {
+        auto result =
+            scn::scan<std::string_view>(input, scn::runtime_format(fmt));
+        ASSERT_THAT(result, Succeeded()) << fmt;
+        EXPECT_EQ(result->value(), expected) << fmt;
+        EXPECT_EQ(result->value().data(), input.data()) << fmt;
+        EXPECT_EQ(result->begin(), input.begin() + expected.size()) << fmt;
+    }
+    EXPECT_THAT(scn::scan<std::string_view>("ab", scn::runtime_format("{:3U}")),
+                FailedWith(scn::scan_error::length_too_short));
+    EXPECT_THAT(scn::scan<std::string_view>("", scn::runtime_format("{:1U}")),
+                FailedWith(scn::scan_error::end_of_input));
+}
+
+TEST(WidthPrecisionTest, WideStringUnicode)
+{
+    auto result = scn::scan<std::wstring>(L"ab\U0001F602 cd", L"{:4U}");
+    ASSERT_THAT(result, Succeeded());
+    EXPECT_EQ(result->value(), L"ab\U0001F602 ");
+    EXPECT_STREQ(result->begin(), L"cd");
+
+    auto view = scn::scan<std::wstring_view>(L"ab cd", L"{:.4U}");
+    ASSERT_THAT(view, Succeeded());
+    EXPECT_EQ(view->value(), L"ab c");
+}
+
 #if !SCN_DISABLE_TYPE_DOUBLE
 // Precision on floats counts characters, not digits after the point
 TEST(WidthPrecisionTest, FloatPrecision)
