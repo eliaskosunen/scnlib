@@ -102,8 +102,11 @@ scn::scan<...>(strm, ...);
    `["a", "b"]` instead of `[a, b]`, and `{'a': 1}` for a `std::map<char, int>`.
    Unquoted input no longer scans with `{}`.
    Like with `std::format`, any format specifiers for the elements of a sequence or a set turn this off,
-   so `{:s}` still reads `[a , b ]` into a `std::vector<std::string>`.
+   so `{::s}` reads `[a , b ]` into a `std::vector<std::string>`.
    Maps, pairs, and tuples take no format specifiers, and always read string and character elements quoted.
+ * In `<scn/ranges.h>`, the format specifiers for the elements of a sequence or a set now come after a second colon,
+   like in `std::format`: `{::x}` instead of `{:x}`.
+   Range format specifiers before it (like `n`, `s`, or a width) are not supported, and are an error.
  * The CMake option `SCN_BENCHMARKS_BUILDTIME` was removed. The build time benchmark is run with `scripts/benchmark.py`.
 
 ### Changes

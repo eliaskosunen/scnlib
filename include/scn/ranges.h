@@ -472,16 +472,21 @@ public:
     template <typename ParseCtx>
     constexpr typename ParseCtx::iterator parse(ParseCtx& pctx)
     {
-        // For `{}` and `{:}`, begin() points at the closing `}`
+        // Only the element part of std::format's range-format-spec is
+        // supported: `{}`, `{:}` or `{::element-spec}`.
         const auto spec_begin = pctx.begin();
-        const bool empty_spec =
-            spec_begin == pctx.end() ||
-            *spec_begin == typename ParseCtx::char_type{'}'};
-        const auto result = m_underlying.parse(pctx);
-        if (empty_spec) {
+        if (spec_begin == pctx.end() ||
+            *spec_begin == typename ParseCtx::char_type{'}'}) {
+            const auto result = m_underlying.parse(pctx);
             detail::set_debug_format_for_element(m_underlying);
+            return result;
         }
-        return result;
+        if (*spec_begin != typename ParseCtx::char_type{':'}) {
+            pctx.on_error("Range format specifiers are not supported");
+            return spec_begin;
+        }
+        pctx.advance_to(std::next(spec_begin));
+        return m_underlying.parse(pctx);
     }
 
     template <typename Range, typename Context>

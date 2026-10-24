@@ -106,17 +106,15 @@ It has the following limitations:
  - String and character elements are quoted and escaped, like `std::format` writes them:
    a `std::vector<std::string>` is read from `["a", "b, c"]`, and a `std::map<char, int>` from `{'a': 1}`.
    Unquoted input, like `[a, b]`, is an error.
- - The format specifiers of a sequence or a set apply to its elements:
-   `{:x}` reads a `std::vector<int>` from `[a, ff]`.
-   Like with `std::format`, string and character elements are read unquoted when there are any specifiers.
-   With `{:s}`, a string ends at whitespace, so each separator needs a space before it (`[a , b ]`).
-   With `{:c}`, a character reads the space after a separator, so there can't be one (`[a,b]`).
-   This syntax may change: in `std::format`, element specifiers come after a second colon (`{::s}`),
-   and `{:s}` on a range means something else.
+ - Format specifiers for the elements of a sequence or a set come after a second colon, like in `std::format`:
+   `{::x}` reads a `std::vector<int>` from `[a, ff]`.
+   With any element specifiers, even empty ones (`{::}`), string and character elements are read unquoted.
+   With `{::s}`, a string ends at whitespace, so each separator needs a space before it (`[a , b ]`).
+   With `{::c}`, a character reads the space after a separator, so there can't be one (`[a,b]`).
  - Maps, pairs, and tuples take no format specifiers, and always read string and character elements quoted.
  - Other elements that read past the separator or the closing bracket don't work.
- - The range format specifiers of `std::format` (like `n` and the separator options)
-   are not supported.
+ - The range format specifiers of `std::format`, which come before the second colon
+   (like `n`, `s`, or a width), are not supported, and are an error.
  - A range type with its own `scn::scanner` partial specialization
    (like `template <typename T> struct scn::scanner<my_range<T>, char>`)
    becomes ambiguous when `<scn/ranges.h>` is included.

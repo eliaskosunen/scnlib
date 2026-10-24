@@ -255,12 +255,12 @@ TEST(RangesTest, WideMap)
 TEST(RangesTest, WcharVectorFromNarrowSource)
 {
     auto result = scn::scan<std::vector<wchar_t>>("[65, 66]",
-                                                  scn::runtime_format("{:d}"));
+                                                  scn::runtime_format("{::d}"));
     ASSERT_THAT(result, Succeeded());
     EXPECT_THAT(result->value(), testing::ElementsAre(L'A', L'B'));
     EXPECT_THAT(result->range(), IsEmptyRange());
 
-    for (auto fmt : {"{}", "{:c}"}) {
+    for (auto fmt : {"{}", "{::c}"}) {
         EXPECT_THAT(
             scn::scan<std::vector<wchar_t>>("[A, B]", scn::runtime_format(fmt)),
             FailedWith(scn::scan_error::invalid_format_string))
@@ -390,8 +390,8 @@ TEST(RangesTest, SetOfStrings)
 
 TEST(RangesTest, SetOfStringsSpecOverridesQuoting)
 {
-    auto result = scn::scan<std::set<std::string>>("{b , a }",
-                                                   scn::runtime_format("{:s}"));
+    auto result = scn::scan<std::set<std::string>>(
+        "{b , a }", scn::runtime_format("{::s}"));
     ASSERT_THAT(result, Succeeded());
     EXPECT_THAT(result->value(), testing::ElementsAre("a", "b"));
 }
@@ -464,7 +464,7 @@ TEST(RangesTest, UnquotedStringElementsFail)
 TEST(RangesTest, StringElementsSpecOverridesQuoting)
 {
     auto result = scn::scan<std::vector<std::string>>(
-        "[a , b ]", scn::runtime_format("{:s}"));
+        "[a , b ]", scn::runtime_format("{::s}"));
     ASSERT_THAT(result, Succeeded());
     EXPECT_THAT(result->value(), testing::ElementsAre("a", "b"));
 }
@@ -472,7 +472,7 @@ TEST(RangesTest, StringElementsSpecOverridesQuoting)
 TEST(RangesTest, CharElementsSpecOverridesQuoting)
 {
     auto result =
-        scn::scan<std::vector<char>>("[a,b]", scn::runtime_format("{:c}"));
+        scn::scan<std::vector<char>>("[a,b]", scn::runtime_format("{::c}"));
     ASSERT_THAT(result, Succeeded());
     EXPECT_THAT(result->value(), testing::ElementsAre('a', 'b'));
 }
@@ -488,9 +488,74 @@ TEST(RangesTest, StringElementsWithEmptySpecAreQuoted)
 TEST(RangesTest, StringElementsWithWidth)
 {
     auto result = scn::scan<std::vector<std::string>>(
-        "[abcde, fghij]", scn::runtime_format("{:5}"));
+        "[abcde, fghij]", scn::runtime_format("{::5}"));
     ASSERT_THAT(result, Succeeded());
     EXPECT_THAT(result->value(), testing::ElementsAre("abcde", "fghij"));
+}
+
+TEST(RangesTest, StringElementsWithEmptyElementSpecAreUnquoted)
+{
+    auto result = scn::scan<std::vector<std::string>>(
+        "[a , b ]", scn::runtime_format("{::}"));
+    ASSERT_THAT(result, Succeeded());
+    EXPECT_THAT(result->value(), testing::ElementsAre("a", "b"));
+}
+
+TEST(RangesTest, NestedElementSpecAppliesToInnerElements)
+{
+    auto unquoted = scn::scan<std::vector<std::vector<std::string>>>(
+        "[[a , b ], [c ]]", scn::runtime_format("{:::s}"));
+    ASSERT_THAT(unquoted, Succeeded());
+    EXPECT_THAT(unquoted->value(),
+                testing::ElementsAre(testing::ElementsAre("a", "b"),
+                                     testing::ElementsAre("c")));
+
+    auto quoted = scn::scan<std::vector<std::vector<std::string>>>(
+        R"([["a", "b"], ["c"]])", "{}");
+    ASSERT_THAT(quoted, Succeeded());
+    EXPECT_THAT(quoted->value(),
+                testing::ElementsAre(testing::ElementsAre("a", "b"),
+                                     testing::ElementsAre("c")));
+}
+
+TEST(RangesTest, IntegerElementsWithHexSpec)
+{
+    auto result =
+        scn::scan<std::vector<int>>("[a, ff]", scn::runtime_format("{::x}"));
+    ASSERT_THAT(result, Succeeded());
+    EXPECT_THAT(result->value(), testing::ElementsAre(10, 255));
+}
+
+TEST(RangesTest, RangeFormatSpecifiersAreNotSupported)
+{
+    for (auto fmt : {"{:s}", "{:5}", "{:n}", "{:x}", "{:<}", "{:?s}", "{:m}"}) {
+        EXPECT_THAT(scn::scan<std::vector<std::string>>(
+                        "[a]", scn::runtime_format(fmt)),
+                    FailedWith(scn::scan_error::invalid_format_string))
+            << fmt;
+        EXPECT_THAT(
+            scn::scan<std::vector<int>>("[1]", scn::runtime_format(fmt)),
+            FailedWith(scn::scan_error::invalid_format_string))
+            << fmt;
+    }
+}
+
+TEST(RangesTest, MapElementSpecsAreNotSupported)
+{
+    EXPECT_THAT(
+        (scn::scan<std::map<int, int>>("{1: 2}", scn::runtime_format("{::x}"))),
+        FailedWith(scn::scan_error::invalid_format_string));
+    EXPECT_THAT(
+        (scn::scan<std::map<int, int>>("{1: 2}", scn::runtime_format("{:x}"))),
+        FailedWith(scn::scan_error::invalid_format_string));
+}
+
+TEST(RangesTest, MapWithEmptySpecs)
+{
+    auto result = scn::scan<std::map<std::string, std::string>>(
+        R"({"a": "b"})", scn::runtime_format("{::}"));
+    ASSERT_THAT(result, Succeeded());
+    EXPECT_THAT(result->value(), testing::ElementsAre(testing::Pair("a", "b")));
 }
 
 TEST(RangesTest, CustomElementWithDebugFormatIsQuoted)
@@ -603,6 +668,14 @@ TEST(RangesTest, MultiCharacterSeparatorAndBrackets)
     ASSERT_THAT(result, Succeeded());
     EXPECT_THAT(result->value().values, testing::ElementsAre(1, 2));
     EXPECT_THAT(result->range(), IsEmptyRange());
+}
+
+TEST(RangesTest, MultiCharacterSeparatorAndBracketsWithElementSpec)
+{
+    auto result =
+        scn::scan<arrow_separated>("<<a->ff>>", scn::runtime_format("{::x}"));
+    ASSERT_THAT(result, Succeeded());
+    EXPECT_THAT(result->value().values, testing::ElementsAre(10, 255));
 }
 
 TEST(RangesTest, MultiCharacterSeparatorAndBracketsTruncated)
