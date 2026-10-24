@@ -34,6 +34,7 @@
 
 #if !SCN_DISABLE_IOSTREAM
 #include <iostream>
+#include <locale>
 #endif
 
 namespace scn {
@@ -4294,6 +4295,53 @@ SCN_PUBLIC bool basic_scan_istream_buffer<CharT>::do_fill()
     return true;
 }
 
+#if !SCN_WINDOWS
+namespace {
+// For `impl::buffer_sync_seek_fallback`
+template <typename CharT>
+struct seekable_streambuf {
+    using traits = std::char_traits<CharT>;
+    using pos_type = typename traits::pos_type;
+    using off_type = typename traits::off_type;
+
+    std::optional<pos_type> checked(pos_type pos) const
+    {
+        if (pos == pos_type(off_type(-1))) {
+            return std::nullopt;
+        }
+        return pos;
+    }
+
+    std::optional<pos_type> tell()
+    {
+        return checked(
+            streambuf->pubseekoff(0, std::ios_base::cur, std::ios_base::in));
+    }
+    std::optional<pos_type> seek_back(std::ptrdiff_t n)
+    {
+        const off_type offset = -n;
+        return checked(streambuf->pubseekoff(offset, std::ios_base::cur,
+                                             std::ios_base::in));
+    }
+    bool seek_to(pos_type pos)
+    {
+        return checked(streambuf->pubseekpos(pos, std::ios_base::in))
+            .has_value();
+    }
+    std::optional<CharT> read_one()
+    {
+        const auto ch = streambuf->sbumpc();
+        if (traits::eq_int_type(ch, traits::eof())) {
+            return std::nullopt;
+        }
+        return traits::to_char_type(ch);
+    }
+
+    std::basic_streambuf<CharT>* streambuf;
+};
+}  // namespace
+#endif
+
 template <typename CharT>
 SCN_PUBLIC bool basic_scan_istream_buffer<CharT>::do_sync(
     std::ptrdiff_t position)
@@ -4317,12 +4365,33 @@ SCN_PUBLIC bool basic_scan_istream_buffer<CharT>::do_sync(
         }
     }
 
-    return impl::buffer_sync_helper(position, this->m_current_view,
-                                    this->m_putback_buffer, [&](CharT ch) {
-                                        return !traits::eq_int_type(
-                                            streambuf->sputbackc(ch),
-                                            traits::eof());
-                                    }) == position;
+    const auto synced_position = impl::buffer_sync_helper(
+        position, this->m_current_view, this->m_putback_buffer, [&](CharT ch) {
+            return !traits::eq_int_type(streambuf->sputbackc(ch),
+                                        traits::eof());
+        });
+    if (synced_position == position) {
+        return true;
+    }
+
+#if SCN_WINDOWS
+    // On Windows, undoing a seek, or even a failed position query, after a
+    // putback can lose the characters that were put back
+    return false;
+#else
+    // With a variable-width encoding, positions aren't character counts, and
+    // with libc++, even asking for the position after a putback can lose
+    // characters
+    if (std::use_facet<std::codecvt<CharT, char, std::mbstate_t>>(
+            streambuf->getloc())
+            .encoding() <= 0) {
+        return false;
+    }
+    seekable_streambuf<CharT> source{streambuf};
+    return impl::buffer_sync_seek_fallback(
+               position, synced_position, this->m_current_view,
+               this->m_putback_buffer, source) == position;
+#endif
 }
 
 template SCN_PUBLIC basic_scan_istream_buffer<char>::basic_scan_istream_buffer(

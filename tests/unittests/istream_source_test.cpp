@@ -16,6 +16,7 @@
 //     https://github.com/eliaskosunen/scnlib
 
 #include <scn/istream.h>
+#include <scn/xchar.h>
 
 #include "test_common.h"
 
@@ -23,7 +24,11 @@
 
 #include <algorithm>
 #include <array>
+#include <cstdio>
+#include <fstream>
+#include <iterator>
 #include <limits>
+#include <locale>
 #include <sstream>
 #include <string>
 
@@ -124,6 +129,164 @@ private:
     {
         return 0;
     }
+};
+
+enum class seek_behavior {
+    none,
+    correct,
+    // Relative seeks report success, but don't move
+    relative_doesnt_move,
+    // Relative backward seeks report success, but stop one character short
+    relative_one_short,
+};
+
+// Reads its contents through a get area of at most `chunk_size` characters.
+// Like libc++'s `filebuf`, only `putback_limit` characters before the get area
+// can be put back after a refill. This also applies at the end of the contents.
+template <typename CharT>
+class limited_putback_streambuf : public std::basic_streambuf<CharT> {
+    using base = std::basic_streambuf<CharT>;
+
+public:
+    using typename base::int_type;
+    using typename base::off_type;
+    using typename base::pos_type;
+    using typename base::traits_type;
+
+    limited_putback_streambuf(std::basic_string<CharT> data,
+                              std::size_t putback_limit,
+                              seek_behavior seek,
+                              std::size_t chunk_size = 4096)
+        : m_data(std::move(data)),
+          m_putback_limit(putback_limit),
+          m_chunk_size(chunk_size),
+          m_seek(seek)
+    {
+        set_position(0);
+    }
+
+    std::basic_string<CharT> rest()
+    {
+        std::basic_string<CharT> result;
+        for (auto ch = this->sbumpc();
+             !traits_type::eq_int_type(ch, traits_type::eof());
+             ch = this->sbumpc()) {
+            result.push_back(traits_type::to_char_type(ch));
+        }
+        return result;
+    }
+
+    int seekoff_calls{0};
+
+protected:
+    int_type underflow() override
+    {
+        const auto pos = position();
+        const auto begin = pos - std::min(pos, m_putback_limit);
+        const auto end = std::min(m_data.size(), pos + m_chunk_size);
+        this->setg(m_data.data() + begin, m_data.data() + pos,
+                   m_data.data() + end);
+        if (pos == m_data.size()) {
+            return traits_type::eof();
+        }
+        return traits_type::to_int_type(m_data[pos]);
+    }
+
+    pos_type seekoff(off_type off,
+                     std::ios_base::seekdir dir,
+                     std::ios_base::openmode which) override
+    {
+        ++seekoff_calls;
+        if (m_seek == seek_behavior::none || dir != std::ios_base::cur ||
+            (which & std::ios_base::in) == 0) {
+            return pos_type(off_type(-1));
+        }
+        const auto current = static_cast<off_type>(position());
+        const auto requested = current + off;
+        if (requested < 0 || requested > static_cast<off_type>(m_data.size())) {
+            return pos_type(off_type(-1));
+        }
+        auto actual = requested;
+        if (m_seek == seek_behavior::relative_doesnt_move) {
+            actual = current;
+        }
+        else if (m_seek == seek_behavior::relative_one_short && off < 0) {
+            actual = requested + 1;
+        }
+        set_position(static_cast<std::size_t>(actual));
+        return pos_type(requested);
+    }
+
+    pos_type seekpos(pos_type pos, std::ios_base::openmode which) override
+    {
+        const auto offset = static_cast<off_type>(pos);
+        if (m_seek == seek_behavior::none || (which & std::ios_base::in) == 0 ||
+            offset < 0 || offset > static_cast<off_type>(m_data.size())) {
+            return pos_type(off_type(-1));
+        }
+        set_position(static_cast<std::size_t>(offset));
+        return pos;
+    }
+
+private:
+    std::size_t position() const
+    {
+        return static_cast<std::size_t>(this->gptr() - m_data.data());
+    }
+    void set_position(std::size_t pos)
+    {
+        auto* ptr = m_data.data() + pos;
+        this->setg(ptr, ptr, ptr);
+    }
+
+    std::basic_string<CharT> m_data;
+    std::size_t m_putback_limit;
+    std::size_t m_chunk_size;
+    seek_behavior m_seek;
+};
+
+// A wide-to-narrow conversion with the given `encoding()`:
+// 0 means variable-width, like UTF-8
+class codecvt_with_encoding
+    : public std::codecvt<wchar_t, char, std::mbstate_t> {
+public:
+    explicit codecvt_with_encoding(int encoding) : m_encoding(encoding) {}
+
+protected:
+    int do_encoding() const noexcept override
+    {
+        return m_encoding;
+    }
+
+private:
+    int m_encoding;
+};
+
+// Removes the file when destroyed
+class temporary_file_path {
+public:
+    temporary_file_path(const std::string& name, const std::string& contents)
+        : m_path(testing::TempDir() + name)
+    {
+        std::ofstream out{m_path, std::ios::binary};
+        out << contents;
+    }
+
+    ~temporary_file_path()
+    {
+        std::remove(m_path.c_str());
+    }
+
+    temporary_file_path(const temporary_file_path&) = delete;
+    temporary_file_path& operator=(const temporary_file_path&) = delete;
+
+    const std::string& path() const
+    {
+        return m_path;
+    }
+
+private:
+    std::string m_path;
 };
 }  // namespace
 
@@ -276,6 +439,117 @@ TEST(IstreamSourceTest, StreambufWithoutPutbackFailedScan)
     ASSERT_THAT(result, Failed());
     EXPECT_EQ(result.error().code(), scn::scan_error::invalid_source_state);
     EXPECT_STREQ(result.error().msg(), "Failed to sync with underlying source");
+}
+
+// Putting back what a failed scan read falls short.
+// The rest is restored by seeking back.
+TEST(IstreamSourceTest, SeekableStreambufWithLimitedPutbackFailedScan)
+{
+    struct test_case {
+        std::string data;
+        std::size_t chunk_size;
+        scn::scan_error::code_t error;
+    };
+    const std::array<test_case, 2> test_cases{{
+        // Reads to the end: only one character can be put back
+        {"12", 4096, scn::scan_error::end_of_input},
+        // A refill in the middle: the first character can't be put back
+        {"12 x tail", 2, scn::scan_error::invalid_scanned_value},
+    }};
+    for (const auto& [data, chunk_size, error] : test_cases) {
+        limited_putback_streambuf<char> buf{data, 1, seek_behavior::correct,
+                                            chunk_size};
+        std::istream stream{&buf};
+        auto result = scn::scan<int, int>(stream, "{} {}");
+        ASSERT_THAT(result, Failed()) << data;
+#if SCN_WINDOWS
+        EXPECT_EQ(result.error().code(), scn::scan_error::invalid_source_state)
+            << data;
+#else
+        EXPECT_EQ(result.error().code(), error) << data;
+        EXPECT_EQ(buf.rest(), data);
+#endif
+    }
+}
+
+TEST(IstreamSourceTest, NonSeekableStreambufWithLimitedPutbackFailedScan)
+{
+    limited_putback_streambuf<char> buf{"12", 1, seek_behavior::none};
+    std::istream stream{&buf};
+    auto result = scn::scan<int, int>(stream, "{} {}");
+    ASSERT_THAT(result, Failed());
+    EXPECT_EQ(result.error().code(), scn::scan_error::invalid_source_state);
+    EXPECT_STREQ(result.error().msg(), "Failed to sync with underlying source");
+    EXPECT_EQ(buf.rest(), "2");
+}
+
+// A seek that doesn't end up where it should is undone
+TEST(IstreamSourceTest, LyingSeekableStreambufWithLimitedPutbackFailedScan)
+{
+    for (auto seek : {seek_behavior::relative_doesnt_move,
+                      seek_behavior::relative_one_short}) {
+        // After a seek one character short, the characters read again are the
+        // same as the ones that should be put back. Only the position after
+        // reading them tells the difference.
+        limited_putback_streambuf<char> buf{"1111111", 1, seek};
+        std::istream stream{&buf};
+        auto result = scn::scan<int, int>(stream, "{} {}");
+        ASSERT_THAT(result, Failed());
+        EXPECT_EQ(result.error().code(), scn::scan_error::invalid_source_state);
+        EXPECT_STREQ(result.error().msg(),
+                     "Failed to sync with underlying source");
+        // As much as without seeking
+        EXPECT_EQ(buf.rest(), "1");
+    }
+}
+
+// Positions in a variable-width encoding (`encoding() == 0`) aren't
+// character counts, so no seek is attempted
+TEST(IstreamSourceTest, WideStreambufWithVariableWidthEncoding)
+{
+    limited_putback_streambuf<wchar_t> buf{L"12", 1, seek_behavior::correct};
+    buf.pubimbue(
+        std::locale(std::locale::classic(), new codecvt_with_encoding{0}));
+    std::wistream stream{&buf};
+    auto result = scn::scan<int, int>(stream, L"{} {}");
+    ASSERT_THAT(result, Failed());
+    EXPECT_EQ(result.error().code(), scn::scan_error::invalid_source_state);
+    EXPECT_EQ(buf.seekoff_calls, 0);
+    EXPECT_EQ(buf.rest(), L"2");
+}
+
+TEST(IstreamSourceTest, WideStreambufWithFixedWidthEncoding)
+{
+    limited_putback_streambuf<wchar_t> buf{L"12", 1, seek_behavior::correct};
+    buf.pubimbue(
+        std::locale(std::locale::classic(), new codecvt_with_encoding{1}));
+    std::wistream stream{&buf};
+    auto result = scn::scan<int, int>(stream, L"{} {}");
+    ASSERT_THAT(result, Failed());
+#if SCN_WINDOWS
+    EXPECT_EQ(result.error().code(), scn::scan_error::invalid_source_state);
+#else
+    EXPECT_EQ(result.error().code(), scn::scan_error::end_of_input);
+    EXPECT_EQ(buf.rest(), L"12");
+#endif
+}
+
+// libc++'s `filebuf` can put back only one character after reaching the end
+TEST(IstreamSourceTest, IfstreamFailedScanAtEnd)
+{
+#if SCN_WINDOWS
+    GTEST_SKIP() << "No seeking on Windows, and putback is limited there";
+#else
+    temporary_file_path file{"scn_istream_source_test_ifstream.txt", "12"};
+    std::ifstream stream{file.path(), std::ios::binary};
+    ASSERT_TRUE(stream.is_open());
+    auto result = scn::scan<int, int>(stream, "{} {}");
+    ASSERT_THAT(result, FailedWith(scn::scan_error::end_of_input));
+
+    std::string rest{std::istreambuf_iterator<char>{stream},
+                     std::istreambuf_iterator<char>{}};
+    EXPECT_EQ(rest, "12");
+#endif
 }
 
 TEST(IstreamSourceTest, StreambufOverpromisingAvailableCharacters)

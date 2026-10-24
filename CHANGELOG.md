@@ -121,6 +121,9 @@ scn::scan<...>(strm, ...);
  * Floating-point error messages no longer name the backend (fast_float, `std::from_chars`, or `std::strtod`)
  * `%j` and `%Z` in the format string of a `time_point` are now format string errors, instead of always failing when scanning
  * A read error from a C `FILE` now fails the scan, instead of being treated as the end of the input
+ * On POSIX, if a C `FILE` is a regular file or a block device, and a scan can't put all of its unused characters
+   back into it with `ungetc` (e.g., more than about 1 KiB on musl), the scan now seeks back over the rest.
+   Previously, the scan failed with "Failed to sync with underlying source", and the characters were lost.
  * Regex support is disabled with `SCN_USE_EXCEPTIONS=OFF`, unless `SCN_REGEX_BACKEND` is `re2`,
    since `std::regex` and Boost.Regex report errors only by throwing
  * Textual boolean representations are now case-insensitive, so both `true` and `True` (and so on) are accepted.

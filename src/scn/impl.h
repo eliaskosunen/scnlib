@@ -60,6 +60,7 @@
 
 #if SCN_POSIX
 #include <fcntl.h>
+#include <sys/stat.h>
 #endif
 
 #if SCN_HAS_FAST_FLOAT
@@ -1062,6 +1063,89 @@ SCN_NODISCARD std::ptrdiff_t buffer_sync_helper(
     }
 }
 
+// Called when `buffer_sync_helper` couldn't put back everything, i.e., it
+// returned `synced_position`, which is greater than `position`.
+// Seeks `source` back over the characters that are still owed, and reads them
+// again to check the seek. If the characters don't match, or reading them
+// doesn't end where the seek started, the seek is undone. The check is needed
+// because in text mode, a position isn't a character count, and some sources
+// report a seek as successful without seeking.
+//
+// `source` has these member functions:
+//  - `tell()`: the current position, or an empty optional if the source isn't
+//    seekable
+//  - `seek_back(n)`: seeks back by `n` characters, and returns the new
+//    position, or an empty optional on failure
+//  - `seek_to(pos)`: seeks to a position returned by the functions above, and
+//    returns `true` on success
+//  - `read_one()`: reads a character, and returns something that converts to
+//    `false` on failure, and dereferences to the character otherwise
+//
+// If the seek is kept, returns `position`, and leaves `current_view` and
+// `putback_buffer` as a successful `buffer_sync_helper` would have.
+// Otherwise, returns `synced_position`, and leaves them untouched.
+template <typename CharT, typename SeekableSource>
+SCN_NODISCARD std::ptrdiff_t buffer_sync_seek_fallback(
+    std::ptrdiff_t position,
+    std::ptrdiff_t synced_position,
+    std::basic_string_view<CharT>& current_view,
+    std::basic_string<CharT>& putback_buffer,
+    SeekableSource& source)
+{
+    SCN_EXPECT(synced_position > position);
+    SCN_EXPECT(static_cast<std::ptrdiff_t>(current_view.size() +
+                                           putback_buffer.size()) ==
+               synced_position);
+
+    const auto n_owed = synced_position - position;
+    std::basic_string<CharT> owed;
+    detail::set_prelude_after_sync(owed, position, synced_position,
+                                   current_view, putback_buffer);
+
+    const auto now = source.tell();
+    if (!now) {
+        return synced_position;
+    }
+    const auto target = source.seek_back(n_owed);
+    if (!target) {
+        (void)source.seek_to(*now);
+        return synced_position;
+    }
+
+    bool matches = true;
+    for (auto ch : owed) {
+        const auto read = source.read_one();
+        if (!read || *read != ch) {
+            matches = false;
+            break;
+        }
+    }
+    if (matches) {
+        const auto after = source.tell();
+        matches = after && *after == *now;
+    }
+    if (!matches) {
+        (void)source.seek_to(*now);
+        return synced_position;
+    }
+    // Reading the owed characters again left the source at `now`
+    if (!source.seek_to(*target)) {
+        return synced_position;
+    }
+
+    const auto putback_buffer_size =
+        static_cast<std::ptrdiff_t>(putback_buffer.size());
+    if (position >= putback_buffer_size) {
+        current_view = current_view.substr(
+            0, static_cast<std::size_t>(position - putback_buffer_size));
+    }
+    else {
+        current_view = {};
+        putback_buffer.resize(static_cast<std::size_t>(position));
+    }
+    return position;
+}
+
 struct default_file_tag {};
 struct gnu_file_tag {};
 struct bsd_file_tag {};
@@ -1117,6 +1201,42 @@ struct stdio_file_interface_base {
         stdio_file_interface_base&& other) noexcept = delete;
     constexpr stdio_file_interface_base& operator=(
         stdio_file_interface_base&& other) noexcept = delete;
+
+#if SCN_POSIX && !SCN_WINDOWS
+    // Used by `buffer_sync_seek_fallback`. Only regular files and block
+    // devices count as seekable. On others (e.g., some terminals), a seek may
+    // succeed without doing anything, and the read that checks it would wait
+    // for new input.
+    SCN_NODISCARD std::optional<off_t> tell()
+    {
+        struct stat st{};
+        if (fstat(fileno(this->file), &st) != 0 ||
+            !(S_ISREG(st.st_mode) || S_ISBLK(st.st_mode))) {
+            return std::nullopt;
+        }
+        const auto pos = ftello(this->file);
+        if (pos < 0) {
+            return std::nullopt;
+        }
+        return pos;
+    }
+    SCN_NODISCARD std::optional<off_t> seek_back(std::ptrdiff_t n)
+    {
+        const off_t offset = -n;
+        if (fseeko(this->file, offset, SEEK_CUR) != 0) {
+            return std::nullopt;
+        }
+        const auto pos = ftello(this->file);
+        if (pos < 0) {
+            return std::nullopt;
+        }
+        return pos;
+    }
+    SCN_NODISCARD bool seek_to(off_t pos)
+    {
+        return fseeko(this->file, pos, SEEK_SET) == 0;
+    }
+#endif
 
     File* file;
 };
@@ -1382,6 +1502,12 @@ struct stdio_file_interface_impl<File, win32_file_tag>
 using stdio_file_interface =
     stdio_file_interface_impl<std::FILE, decltype(get_file_tag())::type>;
 
+template <typename F, typename = void>
+inline constexpr bool is_seekable_file = false;
+template <typename F>
+inline constexpr bool
+    is_seekable_file<F, std::void_t<decltype(SCN_DECLVAL(F&).tell())>> = true;
+
 template <typename CharT, typename FileInterface>
 struct file_buffer_interface {
     using char_type = CharT;
@@ -1479,9 +1605,17 @@ struct file_buffer_interface {
             current_view = {};
         }
 
-        return impl::buffer_sync_helper(
-            position, current_view, putback_buffer,
-            [&](char ch) { return file.putback(ch); });
+        const auto synced_position =
+            impl::buffer_sync_helper(position, current_view, putback_buffer,
+                                     [&](char ch) { return file.putback(ch); });
+        if constexpr (is_seekable_file<FileInterface>) {
+            if (synced_position != position) {
+                return impl::buffer_sync_seek_fallback(
+                    position, synced_position, current_view, putback_buffer,
+                    file);
+            }
+        }
+        return synced_position;
     }
 
 private:

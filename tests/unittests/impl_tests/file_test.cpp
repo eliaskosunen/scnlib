@@ -27,16 +27,32 @@ SCN_GCC_COMPAT_IGNORE("-Wdeprecated-declarations")
 #include "../test_common.h"
 
 #include <algorithm>
+#include <array>
 #include <cerrno>
 #include <cstdio>
 #include <cstring>
+#include <limits>
 #include <locale>
 #include <memory>
 #include <numeric>
+#include <optional>
 #include <string>
 #include <vector>
 
+#if SCN_POSIX && !SCN_WINDOWS
+#include <unistd.h>
+#endif
+
 namespace {
+
+enum class mock_seek {
+    none,
+    correct,
+    // Relative seeks report success, but don't move
+    relative_doesnt_move,
+    // Relative backward seeks report success, but stop one character short
+    relative_one_short,
+};
 
 // Common state of the mock files: the entire contents of the file,
 // as returned by successive reads from the underlying (OS-level) file.
@@ -73,10 +89,30 @@ struct mock_file_base {
     }
 
     bool fail_all_putbacks{false};
+    // How many characters can be put back in a row
+    std::size_t putback_limit{std::numeric_limits<std::size_t>::max()};
     // Reaching the end of the file is reported as a read error, not as EOF
     bool read_error_at_end{false};
+    // Seeking to a saved position (`seek_to`) always works if the file is
+    // seekable at all
+    mock_seek seek{mock_seek::none};
 
 protected:
+    // Whether a putback is allowed by `fail_all_putbacks` and `putback_limit`.
+    // Counts the putback, if it is.
+    SCN_NODISCARD bool try_count_putback()
+    {
+        if (fail_all_putbacks || m_putbacks_in_a_row >= putback_limit) {
+            return false;
+        }
+        ++m_putbacks_in_a_row;
+        return true;
+    }
+    void reset_putback_count()
+    {
+        m_putbacks_in_a_row = 0;
+    }
+
     SCN_NODISCARD scn::impl::stdio_file_error end_of_file_error() const
     {
         return read_error_at_end ? scn::impl::stdio_file_error::error
@@ -84,16 +120,68 @@ protected:
     }
 
     std::vector<std::string> m_chunks;
+    std::size_t m_putbacks_in_a_row{0};
+};
+
+// Seeking in terms of `Derived::logical_position`,
+// the number of characters consumed from the file
+template <typename Derived>
+struct seekable_mock_file : mock_file_base {
+    using mock_file_base::mock_file_base;
+
+    SCN_NODISCARD std::optional<std::size_t> tell() const
+    {
+        if (seek == mock_seek::none) {
+            return std::nullopt;
+        }
+        return derived().logical_position();
+    }
+
+    SCN_NODISCARD std::optional<std::size_t> seek_back(std::ptrdiff_t n)
+    {
+        const auto count = static_cast<std::size_t>(n);
+        const auto current = derived().logical_position();
+        if (seek == mock_seek::none || count > current) {
+            return std::nullopt;
+        }
+        const auto requested = current - count;
+        if (seek == mock_seek::correct) {
+            derived().set_logical_position(requested);
+        }
+        else if (seek == mock_seek::relative_one_short) {
+            derived().set_logical_position(requested + 1);
+        }
+        return requested;
+    }
+
+    SCN_NODISCARD bool seek_to(std::size_t pos)
+    {
+        if (seek == mock_seek::none) {
+            return false;
+        }
+        derived().set_logical_position(pos);
+        return true;
+    }
+
+private:
+    Derived& derived()
+    {
+        return static_cast<Derived&>(*this);
+    }
+    const Derived& derived() const
+    {
+        return static_cast<const Derived&>(*this);
+    }
 };
 
 // A file without a buffer: it's read one character at a time,
 // and putback works like `ungetc` (only the previously read character can be
 // put back).
-struct unbuffered_mock_file : mock_file_base {
+struct unbuffered_mock_file : seekable_mock_file<unbuffered_mock_file> {
     static constexpr bool is_buffered = false;
 
     explicit unbuffered_mock_file(std::vector<std::string> chunks)
-        : mock_file_base(std::move(chunks)), m_contents(contents())
+        : seekable_mock_file(std::move(chunks)), m_contents(contents())
     {
     }
 
@@ -126,13 +214,14 @@ struct unbuffered_mock_file : mock_file_base {
         }
         ++m_position;
         m_furthest_position = std::max(m_furthest_position, m_position);
+        reset_putback_count();
         return m_contents[m_position - 1];
     }
 
     SCN_NODISCARD bool putback(char ch)
     {
-        if (fail_all_putbacks || m_position == 0 ||
-            m_contents[m_position - 1] != ch) {
+        if (m_position == 0 || m_contents[m_position - 1] != ch ||
+            !try_count_putback()) {
             return false;
         }
         --m_position;
@@ -150,7 +239,16 @@ struct unbuffered_mock_file : mock_file_base {
         return m_contents.substr(0, m_furthest_position);
     }
 
-private:
+    SCN_NODISCARD std::size_t logical_position() const
+    {
+        return m_position;
+    }
+    void set_logical_position(std::size_t pos)
+    {
+        m_position = pos;
+        reset_putback_count();
+    }
+
     std::string m_contents;
     std::size_t m_position{0};
     std::size_t m_furthest_position{0};
@@ -161,10 +259,10 @@ private:
 //  - characters can be put back into the buffer, if they match what was
 //    previously read from it; otherwise they go into a separate backup area,
 //    which is read from before the main buffer
-struct buffered_mock_file : mock_file_base {
+struct buffered_mock_file : seekable_mock_file<buffered_mock_file> {
     static constexpr bool is_buffered = true;
 
-    using mock_file_base::mock_file_base;
+    using seekable_mock_file::seekable_mock_file;
 
     SCN_NODISCARD static bool has_buffering()
     {
@@ -215,12 +313,13 @@ struct buffered_mock_file : mock_file_base {
         }
         const auto ch = buffer().front();
         unsafe_advance_n(1);
+        reset_putback_count();
         return ch;
     }
 
     SCN_NODISCARD bool putback(char ch)
     {
-        if (fail_all_putbacks) {
+        if (!try_count_putback()) {
             return false;
         }
         if (m_backup.empty() && m_buffer_position > 0 &&
@@ -255,14 +354,40 @@ struct buffered_mock_file : mock_file_base {
         return result;
     }
 
-private:
+    SCN_NODISCARD std::size_t logical_position() const
+    {
+        return reached().size() - (m_buffer.size() - m_buffer_position) -
+               m_backup.size();
+    }
+    // Like `fseek`, discards the backup area and the buffer
+    void set_logical_position(std::size_t pos)
+    {
+        m_backup.clear();
+        m_buffer.clear();
+        m_buffer_position = 0;
+        m_next_chunk = 0;
+        std::size_t chunk_begin = 0;
+        while (m_next_chunk < m_chunks.size() &&
+               chunk_begin + m_chunks[m_next_chunk].size() <= pos) {
+            chunk_begin += m_chunks[m_next_chunk++].size();
+        }
+        if (m_next_chunk < m_chunks.size()) {
+            m_buffer = m_chunks[m_next_chunk++];
+            m_buffer_position = pos - chunk_begin;
+        }
+        reset_putback_count();
+    }
+
     std::string m_buffer;
     std::size_t m_buffer_position{0};
     std::size_t m_next_chunk{0};
     std::string m_backup;
 };
 
-template <typename MockFile>
+// With `HasPrelude`, the characters that can't be put back into the file go
+// into the prelude, like with `scan_file`. Otherwise, syncing fails, like with
+// a `FILE*`.
+template <typename MockFile, bool HasPrelude = true>
 class mock_file_buffer : public scn::detail::basic_scan_buffer<char> {
     using base = scn::detail::basic_scan_buffer<char>;
     using interface = scn::impl::file_buffer_interface<char, MockFile>;
@@ -288,13 +413,18 @@ public:
 
     bool do_sync(std::ptrdiff_t pos) override
     {
-        if (auto i = interface::sync(m_file, pos, this->m_current_view,
-                                     this->m_putback_buffer);
-            i != pos) {
-            scn::detail::set_prelude_after_sync(
-                m_prelude, pos, i, m_current_view, m_putback_buffer);
+        const auto i = interface::sync(m_file, pos, this->m_current_view,
+                                       this->m_putback_buffer);
+        if constexpr (HasPrelude) {
+            if (i != pos) {
+                scn::detail::set_prelude_after_sync(
+                    m_prelude, pos, i, m_current_view, m_putback_buffer);
+            }
+            return true;
         }
-        return true;
+        else {
+            return i == pos;
+        }
     }
 
     std::string& prelude()
@@ -1179,6 +1309,185 @@ TYPED_TEST(FileTestP, ReadErrorWhenScanReachesEnd)
     EXPECT_EQ(this->get_file_remainder(), "123");
 }
 
+// If the file is seekable, what couldn't be put back after a failed scan is
+// restored by seeking back
+template <typename T>
+struct FileSeekTestP : public testing::Test {
+protected:
+    using file_type = typename T::file_type;
+
+    struct outcome {
+        scn::scan_error::code_t error;
+        std::string prelude;
+        std::string remaining;
+    };
+
+    // Scans two integers from `input`, which must fail
+    template <bool HasPrelude>
+    outcome failed_scan(const std::string& input,
+                        std::size_t putback_limit,
+                        mock_seek seek)
+    {
+        file_type file{chunk_up(input, T::method)};
+        file.putback_limit = putback_limit;
+        file.seek = seek;
+        mock_file_buffer<file_type, HasPrelude> buffer{file};
+        auto range = buffer.get();
+        auto result = scn::scan<int, int>(range, "{} {}");
+        EXPECT_THAT(result, Failed());
+        return {result ? scn::scan_error::max_error : result.error().code(),
+                buffer.prelude(), file.remaining()};
+    }
+};
+
+TYPED_TEST_SUITE(FileSeekTestP, type_list);
+
+TYPED_TEST(FileSeekTestP, SeekableWithPrelude)
+{
+    const std::string input{"123 abc def"};
+    for (std::size_t limit : {std::size_t{0}, std::size_t{1}}) {
+        auto out =
+            this->template failed_scan<true>(input, limit, mock_seek::correct);
+        EXPECT_EQ(out.error, scn::scan_error::invalid_scanned_value) << limit;
+        EXPECT_EQ(out.prelude, "") << limit;
+        EXPECT_EQ(out.remaining, input) << limit;
+    }
+}
+
+TYPED_TEST(FileSeekTestP, SeekableWithoutPrelude)
+{
+    const std::string input{"123 abc def"};
+    for (std::size_t limit : {std::size_t{0}, std::size_t{1}}) {
+        auto out =
+            this->template failed_scan<false>(input, limit, mock_seek::correct);
+        EXPECT_EQ(out.error, scn::scan_error::invalid_scanned_value) << limit;
+        EXPECT_EQ(out.remaining, input) << limit;
+    }
+}
+
+TYPED_TEST(FileSeekTestP, NonSeekableWithPrelude)
+{
+    const std::string input{"123 abc def"};
+    for (std::size_t limit : {std::size_t{0}, std::size_t{1}}) {
+        auto out =
+            this->template failed_scan<true>(input, limit, mock_seek::none);
+        EXPECT_EQ(out.error, scn::scan_error::invalid_scanned_value) << limit;
+        EXPECT_EQ(out.prelude + out.remaining, input) << limit;
+        if constexpr (!TestFixture::file_type::is_buffered) {
+            EXPECT_NE(out.prelude, "") << limit;
+        }
+    }
+}
+
+TYPED_TEST(FileSeekTestP, NonSeekableWithoutPrelude)
+{
+    const std::string input{"123 abc def"};
+    for (std::size_t limit : {std::size_t{0}, std::size_t{1}}) {
+        // Depending on the chunking, a buffered file may not need putback
+        const auto with_prelude =
+            this->template failed_scan<true>(input, limit, mock_seek::none);
+        auto out =
+            this->template failed_scan<false>(input, limit, mock_seek::none);
+        if (with_prelude.prelude.empty()) {
+            EXPECT_EQ(out.error, scn::scan_error::invalid_scanned_value)
+                << limit;
+            EXPECT_EQ(out.remaining, input) << limit;
+        }
+        else {
+            EXPECT_EQ(out.error, scn::scan_error::invalid_source_state)
+                << limit;
+        }
+    }
+}
+
+// A seek that doesn't end up where it should is undone
+TYPED_TEST(FileSeekTestP, LyingSeek)
+{
+    // After a seek one character short, the characters read again are the
+    // same as the ones that should be put back. Only the position after
+    // reading them tells the difference.
+    const std::string input{"1111111"};
+    const auto expected_with_prelude =
+        this->template failed_scan<true>(input, 1, mock_seek::none);
+    const auto expected_without_prelude =
+        this->template failed_scan<false>(input, 1, mock_seek::none);
+    EXPECT_EQ(expected_with_prelude.prelude + expected_with_prelude.remaining,
+              input);
+
+    for (auto seek :
+         {mock_seek::relative_doesnt_move, mock_seek::relative_one_short}) {
+        const auto with_prelude =
+            this->template failed_scan<true>(input, 1, seek);
+        EXPECT_EQ(with_prelude.error, expected_with_prelude.error);
+        EXPECT_EQ(with_prelude.prelude, expected_with_prelude.prelude);
+        EXPECT_EQ(with_prelude.remaining, expected_with_prelude.remaining);
+
+        const auto without_prelude =
+            this->template failed_scan<false>(input, 1, seek);
+        EXPECT_EQ(without_prelude.error, expected_without_prelude.error);
+        EXPECT_EQ(without_prelude.remaining,
+                  expected_without_prelude.remaining);
+    }
+}
+
+#if SCN_POSIX && !SCN_WINDOWS
+TEST(StdioFileInterfaceTest, SeekInRegularFile)
+{
+    std::FILE* handle = std::tmpfile();
+    ASSERT_TRUE(handle);
+    std::fputs("abcdef", handle);
+    std::rewind(handle);
+    {
+        scn::impl::stdio_file_interface file{handle};
+        file.lock();
+        EXPECT_EQ(file.read_one().value_or('\0'), 'a');
+        EXPECT_EQ(file.read_one().value_or('\0'), 'b');
+        EXPECT_EQ(file.read_one().value_or('\0'), 'c');
+        const auto now = file.tell();
+        ASSERT_TRUE(now);
+        EXPECT_EQ(*now, 3);
+        const auto target = file.seek_back(2);
+        ASSERT_TRUE(target);
+        EXPECT_EQ(*target, 1);
+        EXPECT_EQ(file.read_one().value_or('\0'), 'b');
+        EXPECT_TRUE(file.seek_to(*now));
+        EXPECT_EQ(file.read_one().value_or('\0'), 'd');
+        file.unlock();
+    }
+    std::fclose(handle);
+}
+
+// Seeking in /dev/null succeeds without doing anything
+TEST(StdioFileInterfaceTest, CharacterDeviceIsNotSeekable)
+{
+    std::FILE* handle = std::fopen("/dev/null", "r");
+    ASSERT_TRUE(handle);
+    {
+        scn::impl::stdio_file_interface file{handle};
+        file.lock();
+        EXPECT_FALSE(file.tell());
+        file.unlock();
+    }
+    std::fclose(handle);
+}
+
+TEST(StdioFileInterfaceTest, PipeIsNotSeekable)
+{
+    std::array<int, 2> fds{};
+    ASSERT_EQ(pipe(fds.data()), 0);
+    std::FILE* handle = fdopen(fds[0], "r");
+    ASSERT_TRUE(handle);
+    {
+        scn::impl::stdio_file_interface file{handle};
+        file.lock();
+        EXPECT_FALSE(file.tell());
+        file.unlock();
+    }
+    std::fclose(handle);
+    close(fds[1]);
+}
+#endif
+
 // `read_one` clears the EOF and error flags, and reads again,
 // so it must not be used to retry a failed refill of the buffer
 TEST(BufferedFileTest, NoReadOneAfterFailedRefill)
@@ -1416,10 +1725,11 @@ TEST_P(FileRealTest, RawFileFailedScan)
     // Without a prelude, characters that can't be put back with `ungetc`
     // are lost, in which case the scan fails because of the failed sync.
     // Which characters can be put back depends on the C library, and the
-    // buffer size.
+    // buffer size. On POSIX, the rest is restored by seeking back in the
+    // file.
     if (result.error().code() == scn::scan_error::invalid_source_state) {
-#ifdef __GLIBC__
-        FAIL() << "glibc can put back all of the characters";
+#if SCN_POSIX && !SCN_WINDOWS
+        FAIL() << "seeking back in a regular file restores the characters";
 #else
         GTEST_SKIP() << "ungetc can't put back all of the characters";
 #endif
