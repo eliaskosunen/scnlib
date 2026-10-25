@@ -1,4 +1,5 @@
 include(CheckCXXCompilerFlag)
+include(CheckCXXSourceCompiles)
 
 if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
     set(SCN_CXX_FRONTEND "GNU")
@@ -247,6 +248,40 @@ add_library(scn_coverage INTERFACE)
 target_compile_options(scn_coverage INTERFACE ${SCN_COVERAGE_FLAGS})
 target_link_options(scn_coverage INTERFACE ${SCN_COVERAGE_FLAGS})
 
+# When the standard library has no native_handle(), src/scn/impl.cpp reads the
+# FILE* of a std::basic_filebuf from the private libc++ member __file_.
+# Check that the member exists. If libc++ renames it, only the use of the file
+# descriptor is disabled, and the build doesn't break.
+# The probe uses the language standard from CMAKE_CXX_STANDARD (CMP0067).
+check_cxx_source_compiles(
+    "
+    #include <cstdio>
+    #include <fstream>
+    #ifndef _LIBCPP_VERSION
+    #error Not libc++
+    #endif
+    template <typename Tag, typename Tag::type Member>
+    struct access {
+        friend typename Tag::type get_file(Tag) { return Member; }
+    };
+    template <typename CharT>
+    struct tag {
+        using type = std::FILE* std::basic_filebuf<CharT>::*;
+        friend type get_file(tag);
+    };
+    template struct access<tag<char>, &std::basic_filebuf<char>::__file_>;
+    template struct access<tag<wchar_t>, &std::basic_filebuf<wchar_t>::__file_>;
+    int main() {
+        std::filebuf buf;
+        return fileno(buf.*get_file(tag<char>{}));
+    }
+    "
+    SCN_HAS_LIBCXX_FILEBUF_FILE
+)
+if(SCN_HAS_LIBCXX_FILEBUF_FILE)
+    set(SCN_LIBRARY_PRIVATE_DEFINITIONS SCN_HAS_LIBCXX_FILEBUF_FILE=1)
+endif()
+
 function(set_library_flags target)
     target_compile_options(
         ${target}
@@ -256,7 +291,9 @@ function(set_library_flags target)
     target_compile_definitions(
         ${target}
         PUBLIC ${SCN_CONFIG_DEFINITIONS}
-        PRIVATE ${SCN_MSVC_SECURE_DEFINITIONS}
+        PRIVATE
+            ${SCN_MSVC_SECURE_DEFINITIONS}
+            ${SCN_LIBRARY_PRIVATE_DEFINITIONS}
     )
     if(NOT SCN_USE_EXCEPTIONS)
         target_compile_definitions(

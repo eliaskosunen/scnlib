@@ -67,7 +67,7 @@ If the widths are in code units, or the input isn't necessarily valid Unicode, u
 It reads exactly five code units, and doesn't check the encoding.
 
 A `std::string_view` can only be read from a contiguous source.
-For others, like `std::cin`, read the field into a `std::string` instead.
+For other sources, like `scn::scan_file` or `scn::scan_istream`, read the field into a `std::string` instead.
 
 \section faq-regex Is it safe to use regular expressions with untrusted input?
 

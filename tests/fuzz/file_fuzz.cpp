@@ -159,8 +159,9 @@ void run_file(std::string_view expected, bool is_valid_unicode)
 
 void run_fstream(std::string_view expected, bool is_valid_unicode)
 {
-    auto ensure_eof = [&](std::istream& strm) {
+    auto ensure_eof = [&](scn::scan_istream& wrapper, std::istream& strm) {
         if (is_valid_unicode) {
+            SCN_ENSURE(wrapper.unsynced().empty());
             if (strm.eof()) {
                 return;
             }
@@ -174,15 +175,17 @@ void run_fstream(std::string_view expected, bool is_valid_unicode)
 
     {
         std::ifstream strm{path, std::ios::in | std::ios::binary};
-        const auto s = do_run_all(strm, expected);
+        scn::scan_istream wrapper{strm};
+        const auto s = do_run_all(wrapper, expected);
         check(s, expected);
-        ensure_eof(strm);
+        ensure_eof(wrapper, strm);
     }
     {
         std::ifstream strm{path, std::ios::in | std::ios::binary};
-        const auto s = do_run_line_by_line(strm, expected, is_valid_unicode);
+        scn::scan_istream wrapper{strm};
+        const auto s = do_run_line_by_line(wrapper, expected, is_valid_unicode);
         check(s, expected);
-        ensure_eof(strm);
+        ensure_eof(wrapper, strm);
     }
 }
 

@@ -112,7 +112,8 @@ int do_scan_with_cfile(std::string_view format)
 template <typename T>
 int do_scan_with_stream(std::string_view format)
 {
-    auto result = scn::scan<T>(std::cin, scn::runtime_format(format));
+    scn::scan_istream cin_wrapper{std::cin};
+    auto result = scn::scan<T>(cin_wrapper, scn::runtime_format(format));
     if (result) {
         std::cout << to_hex(result->value());
     }
@@ -121,7 +122,7 @@ int do_scan_with_stream(std::string_view format)
     }
     std::cout << std::endl;
 
-    if (auto leftovers = scn::scan<std::string>(std::cin, "{:[^\n]}");
+    if (auto leftovers = scn::scan<std::string>(cin_wrapper, "{:[^\n]}");
         leftovers) {
         std::cout << to_hex(leftovers->value());
     }

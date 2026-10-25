@@ -32,6 +32,10 @@
 #include <sstream>
 #include <string>
 
+#if SCN_POSIX && !SCN_WINDOWS
+#include <unistd.h>
+#endif
+
 using testing::FieldsAre;
 
 namespace {
@@ -131,6 +135,31 @@ private:
     }
 };
 
+// Has no get area, and can't put characters back
+// until it's given a budget for them
+class gated_putback_streambuf : public unbuffered_streambuf {
+public:
+    using unbuffered_streambuf::unbuffered_streambuf;
+
+    std::size_t putback_budget{0};
+
+private:
+    int_type pbackfail(int_type ch) override
+    {
+        if (putback_budget == 0 || m_pos == 0) {
+            return traits_type::eof();
+        }
+        if (!traits_type::eq_int_type(ch, traits_type::eof()) &&
+            !traits_type::eq(traits_type::to_char_type(ch),
+                             m_data[m_pos - 1])) {
+            return traits_type::eof();
+        }
+        --putback_budget;
+        --m_pos;
+        return traits_type::to_int_type(m_data[m_pos]);
+    }
+};
+
 enum class seek_behavior {
     none,
     correct,
@@ -165,18 +194,9 @@ public:
         set_position(0);
     }
 
-    std::basic_string<CharT> rest()
-    {
-        std::basic_string<CharT> result;
-        for (auto ch = this->sbumpc();
-             !traits_type::eq_int_type(ch, traits_type::eof());
-             ch = this->sbumpc()) {
-            result.push_back(traits_type::to_char_type(ch));
-        }
-        return result;
-    }
-
     int seekoff_calls{0};
+    // Seeking to a saved position fails
+    bool seekpos_fails{false};
 
 protected:
     int_type underflow() override
@@ -220,8 +240,9 @@ protected:
     pos_type seekpos(pos_type pos, std::ios_base::openmode which) override
     {
         const auto offset = static_cast<off_type>(pos);
-        if (m_seek == seek_behavior::none || (which & std::ios_base::in) == 0 ||
-            offset < 0 || offset > static_cast<off_type>(m_data.size())) {
+        if (seekpos_fails || m_seek == seek_behavior::none ||
+            (which & std::ios_base::in) == 0 || offset < 0 ||
+            offset > static_cast<off_type>(m_data.size())) {
             return pos_type(off_type(-1));
         }
         set_position(static_cast<std::size_t>(offset));
@@ -262,6 +283,27 @@ private:
     int m_encoding;
 };
 
+template <typename CharT>
+std::basic_string<CharT> rest_of(std::basic_streambuf<CharT>& buf)
+{
+    std::basic_string<CharT> result;
+    using traits = std::char_traits<CharT>;
+    for (auto ch = buf.sbumpc(); !traits::eq_int_type(ch, traits::eof());
+         ch = buf.sbumpc()) {
+        result.push_back(traits::to_char_type(ch));
+    }
+    return result;
+}
+
+// The characters that haven't been scanned: the unsynced ones in the wrapper,
+// and the rest of the stream buffer
+template <typename CharT>
+std::basic_string<CharT> unscanned(scn::basic_scan_istream<CharT>& wrapper,
+                                   std::basic_streambuf<CharT>& buf)
+{
+    return std::basic_string<CharT>{wrapper.unsynced()} + rest_of(buf);
+}
+
 // Removes the file when destroyed
 class temporary_file_path {
 public:
@@ -296,7 +338,7 @@ TEST(IstreamSourceTest, Stringstream)
     auto res = scn::scan<int, std::string>(ss, "{} {}");
     ASSERT_THAT(res, Succeeded());
     EXPECT_THAT(res->values(), FieldsAre(123, "abc"));
-    EXPECT_EQ(&res->stream(), &ss);
+    EXPECT_EQ(&res->source(), &ss);
 }
 
 TEST(IstreamSourceTest, StringstreamMultiline)
@@ -385,8 +427,9 @@ TEST(IstreamSourceTest, StringstreamMixedTypes)
 TEST(IstreamSourceTest, NullStreambuf)
 {
     std::istream stream{nullptr};
-    auto result = scn::scan<int>(stream, "{}");
-    EXPECT_THAT(result, Failed());
+    scn::scan_istream wrapper{stream};
+    auto result = scn::scan<int>(wrapper, "{}");
+    EXPECT_THAT(result, FailedWith(scn::scan_error::invalid_source_state));
 }
 
 TEST(IstreamSourceTest, StreambufWithHugeAvailableCount)
@@ -394,7 +437,8 @@ TEST(IstreamSourceTest, StreambufWithHugeAvailableCount)
     unbuffered_streambuf buf{"12 34",
                              std::numeric_limits<std::streamsize>::max()};
     std::istream stream{&buf};
-    auto result = scn::scan<int, int>(stream, "{} {}");
+    scn::scan_istream wrapper{stream};
+    auto result = scn::scan<int, int>(wrapper, "{} {}");
     ASSERT_THAT(result, Succeeded());
     auto [a, b] = result->values();
     EXPECT_EQ(a, 12);
@@ -407,7 +451,8 @@ TEST(IstreamSourceTest, StreambufWithHugeAvailableCountLongInput)
     unbuffered_streambuf buf{word + " 34",
                              std::numeric_limits<std::streamsize>::max()};
     std::istream stream{&buf};
-    auto result = scn::scan<std::string, int>(stream, "{} {}");
+    scn::scan_istream wrapper{stream};
+    auto result = scn::scan<std::string, int>(wrapper, "{} {}");
     ASSERT_THAT(result, Succeeded());
     auto [str, num] = result->values();
     EXPECT_EQ(str, word);
@@ -418,12 +463,13 @@ TEST(IstreamSourceTest, StreambufWithoutPutbackConsecutiveScans)
 {
     unbuffered_streambuf buf{"12 34"};
     std::istream stream{&buf};
+    scn::scan_istream wrapper{stream};
 
-    auto first = scn::scan<int>(stream, "{}");
+    auto first = scn::scan<int>(wrapper, "{}");
     ASSERT_THAT(first, Succeeded());
     EXPECT_EQ(first->value(), 12);
 
-    auto second = scn::scan<int>(stream, "{}");
+    auto second = scn::scan<int>(wrapper, "{}");
     ASSERT_THAT(second, Succeeded());
     EXPECT_EQ(second->value(), 34);
 }
@@ -432,13 +478,15 @@ TEST(IstreamSourceTest, StreambufWithoutPutbackFailedScan)
 {
     unbuffered_streambuf buf{"12 x tail"};
     std::istream stream{&buf};
+    scn::scan_istream wrapper{stream};
 
     // The characters read by the failed scan can't be put back,
-    // and that is reported instead of the actual error
-    auto result = scn::scan<int, int>(stream, "{} {}");
-    ASSERT_THAT(result, Failed());
-    EXPECT_EQ(result.error().code(), scn::scan_error::invalid_source_state);
-    EXPECT_STREQ(result.error().msg(), "Failed to sync with underlying source");
+    // so they are stored in the wrapper
+    auto result = scn::scan<int, int>(wrapper, "{} {}");
+    ASSERT_THAT(result, FailedWith(scn::scan_error::invalid_scanned_value));
+    EXPECT_FALSE(wrapper.unsynced().empty());
+    EXPECT_FALSE(wrapper.stream().has_value());
+    EXPECT_EQ(unscanned(wrapper, buf), "12 x tail");
 }
 
 // Putting back what a failed scan read falls short.
@@ -460,15 +508,13 @@ TEST(IstreamSourceTest, SeekableStreambufWithLimitedPutbackFailedScan)
         limited_putback_streambuf<char> buf{data, 1, seek_behavior::correct,
                                             chunk_size};
         std::istream stream{&buf};
-        auto result = scn::scan<int, int>(stream, "{} {}");
-        ASSERT_THAT(result, Failed()) << data;
-#if SCN_WINDOWS
-        EXPECT_EQ(result.error().code(), scn::scan_error::invalid_source_state)
-            << data;
-#else
-        EXPECT_EQ(result.error().code(), error) << data;
-        EXPECT_EQ(buf.rest(), data);
+        scn::scan_istream wrapper{stream};
+        auto result = scn::scan<int, int>(wrapper, "{} {}");
+        ASSERT_THAT(result, FailedWith(error)) << data;
+#if !SCN_WINDOWS
+        EXPECT_TRUE(wrapper.unsynced().empty()) << data;
 #endif
+        EXPECT_EQ(unscanned(wrapper, buf), data);
     }
 }
 
@@ -476,11 +522,11 @@ TEST(IstreamSourceTest, NonSeekableStreambufWithLimitedPutbackFailedScan)
 {
     limited_putback_streambuf<char> buf{"12", 1, seek_behavior::none};
     std::istream stream{&buf};
-    auto result = scn::scan<int, int>(stream, "{} {}");
-    ASSERT_THAT(result, Failed());
-    EXPECT_EQ(result.error().code(), scn::scan_error::invalid_source_state);
-    EXPECT_STREQ(result.error().msg(), "Failed to sync with underlying source");
-    EXPECT_EQ(buf.rest(), "2");
+    scn::scan_istream wrapper{stream};
+    auto result = scn::scan<int, int>(wrapper, "{} {}");
+    ASSERT_THAT(result, FailedWith(scn::scan_error::end_of_input));
+    EXPECT_EQ(wrapper.unsynced(), "1");
+    EXPECT_EQ(rest_of(buf), "2");
 }
 
 // A seek that doesn't end up where it should is undone
@@ -493,14 +539,32 @@ TEST(IstreamSourceTest, LyingSeekableStreambufWithLimitedPutbackFailedScan)
         // reading them tells the difference.
         limited_putback_streambuf<char> buf{"1111111", 1, seek};
         std::istream stream{&buf};
-        auto result = scn::scan<int, int>(stream, "{} {}");
-        ASSERT_THAT(result, Failed());
-        EXPECT_EQ(result.error().code(), scn::scan_error::invalid_source_state);
-        EXPECT_STREQ(result.error().msg(),
-                     "Failed to sync with underlying source");
+        scn::scan_istream wrapper{stream};
+        auto result = scn::scan<int, int>(wrapper, "{} {}");
+        ASSERT_THAT(result, FailedWith(scn::scan_error::end_of_input));
         // As much as without seeking
-        EXPECT_EQ(buf.rest(), "1");
+        EXPECT_EQ(wrapper.unsynced(), "111111");
+        EXPECT_EQ(rest_of(buf), "1");
     }
+}
+
+// If undoing the seek fails, the position is unknown
+TEST(IstreamSourceTest, SeekableStreambufWithFailingUndoSeek)
+{
+#if SCN_WINDOWS
+    GTEST_SKIP() << "No seeking on Windows";
+#else
+    limited_putback_streambuf<char> buf{"1111111", 1,
+                                        seek_behavior::relative_one_short};
+    buf.seekpos_fails = true;
+    std::istream stream{&buf};
+    scn::scan_istream wrapper{stream};
+    auto result = scn::scan<int, int>(wrapper, "{} {}");
+    ASSERT_THAT(result, FailedWith(scn::scan_error::invalid_source_state));
+    EXPECT_FALSE(wrapper.unsynced().empty());
+    EXPECT_FALSE(wrapper.sync());
+    EXPECT_FALSE(wrapper.unsynced().empty());
+#endif
 }
 
 // Positions in a variable-width encoding (`encoding() == 0`) aren't
@@ -511,11 +575,12 @@ TEST(IstreamSourceTest, WideStreambufWithVariableWidthEncoding)
     buf.pubimbue(
         std::locale(std::locale::classic(), new codecvt_with_encoding{0}));
     std::wistream stream{&buf};
-    auto result = scn::scan<int, int>(stream, L"{} {}");
-    ASSERT_THAT(result, Failed());
-    EXPECT_EQ(result.error().code(), scn::scan_error::invalid_source_state);
+    scn::wscan_istream wrapper{stream};
+    auto result = scn::scan<int, int>(wrapper, L"{} {}");
+    ASSERT_THAT(result, FailedWith(scn::scan_error::end_of_input));
     EXPECT_EQ(buf.seekoff_calls, 0);
-    EXPECT_EQ(buf.rest(), L"2");
+    EXPECT_EQ(wrapper.unsynced(), L"1");
+    EXPECT_EQ(rest_of(buf), L"2");
 }
 
 TEST(IstreamSourceTest, WideStreambufWithFixedWidthEncoding)
@@ -524,14 +589,13 @@ TEST(IstreamSourceTest, WideStreambufWithFixedWidthEncoding)
     buf.pubimbue(
         std::locale(std::locale::classic(), new codecvt_with_encoding{1}));
     std::wistream stream{&buf};
-    auto result = scn::scan<int, int>(stream, L"{} {}");
-    ASSERT_THAT(result, Failed());
-#if SCN_WINDOWS
-    EXPECT_EQ(result.error().code(), scn::scan_error::invalid_source_state);
-#else
-    EXPECT_EQ(result.error().code(), scn::scan_error::end_of_input);
-    EXPECT_EQ(buf.rest(), L"12");
+    scn::wscan_istream wrapper{stream};
+    auto result = scn::scan<int, int>(wrapper, L"{} {}");
+    ASSERT_THAT(result, FailedWith(scn::scan_error::end_of_input));
+#if !SCN_WINDOWS
+    EXPECT_TRUE(wrapper.unsynced().empty());
 #endif
+    EXPECT_EQ(unscanned(wrapper, buf), L"12");
 }
 
 // libc++'s `filebuf` can put back only one character after reaching the end
@@ -543,8 +607,10 @@ TEST(IstreamSourceTest, IfstreamFailedScanAtEnd)
     temporary_file_path file{"scn_istream_source_test_ifstream.txt", "12"};
     std::ifstream stream{file.path(), std::ios::binary};
     ASSERT_TRUE(stream.is_open());
-    auto result = scn::scan<int, int>(stream, "{} {}");
+    scn::scan_istream wrapper{stream};
+    auto result = scn::scan<int, int>(wrapper, "{} {}");
     ASSERT_THAT(result, FailedWith(scn::scan_error::end_of_input));
+    EXPECT_TRUE(wrapper.unsynced().empty());
 
     std::string rest{std::istreambuf_iterator<char>{stream},
                      std::istreambuf_iterator<char>{}};
@@ -552,11 +618,37 @@ TEST(IstreamSourceTest, IfstreamFailedScanAtEnd)
 #endif
 }
 
+// A scan that fails after reading across several refills of the tiny `filebuf`
+// buffer has to put back characters across a refill
+TEST(IstreamSourceTest, IfstreamFailedScanAcrossBufferRefill)
+{
+#if SCN_WINDOWS
+    GTEST_SKIP() << "No seeking on Windows, and putback is limited there";
+#else
+    const std::string input = "1234567890 abcdefghijklmnop";
+    temporary_file_path file{"scn_istream_source_test_refill.txt", input};
+    std::ifstream stream;
+    char buffer[4];
+    stream.rdbuf()->pubsetbuf(buffer, sizeof(buffer));
+    stream.open(file.path(), std::ios::binary);
+    ASSERT_TRUE(stream.is_open());
+    scn::scan_istream wrapper{stream};
+    auto result = scn::scan<int, int>(wrapper, "{} {}");
+    ASSERT_THAT(result, FailedWith(scn::scan_error::invalid_scanned_value));
+    EXPECT_TRUE(wrapper.unsynced().empty());
+
+    std::string rest{std::istreambuf_iterator<char>{stream},
+                     std::istreambuf_iterator<char>{}};
+    EXPECT_EQ(rest, input);
+#endif
+}
+
 TEST(IstreamSourceTest, StreambufOverpromisingAvailableCharacters)
 {
     overpromising_streambuf buf{"12 34"};
     std::istream stream{&buf};
-    auto result = scn::scan<int, int>(stream, "{} {}");
+    scn::scan_istream wrapper{stream};
+    auto result = scn::scan<int, int>(wrapper, "{} {}");
     ASSERT_THAT(result, Succeeded());
     auto [a, b] = result->values();
     EXPECT_EQ(a, 12);
@@ -567,7 +659,8 @@ TEST(IstreamSourceTest, StreambufWithoutBulkReads)
 {
     no_bulk_read_streambuf buf{"12 34"};
     std::istream stream{&buf};
-    auto result = scn::scan<int, int>(stream, "{} {}");
+    scn::scan_istream wrapper{stream};
+    auto result = scn::scan<int, int>(wrapper, "{} {}");
     ASSERT_THAT(result, Succeeded());
     auto [a, b] = result->values();
     EXPECT_EQ(a, 12);
@@ -599,7 +692,8 @@ TEST(IstreamSourceTest, WidthDoesntReadPastTheField)
     for (auto fmt : {"{:3}", "{:.3}", "{:3c}"}) {
         tracking_streambuf buf{"abcdef"};
         std::istream stream{&buf};
-        auto result = scn::scan<std::string>(stream, scn::runtime_format(fmt));
+        scn::scan_istream wrapper{stream};
+        auto result = scn::scan<std::string>(wrapper, scn::runtime_format(fmt));
         ASSERT_THAT(result, Succeeded()) << fmt;
         EXPECT_EQ(result->value(), "abc") << fmt;
         EXPECT_EQ(buf.furthest_read(), 2u) << fmt;
@@ -608,7 +702,8 @@ TEST(IstreamSourceTest, WidthDoesntReadPastTheField)
     // U+00E4 is two bytes
     tracking_streambuf buf{"a\xc3\xa4zz"};
     std::istream stream{&buf};
-    auto result = scn::scan<std::string>(stream, "{:2}");
+    scn::scan_istream wrapper{stream};
+    auto result = scn::scan<std::string>(wrapper, "{:2}");
     ASSERT_THAT(result, Succeeded());
     EXPECT_EQ(result->value(), "a\xc3\xa4");
     EXPECT_EQ(buf.furthest_read(), 2u);
@@ -652,4 +747,487 @@ TEST(IstreamSourceTest, SequentialSingleFieldsWithSpecs)
     }
 }
 
+TEST(IstreamSourceTest, UnsyncedCharactersAreReadByTheNextScan)
+{
+    gated_putback_streambuf buf{"12 x tail"};
+    std::istream stream{&buf};
+    scn::scan_istream wrapper{stream};
+
+    auto failed = scn::scan<int, int>(wrapper, "{} {}");
+    ASSERT_THAT(failed, FailedWith(scn::scan_error::invalid_scanned_value));
+    ASSERT_FALSE(wrapper.unsynced().empty());
+
+    auto result = scn::scan<int, std::string>(wrapper, "{} {}");
+    ASSERT_THAT(result, Succeeded());
+    EXPECT_THAT(result->values(), FieldsAre(12, "x"));
+    EXPECT_EQ(&result->source(), &wrapper);
+}
+
+TEST(IstreamSourceTest, SyncGivesTheUnsyncedCharactersBack)
+{
+    gated_putback_streambuf buf{"12 x tail"};
+    std::istream stream{&buf};
+    scn::scan_istream wrapper{stream};
+
+    EXPECT_TRUE(wrapper.sync());
+
+    ASSERT_THAT((scn::scan<int, int>(wrapper, "{} {}")), Failed());
+    const std::string unsynced{wrapper.unsynced()};
+    ASSERT_FALSE(unsynced.empty());
+
+    // Nothing can be put back yet
+    EXPECT_FALSE(wrapper.sync());
+    EXPECT_EQ(wrapper.unsynced(), unsynced);
+    EXPECT_FALSE(wrapper.stream().has_value());
+
+    buf.putback_budget = 100;
+    EXPECT_TRUE(wrapper.sync());
+    EXPECT_TRUE(wrapper.unsynced().empty());
+    ASSERT_TRUE(wrapper.stream().has_value());
+    EXPECT_EQ(*wrapper.stream(), &stream);
+    EXPECT_EQ(rest_of(buf), "12 x tail");
+}
+
+TEST(IstreamSourceTest, SyncPartially)
+{
+    gated_putback_streambuf buf{"12 x tail"};
+    std::istream stream{&buf};
+    scn::scan_istream wrapper{stream};
+
+    ASSERT_THAT((scn::scan<int, int>(wrapper, "{} {}")), Failed());
+    const auto n_unsynced = wrapper.unsynced().size();
+    ASSERT_GE(n_unsynced, 2u);
+
+    // The characters that were read last are put back first
+    buf.putback_budget = 1;
+    EXPECT_FALSE(wrapper.sync());
+    EXPECT_EQ(wrapper.unsynced().size(), n_unsynced - 1);
+    EXPECT_FALSE(wrapper.stream().has_value());
+    EXPECT_EQ(unscanned(wrapper, buf), "12 x tail");
+}
+
+TEST(IstreamSourceTest, ReleaseUnsynced)
+{
+    gated_putback_streambuf buf{"12 x tail"};
+    std::istream stream{&buf};
+    scn::scan_istream wrapper{stream};
+
+    EXPECT_TRUE(wrapper.release_unsynced().empty());
+
+    ASSERT_THAT((scn::scan<int, int>(wrapper, "{} {}")), Failed());
+    const std::string unsynced{wrapper.unsynced()};
+    ASSERT_FALSE(unsynced.empty());
+
+    EXPECT_EQ(wrapper.release_unsynced(), unsynced);
+    EXPECT_TRUE(wrapper.unsynced().empty());
+    ASSERT_TRUE(wrapper.stream().has_value());
+    EXPECT_EQ(*wrapper.stream(), &stream);
+    EXPECT_EQ(unsynced + rest_of(buf), "12 x tail");
+}
+
+TEST(IstreamSourceTest, MovedFromWrapperHasNoStream)
+{
+    gated_putback_streambuf buf{"12 x tail"};
+    std::istream stream{&buf};
+    scn::scan_istream wrapper{stream};
+    ASSERT_THAT((scn::scan<int, int>(wrapper, "{} {}")), Failed());
+    const std::string unsynced{wrapper.unsynced()};
+    ASSERT_FALSE(unsynced.empty());
+
+    scn::scan_istream moved{std::move(wrapper)};
+    EXPECT_EQ(moved.unsynced(), unsynced);
+    EXPECT_FALSE(moved.stream().has_value());
+    EXPECT_TRUE(wrapper.unsynced().empty());
+    ASSERT_TRUE(wrapper.stream().has_value());
+    EXPECT_EQ(*wrapper.stream(), nullptr);
+
+    scn::scan_istream assigned{stream};
+    assigned = std::move(moved);
+    EXPECT_EQ(assigned.unsynced(), unsynced);
+    EXPECT_TRUE(moved.unsynced().empty());
+    ASSERT_TRUE(moved.stream().has_value());
+    EXPECT_EQ(*moved.stream(), nullptr);
+
+    auto result = scn::scan<int>(wrapper, "{}");
+    EXPECT_THAT(result, FailedWith(scn::scan_error::invalid_source_state));
+    // Nothing to give back
+    EXPECT_TRUE(wrapper.sync());
+}
+
+TEST(IstreamSourceTest, SelfMove)
+{
+    gated_putback_streambuf buf{"12 x tail"};
+    std::istream stream{&buf};
+    scn::scan_istream wrapper{stream};
+    ASSERT_THAT((scn::scan<int, int>(wrapper, "{} {}")), Failed());
+    const std::string unsynced{wrapper.unsynced()};
+
+    // Through a reference, so that `-Wself-move` doesn't fire
+    auto& alias = wrapper;
+    wrapper = std::move(alias);
+    EXPECT_EQ(wrapper.unsynced(), unsynced);
+    EXPECT_FALSE(wrapper.stream().has_value());
+}
+
+TEST(IstreamSourceTest, NullStreambufKeepsTheUnsyncedCharacters)
+{
+    gated_putback_streambuf buf{"12 x tail"};
+    std::istream stream{&buf};
+    scn::scan_istream wrapper{stream};
+    ASSERT_THAT((scn::scan<int, int>(wrapper, "{} {}")), Failed());
+    const std::string unsynced{wrapper.unsynced()};
+    ASSERT_FALSE(unsynced.empty());
+
+    stream.rdbuf(nullptr);
+    auto result = scn::scan<int>(wrapper, "{}");
+    EXPECT_THAT(result, FailedWith(scn::scan_error::invalid_source_state));
+    EXPECT_EQ(wrapper.unsynced(), unsynced);
+    EXPECT_FALSE(wrapper.sync());
+    EXPECT_EQ(wrapper.unsynced(), unsynced);
+
+    stream.rdbuf(&buf);
+    auto success = scn::scan<int, std::string>(wrapper, "{} {}");
+    ASSERT_THAT(success, Succeeded());
+    EXPECT_THAT(success->values(), FieldsAre(12, "x"));
+}
+
+TEST(IstreamSourceTest, WideWrapperSync)
+{
+    limited_putback_streambuf<wchar_t> buf{L"12", 1, seek_behavior::none};
+    std::wistream stream{&buf};
+    scn::wscan_istream wrapper{stream};
+    EXPECT_TRUE(wrapper.sync());
+
+    auto result = scn::scan<int, int>(wrapper, L"{} {}");
+    ASSERT_THAT(result, FailedWith(scn::scan_error::end_of_input));
+    EXPECT_EQ(wrapper.unsynced(), L"1");
+
+    // Can't put back, since there's no room before the get area
+    EXPECT_FALSE(wrapper.sync());
+    EXPECT_EQ(wrapper.unsynced(), L"1");
+    EXPECT_EQ(wrapper.release_unsynced(), L"1");
+    EXPECT_EQ(rest_of(buf), L"2");
+}
+
+TEST(IstreamSourceTest, WrapperResultSource)
+{
+    std::istringstream ss{"12 34"};
+    scn::scan_istream wrapper{ss};
+    auto result = scn::scan<int>(wrapper, "{}");
+    ASSERT_THAT(result, Succeeded());
+    EXPECT_EQ(&result->source(), &wrapper);
+    static_assert(
+        std::is_same_v<decltype(result->source()), scn::scan_istream&>);
+
+    // The result type doesn't depend on the value category
+    static_assert(std::is_same_v<scn::vscan_result<scn::scan_istream&>,
+                                 scn::vscan_result<scn::scan_istream>>);
+}
+
+TEST(IstreamSourceTest, WideStringstreamResultSource)
+{
+    std::wistringstream ss{L"12 34"};
+    auto result = scn::scan<int>(ss, L"{}");
+    ASSERT_THAT(result, Succeeded());
+    EXPECT_EQ(&result->source(), &ss);
+    static_assert(
+        std::is_same_v<decltype(result->source()), std::wistringstream&>);
+}
+
+TEST(IstreamSourceTest, StringstreamWithBothDirections)
+{
+    std::stringstream ss{"12 34"};
+    auto result = scn::scan<int, int>(ss, "{} {}");
+    ASSERT_THAT(result, Succeeded());
+    EXPECT_THAT(result->values(), FieldsAre(12, 34));
+    EXPECT_EQ(&result->source(), &ss);
+}
+
+TEST(IstreamSourceTest, FailedStringstreamScanLosesNothing)
+{
+    std::istringstream ss{"12 x tail"};
+    auto result = scn::scan<int, int>(ss, "{} {}");
+    ASSERT_THAT(result, FailedWith(scn::scan_error::invalid_scanned_value));
+    EXPECT_EQ(ss.str(), "12 x tail");
+    std::string rest;
+    std::getline(ss, rest);
+    EXPECT_EQ(rest, "12 x tail");
+}
+
+namespace {
+struct derived_stringstream : std::istringstream {
+    using std::istringstream::istringstream;
+};
+}  // namespace
+
+TEST(IstreamSourceTest, DerivedStringstream)
+{
+    derived_stringstream ss{"12 34"};
+    auto result = scn::scan<int, int>(ss, "{} {}");
+    ASSERT_THAT(result, Succeeded());
+    EXPECT_THAT(result->values(), FieldsAre(12, 34));
+    EXPECT_EQ(&result->source(), &ss);
+    static_assert(
+        std::is_same_v<decltype(result->source()), derived_stringstream&>);
+}
+
+// The stream is read through the string stream's own buffer
+TEST(IstreamSourceTest, StringstreamWithReplacedBuffer)
+{
+    std::istringstream ss{"12 34"};
+    std::istringstream other{"56 78"};
+    // Replaces the buffer seen by the `std::istream` base class,
+    // but `ss.rdbuf()` is still the `std::stringbuf`
+    ss.std::ios::rdbuf(other.rdbuf());
+    auto result = scn::scan<int, int>(ss, "{} {}");
+    ASSERT_THAT(result, Succeeded());
+    EXPECT_THAT(result->values(), FieldsAre(12, 34));
+}
+
+#if defined(__cpp_lib_spanstream)
+TEST(IstreamSourceTest, Spanstream)
+{
+    const char data[] = "12 34 56";
+    std::ispanstream in{std::span<const char>{data, sizeof(data) - 1}};
+    auto result = scn::scan<int, int>(in, "{} {}");
+    ASSERT_THAT(result, Succeeded());
+    EXPECT_THAT(result->values(), FieldsAre(12, 34));
+    EXPECT_EQ(&result->source(), &in);
+
+    char buffer[] = "78 90";
+    std::spanstream both{std::span<char>{buffer, sizeof(buffer) - 1}};
+    auto both_result = scn::scan<int, int>(both, "{} {}");
+    ASSERT_THAT(both_result, Succeeded());
+    EXPECT_THAT(both_result->values(), FieldsAre(78, 90));
+}
 #endif
+
+#if SCN_POSIX && !SCN_WINDOWS
+namespace {
+// The read end of a pipe, opened as a file with `/dev/fd`,
+// so that it can be given to a `std::basic_ifstream`
+class pipe_with_contents {
+public:
+    explicit pipe_with_contents(const std::string& contents)
+    {
+        int fds[2];
+        if (::pipe(fds) != 0) {
+            return;
+        }
+        m_read_fd = fds[0];
+        // The contents must fit in the pipe (16 KiB on macOS), because nothing
+        // reads from it yet
+        if (::write(fds[1], contents.data(), contents.size()) !=
+            static_cast<::ssize_t>(contents.size())) {
+            m_read_fd = -1;
+        }
+        ::close(fds[1]);
+    }
+
+    ~pipe_with_contents()
+    {
+        if (m_read_fd != -1) {
+            ::close(m_read_fd);
+        }
+    }
+
+    pipe_with_contents(const pipe_with_contents&) = delete;
+    pipe_with_contents& operator=(const pipe_with_contents&) = delete;
+
+    std::string path() const
+    {
+        return "/dev/fd/" + std::to_string(m_read_fd);
+    }
+
+    bool valid() const
+    {
+        return m_read_fd != -1;
+    }
+
+private:
+    int m_read_fd{-1};
+};
+
+// Whether the file descriptor of a `std::basic_filebuf` is accessible
+constexpr bool has_filebuf_descriptor =
+#if defined(__cpp_lib_fstream_native_handle) || defined(_LIBCPP_VERSION)
+    true;
+#else
+    false;
+#endif
+
+template <typename CharT>
+void expect_filebuf_seekability(const std::basic_filebuf<CharT>& filebuf,
+                                bool expected)
+{
+    const auto result = scn::detail::is_seekable_filebuf(filebuf);
+    if (has_filebuf_descriptor) {
+        ASSERT_TRUE(result.has_value());
+        EXPECT_EQ(*result, expected);
+    }
+    else if (result) {
+        EXPECT_EQ(*result, expected);
+    }
+}
+
+class derived_ifstream : public std::ifstream {
+public:
+    using std::ifstream::ifstream;
+};
+}  // namespace
+
+TEST(IstreamSourceTest, SeekableFilebufRegularFile)
+{
+    temporary_file_path file{"scn_istream_source_test_seekable.txt", "12"};
+    std::ifstream stream{file.path(), std::ios::binary};
+    ASSERT_TRUE(stream.is_open());
+    expect_filebuf_seekability(*stream.rdbuf(), true);
+
+    std::wifstream wstream{file.path(), std::ios::binary};
+    ASSERT_TRUE(wstream.is_open());
+    expect_filebuf_seekability(*wstream.rdbuf(), true);
+}
+
+TEST(IstreamSourceTest, SeekableFilebufCharacterDevice)
+{
+    std::ifstream stream{"/dev/null", std::ios::binary};
+    if (!stream.is_open()) {
+        GTEST_SKIP() << "Can't open /dev/null";
+    }
+    expect_filebuf_seekability(*stream.rdbuf(), false);
+
+    std::wifstream wstream{"/dev/null", std::ios::binary};
+    ASSERT_TRUE(wstream.is_open());
+    expect_filebuf_seekability(*wstream.rdbuf(), false);
+}
+
+TEST(IstreamSourceTest, SeekableFilebufPipe)
+{
+    pipe_with_contents pipe{"12"};
+    ASSERT_TRUE(pipe.valid());
+    std::ifstream stream{pipe.path(), std::ios::binary};
+    if (!stream.is_open()) {
+        GTEST_SKIP() << "Can't open " << pipe.path();
+    }
+    expect_filebuf_seekability(*stream.rdbuf(), false);
+}
+
+TEST(IstreamSourceTest, SeekableFilebufClosed)
+{
+    std::ifstream stream;
+    auto result = scn::detail::is_seekable_filebuf(*stream.rdbuf());
+    ASSERT_TRUE(result.has_value());
+    EXPECT_FALSE(*result);
+
+    temporary_file_path file{"scn_istream_source_test_closed.txt", "12"};
+    stream.open(file.path(), std::ios::binary);
+    ASSERT_TRUE(stream.is_open());
+    stream.close();
+    result = scn::detail::is_seekable_filebuf(*stream.rdbuf());
+    ASSERT_TRUE(result.has_value());
+    EXPECT_FALSE(*result);
+}
+
+// Nothing is lost or repeated when the filebuf can't put back everything
+// it has read, and the file isn't seekable
+TEST(IstreamSourceTest, IfstreamOnPipeFailedScan)
+{
+    const std::string input = "1234567890 abcdefghijklmnop";
+    pipe_with_contents pipe{input};
+    ASSERT_TRUE(pipe.valid());
+    std::ifstream stream;
+    char buffer[4];
+    stream.rdbuf()->pubsetbuf(buffer, sizeof(buffer));
+    stream.open(pipe.path(), std::ios::binary);
+    if (!stream.is_open()) {
+        GTEST_SKIP() << "Can't open " << pipe.path();
+    }
+    scn::scan_istream wrapper{stream};
+    auto result = scn::scan<int, int>(wrapper, "{} {}");
+    ASSERT_THAT(result, Failed());
+
+    const std::string unsynced{wrapper.unsynced()};
+    const std::string rest{std::istreambuf_iterator<char>{stream},
+                           std::istreambuf_iterator<char>{}};
+    EXPECT_EQ(unsynced + rest, input);
+}
+
+TEST(IstreamSourceTest, WideIfstreamFailedScanAtEnd)
+{
+    temporary_file_path file{"scn_istream_source_test_wifstream.txt", "12"};
+    std::wifstream stream{file.path(), std::ios::binary};
+    ASSERT_TRUE(stream.is_open());
+    scn::wscan_istream wrapper{stream};
+    auto result = scn::scan<int, int>(wrapper, L"{} {}");
+    ASSERT_THAT(result, FailedWith(scn::scan_error::end_of_input));
+
+    // The wide filebuf of some standard libraries has a variable-width
+    // encoding. In that case, no seek is attempted, and characters stay
+    // unsynced.
+    const std::wstring rest{std::istreambuf_iterator<wchar_t>{stream},
+                            std::istreambuf_iterator<wchar_t>{}};
+    EXPECT_EQ(std::wstring{wrapper.unsynced()} + rest, L"12");
+}
+
+TEST(IstreamSourceTest, Fstream)
+{
+    temporary_file_path file{"scn_istream_source_test_fstream.txt", "12 34"};
+    std::fstream stream{file.path(), std::ios::in | std::ios::binary};
+    ASSERT_TRUE(stream.is_open());
+    scn::scan_istream wrapper{stream};
+    auto result = scn::scan<int>(wrapper, "{}");
+    ASSERT_TRUE(result);
+    EXPECT_EQ(result->value(), 12);
+    EXPECT_TRUE(wrapper.sync());
+
+    std::string rest{std::istreambuf_iterator<char>{stream},
+                     std::istreambuf_iterator<char>{}};
+    EXPECT_EQ(rest, " 34");
+}
+
+TEST(IstreamSourceTest, DerivedIfstreamIsReadThroughItsFilebuf)
+{
+    temporary_file_path file{"scn_istream_source_test_derived.txt", "12 34"};
+    derived_ifstream stream{file.path(), std::ios::binary};
+    ASSERT_TRUE(stream.is_open());
+    std::stringbuf other{"99 99"};
+    static_cast<std::istream&>(stream).rdbuf(&other);
+
+    scn::scan_istream wrapper{stream};
+    auto result = scn::scan<int>(wrapper, "{}");
+    ASSERT_TRUE(result);
+    EXPECT_EQ(result->value(), 12);
+
+    // Without the filebuf, the replaced stream buffer is read
+    scn::scan_istream plain{static_cast<std::istream&>(stream)};
+    auto plain_result = scn::scan<int>(plain, "{}");
+    ASSERT_TRUE(plain_result);
+    EXPECT_EQ(plain_result->value(), 99);
+}
+
+TEST(IstreamSourceTest, MoveCarriesTheFilebuf)
+{
+    temporary_file_path file{"scn_istream_source_test_move.txt", "12 34 56"};
+    std::ifstream stream{file.path(), std::ios::binary};
+    ASSERT_TRUE(stream.is_open());
+    std::stringbuf other{"99 99"};
+    static_cast<std::istream&>(stream).rdbuf(&other);
+
+    scn::scan_istream wrapper{stream};
+    scn::scan_istream moved{std::move(wrapper)};
+    auto result = scn::scan<int>(moved, "{}");
+    ASSERT_TRUE(result);
+    EXPECT_EQ(result->value(), 12);
+
+    scn::scan_istream assigned{static_cast<std::istream&>(stream)};
+    assigned = std::move(moved);
+    auto assigned_result = scn::scan<int>(assigned, " {}");
+    ASSERT_TRUE(assigned_result);
+    EXPECT_EQ(assigned_result->value(), 34);
+
+    auto moved_from = scn::scan<int>(moved, "{}");
+    EXPECT_THAT(moved_from, FailedWith(scn::scan_error::invalid_source_state));
+}
+#endif
+
+#endif  // !SCN_DISABLE_IOSTREAM

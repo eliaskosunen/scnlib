@@ -48,6 +48,15 @@ set(buildfail_sources
 if(NOT SCN_DISABLE_TYPE_DOUBLE)
     list(APPEND buildfail_sources float_format_unsupported_without_strtod.cpp)
 endif()
+if(NOT SCN_DISABLE_IOSTREAM)
+    list(
+        APPEND buildfail_sources
+        custom_traits_istream_source.cpp
+        ifstream_source.cpp
+        plain_istream_source.cpp
+        rvalue_scan_istream_source.cpp
+    )
+endif()
 if(NOT SCN_DISABLE_CHRONO)
     list(
         APPEND buildfail_sources

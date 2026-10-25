@@ -7096,20 +7096,32 @@ auto make_range_scan_buffer(Range&& range)
  *
  * When scanning from a `std::basic_istream`, characters may be read from its
  * `std::basic_streambuf` ahead of what is scanned.
- * Those that weren't scanned are returned with `sputbackc`.
+ * Those that weren't scanned are returned with `sputbackc`,
+ * and if that fails, by seeking the stream buffer back,
+ * if that can be verified to have worked.
+ * For a `std::basic_filebuf`, it is also checked that the file is a regular
+ * file or a block device, where the standard library allows it
+ * (see `scn::basic_scan_istream`).
  * If a scan fails, all the characters it has read are returned that way.
- * Therefore, the stream buffer must support putback of the characters
- * it has returned (`std::stringbuf` and `std::filebuf` do).
- * If it doesn't, a failed scan loses the characters it has read,
- * and reports a "Failed to sync with underlying source" error,
- * instead of the actual error.
- * A successful scan only needs putback if the stream buffer has characters
- * available to read in bulk (see `std::basic_streambuf::in_avail`).
- * A `std::istream` without a stream buffer (`rdbuf() == nullptr`) is
- * treated as being at the end of input.
+ * Many stream buffers can't put back all the characters they have returned
+ * (e.g., a `std::filebuf` in libc++ or MSVC, or `std::cin` reading a pipe).
+ * Therefore, `std::basic_istream`s must be wrapped in a
+ * `scn::basic_scan_istream` (`scn::scan_istream` or `scn::wscan_istream`).
+ * It stores the characters that couldn't be given back, and the next scan
+ * reads them first.
+ * A `scn::basic_scan_istream` without a stream, or with a stream without a
+ * stream buffer (`rdbuf() == nullptr`), can't be scanned from: the scan fails
+ * with `scan_error::invalid_source_state`.
+ *
+ * The string streams (`std::basic_istringstream`, `std::basic_stringstream`,
+ * and, if available, `std::basic_ispanstream` and `std::basic_spanstream`)
+ * never fail to put characters back, so they can be scanned from directly,
+ * and so can classes derived from them.
+ * They are read through their own `rdbuf()`.
  *
  * Additionally, files (`scn::scan_file`) can be scanned from,
- * and if `<scn/istream.h>` is included, `std::basic_istream`s, too.
+ * and if `<scn/istream.h>` is included, `scn::basic_scan_istream`s
+ * and string streams, too.
  * The support for reading from C `FILE` is deprecated.
  * Files are always considered to be narrow (`char`-oriented).
  * Thus, the entire concept is:
@@ -7124,9 +7136,15 @@ auto make_range_scan_buffer(Range&& range)
  *   (std::same_as<std::remove_cvref_t<Source>, std::FILE*> &&
  *    std::same_as<CharT, char>) ||
  *   // only if <scn/istream.h> has been included
- *   std::convertible_to<
- *       std::remove_cvref_t<Source>&,
- *       std::basic_istream<CharT>> ||
+ *   std::same_as<std::remove_cvref_t<Source>, basic_scan_istream<CharT>> ||
+ *   // string streams, and classes derived from them
+ *   (std::same_as<CharT, char> &&
+ *    (std::convertible_to<Source&, std::istringstream&> ||
+ *     std::convertible_to<Source&, std::stringstream&>)) ||
+ *   (std::same_as<CharT, wchar_t> &&
+ *    (std::convertible_to<Source&, std::wistringstream&> ||
+ *     std::convertible_to<Source&, std::wstringstream&>)) ||
+ *   // (and the same for std::basic_ispanstream and std::basic_spanstream)
  *   scannable_range<Source, CharT>;
  * \endcode
  *
@@ -7147,6 +7165,22 @@ struct invalid_source {};
 struct invalid_char_type : invalid_source {};
 struct custom_char_traits : invalid_source {};
 struct insufficient_range : invalid_source {};
+
+/**
+ * Tag type to indicate a `std::basic_istream` given to `scn::scan` that isn't
+ * a string stream, and isn't wrapped in a `scn::basic_scan_istream`
+ *
+ * \ingroup scannable
+ */
+template <typename CharT>
+struct unwrapped_istream_source : invalid_source {
+    using char_type = CharT;
+};
+
+template <typename CharT>
+struct custom_char_traits_istream_source : custom_char_traits {
+    using char_type = CharT;
+};
 
 namespace detail {
 template <typename CharT>
@@ -7329,19 +7363,30 @@ decltype(auto) make_scan_buffer(Source&& source)
                   "to be included.\n"
                   "See the scnlib documentation for more details.");
     static_assert(
-        !std::is_same_v<T, custom_char_traits>,
+        !std::is_base_of_v<custom_char_traits, T>,
         "\n"
         "Unsupported range type given as input to a scanning "
         "function.\n"
         "String types (std::basic_string, and std::basic_string_view) "
-        "need to use std::char_traits. Strings with custom Traits are "
-        "not supported.");
+        "and streams need to use std::char_traits. Strings and streams "
+        "with custom Traits are not supported.");
     static_assert(!std::is_same_v<T, insufficient_range>,
                   "\n"
                   "Unsupported range type given as input to a scanning "
                   "function.\n"
                   "In order to be scannable, a range needs to satisfy "
                   "`input_range`. Just `range` is not sufficient.");
+    static_assert(
+        !is_specialization_of_v<T, unwrapped_istream_source>,
+        "\n"
+        "Unsupported stream type given as input to a scanning function.\n"
+        "A std::istream can't be scanned from directly: "
+        "wrap it in a scn::scan_istream (or a scn::wscan_istream), "
+        "which can give back the characters a failed scan has read.\n"
+        "String streams (std::istringstream, std::stringstream, and "
+        "std::ispanstream and std::spanstream, if available) "
+        "can be used without wrapping.\n"
+        "See the scnlib documentation for more details.");
     static_assert(!std::is_same_v<T, invalid_source>,
                   "\n"
                   "Unsupported source type given as input to a scanning "
@@ -7351,7 +7396,8 @@ decltype(auto) make_scan_buffer(Source&& source)
                   "If the input is not a range, it must be a scn::scan_file "
                   "(or a C FILE*, but that's deprecated).\n"
                   "In addition to the above, to scan from a std::istream, "
-                  "the header <scn/istream.h> needs to be included.\n"
+                  "the header <scn/istream.h> needs to be included, "
+                  "and the stream wrapped in a scn::scan_istream.\n"
                   "Examples of scannable ranges are std::string, "
                   "std::string_view, std::list<char>, "
                   "or a large set of C++20 ranges, "
@@ -8820,11 +8866,6 @@ struct scan_result_source_access {
     {
         return result.source();
     }
-    template <typename R>
-    static auto get(R& result) -> decltype(result.stream())
-    {
-        return result.stream();
-    }
 };
 
 template <typename S, typename = void>
@@ -8886,13 +8927,16 @@ struct scan_result_alias_base<S, std::enable_if_t<ranges::range<S>>> {
  *  5. If `S` is a pointer to `std::FILE`,
  *     contains a pointer to `std::FILE`,
  *     accessible with the `source()` or `file()` member function.
- *  6. If `S` is derived from a specialization of `std::basic_istream`,
+ *  6. If `S` is (cvref-qualified) a specialization of
+ *     `scn::basic_scan_istream`, or a string stream
+ *     (a class derived from a specialization of `std::basic_istringstream`,
+ *     `std::basic_stringstream`, or, if available,
+ *     `std::basic_ispanstream` or `std::basic_spanstream`),
  *     and `scn/istream.h` has been included,
- *     contains a reference to the stream,
- *     accessible with the `stream()` member function.
+ *     contains a reference to `S` (without cvref-qualifiers),
+ *     accessible with the `source()` member function.
  *  7. If `S` is `scn::stdin_tag_t` (used by `scn::input` and `scn::prompt`),
- *     contains no source: there's no `range()`, `source()`, `file()`,
- *     or `stream()`.
+ *     contains no source: there's no `range()`, `source()`, or `file()`.
  *
  * For 1., `begin()` and `end()` member functions are available,
  * returning `ranges::dangling`.
@@ -8900,7 +8944,7 @@ struct scan_result_alias_base<S, std::enable_if_t<ranges::range<S>>> {
  * returning `ranges::begin(range())` and `ranges::end(range())`, respectively.
  *
  * Support for direct handling of C-style `FILE`s (5.) is deprecated.
- * Prefer using `scn::scan_file`s, `std::basic_istream`s,
+ * Prefer using `scn::scan_file`s, `scn::basic_scan_istream`s,
  * or `scn::input` if reading from `stdin`.
  *
  * \ingroup result
@@ -9144,8 +9188,9 @@ public:
         return m_source.end();
     }
 
-    /// Return the file used as the source
-    /// (a `scn::scan_file&` or a `std::FILE*`)
+    /// Return the file or stream used as the source
+    /// (a `scn::scan_file&`, a `scn::basic_scan_istream&`,
+    /// a string stream, or a `std::FILE*`)
     template <typename S = Source>
     auto source() const
         -> decltype(SCN_DECLVAL(const detail::scan_result_source_storage<S>&)
@@ -9161,15 +9206,6 @@ public:
                         .file())
     {
         return m_source.file();
-    }
-
-    /// Return the stream used as the source
-    template <typename S = Source>
-    auto stream() const
-        -> decltype(SCN_DECLVAL(const detail::scan_result_source_storage<S>&)
-                        .stream())
-    {
-        return m_source.stream();
     }
 
 private:

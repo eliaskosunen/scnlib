@@ -403,7 +403,7 @@ SCN_PUBLIC void stdin_acquire() SCN_THREADSAFETY_NO_ANALYSIS
 {
     stdin_mutex.lock();
 #if !SCN_DISABLE_IOSTREAM
-    get_stdin_buffer().emplace(std::cin);
+    get_stdin_buffer().emplace(std::cin.rdbuf());
 #else
     get_stdin_buffer().emplace(stdin);
 #endif
@@ -4245,8 +4245,11 @@ namespace detail {
 
 template <typename CharT>
 SCN_PUBLIC basic_scan_istream_buffer<CharT>::basic_scan_istream_buffer(
-    std::basic_istream<CharT>& strm) noexcept
-    : base(typename base::non_contiguous_tag{}), m_stream(&strm)
+    std::basic_streambuf<CharT>* streambuf,
+    const std::basic_filebuf<CharT>* filebuf) noexcept
+    : base(typename base::non_contiguous_tag{}),
+      m_streambuf(streambuf),
+      m_filebuf(filebuf)
 {
 }
 
@@ -4257,9 +4260,7 @@ SCN_PUBLIC basic_scan_istream_buffer<CharT>::~basic_scan_istream_buffer() =
 template <typename CharT>
 SCN_PUBLIC bool basic_scan_istream_buffer<CharT>::do_fill()
 {
-    SCN_EXPECT(m_stream);
-
-    auto* const streambuf = m_stream->rdbuf();
+    auto* const streambuf = m_streambuf;
     if (streambuf == nullptr) {
         return false;
     }
@@ -4312,6 +4313,78 @@ SCN_PUBLIC bool basic_scan_istream_buffer<CharT>::do_fill()
     return true;
 }
 
+#if SCN_POSIX && !SCN_WINDOWS
+namespace {
+// Before C++26, the standard library doesn't give access to the file
+// descriptor of a `std::basic_filebuf`. `impl::buffer_sync_seek_fallback` needs
+// it to `fstat` the file before verifying a seek by reading: if the file isn't
+// regular, the seek may appear to succeed, and the read then blocks.
+// In libc++, the `FILE*` is in the private member `__file_`. An explicit
+// instantiation isn't access checked, so it can name the member to get a
+// pointer to it. CMake checks that the member exists, and defines
+// `SCN_HAS_LIBCXX_FILEBUF_FILE` if it does. If libc++ renames the member, the
+// descriptor isn't available, and `IstreamSourceTest.SeekableFilebuf*` fails.
+#if !defined(__cpp_lib_fstream_native_handle) && \
+    defined(SCN_HAS_LIBCXX_FILEBUF_FILE)
+#define SCN_HAS_FILEBUF_DESCRIPTOR 1
+template <typename Tag, typename Tag::type Member>
+struct filebuf_file_access {
+    friend typename Tag::type get_filebuf_file(Tag)
+    {
+        return Member;
+    }
+};
+template <typename CharT>
+struct filebuf_file_tag {
+    using type = std::FILE* std::basic_filebuf<CharT>::*;
+    friend type get_filebuf_file(filebuf_file_tag);
+};
+template struct filebuf_file_access<filebuf_file_tag<char>,
+                                    &std::basic_filebuf<char>::__file_>;
+template struct filebuf_file_access<filebuf_file_tag<wchar_t>,
+                                    &std::basic_filebuf<wchar_t>::__file_>;
+
+template <typename CharT>
+int filebuf_descriptor(const std::basic_filebuf<CharT>& filebuf)
+{
+    return fileno(filebuf.*get_filebuf_file(filebuf_file_tag<CharT>{}));
+}
+#elif defined(__cpp_lib_fstream_native_handle)
+#define SCN_HAS_FILEBUF_DESCRIPTOR 1
+template <typename CharT>
+int filebuf_descriptor(const std::basic_filebuf<CharT>& filebuf)
+{
+    const auto handle = filebuf.native_handle();
+    if constexpr (std::is_same_v<std::remove_cv_t<decltype(handle)>, int>) {
+        return handle;
+    }
+    else {
+        return fileno(handle);
+    }
+}
+#endif
+}  // namespace
+#endif
+
+template <typename CharT>
+SCN_PUBLIC std::optional<bool> is_seekable_filebuf(
+    const std::basic_filebuf<CharT>& filebuf)
+{
+    if (!filebuf.is_open()) {
+        return false;
+    }
+#if defined(SCN_HAS_FILEBUF_DESCRIPTOR)
+    struct stat st{};
+    if (fstat(filebuf_descriptor(filebuf), &st) != 0) {
+        return false;
+    }
+    return S_ISREG(st.st_mode) || S_ISBLK(st.st_mode);
+#else
+    static_cast<void>(filebuf);
+    return std::nullopt;
+#endif
+}
+
 #if !SCN_WINDOWS
 namespace {
 // For `impl::buffer_sync_seek_fallback`
@@ -4360,13 +4433,12 @@ struct seekable_streambuf {
 #endif
 
 template <typename CharT>
-SCN_PUBLIC bool basic_scan_istream_buffer<CharT>::do_sync(
+SCN_PUBLIC std::ptrdiff_t basic_scan_istream_buffer<CharT>::sync_streambuf(
     std::ptrdiff_t position)
 {
-    SCN_EXPECT(m_stream);
-    auto* const streambuf = m_stream->rdbuf();
+    auto* const streambuf = m_streambuf;
     if (streambuf == nullptr) {
-        return true;
+        return position;
     }
 
     if (m_view_is_peeked) {
@@ -4388,13 +4460,13 @@ SCN_PUBLIC bool basic_scan_istream_buffer<CharT>::do_sync(
                                         traits::eof());
         });
     if (synced_position == position) {
-        return true;
+        return position;
     }
 
 #if SCN_WINDOWS
     // On Windows, undoing a seek, or even a failed position query, after a
     // putback can lose the characters that were put back
-    return false;
+    return synced_position;
 #else
     // With a variable-width encoding, positions aren't character counts, and
     // with libc++, even asking for the position after a putback can lose
@@ -4402,26 +4474,125 @@ SCN_PUBLIC bool basic_scan_istream_buffer<CharT>::do_sync(
     if (std::use_facet<std::codecvt<CharT, char, std::mbstate_t>>(
             streambuf->getloc())
             .encoding() <= 0) {
-        return false;
+        return synced_position;
+    }
+    if (m_filebuf != nullptr) {
+        // If the file type is unknown, seek anyway
+        if (const auto seekable = is_seekable_filebuf(*m_filebuf);
+            seekable && !*seekable) {
+            return synced_position;
+        }
     }
     seekable_streambuf<CharT> source{streambuf};
-    return impl::buffer_sync_seek_fallback(
-               position, synced_position, this->m_current_view,
-               this->m_putback_buffer, source) == position;
+    return impl::buffer_sync_seek_fallback(position, synced_position,
+                                           this->m_current_view,
+                                           this->m_putback_buffer, source);
 #endif
 }
 
+template <typename CharT>
+SCN_PUBLIC bool basic_scan_istream_buffer<CharT>::do_sync(
+    std::ptrdiff_t position)
+{
+    return sync_streambuf(position) == position;
+}
+
+template <typename CharT>
+SCN_PUBLIC
+basic_scan_istream_wrapper_buffer<CharT>::basic_scan_istream_wrapper_buffer(
+    basic_scan_istream<CharT>& strm) noexcept
+    : base(get_streambuf(strm), scan_istream_access::get_filebuf(strm)),
+      m_unsynced(scan_istream_access::get_unsynced(strm))
+{
+    if (this->m_streambuf == nullptr) {
+        this->m_source_error = detail::unexpected_scan_error(
+            scan_error::invalid_source_state,
+            "Failed to read from std::istream, null stream or stream buffer");
+        return;
+    }
+    // The unsynced characters have already been consumed from the stream
+    this->m_putback_buffer = SCN_MOVE(m_unsynced);
+    m_unsynced.clear();
+}
+
+template <typename CharT>
+SCN_PUBLIC basic_scan_istream_wrapper_buffer<
+    CharT>::~basic_scan_istream_wrapper_buffer() = default;
+
+template <typename CharT>
+SCN_PUBLIC bool basic_scan_istream_wrapper_buffer<CharT>::do_sync(
+    std::ptrdiff_t position)
+{
+    const auto synced_position = this->sync_streambuf(position);
+    if (synced_position == position) {
+        return true;
+    }
+    const bool position_known = synced_position != impl::sync_position_unknown;
+    detail::set_unsynced_after_sync(
+        m_unsynced, position,
+        position_known ? synced_position : this->chars_available(),
+        this->m_current_view, this->m_putback_buffer);
+    return position_known;
+}
+
+template <typename CharT>
+std::basic_streambuf<CharT>*
+basic_scan_istream_wrapper_buffer<CharT>::get_streambuf(
+    basic_scan_istream<CharT>& strm) noexcept
+{
+    if (auto* const filebuf = scan_istream_access::get_filebuf(strm)) {
+        return filebuf;
+    }
+    auto* const stream = scan_istream_access::get_stream(strm);
+    return stream ? stream->rdbuf() : nullptr;
+}
+
 template SCN_PUBLIC basic_scan_istream_buffer<char>::basic_scan_istream_buffer(
-    std::istream&) noexcept;
+    std::streambuf*,
+    const std::filebuf*) noexcept;
 template SCN_PUBLIC basic_scan_istream_buffer<
-    wchar_t>::basic_scan_istream_buffer(std::wistream&) noexcept;
+    wchar_t>::basic_scan_istream_buffer(std::wstreambuf*,
+                                        const std::wfilebuf*) noexcept;
+
+template SCN_PUBLIC std::optional<bool> is_seekable_filebuf(
+    const std::filebuf&);
+template SCN_PUBLIC std::optional<bool> is_seekable_filebuf(
+    const std::wfilebuf&);
 
 template SCN_PUBLIC
     basic_scan_istream_buffer<char>::~basic_scan_istream_buffer();
 template SCN_PUBLIC
     basic_scan_istream_buffer<wchar_t>::~basic_scan_istream_buffer();
 
+template SCN_PUBLIC basic_scan_istream_wrapper_buffer<
+    char>::basic_scan_istream_wrapper_buffer(scan_istream&) noexcept;
+template SCN_PUBLIC basic_scan_istream_wrapper_buffer<
+    wchar_t>::basic_scan_istream_wrapper_buffer(wscan_istream&) noexcept;
+
+template SCN_PUBLIC basic_scan_istream_wrapper_buffer<
+    char>::~basic_scan_istream_wrapper_buffer();
+template SCN_PUBLIC basic_scan_istream_wrapper_buffer<
+    wchar_t>::~basic_scan_istream_wrapper_buffer();
+
 }  // namespace detail
+
+template <typename CharT>
+SCN_PUBLIC bool basic_scan_istream<CharT>::sync()
+{
+    if (m_unsynced.empty()) {
+        return true;
+    }
+    // The buffer moves the unsynced characters into its putback buffer,
+    // unless the stream can't be read from
+    detail::basic_scan_istream_wrapper_buffer<CharT> buffer{*this};
+    if (!buffer.get_source_error()) {
+        return false;
+    }
+    return buffer.sync(0) && m_unsynced.empty();
+}
+
+template SCN_PUBLIC bool basic_scan_istream<char>::sync();
+template SCN_PUBLIC bool basic_scan_istream<wchar_t>::sync();
 
 #endif  // !SCN_DISABLE_IOSTREAM
 

@@ -199,15 +199,20 @@ characters that can't be put back are restored by seeking back in the file inste
 If the synchronization succeeds, the same `FILE` contained in the `scn::scan_file`
 can be used elsewhere transparently.
 
-If `<scn/istream.h>` is included, `scn::scan` can also be used with `std::istream`s.
-Scanning from a `std::istream` requires its stream buffer to support putback (`sputbackc`)
-of the characters it has returned, if a scan fails.
+If `<scn/istream.h>` is included, `scn::scan` can also be used with `std::istream`s,
+wrapped in a `scn::scan_istream` (`scn::wscan_istream`, for wide streams).
+A `scn::scan_istream` works like a `scn::scan_file`: it keeps the characters that a scan read
+from the stream but couldn't put back, and the next scan reads them first.
+The string streams (`std::istringstream`, `std::stringstream`, and the span streams,
+if available) never fail to put characters back, so they can be scanned from without wrapping them.
+Other `std::istream`s, like `std::cin` or `std::ifstream`, can't be passed to `scn::scan` directly.
 See \ref scannable for details.
 Plain C `FILE`s can also be used, but the support for them is deprecated,
 for the aforementioned reasons about the possibility for a synchronization failure.
 
 When used with files, `scn::scan` doesn't return a range, but the file it was passed,
-which can be accessed with `->source()` (or `->stream()`, for `std::istream`s).
+which can be accessed with `->source()`.
+For a string stream, it's the stream itself.
 To prevent confusion, there's no member `->range()` when using files.
 The result of `scn::input` and `scn::prompt` has neither.
 

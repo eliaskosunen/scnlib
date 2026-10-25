@@ -151,6 +151,7 @@ using scn::custom_char_traits;
 using scn::insufficient_range;
 using scn::invalid_char_type;
 using scn::invalid_source;
+using scn::unwrapped_istream_source;
 
 using scn::basic_scan_arg;
 using scn::basic_scan_args;
@@ -255,8 +256,11 @@ using scn::wregex_matches;
 
 #if !SCN_DISABLE_IOSTREAM
 using scn::basic_istream_scanner;
+using scn::basic_scan_istream;
 using scn::istream_scanner;
+using scn::scan_istream;
 using scn::wistream_scanner;
+using scn::wscan_istream;
 #endif
 
 SCN_END_NAMESPACE

@@ -183,6 +183,15 @@ int main()
         return 1;
     }
 
+    std::istringstream wrapped_stream{"17"};
+    scn::scan_istream wrapper{wrapped_stream};
+    auto from_wrapper = scn::scan<int>(wrapper, "{}");
+    if (!from_wrapper || from_wrapper->value() != 17 ||
+        &from_wrapper->source() != &wrapper || !wrapper.sync()) {
+        std::fprintf(stderr, "Failed to scan from scn::scan_istream\n");
+        return 1;
+    }
+
     auto two_values = scn::scan<int, double>("1 2.5", "{} {}");
     if (!two_values || std::get<0>(two_values->values()) != 1 ||
         std::get<1>(two_values->values()) != 2.5) {
