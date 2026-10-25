@@ -148,6 +148,9 @@ endif()
 make_scn_test(scn_stdin_test main.cpp stdin_test.cpp)
 
 make_scn_test(scn_stdin_parameterized_test stdin_parameterized_test.cpp)
+
+make_scn_test(scn_stdin_file_test main.cpp stdin_file_test.cpp)
+add_test(NAME scn_stdin_file_test COMMAND scn_stdin_file_test)
 # Tests the deprecated C FILE* sources on purpose. MSVC and clang-cl report the
 # deprecation inside scn/scan.h, where the pragmas in the test can't disable it.
 if(MSVC)

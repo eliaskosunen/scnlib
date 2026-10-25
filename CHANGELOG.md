@@ -6,13 +6,12 @@ _Release 2026-xx-xx_
 
 ### Breaking changes
 
- * `scn::input` and `scn::prompt` now internally use `std::cin` (if iostreams haven't been disabled)
-   instead of `stdin`.
  * The return type of `scn::input` and `scn::prompt` now uses `scn::stdin_tag_t` as the source type,
    instead of giving access to a `FILE*` directly.
+   Its `.file()` is removed, and its `.source()` returns a `scn::locked_stdin_file` (see `scn::stdin_file()`).
  * The return type of `scn::vinput` is now `scn::vscan_result<scn::stdin_tag_t>`, instead of `scn::scan_expected<void>`.
 
- * C `FILE`s as sources are deprecated. Use `scn::scan_file`s or `std::istream`s instead.
+ * C `FILE`s as sources are deprecated. Use `scn::scan_file`s or `scn::scan_istream`s instead.
    This is to prevent problems with failures to sync with the underlying `FILE`,
    since `FILE`s are only guaranteed to support a single character's worth of putback.
 
@@ -23,9 +22,10 @@ scn::scan<...>(f, ...);
 // After (scan_file)
 scn::scan_file file{f};
 scn::scan<...>(file, ...);
-// After (std::istream)
+// After (scan_istream)
 std::ifstream strm{...};
-scn::scan<...>(strm, ...);
+scn::scan_istream in{strm};
+scn::scan<...>(in, ...);
 ```
 
  * Previously deprecated `scn::visit_scan_arg` is now removed. Use `scn::basic_scan_arg::visit` instead.
@@ -124,6 +124,10 @@ scn::scan<...>(strm, ...);
  * On POSIX, if a C `FILE` is a regular file or a block device, and a scan can't put all of its unused characters
    back into it with `ungetc` (e.g., more than about 1 KiB on musl), the scan now seeks back over the rest.
    Previously, the scan failed with "Failed to sync with underlying source", and the characters were lost.
+ * If `scn::input` or `scn::prompt` can't put its unused characters back into `stdin`,
+   it now keeps them, and the next `scn::input` reads them first.
+   `scn::stdin_file()->sync()` tries to put them back again.
+   Previously, the scan failed with `scn::scan_error::invalid_source_state`, and the characters were lost.
  * Regex support is disabled with `SCN_USE_EXCEPTIONS=OFF`, unless `SCN_REGEX_BACKEND` is `re2`,
    since `std::regex` and Boost.Regex report errors only by throwing
  * Textual boolean representations are now case-insensitive, so both `true` and `True` (and so on) are accepted.
@@ -183,9 +187,18 @@ scn::scan<...>(strm, ...);
    * When the source range is an `input_range`, the range type returned from `scn::scan` isn't a `subrange` anymore,
      but another `input_range`.
  * `scn::basic_regex_matches` now has `front()`, `back()`, `cbegin()`, `cend()`, `str()`, and `operator==`
- * `scn::scan_file` has been added, to scan from a `FILE` more resiliently than from a `FILE*` directly
- * `std::istream`s can now be used as sources for `scn::scan` if `<scn/istream.h>` is included.
-   * Instead of `.range()`, the member function to access the stream from a `scn::scan` result object is `.stream()`.
+ * `scn::scan_file` is added for scanning from a `FILE`.
+   Unlike with a `FILE*`, characters that a scan read but couldn't put back into the `FILE` aren't lost:
+   the `scn::scan_file` keeps them (`.unsynced()`), and the next scan reads them first.
+   `.sync()` tries to put them back again.
+ * With `<scn/istream.h>`, `std::istream`s can now be used as sources for `scn::scan`,
+   by wrapping them in a `scn::scan_istream` (or `scn::wscan_istream`), which works like `scn::scan_file`.
+   String streams (`std::istringstream`, `std::stringstream`, and the span streams, if available)
+   can be used without wrapping.
+   * Instead of `.range()`, the member function to access the file or stream from a `scn::scan` result object is `.source()`.
+ * `scn::stdin_file()` gives access to the `scn::scan_file` that `scn::input` and `scn::prompt` read from,
+   while holding the lock that serializes them.
+   The `scn::locked_stdin_file` it returns can also be passed to `scn::scan` as a source, like `scn::input`.
  * Locale-enabled overloads for `scn::input` have been added.
  * The `/m` regex flag is now supported with the `std` regex backend on MSVC Build Tools 14.50 (Visual Studio 2026) and later
  * Extended standard floating-point types can now be scanned if they're supported by the implementation

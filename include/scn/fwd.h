@@ -112,9 +112,6 @@ namespace detail {
 template <typename CharT>
 class basic_scan_istream_buffer;
 
-using scan_istream_buffer = basic_scan_istream_buffer<char>;
-using wscan_istream_buffer = basic_scan_istream_buffer<wchar_t>;
-
 }  // namespace detail
 
 template <typename CharT>

@@ -81,8 +81,9 @@ If either the pattern or the input is untrusted, use the `re2` backend
 A failed `scn::input` doesn't consume any input, so the next call sees the same input again.
 For example, `while (!scn::input<int>("{}")) {}` loops forever on `abc`.
 Discard the rest of the line before retrying, for example with
-`std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n')`
-(`scn::input` reads from `std::cin`, unless iostreams are disabled).
+`scn::input<std::string>(" {:[^\n]}")`.
+The leading space skips the newline left over from an earlier line:
+a character set doesn't skip whitespace, so `"{:[^\n]}"` would fail on it.
 
 Also, like with `scanf("%d\n")`, whitespace at the end of a format string (like in `"{}\n"`)
 keeps reading until a non-whitespace character or the end of the input.
@@ -92,9 +93,10 @@ When reading from a terminal, this waits for more input.
 
 No.
 `scn::input`, `scn::prompt`, and the other functions scanning from stdin
-hold a lock while they run,
-so calling one of them from a scanner used by another one is undefined behavior
-(in practice, a deadlock).
+use a single buffer while they run,
+so calling one of them from a scanner used by another one fails
+with `scn::scan_error::invalid_source_state`.
+The scan that is already running is not affected.
 Read all the values you need in a single call instead.
 
 \section faq-ranges Can I scan containers, tuples and pairs with scn/ranges.h?

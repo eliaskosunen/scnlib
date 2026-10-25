@@ -19,6 +19,8 @@ set(buildfail_sources
     letters_in_argument_id.cpp
     locale_flag_with_locale_disabled.cpp
     locale_flag_with_string.cpp
+    locked_stdin_file_dereference_rvalue.cpp
+    locked_stdin_file_string_view_source.cpp
     negative_argument_id.cpp
     precision_leading_zero.cpp
     precision_without_digits.cpp

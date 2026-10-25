@@ -6362,6 +6362,109 @@ private:
     std::FILE* m_file{nullptr};
 };
 
+class locked_stdin_file;
+
+namespace detail {
+template <typename Range>
+struct vscan_guard;
+}
+
+/**
+ * Returns a handle to the `scn::scan_file` over `stdin` that `scn::input`
+ * and `scn::prompt` read from.
+ * The returned `scn::locked_stdin_file` holds the mutex that serializes
+ * `scn::input` and `scn::prompt` until it's destroyed.
+ *
+ * \ingroup scannable
+ */
+SCN_PUBLIC locked_stdin_file stdin_file();
+
+/**
+ * A scoped lock on the `scn::scan_file` over `stdin`, returned by
+ * `scn::stdin_file()`.
+ * Dereferencing it gives the `scn::scan_file` used by `scn::input` and
+ * `scn::prompt`, including the characters a previous call has read from
+ * `stdin` but could not give back (see `scn::scan_file::unsynced`).
+ *
+ * While a `locked_stdin_file` is alive, `scn::input` and `scn::prompt` on
+ * other threads block.
+ * The lock is recursive: on the thread that holds it, calling `scn::input`,
+ * `scn::prompt`, or `scn::stdin_file()` works as usual.
+ * Inside a scan from `stdin` that is already running on the thread (e.g., in
+ * a custom `scn::scanner`), a nested scan from `stdin` fails instead:
+ * `scn::input`, `scn::prompt`, and `scn::scan` from a `locked_stdin_file`
+ * or from the `scan_file` itself return `scan_error::invalid_source_state`.
+ * They leave the running scan as it was, and `scn::prompt` doesn't write its
+ * message.
+ *
+ * Lock order: `scn::input` takes the mutex of this lock first, and then the
+ * lock of the C `FILE` (see `flockfile`).
+ * Calling `scn::input` or `scn::stdin_file()` while holding the `FILE` lock,
+ * or from inside a C stdio function reading `stdin`, can therefore deadlock
+ * with another thread that is inside `scn::input`.
+ *
+ * A failed `scn::input` can leave unsynced characters in the `scan_file`.
+ * To read `stdin` with C or C++ I/O afterwards, call `sync()` or
+ * `release_unsynced()` on it first.
+ * On Windows, the `ungetc` of the UCRT takes back only one character,
+ * so unsynced characters are common there.
+ *
+ * A `locked_stdin_file` can also be given to `scn::scan` as a source.
+ * This is equivalent to `scn::input`.
+ * To scan from the `scan_file` itself (without the final `sync()`),
+ * pass `*file`.
+ *
+ * Scanning from a moved-from `locked_stdin_file` fails with
+ * `scan_error::invalid_source_state`.
+ * Moving the `scan_file` out of a `locked_stdin_file` (e.g.,
+ * `scn::scan_file other{std::move(*file)}`) leaves the `scan_file` over `stdin`
+ * moved-from. Every later `scn::input` then fails with `invalid_source_state`,
+ * until a `scan_file` is moved back into it.
+ *
+ * Destroying a `locked_stdin_file` unlocks the mutex, but doesn't sync.
+ *
+ * \ingroup scannable
+ */
+class locked_stdin_file {
+    friend locked_stdin_file stdin_file();
+    friend struct detail::vscan_guard<locked_stdin_file>;
+
+public:
+    locked_stdin_file(locked_stdin_file&& other) noexcept
+        : m_file(std::exchange(other.m_file, nullptr))
+    {
+    }
+
+    /// Releases the lock held by `*this`, if any, and takes over the one in
+    /// `other`
+    SCN_PUBLIC locked_stdin_file& operator=(locked_stdin_file&& other) noexcept;
+
+    locked_stdin_file(const locked_stdin_file&) = delete;
+    locked_stdin_file& operator=(const locked_stdin_file&) = delete;
+
+    SCN_PUBLIC ~locked_stdin_file();
+
+    /// The `scan_file` over `stdin`. `*this` must not be moved-from.
+    SCN_NODISCARD scan_file* operator->() const noexcept
+    {
+        SCN_EXPECT(m_file);
+        return m_file;
+    }
+
+    /// The `scan_file` over `stdin`. `*this` must not be moved-from.
+    SCN_NODISCARD scan_file& operator*() const& noexcept
+    {
+        SCN_EXPECT(m_file);
+        return *m_file;
+    }
+    scan_file& operator*() && = delete;
+
+private:
+    explicit locked_stdin_file(scan_file* file) noexcept : m_file(file) {}
+
+    scan_file* m_file;
+};
+
 namespace detail {
 
 struct scan_file_access {
@@ -7042,6 +7145,7 @@ private:
     SCN_PUBLIC bool do_sync(std::ptrdiff_t position) override;
 
     std::string& m_unsynced;
+    bool m_owns_stdin_use{false};
 };
 
 template <typename Range>
@@ -7120,6 +7224,7 @@ auto make_range_scan_buffer(Range&& range)
  * They are read through their own `rdbuf()`.
  *
  * Additionally, files (`scn::scan_file`) can be scanned from,
+ * as can `scn::locked_stdin_file` (it reads like `scn::input`),
  * and if `<scn/istream.h>` is included, `scn::basic_scan_istream`s
  * and string streams, too.
  * The support for reading from C `FILE` is deprecated.
@@ -7131,6 +7236,8 @@ auto make_range_scan_buffer(Range&& range)
  * template <typename Source, typename CharT>
  * concept scannable_source =
  *   (std::same_as<std::remove_cvref_t<Source>, scan_file> &&
+ *    std::same_as<CharT, char>) ||
+ *   (std::same_as<std::remove_cvref_t<Source>, locked_stdin_file> &&
  *    std::same_as<CharT, char>) ||
  *   // FILE support is deprecated
  *   (std::same_as<std::remove_cvref_t<Source>, std::FILE*> &&
@@ -7189,6 +7296,9 @@ inline constexpr bool is_valid_char_type =
     std::is_same_v<std::remove_const_t<CharT>, wchar_t>;
 
 struct make_scan_buffer_tag {};
+
+SCN_PUBLIC scan_buffer& make_scan_buffer(stdin_tag_t,
+                                         make_scan_buffer_tag) noexcept;
 
 template <typename CharT, std::size_t N>
 std::size_t character_array_length(const CharT (&array)[N]) noexcept
@@ -7273,6 +7383,15 @@ inline auto impl(scan_file& file, priority_tag<3>)
     return scan_file_buffer{file};
 }
 auto impl(scan_file&&, priority_tag<3>) = delete;
+
+// locked_stdin_file -> the buffer of scn::input
+template <typename Source,
+          std::enable_if_t<std::is_same_v<remove_cvref_t<Source>,
+                                          locked_stdin_file>>* = nullptr>
+scan_buffer& impl(Source&&, priority_tag<3>) noexcept
+{
+    return make_scan_buffer(stdin_tag, make_scan_buffer_tag{});
+}
 
 // (at least) forward_range, when const -> the appropriate range buffer
 template <typename Range,
@@ -8778,6 +8897,12 @@ struct scan_result_stdin {
 
     explicit constexpr scan_result_stdin(stdin_tag_t) {}
 
+    /// Locks the stdin mutex (see `scn::stdin_file()`)
+    SCN_NODISCARD locked_stdin_file source() const
+    {
+        return stdin_file();
+    }
+
     void set(stdin_tag_t) {}
 };
 
@@ -8936,7 +9061,14 @@ struct scan_result_alias_base<S, std::enable_if_t<ranges::range<S>>> {
  *     contains a reference to `S` (without cvref-qualifiers),
  *     accessible with the `source()` member function.
  *  7. If `S` is `scn::stdin_tag_t` (used by `scn::input` and `scn::prompt`),
- *     contains no source: there's no `range()`, `source()`, or `file()`.
+ *     or (cvref-qualified) `scn::locked_stdin_file`,
+ *     there's no `range()` or `file()`.
+ *     `source()` returns a new `scn::locked_stdin_file`
+ *     (see `scn::stdin_file()`), which locks `stdin`.
+ *     If another thread is inside `scn::input`, `source()` waits for it.
+ *     While the returned object is alive, `scn::input` on other threads
+ *     blocks.
+ *     See `scn::locked_stdin_file` for the lock order.
  *
  * For 1., `begin()` and `end()` member functions are available,
  * returning `ranges::dangling`.
@@ -9190,7 +9322,9 @@ public:
 
     /// Return the file or stream used as the source
     /// (a `scn::scan_file&`, a `scn::basic_scan_istream&`,
-    /// a string stream, or a `std::FILE*`)
+    /// a string stream, or a `std::FILE*`),
+    /// or, for the result of `scn::input`, a new `scn::locked_stdin_file`
+    /// (this takes the lock on `stdin`)
     template <typename S = Source>
     auto source() const
         -> decltype(SCN_DECLVAL(const detail::scan_result_source_storage<S>&)
@@ -9339,6 +9473,12 @@ inline auto make_vscan_result(scan_file&& source,
                               std::ptrdiff_t) = delete;
 
 inline auto make_vscan_result(stdin_tag_t, const scan_buffer&, std::ptrdiff_t)
+{
+    return stdin_tag;
+}
+inline auto make_vscan_result(const locked_stdin_file&,
+                              const scan_buffer&,
+                              std::ptrdiff_t)
 {
     return stdin_tag;
 }
@@ -12333,6 +12473,8 @@ template <typename Source>
 using scan_result_value_type = typename mp_cond<
     std::is_same<remove_cvref_t<Source>, stdin_tag_t>,
     mp_identity<stdin_tag_t>,
+    std::is_same<remove_cvref_t<Source>, locked_stdin_file>,
+    mp_identity<stdin_tag_t>,
     std::is_same<remove_cvref_t<Source>, std::FILE*>,
     mp_identity<std::FILE*>,
     std::is_same<remove_cvref_t<Source>, scan_file>,
@@ -12364,11 +12506,14 @@ using vscan_result = scan_expected<detail::scan_result_value_type<Source>>;
 
 namespace detail {
 
-SCN_PUBLIC void stdin_acquire() SCN_THREADSAFETY_NO_ANALYSIS;
-SCN_PUBLIC void stdin_release() SCN_THREADSAFETY_NO_ANALYSIS;
+inline constexpr const char* nested_stdin_scan_message =
+    "Can't scan from stdin inside another scan from stdin";
 
-SCN_PUBLIC scan_buffer& make_scan_buffer(stdin_tag_t,
-                                         make_scan_buffer_tag) noexcept;
+/// Locks stdin, and creates the buffer for a scan from it.
+/// Returns `false`, with no effect, if a scan from stdin is already running
+/// on this thread (the lock is recursive).
+SCN_NODISCARD SCN_PUBLIC bool stdin_acquire() SCN_THREADSAFETY_NO_ANALYSIS;
+SCN_PUBLIC void stdin_release() SCN_THREADSAFETY_NO_ANALYSIS;
 
 SCN_PUBLIC scan_expected<std::ptrdiff_t> vscan_impl(std::string_view source,
                                                     std::string_view format,
@@ -12439,24 +12584,66 @@ auto vscan_range_type(T x)
     return x;
 }
 
+// `error()` is checked before the source is used
 template <typename Range>
-struct vscan_guard {};
+struct vscan_guard {
+    explicit vscan_guard(const Range&) {}
+
+    constexpr scan_expected<void> error() const
+    {
+        return {};
+    }
+};
 
 template <>
 struct vscan_guard<stdin_tag_t> {
-    vscan_guard()
+    explicit vscan_guard(stdin_tag_t)
+        : m_acquired(stdin_acquire()), m_message(nested_stdin_scan_message)
     {
-        stdin_acquire();
     }
     ~vscan_guard()
     {
-        stdin_release();
+        // A nested scan must leave the buffer of the running one alone
+        if (m_acquired) {
+            stdin_release();
+        }
     }
 
     vscan_guard(const vscan_guard&) = delete;
     vscan_guard(vscan_guard&&) = delete;
     vscan_guard& operator=(const vscan_guard&) = delete;
     vscan_guard& operator=(vscan_guard&&) = delete;
+
+    scan_expected<void> error() const
+    {
+        if (SCN_UNLIKELY(!m_acquired)) {
+            return unexpected_scan_error(scan_error::invalid_source_state,
+                                         m_message);
+        }
+        return {};
+    }
+
+protected:
+    vscan_guard(bool acquired, const char* message)
+        : m_acquired(acquired), m_message(message)
+    {
+    }
+
+private:
+    bool m_acquired;
+    const char* m_message;
+};
+
+template <>
+struct vscan_guard<locked_stdin_file> : vscan_guard<stdin_tag_t> {
+    explicit vscan_guard(const locked_stdin_file& file)
+        : vscan_guard<stdin_tag_t>(file.m_file != nullptr && stdin_acquire(),
+                                   file.m_file != nullptr
+                                       ? nested_stdin_scan_message
+                                       : "Can't scan from a moved-from "
+                                         "locked_stdin_file")
+    {
+    }
 };
 
 template <typename Range, typename CharT>
@@ -12465,8 +12652,10 @@ auto vscan_generic(Range&& range,
                    basic_scan_args<detail::default_context<CharT>> args)
     -> vscan_result<Range>
 {
-    vscan_guard<remove_cvref_t<Range>> guard{};
-    SCN_UNUSED(guard);
+    vscan_guard<remove_cvref_t<Range>> guard{range};
+    if (auto error = guard.error(); SCN_UNLIKELY(!error)) {
+        return unexpected(error.error());
+    }
 
     auto&& buffer = make_scan_buffer(range);
     auto result = vscan_impl(vscan_range_type(buffer), format, args);
@@ -12484,8 +12673,10 @@ auto vscan_localized_generic(
     basic_scan_args<detail::default_context<CharT>> args) -> vscan_result<Range>
 {
 #if !SCN_DISABLE_LOCALE
-    vscan_guard<remove_cvref_t<Range>> guard{};
-    SCN_UNUSED(guard);
+    vscan_guard<remove_cvref_t<Range>> guard{range};
+    if (auto error = guard.error(); SCN_UNLIKELY(!error)) {
+        return unexpected(error.error());
+    }
 
     auto&& buffer = detail::make_scan_buffer(range);
 
@@ -12511,8 +12702,10 @@ auto vscan_value_generic(Range&& range,
                          basic_scan_arg<detail::default_context<CharT>> arg)
     -> vscan_result<Range>
 {
-    vscan_guard<remove_cvref_t<Range>> guard{};
-    SCN_UNUSED(guard);
+    vscan_guard<remove_cvref_t<Range>> guard{range};
+    if (auto error = guard.error(); SCN_UNLIKELY(!error)) {
+        return unexpected(error.error());
+    }
 
     auto&& buffer = detail::make_scan_buffer(range);
     auto result = detail::vscan_value_impl(vscan_range_type(buffer), arg);
@@ -12960,12 +13153,17 @@ void scan_value(Source&&, Rest&&...)
 /**
  * Scan from `stdin`.
  *
- * Equivalent to `scn::scan<...>(std::cin, ...)`,
- * except concurrent calls to `scn::input` are serialized with a mutex.
+ * Reads the C `FILE` `stdin` through a `scn::scan_file`, whether or not
+ * iostreams are disabled (`SCN_DISABLE_IOSTREAM`).
+ * `scn::stdin_file()` gives access to that `scan_file`.
+ * Concurrent calls to `scn::input` are serialized with a mutex.
  * Doesn't require inclusion of `"scn/istream.h"`.
  *
- * If iostreams are disabled (`SCN_DISABLE_IOSTREAM` is `1`),
- * uses `stdin` instead of `std::cin`.
+ * A failed scan can leave characters that it read from `stdin` but couldn't
+ * give back. They're kept in the `scn::scan_file`, and the next call reads
+ * them first.
+ * To read `stdin` with something else after a failed call (e.g.,
+ * `std::getchar` or `std::cin`), call `scn::stdin_file()->sync()` first.
  *
  * \code{.cpp}
  * auto result = scn::input<int>("{}");
@@ -12990,23 +13188,25 @@ SCN_NODISCARD auto input(const Locale& loc,
     -> scan_result_type<stdin_tag_t, Args...>
 {
     auto result = make_scan_result<stdin_tag_t, Args...>();
+    SCN_CLANG_PUSH_IGNORE_UNDEFINED_TEMPLATE
     fill_scan_result(result,
                      vinput(loc, format, make_scan_args(result->values())));
+    SCN_CLANG_POP_IGNORE_UNDEFINED_TEMPLATE
     return result;
 }
 
 namespace detail {
 
-SCN_PUBLIC void prompt_print(const char* msg);
+SCN_PUBLIC scan_expected<void> prompt_print(const char* msg);
 
 }
 
 /**
  * Write `msg` to `stdout`, and call `input<Args...>(format)`
  *
- * Uses `std::cout` to write the message, or if iostreams are disabled
- * (`SCN_DISABLE_IOSTREAM` is `1`), `stdout`.
- * Flushes the output stream after writing.
+ * If iostreams are enabled, flushes `std::cout` first,
+ * so the message comes after anything already written to it.
+ * Flushes `stdout` after writing.
  *
  * \ingroup scan
  */
@@ -13015,7 +13215,11 @@ SCN_NODISCARD auto prompt(const char* msg,
                           scan_format_string<stdin_tag_t, Args...> format)
     -> scan_result_type<stdin_tag_t, Args...>
 {
-    detail::prompt_print(msg);
+    if (auto printed = detail::prompt_print(msg); SCN_UNLIKELY(!printed)) {
+        auto result = make_scan_result<stdin_tag_t, Args...>();
+        result = unexpected(printed.error());
+        return result;
+    }
     return input<Args...>(format);
 }
 

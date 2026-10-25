@@ -331,10 +331,60 @@ SCN_PUBLIC bool scan_cfile_buffer::do_sync(std::ptrdiff_t position)
                                              m_putback_buffer) == position;
 }
 
+SCN_CLANG_PUSH
+SCN_CLANG_IGNORE("-Wexit-time-destructors")
+
+// Function-local, because `std::recursive_mutex` can't be constant-initialized
+static std::recursive_mutex& stdin_mutex()
+{
+    static std::recursive_mutex mutex{};
+    return mutex;
+}
+
+static scan_file& get_stdin_file()
+{
+    static scan_file file{stdin};
+    return file;
+}
+
+static auto& get_stdin_buffer()
+{
+    static std::optional<scan_file_buffer> buf{};
+    return buf;
+}
+
+// Set while a buffer over the stdin scan_file exists on this thread.
+// Per thread, because the stdin mutex keeps other threads out of a scan.
+static bool& stdin_file_in_use()
+{
+    static thread_local bool in_use{false};
+    return in_use;
+}
+
+SCN_CLANG_POP
+
+static bool is_stdin_file_in_use(const scan_file& file)
+{
+    return &file == &get_stdin_file() && stdin_file_in_use();
+}
+
+// A second buffer over the stdin scan_file would share the unsynced
+// characters of the one already in use
 SCN_PUBLIC scan_file_buffer::scan_file_buffer(scan_file& file)
-    : base(scan_file_access::get_handle(file)),
+    : base(is_stdin_file_in_use(file) ? nullptr
+                                      : scan_file_access::get_handle(file)),
       m_unsynced(scan_file_access::get_unsynced(file))
 {
+    if (&file == &get_stdin_file()) {
+        if (is_stdin_file_in_use(file)) {
+            this->m_source_error = detail::unexpected_scan_error(
+                scan_error::invalid_source_state, nested_stdin_scan_message);
+            return;
+        }
+        stdin_file_in_use() = true;
+        m_owns_stdin_use = true;
+    }
+
     // If the file can't be read from, scanning fails before syncing,
     // so the unsynced characters would be lost
     if (!this->m_source_error) {
@@ -345,7 +395,12 @@ SCN_PUBLIC scan_file_buffer::scan_file_buffer(scan_file& file)
     m_unsynced.clear();
 }
 
-SCN_PUBLIC scan_file_buffer::~scan_file_buffer() = default;
+SCN_PUBLIC scan_file_buffer::~scan_file_buffer()
+{
+    if (m_owns_stdin_use) {
+        stdin_file_in_use() = false;
+    }
+}
 
 SCN_PUBLIC bool scan_file_buffer::do_fill()
 {
@@ -367,52 +422,40 @@ SCN_PUBLIC bool scan_file_buffer::do_sync(std::ptrdiff_t position)
     return position_known;
 }
 
-SCN_CLANG_PUSH
-SCN_CLANG_IGNORE("-Wexit-time-destructors")
-
-static std::mutex stdin_mutex{};
-
+SCN_PUBLIC scan_expected<void> prompt_print(const char* msg)
+{
+    if (stdin_file_in_use()) {
+        return unexpected_scan_error(scan_error::invalid_source_state,
+                                     nested_stdin_scan_message);
+    }
 #if !SCN_DISABLE_IOSTREAM
-static auto& get_stdin_buffer()
-{
-    static std::optional<scan_istream_buffer> buf{};
-    return buf;
-}
-
-void prompt_print(const char* msg)
-{
-    std::cout << msg << std::flush;
-}
-#else
-static auto& get_stdin_buffer()
-{
-    static std::optional<scan_cfile_buffer> buf{};
-    return buf;
-}
-
-void prompt_print(const char* msg)
-{
-    std::printf("%s", msg);
+    std::cout.flush();
+#endif
+    std::fputs(msg, stdout);
     std::fflush(stdout);
+    return {};
 }
-#endif
 
-SCN_CLANG_POP
-
-SCN_PUBLIC void stdin_acquire() SCN_THREADSAFETY_NO_ANALYSIS
+SCN_PUBLIC bool stdin_acquire() SCN_THREADSAFETY_NO_ANALYSIS
 {
-    stdin_mutex.lock();
-#if !SCN_DISABLE_IOSTREAM
-    get_stdin_buffer().emplace(std::cin.rdbuf());
-#else
-    get_stdin_buffer().emplace(stdin);
-#endif
+    stdin_mutex().lock();
+    if (stdin_file_in_use()) {
+        // Only the scan that is already running may use its buffer
+        stdin_mutex().unlock();
+        return false;
+    }
+    get_stdin_buffer().emplace(get_stdin_file());
+    return true;
 }
 
 SCN_PUBLIC void stdin_release() SCN_THREADSAFETY_NO_ANALYSIS
 {
+    // The buffer holds the lock on the FILE
     get_stdin_buffer().reset();
-    stdin_mutex.unlock();
+    // Characters that can't be given back stay unsynced, and are read by the
+    // next scan
+    static_cast<void>(get_stdin_file().sync());
+    stdin_mutex().unlock();
 }
 
 SCN_PUBLIC scan_buffer& make_scan_buffer(stdin_tag_t,
@@ -424,6 +467,32 @@ SCN_PUBLIC scan_buffer& make_scan_buffer(stdin_tag_t,
 }
 
 }  // namespace detail
+
+SCN_PUBLIC locked_stdin_file stdin_file() SCN_THREADSAFETY_NO_ANALYSIS
+{
+    detail::stdin_mutex().lock();
+    return locked_stdin_file{&detail::get_stdin_file()};
+}
+
+SCN_PUBLIC locked_stdin_file::~locked_stdin_file() SCN_THREADSAFETY_NO_ANALYSIS
+{
+    if (m_file != nullptr) {
+        detail::stdin_mutex().unlock();
+    }
+}
+
+SCN_PUBLIC locked_stdin_file& locked_stdin_file::operator=(
+    locked_stdin_file&& other) noexcept SCN_THREADSAFETY_NO_ANALYSIS
+{
+    if (this == &other) {
+        return *this;
+    }
+    if (m_file != nullptr) {
+        detail::stdin_mutex().unlock();
+    }
+    m_file = std::exchange(other.m_file, nullptr);
+    return *this;
+}
 
 SCN_PUBLIC bool scan_file::sync()
 {
@@ -2651,6 +2720,13 @@ SCN_PUBLIC vscan_result<stdin_tag_t> vinput(const Locale& loc,
     return detail::vscan_localized_generic(loc, stdin_tag, format,
                                            SCN_MOVE(args));
 }
+
+#if !SCN_DISABLE_LOCALE
+template SCN_PUBLIC auto vinput<std::locale, void>(const std::locale&,
+                                                   std::string_view,
+                                                   scan_args)
+    -> vscan_result<stdin_tag_t>;
+#endif
 
 namespace detail {
 

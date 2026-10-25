@@ -160,7 +160,9 @@ using scn::make_wscan_args;
 
 using scn::basic_scan_parse_context;
 
+using scn::locked_stdin_file;
 using scn::scan_file;
+using scn::stdin_file;
 
 using scn::scan_result;
 

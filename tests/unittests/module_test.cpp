@@ -176,6 +176,12 @@ int main()
         return 1;
     }
 
+    // Compile-only: running it would wait for stdin
+    [[maybe_unused]] auto stdin_file_is_exported = [] {
+        scn::locked_stdin_file locked = scn::stdin_file();
+        return locked->unsynced().empty();
+    };
+
     std::istringstream direct_stream{"16"};
     auto from_istream = scn::scan<int>(direct_stream, "{}");
     if (!from_istream || from_istream->value() != 16) {

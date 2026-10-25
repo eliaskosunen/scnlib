@@ -179,13 +179,30 @@ if (auto result = scn::input<int>("{}")) {
 }
 \endcode
 
-`scn::input` uses the C++ standard input stream (`std::cin`) internally,
-and it's synchronized with `std::cin` automatically.
-If iostreams are disabled, the C standard input handle (`stdin`) is used instead.
+`scn::input` reads from the C standard input handle (`stdin`) with a `scn::scan_file` (see below),
+so it works the same whether iostreams are enabled or not.
+Concurrent calls to it are serialized with a mutex.
+If a scan fails after reading characters that it can't put back into `stdin`,
+the `scn::scan_file` keeps them, and the next `scn::input` reads them first.
+After a failed `scn::input`, call `scn::stdin_file()->sync()`
+before reading `stdin` with something else (e.g., `std::getchar` or `std::cin`).
+`sync()` returns `false` if some characters still can't be put back.
+This is common on Windows, where `ungetc` takes back only one character.
+The remaining characters can then be taken out of the `scn::scan_file` with `release_unsynced()`.
+
+Because `scn::input` reads the `FILE` and not `std::cin`,
+it can't read what `std::cin` has already buffered after `std::ios::sync_with_stdio(false)`.
+Unlike `std::cin`, it also doesn't flush `std::cout` before reading:
+use `scn::prompt`, or flush `std::cout` yourself.
+
+`scn::stdin_file()` returns a `scn::locked_stdin_file`, which holds a lock on that mutex.
+Dereferencing it gives the `scn::scan_file` used by `scn::input`.
+While the `scn::locked_stdin_file` is alive, `scn::input` on other threads waits.
+Passing it to `scn::scan` as a source is equivalent to calling `scn::input`.
 
 `scn::prompt` is similar to `scn::input`,
-but it also prints the prompt given to it as an argument to `std::cout`
-(or `stdout`, if iostreams are disabled).
+but it also prints the prompt given to it as an argument to `stdout`
+(flushing `std::cout` first, if iostreams are enabled).
 
 In addition to `scn::input` and `scn::prompt`,
 `scn::scan` can also be directly used with files.
@@ -214,7 +231,8 @@ When used with files, `scn::scan` doesn't return a range, but the file it was pa
 which can be accessed with `->source()`.
 For a string stream, it's the stream itself.
 To prevent confusion, there's no member `->range()` when using files.
-The result of `scn::input` and `scn::prompt` has neither.
+The result of `scn::input` and `scn::prompt` has no `->range()`,
+and its `->source()` returns a new `scn::locked_stdin_file`, which takes the lock.
 
 \code{.cpp}
 auto file = scn::scan_file{stdin};
