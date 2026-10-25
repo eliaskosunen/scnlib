@@ -18,21 +18,45 @@
 #include <scn/istream.h>
 
 #include <chrono>
+#include <cstdio>
 
 #include "fuzz.h"
 
+#include <filesystem>
 #include <fstream>
+#include <random>
 
 namespace {
 
 using namespace scn::fuzz;
 
-constexpr const char* path = "file_fuzz_tmp_file";
+// Unique per process, so that parallel fuzzing jobs don't share the file
+struct temporary_path {
+    temporary_path()
+        : path((std::filesystem::temp_directory_path() /
+                ("scn_fuzz_file_" + std::to_string(std::random_device{}())))
+                   .string())
+    {
+    }
+
+    ~temporary_path()
+    {
+        std::remove(path.c_str());
+    }
+
+    std::string path;
+};
+
+const std::string& path()
+{
+    static const temporary_path instance{};
+    return instance.path;
+}
 
 struct cfile_guard {
     cfile_guard()
     {
-        file = std::fopen(path, "rb");
+        file = std::fopen(path().c_str(), "rb");
         SCN_ENSURE(file);
     }
 
@@ -174,14 +198,14 @@ void run_fstream(std::string_view expected, bool is_valid_unicode)
     };
 
     {
-        std::ifstream strm{path, std::ios::in | std::ios::binary};
+        std::ifstream strm{path(), std::ios::in | std::ios::binary};
         scn::scan_istream wrapper{strm};
         const auto s = do_run_all(wrapper, expected);
         check(s, expected);
         ensure_eof(wrapper, strm);
     }
     {
-        std::ifstream strm{path, std::ios::in | std::ios::binary};
+        std::ifstream strm{path(), std::ios::in | std::ios::binary};
         scn::scan_istream wrapper{strm};
         const auto s = do_run_line_by_line(wrapper, expected, is_valid_unicode);
         check(s, expected);
@@ -202,7 +226,7 @@ void run(const std::uint8_t* data, std::size_t size)
 
     {
         auto out = std::ofstream{
-            path, std::ios::out | std::ios::binary | std::ios::trunc};
+            path(), std::ios::out | std::ios::binary | std::ios::trunc};
         out.write(input.data(), static_cast<std::streamsize>(input.size()));
     }
 

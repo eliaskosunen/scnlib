@@ -28,6 +28,7 @@ copy_target() {
 }
 copy_target char char
 copy_target chrono chrono
+copy_target file string
 copy_target float float
 copy_target format format
 copy_target int int
@@ -36,7 +37,3 @@ copy_target string_impl string
 
 # float_roundtrip has no dictionary or seed corpus
 cp "$(pwd)/tests/fuzz/scn_fuzz_float_roundtrip" "$OUT"
-
-# TODO: Currently fails in CI, with "Failed to sync with underlying source",
-# possibly a read-only filesystem?
-#copy_target file string
