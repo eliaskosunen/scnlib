@@ -24,13 +24,13 @@ int main()
     scn::scan_file in{stdin};
     // Alternatively, `scn::input<int>("{}")`
     if (auto result = scn::scan<int>(in, "{}")) {
-        if (auto second_result = scn::scan<int>(result->file(), "{}")) {
+        if (auto second_result = scn::scan<int>(result->source(), "{}")) {
             std::printf("Two integers: `%d` `%d`\n", result->value(),
                         second_result->value());
             return 0;
         }
 
-        auto buf_result = scn::scan<std::string>(result->file(), "{:[^\n]}");
+        auto buf_result = scn::scan<std::string>(result->source(), "{:[^\n]}");
         if (!buf_result) {
             std::printf("First integer: `%d`, failed to get rest of the line",
                         result->value());

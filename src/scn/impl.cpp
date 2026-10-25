@@ -333,16 +333,16 @@ SCN_PUBLIC bool scan_cfile_buffer::do_sync(std::ptrdiff_t position)
 
 SCN_PUBLIC scan_file_buffer::scan_file_buffer(scan_file& file)
     : base(scan_file_access::get_handle(file)),
-      m_prelude(scan_file_access::get_prelude(file))
+      m_unsynced(scan_file_access::get_unsynced(file))
 {
     // If the file can't be read from, scanning fails before syncing,
-    // so the prelude would be lost
+    // so the unsynced characters would be lost
     if (!this->m_source_error) {
         return;
     }
-    // The prelude has already been consumed from the file
-    this->m_putback_buffer = SCN_MOVE(m_prelude);
-    m_prelude.clear();
+    // The unsynced characters have already been consumed from the file
+    this->m_putback_buffer = SCN_MOVE(m_unsynced);
+    m_unsynced.clear();
 }
 
 SCN_PUBLIC scan_file_buffer::~scan_file_buffer() = default;
@@ -355,13 +355,16 @@ SCN_PUBLIC bool scan_file_buffer::do_fill()
 SCN_PUBLIC bool scan_file_buffer::do_sync(std::ptrdiff_t position)
 {
     auto f = impl::stdio_file_interface{m_file};
-    if (auto i = stdio_file_buffer_interface::sync(f, position, m_current_view,
-                                                   m_putback_buffer);
-        i != position) {
-        detail::set_prelude_after_sync(m_prelude, position, i, m_current_view,
-                                       m_putback_buffer);
+    const auto i = stdio_file_buffer_interface::sync(
+        f, position, m_current_view, m_putback_buffer);
+    if (i == position) {
+        return true;
     }
-    return true;
+    const bool position_known = i != impl::sync_position_unknown;
+    detail::set_unsynced_after_sync(
+        m_unsynced, position, position_known ? i : this->chars_available(),
+        m_current_view, m_putback_buffer);
+    return position_known;
 }
 
 SCN_CLANG_PUSH
@@ -421,6 +424,20 @@ SCN_PUBLIC scan_buffer& make_scan_buffer(stdin_tag_t,
 }
 
 }  // namespace detail
+
+SCN_PUBLIC bool scan_file::sync()
+{
+    if (m_unsynced.empty()) {
+        return true;
+    }
+    // The buffer holds the lock on the FILE until the end of this function,
+    // and moves the unsynced characters into its putback buffer
+    detail::scan_file_buffer buffer{*this};
+    if (!buffer.get_source_error()) {
+        return false;
+    }
+    return buffer.sync(0) && m_unsynced.empty();
+}
 
 /////////////////////////////////////////////////////////////////
 // locale implementations

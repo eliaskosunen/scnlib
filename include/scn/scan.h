@@ -36,6 +36,7 @@ import std;
 #include <string_view>
 #include <system_error>
 #include <tuple>
+#include <utility>
 
 #if SCN_HAS_STD_F16 || SCN_HAS_STD_F32 || SCN_HAS_STD_F64 || \
     SCN_HAS_STD_F128 || SCN_HAS_STD_BF16
@@ -6260,10 +6261,16 @@ struct scan_file_access;
 /**
  * Non-owning view into a `std::FILE`,
  * representing a file handle for scanning.
- * Stores an additional "prelude" buffer,
+ * Stores the characters that a scan read from the file,
+ * but couldn't give back to it,
  * which allows for a failure to sync with the underlying file
  * to not be fatal
  * (C `FILE` only guarantees a single character's worth of putback).
+ * On POSIX systems, if the file is a regular file or a block device,
+ * characters that `ungetc` doesn't take back are given back by seeking the
+ * file instead.
+ * The next scan from `*this` reads these unsynced characters first.
+ * Destroying a `scan_file` with unsynced characters drops them.
  *
  * \ingroup scannable
  */
@@ -6279,9 +6286,9 @@ public:
     scan_file& operator=(const scan_file&) = delete;
 
     scan_file(scan_file&& other) noexcept
-        : m_prelude(SCN_MOVE(other.m_prelude)), m_file(other.m_file)
+        : m_unsynced(SCN_MOVE(other.m_unsynced)), m_file(other.m_file)
     {
-        other.m_prelude = {};
+        other.m_unsynced = {};
         other.m_file = nullptr;
     }
     scan_file& operator=(scan_file&& other) noexcept
@@ -6289,49 +6296,69 @@ public:
         if (this == &other) {
             return *this;
         }
-        m_prelude = SCN_MOVE(other.m_prelude);
+        m_unsynced = SCN_MOVE(other.m_unsynced);
         m_file = other.m_file;
-        other.m_prelude = {};
+        other.m_unsynced = {};
         other.m_file = nullptr;
         return *this;
     }
 
     /**
      * Returns the C file handle associated with `*this`.
-     * If `*this` is not completely synced with the underlying file
-     * (i.e., its putback buffer is full), returns `std::nullopt`.
-     * The unsynced parts can be retrieved with `prelude()`.
+     * If `*this` has unsynced characters, returns `std::nullopt`.
+     * Use `unsynced()` or `release_unsynced()` to get them, or `sync()` to give
+     * them back to the file.
      * If `*this` has a null handle (e.g., it was constructed from a null
      * pointer, or it has been moved from), returns a null pointer.
      * Scanning from such a `scan_file` fails with
      * `scan_error::invalid_source_state`.
      */
-    SCN_NODISCARD std::optional<std::FILE*> handle() const
+    SCN_NODISCARD std::optional<std::FILE*> file() const
     {
-        if (m_prelude.empty()) {
+        if (m_unsynced.empty()) {
             return m_file;
         }
         return std::nullopt;
     }
 
     /**
-     * Returns the bytes not synced with the underlying C file, if any.
+     * Returns the characters read from the file that could not be given back
+     * to it, if any.
      */
-    SCN_NODISCARD std::string_view prelude() const
+    SCN_NODISCARD std::string_view unsynced() const
     {
-        return m_prelude;
+        return m_unsynced;
     }
 
     /**
-     * Returns the unsynced parts, and the underlying file handle.
+     * Returns the unsynced characters, and removes them from `*this`.
+     * After this, `file()` returns the file handle again, and the next scan
+     * doesn't read the returned characters.
      */
-    SCN_NODISCARD std::pair<std::string_view, std::FILE*> contents() const
+    std::string release_unsynced() noexcept
     {
-        return {m_prelude, m_file};
+        return std::exchange(m_unsynced, std::string{});
     }
 
+    /**
+     * Gives the unsynced characters back to the file, like a scan does at its
+     * end. Characters that can't be given back stay in `unsynced()`, in the
+     * same order.
+     *
+     * Returns `true` if `unsynced()` is empty afterwards, because all the
+     * characters were given back, or there were none to begin with.
+     * Otherwise, returns `false`.
+     * If there are unsynced characters, but `*this` has a null handle, the
+     * file can't be read from, or the position in the file is unknown after a
+     * failed seek, none of them are given back.
+     *
+     * After a scan has failed to sync with the file, call this before using
+     * `file()` or the `std::FILE*` directly again.
+     */
+    SCN_PUBLIC bool sync();
+
 private:
-    std::string m_prelude{};
+    std::string m_unsynced{};
     std::FILE* m_file{nullptr};
 };
 
@@ -6343,9 +6370,9 @@ struct scan_file_access {
         return f.m_file;
     }
 
-    static std::string& get_prelude(scan_file& f)
+    static std::string& get_unsynced(scan_file& f)
     {
-        return f.m_prelude;
+        return f.m_unsynced;
     }
 };
 
@@ -6871,17 +6898,17 @@ struct move_only_wrapper {
 };
 
 template <typename CharT>
-inline void set_prelude_after_sync(std::basic_string<CharT>& prelude,
-                                   std::ptrdiff_t expected_position,
-                                   std::ptrdiff_t synced_position,
-                                   std::basic_string_view<CharT>& current_view,
-                                   std::basic_string<CharT>& putback_buffer)
+inline void set_unsynced_after_sync(std::basic_string<CharT>& unsynced,
+                                    std::ptrdiff_t expected_position,
+                                    std::ptrdiff_t synced_position,
+                                    std::basic_string_view<CharT>& current_view,
+                                    std::basic_string<CharT>& putback_buffer)
 {
     SCN_EXPECT(synced_position > expected_position);
     const auto n_needed = synced_position - expected_position;
 
-    prelude.clear();
-    prelude.reserve(static_cast<std::size_t>(n_needed));
+    unsynced.clear();
+    unsynced.reserve(static_cast<std::size_t>(n_needed));
 
     const auto n_from_current_view =
         detail::min(n_needed, static_cast<std::ptrdiff_t>(current_view.size()));
@@ -6890,10 +6917,10 @@ inline void set_prelude_after_sync(std::basic_string<CharT>& prelude,
                     static_cast<std::ptrdiff_t>(putback_buffer.size()));
     SCN_ASSERT(n_from_putback_buffer + n_from_current_view == n_needed);
 
-    prelude.append(putback_buffer.end() - n_from_putback_buffer,
-                   putback_buffer.end());
-    prelude.append(current_view.end() - n_from_current_view,
-                   current_view.end());
+    unsynced.append(putback_buffer.end() - n_from_putback_buffer,
+                    putback_buffer.end());
+    unsynced.append(current_view.end() - n_from_current_view,
+                    current_view.end());
 }
 
 template <typename Range>
@@ -6968,7 +6995,7 @@ private:
     bool do_sync(std::ptrdiff_t position) override
     {
         if (position != this->chars_available()) {
-            detail::set_prelude_after_sync(
+            detail::set_unsynced_after_sync(
                 m_prelude, position, this->chars_available(),
                 this->m_current_view, this->m_putback_buffer);
         }
@@ -7014,7 +7041,7 @@ private:
 
     SCN_PUBLIC bool do_sync(std::ptrdiff_t position) override;
 
-    std::string& m_prelude;
+    std::string& m_unsynced;
 };
 
 template <typename Range>
@@ -8646,6 +8673,12 @@ public:
         return m_file;
     }
 
+    /// File used for scanning
+    SCN_NODISCARD std::FILE* source() const
+    {
+        return m_file;
+    }
+
     void set(std::FILE* f)
     {
         m_file = f;
@@ -8670,7 +8703,7 @@ public:
     }
 
     /// File used for scanning
-    SCN_NODISCARD scan_file& file() const
+    SCN_NODISCARD scan_file& source() const
     {
         SCN_EXPECT(m_file);
         return *m_file;
@@ -8783,9 +8816,9 @@ struct scan_result_source_access {
         return result.range();
     }
     template <typename R>
-    static auto get(R& result) -> decltype(result.file())
+    static auto get(R& result) -> decltype(result.source())
     {
-        return result.file();
+        return result.source();
     }
     template <typename R>
     static auto get(R& result) -> decltype(result.stream())
@@ -8849,16 +8882,17 @@ struct scan_result_alias_base<S, std::enable_if_t<ranges::range<S>>> {
  *     `ranges::iterator_t<S>` and `ranges::sentinel_t<S>`, respectively.
  *  4. If `S` is (cvref-qualified) `scn::scan_file`, or a pointer to one,
  *     contains a reference to a `scn::scan_file`,
- *     accessible with the `file()` member function.
+ *     accessible with the `source()` member function.
  *  5. If `S` is a pointer to `std::FILE`,
  *     contains a pointer to `std::FILE`,
- *     accessible with the `file()` member function.
+ *     accessible with the `source()` or `file()` member function.
  *  6. If `S` is derived from a specialization of `std::basic_istream`,
  *     and `scn/istream.h` has been included,
  *     contains a reference to the stream,
  *     accessible with the `stream()` member function.
  *  7. If `S` is `scn::stdin_tag_t` (used by `scn::input` and `scn::prompt`),
- *     contains no source: there's no `range()`, `file()`, or `stream()`.
+ *     contains no source: there's no `range()`, `source()`, `file()`,
+ *     or `stream()`.
  *
  * For 1., `begin()` and `end()` member functions are available,
  * returning `ranges::dangling`.
@@ -9111,6 +9145,16 @@ public:
     }
 
     /// Return the file used as the source
+    /// (a `scn::scan_file&` or a `std::FILE*`)
+    template <typename S = Source>
+    auto source() const
+        -> decltype(SCN_DECLVAL(const detail::scan_result_source_storage<S>&)
+                        .source())
+    {
+        return m_source.source();
+    }
+
+    /// Return the `std::FILE*` used as the source
     template <typename S = Source>
     auto file() const
         -> decltype(SCN_DECLVAL(const detail::scan_result_source_storage<S>&)

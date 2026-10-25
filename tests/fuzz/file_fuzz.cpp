@@ -134,8 +134,8 @@ void run_file(std::string_view expected, bool is_valid_unicode)
 {
     auto ensure_eof = [&](scn::scan_file& file) {
         if (is_valid_unicode) {
-            SCN_ENSURE(file.prelude().empty());
-            if (std::feof(file.handle().value()) == 0) {
+            SCN_ENSURE(file.unsynced().empty());
+            if (std::feof(file.file().value()) == 0) {
                 throw std::runtime_error("expected eof");
             }
         }

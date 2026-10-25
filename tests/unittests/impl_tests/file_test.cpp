@@ -52,6 +52,8 @@ enum class mock_seek {
     relative_doesnt_move,
     // Relative backward seeks report success, but stop one character short
     relative_one_short,
+    // Like `relative_one_short`, but seeking to a saved position fails
+    relative_one_short_no_restore,
 };
 
 // Common state of the mock files: the entire contents of the file,
@@ -148,7 +150,8 @@ struct seekable_mock_file : mock_file_base {
         if (seek == mock_seek::correct) {
             derived().set_logical_position(requested);
         }
-        else if (seek == mock_seek::relative_one_short) {
+        else if (seek == mock_seek::relative_one_short ||
+                 seek == mock_seek::relative_one_short_no_restore) {
             derived().set_logical_position(requested + 1);
         }
         return requested;
@@ -156,7 +159,8 @@ struct seekable_mock_file : mock_file_base {
 
     SCN_NODISCARD bool seek_to(std::size_t pos)
     {
-        if (seek == mock_seek::none) {
+        if (seek == mock_seek::none ||
+            seek == mock_seek::relative_one_short_no_restore) {
             return false;
         }
         derived().set_logical_position(pos);
@@ -384,10 +388,10 @@ struct buffered_mock_file : seekable_mock_file<buffered_mock_file> {
     std::string m_backup;
 };
 
-// With `HasPrelude`, the characters that can't be put back into the file go
-// into the prelude, like with `scan_file`. Otherwise, syncing fails, like with
+// With `HasUnsynced`, the characters that can't be put back into the file go
+// into `unsynced()`, like with `scan_file`. Otherwise, syncing fails, like with
 // a `FILE*`.
-template <typename MockFile, bool HasPrelude = true>
+template <typename MockFile, bool HasUnsynced = true>
 class mock_file_buffer : public scn::detail::basic_scan_buffer<char> {
     using base = scn::detail::basic_scan_buffer<char>;
     using interface = scn::impl::file_buffer_interface<char, MockFile>;
@@ -415,30 +419,33 @@ public:
     {
         const auto i = interface::sync(m_file, pos, this->m_current_view,
                                        this->m_putback_buffer);
-        if constexpr (HasPrelude) {
-            if (i != pos) {
-                scn::detail::set_prelude_after_sync(
-                    m_prelude, pos, i, m_current_view, m_putback_buffer);
+        if constexpr (HasUnsynced) {
+            if (i == pos) {
+                return true;
             }
-            return true;
+            const bool position_known = i != scn::impl::sync_position_unknown;
+            scn::detail::set_unsynced_after_sync(
+                m_unsynced, pos, position_known ? i : chars_available(),
+                m_current_view, m_putback_buffer);
+            return position_known;
         }
         else {
             return i == pos;
         }
     }
 
-    std::string& prelude()
+    std::string& unsynced()
     {
-        return m_prelude;
+        return m_unsynced;
     }
-    const std::string& prelude() const
+    const std::string& unsynced() const
     {
-        return m_prelude;
+        return m_unsynced;
     }
 
 private:
     MockFile& m_file;
-    std::string m_prelude{};
+    std::string m_unsynced{};
     std::optional<char> m_latest{std::nullopt};
 };
 
@@ -747,13 +754,13 @@ TEST(FileTest, NonReadableFile)
     ASSERT_THAT(result, Failed());
 }
 
-TEST(FileTest, NonReadableFileKeepsPrelude)
+TEST(FileTest, NonReadableFileKeepsUnsynced)
 {
     scn::scan_file file{stderr};
-    scn::detail::scan_file_access::get_prelude(file) = "123";
+    scn::detail::scan_file_access::get_unsynced(file) = "123";
     auto result = scn::scan<int>(file, "{}");
     ASSERT_THAT(result, Failed());
-    EXPECT_EQ(file.prelude(), "123");
+    EXPECT_EQ(file.unsynced(), "123");
 }
 
 TEST(FileTest, NullHandle)
@@ -763,13 +770,13 @@ TEST(FileTest, NullHandle)
     ASSERT_THAT(result, FailedWith(scn::scan_error::invalid_source_state));
 }
 
-TEST(FileTest, NullHandleKeepsPrelude)
+TEST(FileTest, NullHandleKeepsUnsynced)
 {
     scn::scan_file file{nullptr};
-    scn::detail::scan_file_access::get_prelude(file) = "123";
+    scn::detail::scan_file_access::get_unsynced(file) = "123";
     auto result = scn::scan<int>(file, "{}");
     ASSERT_THAT(result, Failed());
-    EXPECT_EQ(file.prelude(), "123");
+    EXPECT_EQ(file.unsynced(), "123");
 }
 
 TEST(FileTest, NullCFile)
@@ -786,9 +793,9 @@ TEST(FileTest, MovedFrom)
     scn::scan_file file{temporary.handle()};
     scn::scan_file moved{std::move(file)};
 
-    EXPECT_EQ(moved.handle(), std::optional<std::FILE*>{temporary.handle()});
+    EXPECT_EQ(moved.file(), std::optional<std::FILE*>{temporary.handle()});
     // The handle of a moved-from file is null, not UB
-    EXPECT_EQ(file.handle(), std::optional<std::FILE*>{nullptr});
+    EXPECT_EQ(file.file(), std::optional<std::FILE*>{nullptr});
 
     auto result = scn::scan<int>(file, "{}");
     ASSERT_THAT(result, FailedWith(scn::scan_error::invalid_source_state));
@@ -800,18 +807,19 @@ TEST(FileTest, SelfMoveAssignment)
     ASSERT_NE(temporary.handle(), nullptr);
 
     scn::scan_file file{temporary.handle()};
-    scn::detail::scan_file_access::get_prelude(file) = "4";
+    scn::detail::scan_file_access::get_unsynced(file) = "4";
 
     // Through a reference, so that `-Wself-move` doesn't fire
     auto& same_file = file;
     file = std::move(same_file);
 
-    EXPECT_EQ(file.prelude(), "4");
-    EXPECT_EQ(file.contents().second, temporary.handle());
+    EXPECT_EQ(file.unsynced(), "4");
+    EXPECT_EQ(scn::detail::scan_file_access::get_handle(file),
+              temporary.handle());
     auto result = scn::scan<int>(file, "{}");
     ASSERT_THAT(result, Succeeded());
     EXPECT_EQ(result->value(), 4123);
-    EXPECT_EQ(file.prelude(), "");
+    EXPECT_EQ(file.unsynced(), "");
     EXPECT_EQ(temporary.read_rest(), "");
 }
 
@@ -820,12 +828,12 @@ TEST(FileTest, InitialValues)
     temporary_file temporary{"", 0};
     ASSERT_NE(temporary.handle(), nullptr);
     scn::scan_file file{temporary.handle()};
-    scn::detail::scan_file_access::get_prelude(file) = "123 456\n";
+    scn::detail::scan_file_access::get_unsynced(file) = "123 456\n";
 
     auto result = scn::scan<int, std::string>(file, "{} {}", {1, "abc"});
     ASSERT_THAT(result, Succeeded());
     EXPECT_THAT(result->values(), FieldsAre(123, "456"));
-    EXPECT_EQ(&result->file(), &file);
+    EXPECT_EQ(&result->source(), &file);
 
     auto value = scn::scan_value(file, 42);
     ASSERT_THAT(value, FailedWith(scn::scan_error::end_of_input));
@@ -886,7 +894,7 @@ protected:
     // including the characters that couldn't be put back into it
     std::string get_file_remainder() const
     {
-        return m_buffer->prelude() + m_file->remaining();
+        return m_buffer->unsynced() + m_file->remaining();
     }
 
     // How far the file was read. A buffered file is read in whole chunks.
@@ -901,13 +909,13 @@ protected:
     }
     // What couldn't be put back into the file.
     // A buffered file needs to put back less, depending on the chunking.
-    void expect_prelude(const std::string& expected) const
+    void expect_unsynced(const std::string& expected) const
     {
         if constexpr (file_type::is_buffered) {
-            EXPECT_THAT(expected, testing::StartsWith(m_buffer->prelude()));
+            EXPECT_THAT(expected, testing::StartsWith(m_buffer->unsynced()));
         }
         else {
-            EXPECT_EQ(m_buffer->prelude(), expected);
+            EXPECT_EQ(m_buffer->unsynced(), expected);
         }
     }
 
@@ -1112,7 +1120,7 @@ TYPED_TEST(FileTestP, PutbackFail1)
     ASSERT_THAT(result, Succeeded());
     EXPECT_EQ(result->value(), 123);
     this->expect_reached("123");
-    this->expect_prelude("");
+    this->expect_unsynced("");
     EXPECT_EQ(this->get_file_remainder(), "");
     EXPECT_EQ(this->get_remainder(*result), "");
 }
@@ -1126,7 +1134,7 @@ TYPED_TEST(FileTestP, PutbackFail2)
     ASSERT_THAT(result, Succeeded());
     EXPECT_THAT(result->values(), FieldsAre(123, 456));
     this->expect_reached("123\n456");
-    this->expect_prelude("");
+    this->expect_unsynced("");
     EXPECT_EQ(this->get_file_remainder(), "");
     EXPECT_EQ(this->get_remainder(*result), "");
 }
@@ -1139,7 +1147,7 @@ TYPED_TEST(FileTestP, PutbackFailWithError1)
     auto result = scn::scan<int>(range, "{}");
     ASSERT_THAT(result, Failed());
     this->expect_reached("a");
-    this->expect_prelude("a");
+    this->expect_unsynced("a");
     EXPECT_EQ(this->get_file_remainder(), "abc");
 }
 
@@ -1151,7 +1159,7 @@ TYPED_TEST(FileTestP, PutbackFailWithError2)
     auto result = scn::scan<int, int>(range, "{} {}");
     ASSERT_THAT(result, Failed());
     this->expect_reached("123\na");
-    this->expect_prelude("123\na");
+    this->expect_unsynced("123\na");
     EXPECT_EQ(this->get_file_remainder(), "123\nabc");
 }
 
@@ -1164,7 +1172,7 @@ TYPED_TEST(FileTestP, PutbackFailWithCustomType)
     ASSERT_THAT(result, Succeeded());
     EXPECT_THAT(result->value(), FieldsAre(123, 456));
     this->expect_reached("123 456");
-    this->expect_prelude("");
+    this->expect_unsynced("");
     EXPECT_EQ(this->get_file_remainder(), "");
     EXPECT_EQ(this->get_remainder(*result), "");
 }
@@ -1177,7 +1185,7 @@ TYPED_TEST(FileTestP, PutbackFailWithCustomTypeFail1)
     auto result = scn::scan<custom_type>(range, "{}");
     ASSERT_THAT(result, Failed());
     this->expect_reached("123 a");
-    this->expect_prelude("123 a");
+    this->expect_unsynced("123 a");
     EXPECT_EQ(this->get_file_remainder(), "123 abc");
 }
 
@@ -1189,7 +1197,7 @@ TYPED_TEST(FileTestP, PutbackFailWithCustomTypeFail2)
     auto result = scn::scan<custom_type>(range, "{}");
     ASSERT_THAT(result, Failed());
     this->expect_reached("a");
-    this->expect_prelude("a");
+    this->expect_unsynced("a");
     EXPECT_EQ(this->get_file_remainder(), "abc def");
 }
 
@@ -1318,12 +1326,12 @@ protected:
 
     struct outcome {
         scn::scan_error::code_t error;
-        std::string prelude;
+        std::string unsynced;
         std::string remaining;
     };
 
     // Scans two integers from `input`, which must fail
-    template <bool HasPrelude>
+    template <bool HasUnsynced>
     outcome failed_scan(const std::string& input,
                         std::size_t putback_limit,
                         mock_seek seek)
@@ -1331,30 +1339,30 @@ protected:
         file_type file{chunk_up(input, T::method)};
         file.putback_limit = putback_limit;
         file.seek = seek;
-        mock_file_buffer<file_type, HasPrelude> buffer{file};
+        mock_file_buffer<file_type, HasUnsynced> buffer{file};
         auto range = buffer.get();
         auto result = scn::scan<int, int>(range, "{} {}");
         EXPECT_THAT(result, Failed());
         return {result ? scn::scan_error::max_error : result.error().code(),
-                buffer.prelude(), file.remaining()};
+                buffer.unsynced(), file.remaining()};
     }
 };
 
 TYPED_TEST_SUITE(FileSeekTestP, type_list);
 
-TYPED_TEST(FileSeekTestP, SeekableWithPrelude)
+TYPED_TEST(FileSeekTestP, SeekableWithUnsynced)
 {
     const std::string input{"123 abc def"};
     for (std::size_t limit : {std::size_t{0}, std::size_t{1}}) {
         auto out =
             this->template failed_scan<true>(input, limit, mock_seek::correct);
         EXPECT_EQ(out.error, scn::scan_error::invalid_scanned_value) << limit;
-        EXPECT_EQ(out.prelude, "") << limit;
+        EXPECT_EQ(out.unsynced, "") << limit;
         EXPECT_EQ(out.remaining, input) << limit;
     }
 }
 
-TYPED_TEST(FileSeekTestP, SeekableWithoutPrelude)
+TYPED_TEST(FileSeekTestP, SeekableWithoutUnsynced)
 {
     const std::string input{"123 abc def"};
     for (std::size_t limit : {std::size_t{0}, std::size_t{1}}) {
@@ -1365,30 +1373,30 @@ TYPED_TEST(FileSeekTestP, SeekableWithoutPrelude)
     }
 }
 
-TYPED_TEST(FileSeekTestP, NonSeekableWithPrelude)
+TYPED_TEST(FileSeekTestP, NonSeekableWithUnsynced)
 {
     const std::string input{"123 abc def"};
     for (std::size_t limit : {std::size_t{0}, std::size_t{1}}) {
         auto out =
             this->template failed_scan<true>(input, limit, mock_seek::none);
         EXPECT_EQ(out.error, scn::scan_error::invalid_scanned_value) << limit;
-        EXPECT_EQ(out.prelude + out.remaining, input) << limit;
+        EXPECT_EQ(out.unsynced + out.remaining, input) << limit;
         if constexpr (!TestFixture::file_type::is_buffered) {
-            EXPECT_NE(out.prelude, "") << limit;
+            EXPECT_NE(out.unsynced, "") << limit;
         }
     }
 }
 
-TYPED_TEST(FileSeekTestP, NonSeekableWithoutPrelude)
+TYPED_TEST(FileSeekTestP, NonSeekableWithoutUnsynced)
 {
     const std::string input{"123 abc def"};
     for (std::size_t limit : {std::size_t{0}, std::size_t{1}}) {
         // Depending on the chunking, a buffered file may not need putback
-        const auto with_prelude =
+        const auto with_unsynced =
             this->template failed_scan<true>(input, limit, mock_seek::none);
         auto out =
             this->template failed_scan<false>(input, limit, mock_seek::none);
-        if (with_prelude.prelude.empty()) {
+        if (with_unsynced.unsynced.empty()) {
             EXPECT_EQ(out.error, scn::scan_error::invalid_scanned_value)
                 << limit;
             EXPECT_EQ(out.remaining, input) << limit;
@@ -1407,27 +1415,120 @@ TYPED_TEST(FileSeekTestP, LyingSeek)
     // same as the ones that should be put back. Only the position after
     // reading them tells the difference.
     const std::string input{"1111111"};
-    const auto expected_with_prelude =
+    const auto expected_with_unsynced =
         this->template failed_scan<true>(input, 1, mock_seek::none);
-    const auto expected_without_prelude =
+    const auto expected_without_unsynced =
         this->template failed_scan<false>(input, 1, mock_seek::none);
-    EXPECT_EQ(expected_with_prelude.prelude + expected_with_prelude.remaining,
-              input);
+    EXPECT_EQ(
+        expected_with_unsynced.unsynced + expected_with_unsynced.remaining,
+        input);
 
     for (auto seek :
          {mock_seek::relative_doesnt_move, mock_seek::relative_one_short}) {
-        const auto with_prelude =
+        const auto with_unsynced =
             this->template failed_scan<true>(input, 1, seek);
-        EXPECT_EQ(with_prelude.error, expected_with_prelude.error);
-        EXPECT_EQ(with_prelude.prelude, expected_with_prelude.prelude);
-        EXPECT_EQ(with_prelude.remaining, expected_with_prelude.remaining);
+        EXPECT_EQ(with_unsynced.error, expected_with_unsynced.error);
+        EXPECT_EQ(with_unsynced.unsynced, expected_with_unsynced.unsynced);
+        EXPECT_EQ(with_unsynced.remaining, expected_with_unsynced.remaining);
 
-        const auto without_prelude =
+        const auto without_unsynced =
             this->template failed_scan<false>(input, 1, seek);
-        EXPECT_EQ(without_prelude.error, expected_without_prelude.error);
-        EXPECT_EQ(without_prelude.remaining,
-                  expected_without_prelude.remaining);
+        EXPECT_EQ(without_unsynced.error, expected_without_unsynced.error);
+        EXPECT_EQ(without_unsynced.remaining,
+                  expected_without_unsynced.remaining);
     }
+}
+
+// If undoing the seek fails, the position is unknown
+TYPED_TEST(FileSeekTestP, UndoSeekFails)
+{
+    const std::string input{"1111111"};
+    const auto out = this->template failed_scan<true>(
+        input, 1, mock_seek::relative_one_short_no_restore);
+    EXPECT_EQ(out.error, scn::scan_error::invalid_source_state);
+    // Kept, to be read by the next scan
+    EXPECT_NE(out.unsynced, "");
+}
+
+struct fake_seek_source {
+    std::string contents;
+    std::size_t position;
+    bool seek_back_works{true};
+    bool seek_to_works{true};
+    bool lies{false};
+
+    std::optional<std::size_t> tell() const
+    {
+        return position;
+    }
+    std::optional<std::size_t> seek_back(std::ptrdiff_t n)
+    {
+        if (!seek_back_works) {
+            return std::nullopt;
+        }
+        const auto target = position - static_cast<std::size_t>(n);
+        position = lies ? target + 1 : target;
+        return target;
+    }
+    bool seek_to(std::size_t pos)
+    {
+        if (!seek_to_works) {
+            return false;
+        }
+        position = pos;
+        return true;
+    }
+    std::optional<char> read_one()
+    {
+        if (position >= contents.size()) {
+            return std::nullopt;
+        }
+        return contents[position++];
+    }
+};
+
+// 6 characters were read, and the last 2 are owed to the source
+TEST(BufferSyncSeekFallbackTest, Outcomes)
+{
+    const auto run = [](fake_seek_source& source) {
+        std::string view_storage{"abcdef"};
+        std::string_view view{view_storage.data(), view_storage.size()};
+        std::string putback_buffer;
+        const auto result = scn::impl::buffer_sync_seek_fallback<char>(
+            4, 6, view, putback_buffer, source);
+        // Left untouched, unless the seek is kept
+        if (result != 4) {
+            EXPECT_EQ(view, "abcdef");
+        }
+        else {
+            EXPECT_EQ(view, "abcd");
+        }
+        return result;
+    };
+
+    fake_seek_source ok{"abcdef", 6};
+    EXPECT_EQ(run(ok), 4);
+    EXPECT_EQ(ok.position, 4u);
+
+    fake_seek_source lying{"abcdef", 6};
+    lying.lies = true;
+    EXPECT_EQ(run(lying), 6);
+    EXPECT_EQ(lying.position, 6u);
+
+    fake_seek_source lying_no_restore{"abcdef", 6};
+    lying_no_restore.lies = true;
+    lying_no_restore.seek_to_works = false;
+    EXPECT_EQ(run(lying_no_restore), scn::impl::sync_position_unknown);
+
+    fake_seek_source no_seek_back_no_restore{"abcdef", 6};
+    no_seek_back_no_restore.seek_back_works = false;
+    no_seek_back_no_restore.seek_to_works = false;
+    EXPECT_EQ(run(no_seek_back_no_restore), scn::impl::sync_position_unknown);
+
+    // Seeking back fails, and the position is restored
+    fake_seek_source no_seek_back{"abcdef", 6};
+    no_seek_back.seek_back_works = false;
+    EXPECT_EQ(run(no_seek_back), 6);
 }
 
 #if SCN_POSIX && !SCN_WINDOWS
@@ -1549,7 +1650,7 @@ TEST_P(FileRealTest, SuccessfulScan)
     ASSERT_THAT(result, Succeeded());
     EXPECT_THAT(result->values(), FieldsAre(123, 456));
     EXPECT_EQ(
-        scn::detail::scan_file_access::get_prelude(source) + file.read_rest(),
+        scn::detail::scan_file_access::get_unsynced(source) + file.read_rest(),
         " abc");
 }
 
@@ -1561,7 +1662,7 @@ TEST_P(FileRealTest, FailedScanLeavesFileIntact)
     auto result = scn::scan<int, int, int>(source, "{} {} {}");
     ASSERT_THAT(result, Failed());
     EXPECT_EQ(
-        scn::detail::scan_file_access::get_prelude(source) + file.read_rest(),
+        scn::detail::scan_file_access::get_unsynced(source) + file.read_rest(),
         "123 456 abc\ndef");
 }
 
@@ -1600,16 +1701,16 @@ TEST_P(FileRealTest, InputLongerThanBuffer)
     auto failed = scn::scan<std::string, int>(source, "{} {}");
     ASSERT_THAT(failed, Failed());
     EXPECT_EQ(
-        scn::detail::scan_file_access::get_prelude(source) + file.read_rest(),
+        scn::detail::scan_file_access::get_unsynced(source) + file.read_rest(),
         " end");
 }
 
-TEST_P(FileRealTest, Prelude)
+TEST_P(FileRealTest, Unsynced)
 {
     auto file = make_file("34 56 abc");
     ASSERT_TRUE(file.handle());
     scn::scan_file source{file.handle()};
-    scn::detail::scan_file_access::get_prelude(source) = "12 ";
+    scn::detail::scan_file_access::get_unsynced(source) = "12 ";
 
     auto result = scn::scan<int, int, int>(source, "{} {} {}");
     ASSERT_THAT(result, Succeeded());
@@ -1620,12 +1721,12 @@ TEST_P(FileRealTest, Prelude)
     EXPECT_EQ(rest->value(), "abc");
 }
 
-TEST_P(FileRealTest, PreludeWithFailedScan)
+TEST_P(FileRealTest, UnsyncedWithFailedScan)
 {
     auto file = make_file("34 56 abc");
     ASSERT_TRUE(file.handle());
     scn::scan_file source{file.handle()};
-    scn::detail::scan_file_access::get_prelude(source) = "12 ";
+    scn::detail::scan_file_access::get_unsynced(source) = "12 ";
 
     auto failed = scn::scan<int, int, int, int>(source, "{} {} {} {}");
     ASSERT_THAT(failed, Failed());
@@ -1635,12 +1736,12 @@ TEST_P(FileRealTest, PreludeWithFailedScan)
     EXPECT_THAT(result->values(), FieldsAre(12, 34, 56, "abc"));
 }
 
-TEST_P(FileRealTest, PreludeOnly)
+TEST_P(FileRealTest, UnsyncedOnly)
 {
     auto file = make_file("");
     ASSERT_TRUE(file.handle());
     scn::scan_file source{file.handle()};
-    scn::detail::scan_file_access::get_prelude(source) = "123 456";
+    scn::detail::scan_file_access::get_unsynced(source) = "123 456";
 
     auto first = scn::scan<int>(source, "{}");
     ASSERT_THAT(first, Succeeded());
@@ -1649,6 +1750,155 @@ TEST_P(FileRealTest, PreludeOnly)
     auto second = scn::scan<int>(source, "{}");
     ASSERT_THAT(second, Succeeded());
     EXPECT_EQ(second->value(), 456);
+}
+
+TEST_P(FileRealTest, ReleaseUnsynced)
+{
+    auto file = make_file("34");
+    ASSERT_TRUE(file.handle());
+    scn::scan_file source{file.handle()};
+    scn::detail::scan_file_access::get_unsynced(source) = "12 ";
+    EXPECT_FALSE(source.file().has_value());
+
+    EXPECT_EQ(source.release_unsynced(), "12 ");
+    EXPECT_EQ(source.unsynced(), "");
+    ASSERT_TRUE(source.file().has_value());
+    EXPECT_EQ(*source.file(), file.handle());
+
+    // The released characters are not read by the next scan
+    auto result = scn::scan<int>(source, "{}");
+    ASSERT_THAT(result, Succeeded());
+    EXPECT_EQ(result->value(), 34);
+}
+
+TEST_P(FileRealTest, SyncGivesCharactersBack)
+{
+    auto file = make_file("12 34");
+    ASSERT_TRUE(file.handle());
+    for (int i = 0; i < 3; ++i) {
+        ASSERT_EQ(std::fgetc(file.handle()), "12 "[i]);
+    }
+    scn::scan_file source{file.handle()};
+    scn::detail::scan_file_access::get_unsynced(source) = "12 ";
+
+    const auto all_given_back = source.sync();
+    // Windows has no seek fallback, and the UCRT `ungetc` may not take back
+    // all three characters
+#if !SCN_WINDOWS
+    EXPECT_TRUE(all_given_back);
+#endif
+    EXPECT_EQ(all_given_back, source.unsynced().empty());
+    EXPECT_EQ(all_given_back, source.file().has_value());
+    EXPECT_EQ(std::string{source.unsynced()} + file.read_rest(), "12 34");
+}
+
+TEST_P(FileRealTest, SyncWithNothingUnsynced)
+{
+    auto file = make_file("12 34");
+    ASSERT_TRUE(file.handle());
+    scn::scan_file source{file.handle()};
+
+    EXPECT_TRUE(source.sync());
+    EXPECT_EQ(file.read_rest(), "12 34");
+}
+
+TEST_P(FileRealTest, SyncAfterFailedScan)
+{
+    auto file = make_file("12 34 abc");
+    ASSERT_TRUE(file.handle());
+    scn::scan_file source{file.handle()};
+
+    auto failed = scn::scan<int, int, int>(source, "{} {} {}");
+    ASSERT_THAT(failed, Failed());
+    const auto all_given_back = source.sync();
+#if !SCN_WINDOWS
+    EXPECT_TRUE(all_given_back);
+#endif
+    EXPECT_EQ(all_given_back, source.unsynced().empty());
+    EXPECT_EQ(std::string{source.unsynced()} + file.read_rest(), "12 34 abc");
+}
+
+// The failed scan reads more characters than musl's `ungetc` takes back on an
+// unbuffered file, so syncing there depends on seeking back
+TEST_P(FileRealTest, SyncAfterFailedScanOfLongToken)
+{
+    const std::string input = std::string(40, 'a') + " " + std::string(30, 'b');
+    auto file = make_file(input);
+    ASSERT_TRUE(file.handle());
+    scn::scan_file source{file.handle()};
+
+    auto failed = scn::scan<std::string, int>(source, "{} {}");
+    ASSERT_THAT(failed, Failed());
+    const auto all_given_back = source.sync();
+#if !SCN_WINDOWS
+    EXPECT_TRUE(all_given_back);
+    EXPECT_TRUE(source.unsynced().empty());
+#endif
+    EXPECT_EQ(all_given_back, source.unsynced().empty());
+    EXPECT_EQ(std::string{source.unsynced()} + file.read_rest(), input);
+}
+
+TEST(FileTest, SyncWithNullHandleKeepsUnsynced)
+{
+    scn::scan_file file{nullptr};
+    scn::detail::scan_file_access::get_unsynced(file) = "123";
+
+    EXPECT_FALSE(file.sync());
+    EXPECT_EQ(file.unsynced(), "123");
+    EXPECT_FALSE(file.file().has_value());
+}
+
+TEST(FileTest, SyncWithNullHandleAndNothingUnsynced)
+{
+    scn::scan_file file{nullptr};
+    EXPECT_TRUE(file.sync());
+}
+
+#if SCN_POSIX && !SCN_WINDOWS
+// A pipe is not seekable, so the characters that `ungetc` can't take back
+// stay unsynced. How many that is depends on the C library.
+TEST(FileTest, SyncWithNonSeekableFile)
+{
+    int fds[2];
+    ASSERT_EQ(::pipe(fds), 0);
+    const std::string input(10000, 'a');
+    const std::string unsynced(5000, 'b');
+    ASSERT_EQ(::write(fds[1], input.data(), input.size()),
+              static_cast<::ssize_t>(input.size()));
+    ::close(fds[1]);
+    std::FILE* handle = ::fdopen(fds[0], "r");
+    ASSERT_NE(handle, nullptr);
+
+    scn::scan_file file{handle};
+    scn::detail::scan_file_access::get_unsynced(file) = unsynced;
+    const auto all_given_back = file.sync();
+    EXPECT_EQ(all_given_back, file.unsynced().empty());
+    EXPECT_EQ(all_given_back, file.file().has_value());
+
+    std::string rest;
+    for (int ch = std::fgetc(handle); ch != EOF; ch = std::fgetc(handle)) {
+        rest.push_back(static_cast<char>(ch));
+    }
+    // What stays in `unsynced()` precedes what was given back
+    EXPECT_EQ(std::string{file.unsynced()} + rest, unsynced + input);
+    std::fclose(handle);
+}
+#endif
+
+TEST(FileTest, ResultSource)
+{
+    temporary_file temporary{"12 34", 0};
+    ASSERT_NE(temporary.handle(), nullptr);
+
+    scn::scan_file file{temporary.handle()};
+    auto result = scn::scan<int>(file, "{}");
+    ASSERT_THAT(result, Succeeded());
+    EXPECT_EQ(&result->source(), &file);
+
+    auto raw_result = scn::scan<int>(temporary.handle(), "{}");
+    ASSERT_THAT(raw_result, Succeeded());
+    EXPECT_EQ(raw_result->source(), temporary.handle());
+    EXPECT_EQ(raw_result->file(), temporary.handle());
 }
 
 TEST_P(FileRealTest, ScanValue)
@@ -1673,12 +1923,12 @@ TEST_P(FileRealTest, ScanValue)
     EXPECT_EQ(rest->value(), "abc");
 }
 
-TEST_P(FileRealTest, ScanValueWithPrelude)
+TEST_P(FileRealTest, ScanValueWithUnsynced)
 {
     auto file = make_file("456");
     ASSERT_TRUE(file.handle());
     scn::scan_file source{file.handle()};
-    scn::detail::scan_file_access::get_prelude(source) = "123 ";
+    scn::detail::scan_file_access::get_unsynced(source) = "123 ";
 
     auto first = scn::scan_value<int>(source);
     ASSERT_THAT(first, Succeeded());
@@ -1722,11 +1972,10 @@ TEST_P(FileRealTest, RawFileFailedScan)
     ASSERT_TRUE(file.handle());
     auto result = scn::scan<int, int, int>(file.handle(), "{} {} {}");
     ASSERT_THAT(result, Failed());
-    // Without a prelude, characters that can't be put back with `ungetc`
-    // are lost, in which case the scan fails because of the failed sync.
-    // Which characters can be put back depends on the C library, and the
-    // buffer size. On POSIX, the rest is restored by seeking back in the
-    // file.
+    // Without the unsynced buffer of `scan_file`, the characters that `ungetc`
+    // can't put back are lost, and the scan fails because the sync failed.
+    // Which characters can be put back depends on the C library and the buffer
+    // size. On POSIX, the rest is restored by seeking back in the file.
     if (result.error().code() == scn::scan_error::invalid_source_state) {
 #if SCN_POSIX && !SCN_WINDOWS
         FAIL() << "seeking back in a regular file restores the characters";

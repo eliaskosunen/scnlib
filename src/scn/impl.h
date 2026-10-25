@@ -1084,6 +1084,13 @@ SCN_NODISCARD std::ptrdiff_t buffer_sync_helper(
 // If the seek is kept, returns `position`, and leaves `current_view` and
 // `putback_buffer` as a successful `buffer_sync_helper` would have.
 // Otherwise, returns `synced_position`, and leaves them untouched.
+// If undoing the seek fails too, the position of the source is unknown, and the
+// owed characters can't be told apart from ones the source still has.
+// Then, returns `sync_position_unknown`, and leaves them untouched. The caller
+// keeps the owed characters unsynced, as with `synced_position`, and fails the
+// sync.
+inline constexpr std::ptrdiff_t sync_position_unknown = -1;
+
 template <typename CharT, typename SeekableSource>
 SCN_NODISCARD std::ptrdiff_t buffer_sync_seek_fallback(
     std::ptrdiff_t position,
@@ -1099,17 +1106,19 @@ SCN_NODISCARD std::ptrdiff_t buffer_sync_seek_fallback(
 
     const auto n_owed = synced_position - position;
     std::basic_string<CharT> owed;
-    detail::set_prelude_after_sync(owed, position, synced_position,
-                                   current_view, putback_buffer);
+    detail::set_unsynced_after_sync(owed, position, synced_position,
+                                    current_view, putback_buffer);
 
     const auto now = source.tell();
     if (!now) {
         return synced_position;
     }
+    const auto undo_seek = [&]() {
+        return source.seek_to(*now) ? synced_position : sync_position_unknown;
+    };
     const auto target = source.seek_back(n_owed);
     if (!target) {
-        (void)source.seek_to(*now);
-        return synced_position;
+        return undo_seek();
     }
 
     bool matches = true;
@@ -1125,8 +1134,7 @@ SCN_NODISCARD std::ptrdiff_t buffer_sync_seek_fallback(
         matches = after && *after == *now;
     }
     if (!matches) {
-        (void)source.seek_to(*now);
-        return synced_position;
+        return undo_seek();
     }
     // Reading the owed characters again left the source at `now`
     if (!source.seek_to(*target)) {

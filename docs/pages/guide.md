@@ -194,6 +194,8 @@ A `scn::scan_file` is conceptually a non-owning reference to a file,
 and it wraps a C `FILE*`, in addition to a buffer,
 which will be used if synchronization with the underlying `FILE*` fails
 (a C `FILE` is only guaranteed to have a putback buffer a single character long).
+On POSIX systems, if the file is a regular file or a block device,
+characters that can't be put back are restored by seeking back in the file instead.
 If the synchronization succeeds, the same `FILE` contained in the `scn::scan_file`
 can be used elsewhere transparently.
 
@@ -205,14 +207,14 @@ Plain C `FILE`s can also be used, but the support for them is deprecated,
 for the aforementioned reasons about the possibility for a synchronization failure.
 
 When used with files, `scn::scan` doesn't return a range, but the file it was passed,
-which can be accessed with `->file()` (or `->stream()`, for `std::istream`s).
+which can be accessed with `->source()` (or `->stream()`, for `std::istream`s).
 To prevent confusion, there's no member `->range()` when using files.
 The result of `scn::input` and `scn::prompt` has neither.
 
 \code{.cpp}
 auto file = scn::scan_file{stdin};
 auto result = scn::scan<int>(file, "{}");
-// result->file() is file
+// result->source() is file
 // result->range() doesn't exist
 \endcode
 
