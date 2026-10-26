@@ -199,7 +199,7 @@ elseif(CMAKE_VERSION VERSION_GREATER_EQUAL "3.30.0")
     FetchContent_Declare(
         fast_float
         GIT_REPOSITORY https://github.com/fastfloat/fast_float.git
-        GIT_TAG v8.0.2
+        GIT_TAG v8.3.2
         GIT_SHALLOW TRUE
         SYSTEM
         EXCLUDE_FROM_ALL
@@ -213,7 +213,7 @@ else()
     FetchContent_Declare(
         fast_float
         GIT_REPOSITORY https://github.com/fastfloat/fast_float.git
-        GIT_TAG v8.0.2
+        GIT_TAG v8.3.2
         GIT_SHALLOW TRUE
     )
 

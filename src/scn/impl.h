@@ -5972,13 +5972,21 @@ struct convert_from_chars_traits {
 // With -ffast-math, GCC converts float to bfloat16 by truncating instead of
 // rounding. fast_float does bfloat16 arithmetic, which goes through float, so
 // its results could be off by one ulp.
+//
+// Before fast_float 8.3.1 (fastfloat/fast_float#408), float16_t ties between
+// subnormals were rounded up instead of to even. fast_float defines
+// FASTFLOAT_VERSION only since 8.0.0, which is also the first version with
+// float16_t support.
 template <typename T>
 inline constexpr bool fast_float_rounds_correctly =
 #if defined(__FAST_MATH__) && SCN_HAS_STD_BF16
-    !std::is_same_v<T, std::bfloat16_t>;
-#else
-    true;
+    !std::is_same_v<T, std::bfloat16_t> &&
 #endif
+#if SCN_HAS_STD_F16 && \
+    (!defined(FASTFLOAT_VERSION) || FASTFLOAT_VERSION < 80301)
+    !std::is_same_v<T, std::float16_t> &&
+#endif
+    true;
 #endif
 
 struct convert_fast_float_traits {

@@ -21,7 +21,14 @@
 #include <scn/scan.h>
 #include <scn/xchar.h>
 
+#if SCN_HAS_STD_F16
+#include <bit>
+#endif
+#include <cstdint>
 #include <deque>
+#include <limits>
+#include <optional>
+#include <string_view>
 
 TEST(FloatTest, FloatWithSuffix)
 {
@@ -45,6 +52,63 @@ TEST(FloatTest, Float16)
     ASSERT_THAT(result, Succeeded());
     EXPECT_EQ(result->value(), 3.14f16);
     EXPECT_THAT(result->range(), IsEmptyRange());
+}
+
+TEST(FloatTest, Float16SubnormalTiesRoundToEven)
+{
+    const auto bits = [](std::string_view input) -> std::optional<unsigned> {
+        auto result = scn::scan<std::float16_t>(input, "{}");
+        if (!result) {
+            return std::nullopt;
+        }
+        return std::bit_cast<std::uint16_t>(result->value());
+    };
+
+    // Halfway between 0 and the smallest subnormal: rounds to zero (even)
+    auto underflow = scn::scan<std::float16_t>("2.98023223876953125e-8", "{}");
+    EXPECT_THAT(underflow,
+                FailedWith(scn::scan_error::value_positive_underflow));
+    underflow = scn::scan<std::float16_t>(
+        "0.000000029802322387695312500000000000000000000000", "{}");
+    EXPECT_THAT(underflow,
+                FailedWith(scn::scan_error::value_positive_underflow));
+
+    // Odd multiples of 2^-25 are ties between subnormals
+    EXPECT_EQ(bits("8.94069671630859375e-8"), 0x0002u);   // 3 * 2^-25
+    EXPECT_EQ(bits("1.490116119384765625e-7"), 0x0002u);  // 5 * 2^-25
+    EXPECT_EQ(bits("2.086162567138671875e-7"), 0x0004u);  // 7 * 2^-25
+    EXPECT_EQ(bits("9.834766387939453125e-7"), 0x0010u);  // 33 * 2^-25
+    EXPECT_EQ(bits("0.0000001490116119384765625000000000000000000000"),
+              0x0002u);
+
+    // Just over the tie rounds up
+    EXPECT_EQ(bits("1.4901161194e-7"), 0x0003u);
+}
+
+TEST(FloatTest, Float16SubnormalUnderflow)
+{
+    // Below the halfway point to the smallest subnormal, the value is zero
+    for (std::string_view input : {"1.2e-8", "2.98e-8", "6e-9", "1e-30"}) {
+        EXPECT_THAT(scn::scan<std::float16_t>(input, "{}"),
+                    FailedWith(scn::scan_error::value_positive_underflow))
+            << input;
+    }
+}
+
+TEST(FloatTest, Float16Overflow)
+{
+    // Candidates for the fast path (small decimal significand and exponent)
+    // that exceed the range of float16_t
+    for (std::string_view input :
+         {"656e2", "66e3", "7e4", "1e5", "65520", "65520.0", "6.552e4"}) {
+        EXPECT_THAT(scn::scan<std::float16_t>(input, "{}"),
+                    FailedWith(scn::scan_error::value_positive_overflow))
+            << input;
+    }
+
+    auto max = scn::scan<std::float16_t>("65519.99", "{}");
+    ASSERT_THAT(max, Succeeded());
+    EXPECT_EQ(max->value(), std::numeric_limits<std::float16_t>::max());
 }
 #endif
 #if SCN_HAS_STD_F32
