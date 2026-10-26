@@ -3000,12 +3000,7 @@ struct random_access_iterator_concept {
     auto requires_(I i, const I j, const iter_difference_t<I> n)
         -> decltype(requires_expr<std::is_same_v<decltype(i += n), I&>>{},
                     requires_expr<std::is_same_v<decltype(j + n), I>>{},
-#ifndef _MSC_VER
-                    requires_expr<std::is_same_v<decltype(n + j),
-                                                 I>>{},  // FIXME: MSVC doesn't
-                                                         // like this when I =
-                                                         // int*
-#endif
+                    requires_expr<std::is_same_v<decltype(n + j), I>>{},
                     requires_expr<std::is_same_v<decltype(i -= n), I&>>{},
                     requires_expr<std::is_same_v<decltype(j - n), I>>{},
                     requires_expr<
