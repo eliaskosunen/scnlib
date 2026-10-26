@@ -137,6 +137,7 @@ struct float_test_suite_value_set<FloatT, float_kind::f32> {
     static constexpr auto normal_min_hex = SCN_MAKE_FLOAT_PAIR(0x1p-126, f);
 
     static constexpr auto underflow_str = "1.0e-90"sv;
+    static constexpr auto near_underflow_str = "7e-46"sv;
     static constexpr auto underflow_hex_str = "0x1p-192"sv;
 
     static constexpr auto overflow_str = "4.0e38"sv;
@@ -167,6 +168,7 @@ struct float_test_suite_value_set<FloatT, float_kind::f64> {
     static constexpr auto normal_min_hex = SCN_MAKE_FLOAT_PAIR(0x1p-1022, );
 
     static constexpr auto underflow_str = "5.0e-400"sv;
+    static constexpr auto near_underflow_str = "2e-324"sv;
     static constexpr auto underflow_hex_str = "0x1p-1200"sv;
 
     static constexpr auto overflow_str = "4.0e380"sv;
@@ -219,6 +221,7 @@ struct float_test_suite_value_set<FloatT, float_kind::f80> {
 #endif
 
     static constexpr auto underflow_str = "4.0e-5500"sv;
+    static constexpr auto near_underflow_str = "8e-4952"sv;
     static constexpr auto underflow_hex_str = "0x1p-18000"sv;
 
     static constexpr auto overflow_str = "2.0e4932"sv;
@@ -259,6 +262,7 @@ struct float_test_suite_value_set<FloatT, float_kind::f128> {
     static constexpr auto normal_min_hex = SCN_MAKE_F128_PAIR(0x1p-16382);
 
     static constexpr auto underflow_str = "4.0e-5500"sv;
+    static constexpr auto near_underflow_str = "3e-4966"sv;
     static constexpr auto underflow_hex_str = "0x1p-18000"sv;
 
     static constexpr auto overflow_str = "2.0e4932"sv;
@@ -292,6 +296,7 @@ struct float_test_suite_value_set<FloatT, float_kind::f2x64> {
     static constexpr auto normal_min_hex = SCN_MAKE_FLOAT_PAIR(0x1p-969, L);
 
     static constexpr auto underflow_str = "5.0e-400"sv;
+    static constexpr auto near_underflow_str = "2e-324"sv;
     static constexpr auto underflow_hex_str = "0x1p-1200"sv;
 
     static constexpr auto overflow_str = "2.0e308"sv;
@@ -322,6 +327,7 @@ struct float_test_suite_value_set<FloatT, float_kind::f16> {
     static constexpr auto normal_min_hex = SCN_MAKE_FLOAT_PAIR(0x1p-14, F16);
 
     static constexpr auto underflow_str = "5.0e-16"sv;
+    static constexpr auto near_underflow_str = "2.98e-8"sv;
     static constexpr auto underflow_hex_str = "0x1p-40"sv;
 
     static constexpr auto overflow_str = "7.0e4"sv;
@@ -355,6 +361,7 @@ struct float_test_suite_value_set<FloatT, float_kind::bf16> {
     static constexpr auto normal_min_hex = SCN_MAKE_FLOAT_PAIR(0x1p-126, BF16);
 
     static constexpr auto underflow_str = "1.0e-90"sv;
+    static constexpr auto near_underflow_str = "4e-41"sv;
     static constexpr auto underflow_hex_str = "0x1p-192"sv;
 
     static constexpr auto overflow_str = "4.0e38"sv;
@@ -1008,6 +1015,14 @@ TYPED_TEST_P(FloatTestSuite, Underflow)
                                   scn::scan_error::value_positive_underflow));
 }
 
+// Less than half of the smallest subnormal, but not by much
+TYPED_TEST_P(FloatTestSuite, UnderflowNearZero)
+{
+    EXPECT_TRUE(
+        TestFixture::test_failure(TestFixture::values::near_underflow_str,
+                                  scn::scan_error::value_positive_underflow));
+}
+
 TYPED_TEST_P(FloatTestSuite, UnderflowHex)
 {
     if (!TestFixture::interface_type::supports_hex) {
@@ -1301,6 +1316,7 @@ REGISTER_TYPED_TEST_SUITE_P(FloatTestSuite,
                             Overflow,
                             OverflowHex,
                             Underflow,
+                            UnderflowNearZero,
                             UnderflowHex,
                             ExtremeExponents,
                             ExtremeExponentsHex,

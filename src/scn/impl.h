@@ -5437,7 +5437,7 @@ scan_expected<void> simple_decimal_conversion(T& result,
         }
     }
 
-    if (significand == 0u && biased_exponent == 0 && value.decimal_point < 0) {
+    if (significand == 0u && biased_exponent == 0) {
         // Value rounded to zero, but the input was non-zero
         //  -> underflow
         return detail::unexpected_scan_error(
