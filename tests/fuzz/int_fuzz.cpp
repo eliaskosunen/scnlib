@@ -47,8 +47,8 @@ namespace {
     std::abort();
 }
 
-// Checks scnlib against std::from_chars, on tokens that both must handle the
-// same way: an optional '-' (signed types only), followed by digits valid in
+// Checks scnlib against std::from_chars on tokens that both must handle the
+// same way: an optional '-' (signed types only) followed by digits valid in
 // the base. scnlib must give the same value, consume the whole token, and
 // report overflow the same way.
 template <typename T>

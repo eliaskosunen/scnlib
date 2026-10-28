@@ -24,7 +24,7 @@
 #include <string>
 #include <utility>
 
-// gcc 7 exceeds its maximum template instantiation depth with this many
+// GCC 7 exceeds its maximum template instantiation depth with this many
 // arguments
 #if !SCN_GCC || SCN_GCC >= SCN_COMPILER(8, 0, 0)
 namespace {

@@ -93,7 +93,7 @@ std::string to_base(std::uint64_t value, int base)
     return result;
 }
 
-// Digit-string addition, for values that don't fit in an uint64_t
+// Digit-string addition, for values that don't fit in a uint64_t
 std::string add_in_base(std::string_view lhs, std::string_view rhs, int base)
 {
     std::string result;
@@ -156,7 +156,7 @@ struct limit_digits {
           i64_max_plus_one(add_in_base(i64_max, "1", base)),
           i64_max_plus_two(add_in_base(i64_max, "2", base)),
           // 2^64 + base^(max_digits-1): has max_digits digits in most bases,
-          // and wraps around to base^(max_digits-1) in an uint64_t
+          // and wraps around to base^(max_digits-1) in a uint64_t
           wrapping(add_in_base(u64_max_plus_one,
                                "1" + std::string(u64_max.size() - 1, '0'),
                                base))

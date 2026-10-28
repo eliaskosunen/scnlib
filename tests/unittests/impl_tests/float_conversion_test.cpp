@@ -300,7 +300,7 @@ TEST(SaturatingExponentTest, AdjustedBySignificandDigits)
                                 many_digits),
               -max_exponent_magnitude + many_digits);
 
-    // Hex: `digit_offset` is 4 times the (negated) number of digits after the
+    // Hex: `digit_offset` is minus 4 times the number of digits after the
     // radix point
     const auto many_hex_digits = (std::int64_t{1} << 28) - 1;
     EXPECT_EQ(adjusted_exponent(make_parts("99999999999", true),

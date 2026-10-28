@@ -97,8 +97,8 @@ SCN_BEGIN_NAMESPACE
  * </tr>
  * </table>
  *
- * <sup>[1][2]</sup>: The behavior of Boost.Regex varies depending on whether
- * it's using the ICU or not. If it is, character classes like `\pL` and
+ * <sup>[1][2]</sup>: The behavior of Boost.Regex depends on whether it
+ * uses the ICU. If it does, character classes like `\pL` and
  * `[[:alpha:]]` can match any non-ASCII characters. Otherwise, only ASCII
  * characters are matched.
  *
@@ -129,9 +129,9 @@ SCN_BEGIN_NAMESPACE
  * Supported by `Boost` and `re2`.
  * For `std`, uses `std::regex_constants::multiline`,
  * which was introduced in C++17.
- * MSVC implements it starting from MSVC Build Tools 14.50 (Visual Studio 2026).
- * Older versions of MSVC reject `/m`, and match `^` and `$` at line
- * boundaries even without it.
+ * MSVC implements it starting with MSVC Build Tools 14.50 (Visual Studio 2026).
+ * Older versions reject `/m`, and always match `^` and `$` at line
+ * boundaries.
  * </td>
  * </tr>
  *

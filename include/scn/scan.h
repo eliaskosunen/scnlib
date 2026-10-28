@@ -1273,9 +1273,10 @@ private:
  * Storage of an `expected`, held as a data member.
  *
  * When T and E are trivially copyable, this is `expected_storage_base`
- * itself, so that the union and the flag are direct data members of the
- * member. GCC doesn't scalarize (SRA) objects whose data lives in a base
- * subobject, which makes it pass and return `expected`s through memory.
+ * itself, so the union and the flag are direct members of the storage member,
+ * not inherited from a base. GCC doesn't scalarize (SRA) objects whose data
+ * lives in a base subobject, so it passes and returns such `expected`s
+ * through memory.
  */
 template <typename T, typename E>
 using expected_storage =
@@ -2679,14 +2680,17 @@ using legacy_iterator_category_t = typename legacy_iterator_category<T>::type;
 // ITER_CONCEPT
 //
 // ITER_TRAITS(I) is `I` if `std::iterator_traits<I>` is the primary template,
-// and `std::iterator_traits<I>` otherwise. Detecting the primary template needs
-// help from the standard library: libstdc++, libc++ and the MS STL are
-// supported. Elsewhere, `iterator_traits<I>` is never considered primary, and
-// the lookup is lenient: a specialization is preferred, but the members of `I`
-// are used as well (which gets C++17 and primary templates right, but not the
-// random-access fallback, if `iterator_traits<I>` computes a category).
-// Even when detected, a specialization lacking both `iterator_concept` and
-// `iterator_category` is not diagnosed, but classified as random access.
+// and `std::iterator_traits<I>` otherwise. Detecting the primary template
+// needs help from the standard library, so it's only done for libstdc++,
+// libc++, and the MS STL.
+// With other standard libraries, `iterator_traits<I>` is never considered
+// primary, and the lookup is lenient: a specialization is preferred, but the
+// members of `I` are used as well. This gets C++17 and primary templates
+// right, but not the random-access fallback if `iterator_traits<I>` computes
+// a category.
+// Even when the primary template is detected, a specialization lacking both
+// `iterator_concept` and `iterator_category` isn't diagnosed, but is
+// classified as random access.
 #if SCN_STDLIB_LIBCPP
 template <typename T, typename = void>
 inline constexpr bool iterator_traits_is_primary = false;
@@ -5609,7 +5613,7 @@ public:
     };
 
     /// The error code enum.
-    /// Use this to name it, since `scan_error::code` names the member function
+    /// Use this alias to name it: `scan_error::code` names the member function
     /// `code()`.
     using code_t = code;
 
@@ -7193,15 +7197,19 @@ auto make_range_scan_buffer(Range&& range)
  *     (std::same_as<CharT, char> || std::same_as<CharT, wchar_t>);
  * \endcode
  *
- * When scanning from a `std::basic_istream`, characters may be read from its
- * `std::basic_streambuf` ahead of what is scanned.
- * Those that weren't scanned are returned with `sputbackc`,
- * and if that fails, by seeking the stream buffer back,
- * if that can be verified to have worked.
- * For a `std::basic_filebuf`, it is also checked that the file is a regular
- * file or a block device, where the standard library allows it
+ * When scanning from a `std::basic_istream`, the scan may read characters
+ * from its `std::basic_streambuf` ahead of what it scans.
+ * The scan gives back the characters it didn't scan with `sputbackc`.
+ * If that fails, it seeks the stream buffer back, if it can verify that the
+ * seek worked.
+ * For a `std::basic_filebuf`, it also checks that the file is a regular file
+ * or a block device, if the standard library exposes the file descriptor
  * (see `scn::basic_scan_istream`).
- * If a scan fails, all the characters it has read are returned that way.
+ * A failed scan gives back all the characters it has read the same way.
+ * A successful scan only needs to put characters back if the stream buffer
+ * has characters available to read in bulk
+ * (see `std::basic_streambuf::in_avail`).
+ *
  * Many stream buffers can't put back all the characters they have returned
  * (e.g., a `std::filebuf` in libc++ or MSVC, or `std::cin` reading a pipe).
  * Therefore, `std::basic_istream`s must be wrapped in a
@@ -7218,10 +7226,10 @@ auto make_range_scan_buffer(Range&& range)
  * and so can classes derived from them.
  * They are read through their own `rdbuf()`.
  *
- * Additionally, files (`scn::scan_file`) can be scanned from,
- * as can `scn::locked_stdin_file` (it reads like `scn::input`),
- * and if `<scn/istream.h>` is included, `scn::basic_scan_istream`s
- * and string streams, too.
+ * Additionally, files (`scn::scan_file`) and `scn::locked_stdin_file` (which
+ * reads like `scn::input`) can be scanned from.
+ * If `<scn/istream.h>` is included, `scn::basic_scan_istream`s and string
+ * streams can be scanned from, too.
  * The support for reading from C `FILE` is deprecated.
  * Files are always considered to be narrow (`char`-oriented).
  * Thus, the entire concept is:
@@ -7779,10 +7787,9 @@ public:
     {
     }
 
-    // Stores `ref` itself, unlike the `T&` constructor above, which would store
-    // the address of a `void*` passed to it. Tagged to keep the two apart:
-    // `void*` is also a scannable type, so for a `void*` lvalue, overload
-    // resolution alone can't tell which one is meant.
+    // Stores `ref` itself. The `T&` constructor above would store the address
+    // of a `void*` passed to it instead. `void*` is also a scannable type, so
+    // the tag is needed to select this constructor for a `void*` lvalue.
     struct ref_tag {};
     constexpr arg_value(ref_tag, void* ref) : ref_value{ref} {}
 
@@ -8490,10 +8497,10 @@ namespace detail {
 /*
  * Not constexpr: calling it in a constant expression fails compile-time format
  * string checking.
- * Call it from an `on_error(const char* msg)`, and only conditionally (for
- * example, only for the first error), so that compilers treat `on_error` as a
- * function that could be a constant expression. They then show the call to
- * `on_error`, with `msg`, in the diagnostic.
+ * Call it from an `on_error(const char* msg)`, and only conditionally (e.g.,
+ * only for the first error). Compilers then treat `on_error` as a function
+ * that could be a constant expression, and show the call to `on_error`, with
+ * `msg`, in the diagnostic.
  */
 inline void invalid_format_string() {}
 }  // namespace detail
@@ -8571,7 +8578,7 @@ public:
     /**
      * Advance the beginning of the format string to `it`.
      * If `it` is not in the range `[begin(), end()]`, fails format string
-     * parsing with `on_error`, and the context is left unchanged.
+     * parsing with `on_error`, and leaves the context unchanged.
      */
     constexpr void advance_to(iterator it)
     {
@@ -8613,7 +8620,7 @@ public:
      * Fail format string parsing with the message `msg`.
      * Calling this member function is not a constant expression,
      * causing a compile-time error if compile-time format string checking is
-     * enabled. The compiler error will contain `msg`.
+     * enabled. The compiler error contains `msg`.
      * If parsing has already failed, the first error is kept.
      */
     constexpr scan_error on_error(const char* msg)
@@ -8645,8 +8652,8 @@ public:
 protected:
     constexpr void do_check_arg_id(std::size_t id);
 
-    // Out of line: when inlined into on_error, it made Clang's code for the
-    // callers of on_error, which run for every replacement field, slower
+    // Out of line: inlining it into `on_error` made Clang's code slower for
+    // the callers of `on_error`, which run for every replacement field
     SCN_COLD void set_error(const char* msg)
     {
         m_error = unexpected(detail::handle_error(
@@ -9047,14 +9054,13 @@ struct scan_result_alias_base<S, std::enable_if_t<ranges::range<S>>> {
  *  5. If `S` is a pointer to `std::FILE`,
  *     contains a pointer to `std::FILE`,
  *     accessible with the `source()` or `file()` member function.
- *  6. If `S` is (cvref-qualified) a specialization of
- *     `scn::basic_scan_istream`, or a string stream
- *     (a class derived from a specialization of `std::basic_istringstream`,
- *     `std::basic_stringstream`, or, if available,
- *     `std::basic_ispanstream` or `std::basic_spanstream`),
- *     and `scn/istream.h` has been included,
+ *  6. If `scn/istream.h` has been included, and `S` is (cvref-qualified)
+ *     a specialization of `scn::basic_scan_istream` or a string stream,
  *     contains a reference to `S` (without cvref-qualifiers),
  *     accessible with the `source()` member function.
+ *     A string stream is a class derived from a specialization of
+ *     `std::basic_istringstream`, `std::basic_stringstream`, or, if available,
+ *     `std::basic_ispanstream` or `std::basic_spanstream`.
  *  7. If `S` is `scn::stdin_tag_t` (used by `scn::input` and `scn::prompt`),
  *     or (cvref-qualified) `scn::locked_stdin_file`,
  *     there's no `range()` or `file()`.
@@ -9315,11 +9321,10 @@ public:
         return m_source.end();
     }
 
-    /// Return the file or stream used as the source
-    /// (a `scn::scan_file&`, a `scn::basic_scan_istream&`,
-    /// a string stream, or a `std::FILE*`),
-    /// or, for the result of `scn::input`, a new `scn::locked_stdin_file`
-    /// (this takes the lock on `stdin`)
+    /// Return the file or stream used as the source: a `scn::scan_file&`,
+    /// a `scn::basic_scan_istream&`, a string stream, or a `std::FILE*`.
+    /// For the result of `scn::input`, return a new `scn::locked_stdin_file`,
+    /// which locks `stdin`.
     template <typename S = Source>
     auto source() const
         -> decltype(SCN_DECLVAL(const detail::scan_result_source_storage<S>&)
@@ -10954,7 +10959,7 @@ SCN_CLANG_IGNORE("-Wdocumentation-unknown-command")
  *
  * See \ref type for the meaning of each type, and the syntax of
  * character sets and regular expressions.
- * Dates and times have their own format specifier syntax, see \ref chrono.
+ * Dates and times have their own format specifier syntax (see \ref chrono).
  *
  * \section arg-ids Argument IDs
  *
@@ -10987,8 +10992,8 @@ SCN_CLANG_IGNORE("-Wdocumentation-unknown-command")
  *
  * \section width Width
  *
- * Width specifies the exact number of units that will be read from the
- * source range, or the minimum, if a precision is also given.
+ * Width specifies the exact number of units to read from the source range,
+ * or the minimum number if a precision is also given.
  * It can be any positive integer without leading zeros: a width of zero is
  * an error.
  * If the value is shorter than the width, the scan fails with
@@ -11020,18 +11025,18 @@ SCN_CLANG_IGNORE("-Wdocumentation-unknown-command")
  *
  * \section precision Precision
  *
- * Precision specifies the maximum number of units that will be read from the
- * source range, counted like the width.
+ * Precision specifies the maximum number of units to read from the source
+ * range, counted like the width.
  * It must be a positive integer without leading zeros, and a `.` without one
  * is an error.
- * With both, `{:N.M}` reads from `N` to `M` units, and a width larger than
- * the precision is an error.
- * Like the width, it isn't allowed for characters and booleans, except with
- * an integer presentation type.
+ * When both are given, `{:N.M}` reads from `N` to `M` units.
+ * A width larger than the precision is an error.
+ * Like the width, precision isn't allowed for characters and booleans, except
+ * with an integer presentation type.
  *
- * The field ends where the width or precision says, which can cut a value
- * short: `{:3}` on `"12345"` reads `123`, and `{:2e}` on `"1e5"` fails,
- * because the exponent has no digits.
+ * The field ends at the width or precision, even in the middle of a value:
+ * `{:3}` on `"12345"` reads `123`, and `{:2e}` on `"1e5"` fails, because the
+ * exponent has no digits.
  * A regular expression sees the end of the field as the end of the input,
  * so `$` matches there.
  *
@@ -11115,8 +11120,8 @@ SCN_CLANG_IGNORE("-Wdocumentation-unknown-command")
  * Other characters, including control characters, are read as is.
  * The result is transcoded to the character type of the string, like with `s`.
  * A code unit from `\x{hex}` is stored as is, even if that makes the encoding
- * invalid, so it can't be transcoded: it's an error when the string's code
- * units aren't the same size as the source's.
+ * invalid. It can't be transcoded, so `\x{hex}` is an error when the string's
+ * code units aren't the same size as the source's.
  * Skips preceding whitespace.
  * Width and precision are not allowed, and neither are string views, since
  * the unescaped value has to be stored somewhere.
@@ -11280,18 +11285,18 @@ SCN_CLANG_IGNORE("-Wdocumentation-unknown-command")
  *
  * Like with `std::from_chars`, infinities and NaNs are accepted,
  * case-insensitively, as `inf`, `infinity`, `nan`, and
- * `nan(n-char-sequence)`, where the n-char-sequence consists of ASCII letters,
+ * `nan(n-char-sequence)`. The n-char-sequence consists of ASCII letters,
  * digits, and underscores. A scanned NaN is always quiet.
+ *
  * If the n-char-sequence is an integer that fits in the payload of the NaN,
- * it's used as the payload (except 0 with the legacy NaN encoding of
- * pre-2008 MIPS and PA-RISC, which would make an infinity, and gives
- * `std::numeric_limits<T>::quiet_NaN()` instead).
- * The integer has the same base prefixes as with
- * the `i` type specifier for integers (`0b`, `0o`, `0x`, or `0` for octal),
- * and `_` is allowed anywhere after the base prefix.
- * At least one digit is required.
- * Otherwise, the result is `std::numeric_limits<T>::quiet_NaN()`, with the
- * scanned sign.
+ * it's used as the payload. Otherwise, the result is
+ * `std::numeric_limits<T>::quiet_NaN()`, with the scanned sign.
+ * The integer takes the same base prefixes as the `i` type specifier for
+ * integers (`0b`, `0o`, `0x`, or `0` for octal), allows `_` anywhere after the
+ * base prefix, and needs at least one digit.
+ * With the legacy NaN encoding of pre-2008 MIPS and PA-RISC, a payload of 0
+ * would make an infinity, so the result is
+ * `std::numeric_limits<T>::quiet_NaN()` instead, with the scanned sign.
  * Payloads are only supported if scnlib is built with eknan
  * (`SCN_DISABLE_EKNAN` is `OFF`), and eknan supports the binary format of `T`.
  *
@@ -12018,7 +12023,8 @@ protected:
  * The scanners for `char`, `wchar_t`, `char32_t`, `std::string`, and
  * `std::wstring` have the member function `set_debug_format()`, like
  * `std::formatter`.
- * It selects the `?` type specifier, as if it was given in the format string.
+ * Calling it is the same as giving the `?` type specifier in the format
+ * string.
  *
  * \ingroup ctx
  */
@@ -12489,10 +12495,9 @@ using scan_result_value_type = typename mp_cond<
 /**
  * Result type returned by `vscan`.
  *
- * The value type of the `scan_expected` is the type of the source stored
- * in `scan_result` (see `scn::scan_result`), e.g.,
- * `detail::borrowed_tail_subrange_t<Source>` if `Source` is a forward range,
- * or `FILE*` if `Source` is `FILE*`.
+ * The value type of the `scan_expected` is the type of the source stored in
+ * `scn::scan_result`: for example, `detail::borrowed_tail_subrange_t<Source>`
+ * if `Source` is a forward range, or `FILE*` if `Source` is `FILE*`.
  *
  * \ingroup vscan
  */
@@ -13251,8 +13256,8 @@ inline constexpr bool is_scan_int_type =
  *
  * Reads in the specified base,
  * allowing a base prefix. Set `base` to `0` to detect the base from the
- * input. `base` must either be `0`, or in range `[2, 36]`:
- * otherwise, returns an error with code `scan_error::invalid_format_string`.
+ * input. `base` must be `0` or in the range `[2, 36]`.
+ * Otherwise, returns an error with code `scan_error::invalid_format_string`.
  *
  * \ingroup scan
  */

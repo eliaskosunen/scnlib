@@ -373,10 +373,10 @@ template <typename T>
 using float_test_suite_values =
     float_test_suite_value_set<T, float_kind_for<T>>;
 
-// Whether scanning `nan(payload)` should give a NaN with a payload different
-// from that of `quiet_NaN()`: T supports payloads, `payload` can be stored in
-// one, and isn't the payload of `quiet_NaN()`. That's usually 0, but not on
-// every platform (on m68k, every payload bit is set).
+// Whether scanning `nan(payload)` should give a NaN whose payload differs from
+// that of `quiet_NaN()`. This holds when T supports payloads, `payload` fits
+// in one, and it isn't the payload of `quiet_NaN()`. That payload is usually
+// 0, but not on every platform (on m68k, every payload bit is set).
 // Without a payload (`std::nullopt`), the result should be `quiet_NaN()`.
 template <typename T>
 bool expect_nan_payload(std::optional<std::uint64_t> payload)
@@ -416,9 +416,8 @@ auto make_nan_check(std::optional<std::uint64_t> payload, bool negative = false)
     };
 }
 
-// Width of the integer that the custom hexfloat parser accumulates the
-// significand of T in. Other parsers have no such limit, so any width works
-// for them.
+// The custom hexfloat parser accumulates the significand of T in an integer
+// this wide. Other parsers have no such limit, so any width works for them.
 template <typename T, typename = void>
 inline constexpr int hex_significand_bits = 128;
 template <typename T>
@@ -976,7 +975,7 @@ TYPED_TEST_P(FloatTestSuite, NanWithPayload)
     EXPECT_TRUE(TestFixture::test("nan(_0x12)", check(std::nullopt)));
 
     // Payloads too large for the payload field of some (or all) types.
-    // These give the default NaN, instead of affecting the quiet bit or the
+    // These give the default NaN instead of changing the quiet bit or the
     // exponent
     EXPECT_TRUE(TestFixture::test("nan(0x40)", check(0x40)));
     EXPECT_TRUE(TestFixture::test("nan(0x200)", check(0x200)));
@@ -1125,8 +1124,8 @@ TYPED_TEST_P(FloatTestSuite, SubnormalHex)
 
 // libstdc++ before 13.4 and 14.3 (GCC PR117321) guards the 16-bit float
 // std::nextafter overloads with if (__is_constant_evaluated()), which isn't
-// folded at -O0. The calls then refer to nonexistent nextafterf16 and
-// __builtin_nextafterf16b, which causes linker errors.
+// folded at -O0. The calls then refer to nextafterf16 and
+// __builtin_nextafterf16b, which don't exist, so linking fails.
 // On GCC, these can be evaluated at compile time instead.
 template <typename T>
 inline constexpr bool evaluate_nextafter_at_compile_time =
@@ -1392,9 +1391,9 @@ struct filter_enabled_types<::testing::Types<Head, Tail...>, Result>
           ::testing::Types<Tail...>,
           typename append_if_enabled<Result, Head, Head::enabled>::type> {};
 
-// gtest has no support for empty type lists:
-// ProxyTypeList<>::type would be an ill-formed Types<>.
-// Make it the end-of-list marker that gtest uses internally instead.
+// gtest doesn't support empty type lists, because ProxyTypeList<>::type would
+// be an ill-formed Types<>. Define `ProxyTypeList<>::type` as gtest's internal
+// end-of-list marker (`None`) instead.
 namespace testing::internal {
 template <>
 struct ProxyTypeList<> {

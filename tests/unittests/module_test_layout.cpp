@@ -15,8 +15,8 @@
 // This file is a part of scnlib:
 //     https://github.com/eliaskosunen/scnlib
 
-// Reports the layout of types as seen through the headers, like in the
-// compiled library, so module_test.cpp can compare it to the one seen through
+// Reports the layout of types when included through the headers, as in the
+// compiled library. module_test.cpp compares it to the layout seen through
 // `import scn;`.
 
 #include <scn/scan.h>

@@ -114,7 +114,7 @@ the values are not accidentally accessed.
 if the result contains an error, it throws `scn::bad_expected_access`
 (or aborts, if exceptions are disabled).
 `operator*` and `operator->` are not checked,
-so the result must always be checked before they are used.
+so check the result before using them.
 The examples in this guide omit the check for brevity, unless noted otherwise.
 
 \code{.cpp}
@@ -347,7 +347,7 @@ auto result = scn::scan<std::wstring>(L"foo bar", L"{}");
 
 // narrow strings can be scanned from wide sources, and vice versa
 // in these cases, Unicode transcoding (UTF-8 <-> UTF-16/32) is performed
-// (except with `c`, which copies code units, so the character types must match)
+// (except with {:c}, which copies code units, so the character types must match)
 auto result2 = scn::scan<std::string>(result->range(), L"{}");
 // result2->value() == "bar"
 \endcode

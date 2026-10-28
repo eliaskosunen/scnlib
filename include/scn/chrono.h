@@ -50,14 +50,14 @@ SCN_BEGIN_NAMESPACE
  *  * `std::chrono::time_point<std::chrono::system_clock, Duration>`
  *  * `scn::weekday`, `scn::day`, `scn::month`, `scn::year`,
  *    `scn::month_day`, `scn::year_month`, and `scn::year_month_day`.
- *    These are aliases to the types with the same names in `std::chrono`,
- *    if the standard library supports them (`__cpp_lib_chrono >= 201907L`),
- *    and minimal fallback types otherwise.
+ *    These are aliases of the `std::chrono` types with the same names if the
+ *    standard library has them (`__cpp_lib_chrono >= 201907L`).
+ *    Otherwise, they're minimal fallback types.
  *
  * \section chrono-spec Format specifiers
  *
- * The format specifier of a chrono type is required, and its syntax is
- * similar to `strftime` and `std::format`:
+ * A chrono type requires a format specifier.
+ * Its syntax is similar to that of `strftime` and `std::format`:
  *
  * \code
  * chrono-format-spec  ::= ['L'] conversion-spec [chrono-specs]
@@ -66,23 +66,23 @@ SCN_BEGIN_NAMESPACE
  * modifier            ::= 'E' | 'O'
  * \endcode
  *
- * Preceding whitespace is skipped before the first field.
+ * Whitespace before the first field is skipped.
  * A whitespace character in the format specifier skips any amount of
  * whitespace (including none) in the input.
  * Any other literal character must match exactly.
  *
- * Numeric fields accept between one and the maximum number of digits,
+ * Numeric fields accept from one digit up to the maximum number of digits,
  * unless otherwise noted.
- * Field values are range-checked (e.g., `%%H` accepts `0` to `23`).
- * When scanning a `month_day`, `year_month_day`, or `time_point`, the day is
- * also checked to exist in its month (e.g., February 30th is an error),
- * like `std::chrono::parse` does.
- * When the year, month, and day are all scanned into a `year_month_day` or
- * a `time_point`, a scanned weekday must match the date, or it's an error.
- * With other types, the weekday is not checked.
- * `std::tm`, `tm_with_tz`, and `datetime_components` only get the
+ * Field values are range-checked (e.g., `%%H` accepts `0` to `23`), and a
+ * field can't be set twice.
+ * For a `month_day`, `year_month_day`, or `time_point`, the day must also
+ * exist in its month (e.g., February 30th is an error), like with
+ * `std::chrono::parse`.
+ * For a `year_month_day` or `time_point`, a scanned weekday must match the
+ * date, if the year, month, and day are all scanned.
+ * Other types don't check the weekday against the date.
+ * `std::tm`, `tm_with_tz`, and `datetime_components` get only the
  * field-level checks.
- * A field can't be set twice.
  *
  * <table>
  * <caption id="chrono-spec-table">
@@ -113,7 +113,7 @@ SCN_BEGIN_NAMESPACE
  * <tr><td>`%%M`</td> <td>Minute, `0`-`59`</td></tr>
  * <tr><td>`%%S`</td> <td>Second, `0`-`60`.
  * With a `time_point` more precise than seconds, also reads an optional
- * fractional part, like `%.S`, and like `std::chrono::parse` does.</td></tr>
+ * fractional part, like `%.S` and `std::chrono::parse`.</td></tr>
  * <tr><td>`%.S`</td> <td>Second, with an optional fractional part
  * (like `05` or `05.25`).
  * Digits beyond nanoseconds, or beyond the precision of a `time_point`,
@@ -121,7 +121,7 @@ SCN_BEGIN_NAMESPACE
  * Not supported by `std::tm` and `scn::tm_with_tz`.</td></tr>
  * <tr><td>`%%z`</td> <td>Timezone offset from UTC,
  * `[+|-]hh[[:]mm]`. `%%Ez` and `%%Oz` accept `[+|-]h[h][:mm]`.
- * With `std::tm`, requires `tm_gmtoff` to be available.</td></tr>
+ * With `std::tm`, requires `tm_gmtoff`.</td></tr>
  * <tr><td>`%%Z`</td> <td>Timezone name, consisting of ASCII letters,
  * digits, and `-+_/`. Not supported by `std::tm`.
  * Can't be used together with `%%z`.</td></tr>
@@ -138,14 +138,14 @@ SCN_BEGIN_NAMESPACE
  * </table>
  *
  * `%%G`, `%%g`, `%%U`, `%%W`, `%%V`, `%%s`, `%%Q`, `%%q`, and `%%Ey` are
- * recognized, but not implemented, and cause an error.
+ * recognized but not implemented, and cause an error.
  *
- * The `L` flag makes the names (`%%a`, `%%b`), and the composite specifiers
+ * With the `L` flag, the names (`%%a`, `%%b`) and the composite specifiers
  * `%%c`, `%%x`, `%%X`, and `%%r` follow the locale passed to `scn::scan`.
- * Together with `E` or `O` (e.g., `%.ES`), it also makes the decimal
+ * Together with `E` or `O` (e.g., `%.ES`), `L` also makes the decimal
  * separator of a fractional second follow the locale.
- * The `E` and `O` modifiers select the locale's alternative representation,
- * and, except for `%%Ez` and `%%Oz`, only have an effect together with `L`.
+ * The `E` and `O` modifiers select the locale's alternative representation.
+ * Except in `%%Ez` and `%%Oz`, they have an effect only together with `L`.
  *
  * \code{.cpp}
  * auto result = scn::scan<std::tm>("2024-03-04 12:30", "{:%F %R}");
@@ -154,8 +154,8 @@ SCN_BEGIN_NAMESPACE
  * auto date = scn::scan<scn::year_month_day>("04.03.2024", "{:%d.%m.%Y}");
  * \endcode
  *
- * The types `scn::weekday`, `scn::day`, `scn::month`, etc. require the
- * corresponding fields to be present in the format string.
+ * Scanning a `scn::weekday`, `scn::day`, `scn::month`, etc. requires the
+ * corresponding fields in the format string.
  */
 
 #if defined(__cpp_lib_chrono) && __cpp_lib_chrono >= 201907L
@@ -565,8 +565,8 @@ scan_expected<Duration> floor_to_duration(std::int64_t sec, std::int64_t ns)
     }
     if (sec < limits::min() / num) {
         // `limits::min() / num` is rounded toward zero, so the second below
-        // it can still contain representable instants, e.g.,
-        // `nanoseconds::min()`. `sec * num` would overflow, so count
+        // it can still contain representable instants (e.g.,
+        // `nanoseconds::min()`). `sec * num` would overflow, so count
         // from the next second, and subtract the rest of this one.
         if (sec + 1 != limits::min() / num) {
             return overflow(true);
@@ -645,8 +645,8 @@ scan_expected<Duration> time_since_unix_epoch(const datetime_components& dt)
     // A fraction doesn't affect the result if `Duration` is seconds or larger
     std::int64_t subsec_in_ns = 0;
     if (dt.subsec) {
-        // Rounded, because truncating would turn, e.g., 0.000065 into
-        // 64999 ns, and then into 64 us
+        // Rounded, because truncating would turn 0.000065 into 64999 ns,
+        // and then into 64 us
         subsec_in_ns =
             std::llround(*dt.subsec * static_cast<double>(std::nano::den));
     }
@@ -1226,9 +1226,9 @@ template <>
 struct always_supports_field<time_point_fields, field_tags::tzname>
     : std::false_type {};
 
-// Calendar component types are scanned through `datetime_components`,
-// so they accept any field it does: fields not needed by the type are scanned
-// and discarded
+// Calendar component types are scanned through `datetime_components`, so they
+// accept all of its fields. Fields that the type doesn't need are scanned and
+// discarded.
 template <typename Field>
 struct always_supports_field<weekday, Field>
     : always_supports_field<datetime_components, Field> {};
@@ -2066,8 +2066,8 @@ struct scanner<year_month_day, CharT>
 /**
  * Scans a `std::chrono::time_point<std::chrono::system_clock>`.
  *
- * The scanned date and time are interpreted as UTC, unless a timezone offset
- * is scanned with `%%z`, in which case it's applied.
+ * The scanned date and time are interpreted as UTC.
+ * A timezone offset scanned with `%%z` is applied to them.
  * Unset fields default to 1970-01-01 00:00:00.
  * Invalid dates (e.g., February 30th) and leap seconds (second `60`) are
  * errors.

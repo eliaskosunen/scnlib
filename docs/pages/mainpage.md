@@ -92,10 +92,10 @@ target_link_libraries(my_program scn::scn)
 \subsection main-deps Dependencies
 
 scnlib internally optionally depends on
-<a href="https://github.com/fastfloat/fast_float">fast_float</a>,
+<a href="https://github.com/fastfloat/fast_float">fast_float</a>
 for parsing floating-point values, and on
-<a href="https://github.com/eliaskosunen/eknan">eknan</a>,
-for storing the payloads of scanned NaNs (like `nan(0x1234)`) into floating-point values.
+<a href="https://github.com/eliaskosunen/eknan">eknan</a>
+for storing the payloads of scanned NaNs (like `nan(0x1234)`) in floating-point values.
 
 By default, the CMake machinery automatically fetches, builds, and links them with `FetchContent`.
 They're only used in the implementation, and they aren't visible to the users of the library.
@@ -104,8 +104,8 @@ Alternatively, by setting the CMake options `SCN_USE_EXTERNAL_FAST_FLOAT` and `S
 fast_float and eknan are searched for using `find_package`.
 Use these options if you already have the libraries installed.
 
-Both dependencies can be disabled, with `SCN_DISABLE_FAST_FLOAT` and `SCN_DISABLE_EKNAN`.
-Without fast_float, floating-point value parsing will be slower, but the behavior isn't affected.
+Both dependencies can be disabled with `SCN_DISABLE_FAST_FLOAT` and `SCN_DISABLE_EKNAN`.
+Without fast_float, parsing floating-point values is slower, but the results are the same.
 Without eknan, NaNs are still scanned, but their payloads are ignored.
 
 To enable support for regular expressions, a regex engine backend is required.
@@ -199,8 +199,8 @@ Since fast_float and eknan are header-only libraries, they don't need to be buil
 
 Headers for scnlib can be found in the `include/` directory, and source files in the `src/` directory.
 Without CMake, only building scnlib as a static library is supported.
-Any configuration macros (see \ref configuration) need to be defined identically
-both when building scnlib, and when compiling code that uses it.
+Configuration macros (see \ref configuration) must be defined the same way
+when building scnlib and when compiling code that uses it.
 
 Building and linking the library:
 
@@ -253,7 +253,7 @@ scnlib configuration options
 <td>✅</td>
 <td>✅</td>
 <td>`OFF`</td>
-<td>Disable external dependency on eknan.<br>Using `ON` makes the payloads of scanned NaNs ignored: `nan(0x1234)` gives the same value as `nan`.</td>
+<td>Disable external dependency on eknan.<br>With `ON`, the payloads of scanned NaNs are ignored: `nan(0x1234)` gives the same value as `nan`.</td>
 </tr>
 
 <tr>
@@ -332,15 +332,15 @@ scnlib configuration options
 <sup>1</sup>: `std::from_chars` with floating-point values is supported on libstdc++ v11 and newer,
 MSVC 19.24 (VS 2019 16.4) or newer, and libc++ 20 or newer (`float` and `double` only, not `long double`).
 
-<sup>2</sup>: This is done automatically by CMake.
-When building without CMake, `SCN_DISABLE_REGEX` needs to be set manually.
+<sup>2</sup>: CMake does this automatically.
+Without CMake, `SCN_DISABLE_REGEX` must be defined manually.
 
 <sup>3</sup>: scnlib converts `float` and `double` itself if they're IEEE 754 binary32 or binary64,
 and `long double` if it's binary32, binary64, x87 or m68k extended precision, binary128, or double-double.
-Other formats, like the IBM hexadecimal floating-point on z/OS, or VAX G_FLOAT, are converted with `strtof`, `strtod`, or `strtold`
-(`wcstof`, `wcstod`, or `wcstold` for wide characters).
-These use the decimal point of the global C locale (`LC_NUMERIC`), which scnlib reads with `localeconv()`,
-so calling `setlocale` concurrently with scanning such a type is a data race.
+Other formats (e.g., IBM hexadecimal floating-point on z/OS, or VAX G_FLOAT) are converted with
+`strtof`, `strtod`, or `strtold` (`wcstof`, `wcstod`, or `wcstold` for wide characters).
+These functions use the decimal point of the global C locale (`LC_NUMERIC`), which scnlib reads with `localeconv()`.
+Thus, calling `setlocale` while another thread scans such a type is a data race.
 With `SCN_DISABLE_STRTOD`, scanning such a type is a compile-time error.
 
 Below, `SCN_ENABLE_EXTRAS` is `ON`, if `SCN_CI` is set in CMake, or scnlib
@@ -444,7 +444,7 @@ CMake build type configuration
 <td>✅</td>
 <td>❌</td>
 <td>`OFF`</td>
-<td>Enable building of fuzzer targets (clang only)</td>
+<td>Enable building of fuzzer targets (Clang only)</td>
 </tr>
 
 <tr>

@@ -422,7 +422,8 @@ TEST(WidthPrecisionTest, StringUnicodeShorterThanWidth)
     expect_error<std::string>("", "{:.5U}", scn::scan_error::end_of_input);
 }
 
-// The same results as a character set, see CharacterSetStopsAtInvalidCodePoint
+// Gives the same results as a character set
+// (see CharacterSetStopsAtInvalidCodePoint)
 TEST(WidthPrecisionTest, StringUnicodeInvalidEncoding)
 {
     const std::string_view input =

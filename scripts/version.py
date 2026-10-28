@@ -46,7 +46,7 @@ if __name__ == "__main__":
 
     root = Path(__file__).parent.parent.resolve()
 
-    # (file, pattern, replacement); every pattern must match at least once
+    # Entries are (file, pattern, replacement). Every pattern must match at least once.
     substitutions = [
         (
             r"CMakeLists.txt",

@@ -26,7 +26,7 @@ SCN_CLANG_IGNORE("-Wunique-object-duplication")
 
 inline std::mt19937_64& get_rng()
 {
-    // Magic number, fixed to get reproducible results
+    // Fixed seed, for reproducible results
     static constexpr std::mt19937_64::result_type seed = 0x5c4e1b2a;
     static std::mt19937_64 rng(seed);
     return rng;

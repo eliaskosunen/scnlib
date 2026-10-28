@@ -3,7 +3,7 @@
 # Copyright 2017 Elias Kosunen
 # SPDX-License-Identifier: Apache-2.0
 
-"""Build, run and render the scnlib benchmarks.
+"""Build, run, and render the scnlib benchmarks.
 
 The workflow has three stages, each runnable on its own:
 
@@ -15,8 +15,8 @@ The workflow has three stages, each runnable on its own:
            The metadata is stored for each benchmark separately, so running
            only some of them (--what) doesn't relabel the results of the others
   render   read a saved JSON file, print Markdown tables to stdout, and write the
-           charts (needs matplotlib, and nothing else)
-  all      build, run and render
+           charts
+  all      build, run, and render
 
 Typical usage (from the repository root):
 
@@ -35,13 +35,13 @@ benchmark/runtime/results/{int,float,string}.png and
 benchmark/binarysize/graph-{debug,minsizerel,release}.png.
 
 Requirements: CMake, Ninja, taskset (optional), git (optional, for the
-metadata), GNU /usr/bin/time, size (binutils), and strip. Rendering, and thus
-`all`, also needs matplotlib
-(`pip install -r scripts/benchmark-requirements.txt`).
+metadata), GNU /usr/bin/time, size (binutils), and strip. Rendering needs
+only matplotlib (`pip install -r scripts/benchmark-requirements.txt`), which
+the `all` command needs as well.
 
-Run-time benchmarks are pinned to one CPU with taskset. The CPU frequency
-governor is not changed: set it to "performance" and disable boost before a
-real measurement.
+Run-time benchmarks are pinned to one CPU with taskset. The script doesn't
+change the CPU frequency governor: set it to "performance" and disable boost
+before a real measurement.
 """
 
 import argparse
@@ -106,7 +106,6 @@ BUILDTIME_FLAGS = {"debug": ["-g"], "release": ["-O3", "-DNDEBUG"]}
 STAGES = ("runtime", "binarysize", "buildtime")
 
 # Each library has the same color in every chart.
-# Slots 1 to 6 of the validated categorical palette, in order.
 LIBRARY_COLORS = {
     "scnlib": "#2a78d6",
     "scanf": "#eb6834",
@@ -184,7 +183,7 @@ def configure_and_build(args, compiler, build_dir, build_type, options, targets)
         *(f"-D{name}={value}" for name, value in options.items()),
         *(f"-D{definition}" for definition in args.cmake_arg),
     ]
-    # The log goes to stderr, so that stdout only has the Markdown tables
+    # The log goes to stderr, so that stdout has only the Markdown tables
     run_command(command, stdout=sys.stderr)
     run_command(
         ["cmake", "--build", build_dir, "--target", *targets], stdout=sys.stderr
@@ -207,8 +206,8 @@ def build_runtime(args, compiler):
 
 
 def build_binarysize_and_buildtime(args, compiler, build_type, stages):
-    # The build time benchmark only needs the library, so it shares the
-    # binary size build directories (shared library, Debug and Release)
+    # The build time benchmark needs only the library, so it shares the
+    # binary size build directories (Debug and Release shared library builds)
     if "binarysize" in stages:
         targets = [f"scn_benchmark_binarysize_{test}" for test in BINARYSIZE_TESTS]
     else:
@@ -384,7 +383,7 @@ def pin_command(cpu):
     if cpu is None:
         return []
     if shutil.which("taskset") is None:
-        log("warning: taskset not found, not pinning to a CPU")
+        log("warning: taskset not found, so the benchmarks are not pinned to a CPU")
         return []
     return ["taskset", "-c", str(cpu)]
 
@@ -395,7 +394,7 @@ TIME_UNITS_NS = {"ns": 1.0, "us": 1e3, "ms": 1e6, "s": 1e9}
 def run_runtime_binary(args, build_dir, binary, pin):
     executable = build_dir / "benchmark" / "runtime" / binary
     if not executable.exists():
-        fail(f"{executable} does not exist, run the build stage first")
+        fail(f"{executable} does not exist (run the build stage first)")
     command = [
         *pin,
         executable,
@@ -472,7 +471,7 @@ def run_binarysize(args, compiler, build_type):
     for test in BINARYSIZE_TESTS:
         executable = directory / f"scn_benchmark_binarysize_{test}"
         if not executable.exists():
-            fail(f"{executable} does not exist, run the build stage first")
+            fail(f"{executable} does not exist (run the build stage first)")
         tests[test] = {
             "size": executable.stat().st_size,
             "stripped": strip_size(executable),
@@ -526,7 +525,7 @@ def run_buildtime(args, metadata, compiler, build_type):
     pin = pin_command(metadata["pinned_cpu"])
     build_dir = binarysize_build_dir(args, compiler, build_type)
     if not list(build_dir.glob("libscn.so*")):
-        fail(f"No libscn.so in {build_dir}, run the build stage first")
+        fail(f"No libscn.so in {build_dir} (run the build stage first)")
     methods = {}
     with tempfile.TemporaryDirectory() as temporary:
         output = Path(temporary) / "a.out"
@@ -558,7 +557,7 @@ def load_results(path):
         fail(f"{path} is not valid JSON: {error}")
     schema = results.get("schema", results.get("metadata", {}).get("schema"))
     if schema == 1:
-        # The metadata used to be shared by all benchmarks
+        # Schema 1 had one metadata object for all benchmarks
         shared = results.pop("metadata")
         shared.pop("schema")
         results["schema"] = RESULTS_SCHEMA
@@ -1273,7 +1272,7 @@ def save_figure(plt, figure, output_dir, relative_path):
 def stage_render(args):
     results = load_results(REPO / args.json)
     if results is None:
-        fail(f"{REPO / args.json} does not exist, run the run stage first")
+        fail(f"{REPO / args.json} does not exist (run the run stage first)")
     modules = import_matplotlib()
     render_metadata(results)
     if results.get("runtime"):
@@ -1281,8 +1280,8 @@ def stage_render(args):
         render_runtime_charts(results, args.output_dir, modules)
     if results.get("binarysize") and not has_section_sizes(results):
         log(
-            "warning: the binary size results have no section sizes, "
-            "run the binarysize stage again; skipping them"
+            "warning: skipping the binary size results, which have no section "
+            "sizes (run the binarysize stage again)"
         )
     elif results.get("binarysize"):
         render_binarysize_tables(results)
@@ -1378,8 +1377,8 @@ def make_parser():
     for name, parents, function, text in (
         ("build", [common, build], stage_build, "configure and build"),
         ("run", [common, build, run], stage_run, "run, and save the results"),
-        ("render", [common, render], stage_render, "print tables, write charts"),
-        ("all", [common, build, run, render], stage_all, "build, run and render"),
+        ("render", [common, render], stage_render, "print tables and write charts"),
+        ("all", [common, build, run, render], stage_all, "build, run, and render"),
     ):
         subparser = subparsers.add_parser(name, parents=parents, help=text)
         subparser.set_defaults(function=function)

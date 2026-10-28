@@ -23,8 +23,8 @@
 #include <list>
 
 // Sized, but can't be assigned to a `const char*`.
-// Not in an anonymous namespace, so that clang doesn't warn about the
-// operators only used in unevaluated contexts.
+// Not in an anonymous namespace, so that clang doesn't warn about operators
+// that are only used in unevaluated contexts.
 struct sized_end_sentinel {
     const char* end;
 
@@ -54,10 +54,10 @@ struct sized_end_sentinel {
     }
 };
 
-// Bidirectional iterator over a null-terminated string,
-// that counts live instances, to catch bitwise copies.
-// Not in an anonymous namespace, so that clang doesn't warn about the
-// operators only used in unevaluated contexts.
+// Bidirectional iterator over a null-terminated string. It counts live
+// instances to catch bitwise copies.
+// Not in an anonymous namespace, so that clang doesn't warn about operators
+// that are only used in unevaluated contexts.
 struct instance_counted_iterator {
     using value_type = char;
     using difference_type = std::ptrdiff_t;

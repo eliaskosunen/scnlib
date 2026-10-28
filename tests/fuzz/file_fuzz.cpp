@@ -96,8 +96,7 @@ std::string do_run_line_by_line(Source& source,
                     throw std::runtime_error("scan failed with " +
                                              std::string(res.error().msg()));
                 }
-                // An empty line, which the scan of the line break below
-                // verifies
+                // An empty line: the next scan checks for the line break
             }
             else {
                 buffer.append(res->value());

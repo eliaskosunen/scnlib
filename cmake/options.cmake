@@ -17,8 +17,8 @@ endif()
 option(SCN_TESTS "Enable tests" ${SCN_ENABLE_TESTS})
 option(SCN_DOCS "Enable docs target" ${SCN_ENABLE_EXTRAS})
 option(SCN_EXAMPLES "Enable examples target" ${SCN_ENABLE_EXTRAS})
-# Unlike the other extras, installing isn't turned off by SCN_DISABLE_TOP_PROJECT,
-# since that's how package managers build scnlib
+# Package managers build scnlib with SCN_DISABLE_TOP_PROJECT, so unlike the
+# other extras, SCN_INSTALL defaults to ON for the top-level project anyway
 if(PROJECT_IS_TOP_LEVEL OR SCN_ENABLE_EXTRAS)
     set(SCN_ENABLE_INSTALL ON)
 else()
@@ -100,7 +100,7 @@ option(
 
 option(
     SCN_USE_EXCEPTIONS
-    "Compile with exception support (disabling also disables regex support, unless SCN_REGEX_BACKEND is re2)"
+    "Compile with exception support (OFF also disables regex support, unless SCN_REGEX_BACKEND is re2)"
     ON
 )
 
@@ -161,7 +161,7 @@ option(
 )
 option(
     SCN_DISABLE_STRTOD
-    "Disallow falling back on strtof, strtod, and strtold when scanning a float, double, or long double with an unsupported binary format (then scanning that type is a compile-time error)"
+    "Disallow falling back on strtof, strtod, and strtold for a float, double, or long double with an unsupported binary format (scanning that type is then a compile-time error)"
     OFF
 )
 

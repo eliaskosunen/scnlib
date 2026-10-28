@@ -386,8 +386,8 @@ TEST(FloatTest, ErrorMessagesDontNameBackend)
     expect_neutral(no_exponent.error());
 }
 
-// Different backends parse these (fast_float, std::from_chars, the custom
-// parser, or strtold), depending on the character and float type
+// Depending on the character and float type, these are parsed by fast_float,
+// std::from_chars, the custom parser, or strtold
 TEST(FloatTest, ErrorMessagesAreTheSameForEveryBackend)
 {
     const auto check = [](std::string_view input,

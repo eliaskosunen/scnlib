@@ -1558,9 +1558,9 @@ struct file_buffer_interface {
                 return true;
             }
 
-            // Don't fall through to `read_one`: it clears the EOF and error
-            // flags, which would hide the failure, and could join data
-            // read before and after the failure.
+            // Don't fall through to `read_one`. It clears the EOF and error
+            // flags, which hides the failure, and can join data read before
+            // and after it.
             if (file.has_error()) {
                 source_error = detail::unexpected_scan_error(
                     scan_error::invalid_source_state,
@@ -1627,10 +1627,9 @@ struct file_buffer_interface {
     }
 
 private:
-    // If true, `view` is the unread part of the file's buffer:
-    // it has been read by us, but not yet consumed from the file.
-    // Otherwise, `view` has already been consumed from the file
-    // (like a single character read with `read_one`).
+    // If `true`, `view` points into the file's buffer, and hasn't been
+    // consumed from the file yet. If `false`, `view` has already been consumed
+    // from the file (e.g., a single character read with `read_one`).
     static bool is_view_in_file_buffer(const FileInterface& file,
                                        std::basic_string_view<char_type> view)
     {
@@ -2175,10 +2174,10 @@ enum class field_unit { code_unit, code_point };
 
 struct bounded_sentinel {};
 
-// Bounds a non-contiguous range to a number of units without reading past the
-// bound. For code points, the field ends after the continuation units that the
-// lead unit of its last code point calls for. If the input has fewer, the unit
-// read in place of the missing one starts the next code point, and is the only
+// Bounds a non-contiguous range to a number of units, without reading past the
+// bound. With code points, the field ends after all continuation units that
+// the lead unit of its last code point calls for. If one of them is missing,
+// the unit read in its place starts the next code point. That unit is the only
 // one read past the bound.
 template <typename It, typename S, field_unit Unit>
 class bounded_iterator {
@@ -2259,8 +2258,8 @@ public:
         }
         else {
             // Moving back over a start makes `m_remaining` positive, so
-            // `m_pending` isn't used until moving forward over a start
-            // again sets it anew.
+            // `m_pending` isn't used again until moving forward over a start
+            // resets it.
             if (detail::is_code_point_start(*m_current)) {
                 ++m_remaining;
                 m_pending = 0;
@@ -2282,9 +2281,9 @@ public:
         return tmp;
     }
 
-    // Comparing the underlying iterators could read more input from a
-    // scan_buffer, since its iterators read up to their position when
-    // compared. Iterators into the same range are equal at the same offset.
+    // Don't compare the underlying iterators: a scan_buffer iterator reads
+    // input up to its position when compared. Iterators into the same range
+    // are equal when their offsets are.
     friend constexpr bool operator==(const bounded_iterator& a,
                                      const bounded_iterator& b)
     {
@@ -2580,7 +2579,7 @@ private:
             if (SCN_UNLIKELY(detail::to_address(beg_seg.end()) !=
                              detail::to_address(end_seg.end()))) {
                 // Not std::copy: comparing the iterators would make the
-                // buffer read more input, to reach the position of `end`
+                // buffer read input up to the position of `end`
                 const auto size =
                     range.end().position() - range.begin().position();
                 auto& str = m_storage.emplace();
@@ -3119,8 +3118,8 @@ auto read_while_code_point(Range range, function_ref<bool(char32_t)> pred)
     return it;
 }
 
-// `segment` without its last code point, if that's incomplete:
-// a segment of a non-contiguous source can end in the middle of one
+// Drops the last code point of `segment` if it's incomplete. A segment of a
+// non-contiguous source can end in the middle of a code point.
 inline std::string_view drop_incomplete_last_code_point(
     std::string_view segment)
 {
@@ -3834,7 +3833,7 @@ auto parse_integer_digits_with_thsep(
 {
     std::basic_string<CharT> output;
     std::ptrdiff_t thsep_count = 0;
-    // A thousands separator is only consumed if a digit follows it
+    // A thousands separator is consumed only if a digit follows it
     std::ptrdiff_t thsep_count_before_digit = 0;
     auto it = range.begin();
     auto end_of_digits = it;
@@ -4452,8 +4451,8 @@ struct float_traits_impl_f80 {
     // On x87, a biased exponent of 0 (subnormals) has the same scale as 1.
     // On m68k, it's one binade lower: numbers with an exponent of 0 and
     // the integer bit set are normal, and subnormals reach one binade lower.
-    // m68k is modeled as if it had x87 semantics, with a bias larger by one:
-    // `apply_exponent` subtracts that one back out.
+    // m68k is modeled as x87 with a bias larger by one, which
+    // `apply_exponent` subtracts back out.
     static constexpr bool has_m68k_exponent =
         std::numeric_limits<F>::min_exponent == -16382;
     static constexpr int exponent_bias =
@@ -4628,7 +4627,8 @@ struct float_traits_impl_doubledouble {
         // The high double gets the top (up to) 53 bits of the significand,
         // and the low double the remaining `shift` bits (at most 53).
         // If the remaining bits are more than half of an ulp of the high
-        // part, high gets rounded up, and the low part becomes negative.
+        // part, or exactly half and high is odd, high gets rounded up, and the
+        // low part becomes negative.
         const int bit_width = total_bits - count_leading_zeroes(significand);
         const int shift = std::max(bit_width - high_bits, 0);
 
@@ -4659,8 +4659,8 @@ struct float_traits_impl_doubledouble {
         }
 
         // Both high and low have at most 53 significant bits,
-        // and exponent >= -1074, so these are exact:
-        // no rounding happens, not even in the subnormal range of double.
+        // and exponent >= -1074, so these `ldexp` calls are exact,
+        // even in the subnormal range of double.
         return {std::ldexp(static_cast<double>(high), exponent + shift),
                 std::ldexp(static_cast<double>(low), exponent), false};
     }
@@ -4884,11 +4884,11 @@ struct float_parts {
     bool exponent_positive{true};
 };
 
-// Parsed exponents are saturated at this magnitude. It's way beyond the
-// exponent range of any floating-point type, even after adding a digit count
-// (of an input that fits in memory) to it, so that a saturated exponent stays
-// out of range. It's also small enough for `value * 10 + 9` in
-// `parse_saturating_exponent` to not overflow.
+// Parsed exponents saturate at this magnitude. Even after adding the digit
+// count of an input that fits in memory, it's way beyond the exponent range of
+// any floating-point type, so a saturated exponent stays out of range. It's
+// also small enough that `value * 10 + 9` in `parse_saturating_exponent`
+// doesn't overflow.
 inline constexpr std::int64_t max_exponent_magnitude = std::int64_t{1} << 59;
 
 template <typename CharT>
@@ -4909,9 +4909,9 @@ constexpr std::int64_t parse_saturating_exponent(
     return is_positive ? value : -value;
 }
 
-// The exponent of `parts`, adjusted by `digit_offset`, which accounts for the
-// position of the radix point among the significand digits (in the unit of
-// the exponent)
+// The exponent of `parts`, plus `digit_offset`. `digit_offset` accounts for
+// the position of the radix point among the significand digits, in the unit of
+// the exponent.
 template <typename CharT>
 constexpr std::int64_t adjusted_exponent(const float_parts<CharT>& parts,
                                          std::int64_t digit_offset)
@@ -5098,13 +5098,11 @@ struct high_precision_decimal {
         accumulator_type accumulator{};
         std::size_t i = 0;
         for (; i < static_cast<std::size_t>(decimal_point); ++i) {
-            // Multiply by 10 without using operator*,
-            // which uint128_polyfill doesn't have.
-            // `<< 3` is `* 8`, and `<< 1` is `* 2`
+            // Multiply by 10 with shifts: uint128_polyfill has no operator*
             const auto accumulator_before = accumulator;
             accumulator = (accumulator << 3u) + (accumulator << 1u) +
                           (i < num_digits ? digits[i] : 0u);
-            SCN_ASSERT(accumulator > accumulator_before);  // check for overflow
+            SCN_ASSERT(accumulator > accumulator_before);
         }
 
         // Check the decimal part (if any) for rounding
@@ -5112,9 +5110,8 @@ struct high_precision_decimal {
         if (i < num_digits) {
             round_up = digits[i] >= 5;
 
-            // If the entire decimal part is ".5":
-            //  - if we're truncated, round up,
-            //  - otherwise, round to even
+            // If the decimal part is ".5", round to even. If non-zero digits
+            // were truncated, the value is above .5, so round up.
             if (digits[i] == 5 && num_digits == i + 1) {
                 round_up = truncated || (i > 0 && digits[i - 1] % 2 != 0);
             }
@@ -5213,8 +5210,8 @@ struct high_precision_decimal {
         std::uint32_t write_index{};
         std::uint64_t accumulator{};
 
-        // Accumulate digits until accumulator >= 2 ^ shift
-        // (i.e., we can extract a digit)
+        // Read digits until accumulator >= 2 ^ shift,
+        // i.e., until a digit can be extracted
         while (accumulator >> shift == 0) {
             if (read_index < num_digits) {
                 accumulator = 10 * accumulator + digits[read_index];
@@ -5224,14 +5221,14 @@ struct high_precision_decimal {
             }
             ++read_index;
         }
-        // The leading read_index digits collapsed into accumulator
-        // without producing output,
-        // so the decimal point shifts left by (read_index - 1)
+        // The first `read_index` digits went into `accumulator` without
+        // producing output, so the decimal point moves left by
+        // `read_index - 1`
         decimal_point -= static_cast<std::int32_t>(read_index) - 1;
 
         // Extract quotient digit (accumulator >> shift),
         // carry remainder (accumulator - digit * 2 ^ shift),
-        // bring in next output digit
+        // bring in the next input digit
         while (read_index < num_digits) {
             const auto digit = accumulator >> shift;
             accumulator -= digit << shift;
@@ -5348,8 +5345,7 @@ scan_expected<void> simple_decimal_conversion(T& result,
         float_traits<T>::max_biased_exponent;
     std::int32_t exp2{};
 
-    // Scale by powers of two (i.e., shift left or right),
-    // until we're in the range [1, 2).
+    // Shift left or right until the value is in [1, 2)
 
     // "[R]epeatedly do Non-Rounding right-shifts until the HPD represents
     // a number less than 1 (i.e.[,] its decimal_point field is non-positive)"
@@ -5375,13 +5371,13 @@ scan_expected<void> simple_decimal_conversion(T& result,
         value.left_shift(shift);
         exp2 -= static_cast<std::int32_t>(shift);
     }
-    // We're in [0.1, 0.5), repeatedly shift left until we're in [0.5, 1)
+    // If the value is in [0.1, 0.5), shift left until it's in [0.5, 1)
     while (value.decimal_point == 0 && value.digits[0] < 5u) {
         value.left_shift(1);
         exp2 -= 1;
     }
 
-    // Shift once to get us in [1, 2)
+    // One more shift gets the value into [1, 2)
     value.left_shift(1);
     exp2 -= 1;
 
@@ -5423,10 +5419,8 @@ scan_expected<void> simple_decimal_conversion(T& result,
         ++biased_exponent;
     }
 
-    // Check that the mantissa fits in fraction_bits.
-    // Rounding may have pushed the significand to exactly
-    // 2^(fraction_bits+1), which overflows the normal range.
-    // If so, shift down by one and bump the exponent.
+    // Rounding can carry the significand to 2^(fraction_bits+1), one bit more
+    // than fits. If it does, shift it down by one and increment the exponent.
     if ((significand >> float_traits<T>::fraction_bits) > 1u) {
         significand >>= 1u;
         ++biased_exponent;
@@ -5438,8 +5432,7 @@ scan_expected<void> simple_decimal_conversion(T& result,
     }
 
     if (significand == 0u && biased_exponent == 0) {
-        // Value rounded to zero, but the input was non-zero
-        //  -> underflow
+        // A non-zero input rounded to zero
         return detail::unexpected_scan_error(
             scan_error::value_positive_underflow,
             "Floating-point value too small");
@@ -5811,14 +5804,14 @@ private:
 };
 
 struct SCN_MAYBE_UNUSED convert_traits_sample {
-    // If `false`, `kind_type::tbd` is allowed,
-    // has a `unsigned flags` parameter in `convert`,
-    // and `convert` returns an iterator (not `void`)
+    // If `false`, `kind_type::tbd` is allowed, `convert` has an
+    // `unsigned flags` parameter, and `convert` returns an iterator instead of
+    // `void`
     static constexpr bool need_definite_kind = false;
     // If `true`, `convert` has a `source_reader<CharT>::state_type` parameter,
-    // and needs `need_definite_kind` to be `true`.
+    // and `need_definite_kind` must be `true` too
     static constexpr bool need_reader_state = false;
-    // If `true`, supports hexfloats
+    // If `true`, `convert` supports hexfloats
     static constexpr bool support_hexfloat = false;
 
     template <typename CharT, typename T>
@@ -5827,10 +5820,10 @@ struct SCN_MAYBE_UNUSED convert_traits_sample {
 
 // Implementation using strtof, strtod, and strtold (and wcstof, wcstod, and
 // wcstold) from the C stdlib.
-// Only used for a float, double, or long double with a binary format that
+// Used only for a float, double, or long double whose binary format
 // `convert_custom_traits` doesn't support (see `float_traits`).
-// These depend on the global C locale (LC_NUMERIC), so changing it with
-// `setlocale` concurrently with scanning one of these types is a data race.
+// These functions depend on the global C locale (LC_NUMERIC). Calling
+// `setlocale` while another thread scans one of these types is a data race.
 
 struct convert_strtod_traits {
 #if !SCN_DISABLE_STRTOD
@@ -5838,9 +5831,8 @@ private:
     template <typename CharT>
     static constexpr bool enabled_char =
         std::is_same_v<CharT, char> || std::is_same_v<CharT, wchar_t>;
-    // Only for a type with a binary format without a custom conversion:
-    // every other type can always be converted by `convert_custom_traits`,
-    // which never falls back
+    // Only for a binary format without a custom conversion.
+    // `convert_custom_traits` converts every other type, and never falls back.
     template <typename T>
     static constexpr bool enabled_float =
         (std::is_same_v<T, float> || std::is_same_v<T, double> ||
@@ -5918,10 +5910,10 @@ inline constexpr bool has_charconv_for<std::bfloat16_t, void> = false;
 
 #endif  // GLIBCXX
 
-// MinGW-w64 uses a 64-bit representation for long double in its stdlib,
-// but may report 80-bit x87 format via std::numeric_limits.
-// std::from_chars for long double uses the 64-bit representation,
-// which doesn't match. Disable it and use the fallback instead.
+// MinGW-w64's standard library uses a 64-bit representation for long double,
+// but std::numeric_limits may report the 80-bit x87 format. std::from_chars
+// for long double uses the 64-bit representation, which doesn't match, so the
+// fallback is used instead.
 #if SCN_MINGW && !SCN_DISABLE_TYPE_LONG_DOUBLE
 template <>
 inline constexpr bool has_charconv_for<long double, void> = false;
@@ -5965,13 +5957,13 @@ struct convert_from_chars_traits {
 };
 
 // Implementation using fast_float.
-// Used if the float type is supported by the library
-// (i.e., float, double, or an extended type, not long double)
+// Used if fast_float supports the float type
+// (float, double, and the extended types, but not long double)
 
 #if SCN_HAS_FAST_FLOAT
 // With -ffast-math, GCC converts float to bfloat16 by truncating instead of
-// rounding. fast_float does bfloat16 arithmetic, which goes through float, so
-// its results could be off by one ulp.
+// rounding. fast_float's bfloat16 arithmetic goes through float, so its
+// results can be off by one ulp.
 //
 // Before fast_float 8.3.1 (fastfloat/fast_float#408), float16_t ties between
 // subnormals were rounded up instead of to even. fast_float defines
@@ -6018,9 +6010,8 @@ template <typename T, typename = void>
 inline constexpr bool supports_nan_payload = false;
 
 #if !SCN_DISABLE_EKNAN
-// eknan checks the binary format of T, so that a type without a custom
-// conversion is usually excluded already, but not with
-// SCN_FORCE_STRTOD_FALLBACK
+// eknan checks the binary format of T, which usually excludes a type without a
+// custom conversion already. With SCN_FORCE_STRTOD_FALLBACK, it doesn't.
 template <typename T>
 inline constexpr bool supports_nan_payload<
     T,
@@ -6122,7 +6113,7 @@ void set_sign_bit(T& value, bool negative)
         if constexpr (std::is_base_of_v<float_traits_impl_doubledouble<T>,
                                         traits>) {
             if (static_cast<bool>(repr.high.sign) != negative) {
-                // Set signs of both doubles for a double-double
+                // Flip the signs of both doubles
                 repr.high.sign = !repr.high.sign;
                 repr.low.sign = !repr.low.sign;
             }
@@ -6148,9 +6139,8 @@ void make_quiet_nan(T& value,
 #if !SCN_DISABLE_EKNAN
         if (const auto payload =
                 parse_nan_payload<T>(payload_first, payload_last)) {
-            // make_qnan fails, leaving `value` unchanged,
-            // if the result would be an infinity
-            // (e.g., payload == 0 with the legacy encoding)
+            // If the result would be an infinity (e.g., payload == 0 with the
+            // legacy encoding), make_qnan fails and leaves `value` unchanged
             (void)eknan::make_qnan(value, *payload);
         }
 #endif
@@ -7329,8 +7319,8 @@ void append_code_point(std::basic_string<DestCharT>& dest, char32_t cp)
 }
 
 // Reads a value quoted with `quote` and escaped like the output of
-// std::format's `?`, and appends it to dest.
-// Works on any forward range, reading the source by code point.
+// std::format's `?`, and appends it to `dest`. Reads the source by code point,
+// so any forward range works.
 template <typename Range, typename DestCharT>
 auto read_escaped_into(Range range,
                        std::basic_string<DestCharT>& dest,
@@ -7468,7 +7458,7 @@ auto read_escaped_into(Range range,
 
             case U'x': {
                 SCN_TRY(value, read_braced_hex());
-                // std::format only writes `\x{..}` for invalid encoding,
+                // std::format writes `\x{..}` only for invalid encoding,
                 // which can't be transcoded
                 if constexpr (sizeof(source_char) != sizeof(DestCharT)) {
                     SCN_UNUSED(value);
@@ -7552,8 +7542,8 @@ public:
     // Note: no localized version,
     // since it's equivalent in behavior
 
-    // Copies all of the range verbatim, without validating the encoding:
-    // arg_reader has bounded it to the field width
+    // Copies the whole range without validating the encoding. arg_reader has
+    // already bounded it to the field width.
     template <typename Range, typename ValueCharT>
     auto read(Range range, std::basic_string<ValueCharT>& value)
         -> scan_expected<ranges::iterator_t<Range>>
@@ -8647,7 +8637,7 @@ inline constexpr bool is_string_target =
     detail::is_specialization_of_v<T, std::basic_string> ||
     detail::is_specialization_of_v<T, std::basic_string_view>;
 
-// Except for strings with `c`, which count code units
+// Doesn't apply to strings with `c`, which count code units
 template <typename T>
 inline constexpr field_unit field_unit_for =
     is_string_target<T> ||

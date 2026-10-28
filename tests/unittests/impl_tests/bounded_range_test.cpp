@@ -179,8 +179,8 @@ TEST(BoundedRangeTest, CountFieldUnits)
 }
 
 // Forward iterator over a string that records the furthest position read.
-// Not in an anonymous namespace, so that clang doesn't warn about the
-// operators only used in unevaluated contexts.
+// Not in an anonymous namespace, so that clang doesn't warn about operators
+// that are only used in unevaluated contexts.
 class tracking_iterator {
 public:
     using value_type = char;

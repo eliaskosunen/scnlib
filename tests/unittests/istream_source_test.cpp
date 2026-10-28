@@ -103,7 +103,7 @@ private:
     std::size_t m_furthest{0};
 };
 
-// Claims more characters to be available than there are
+// Claims that more characters are available than there are
 class overpromising_streambuf : public string_streambuf {
 public:
     using string_streambuf::string_streambuf;
@@ -123,7 +123,7 @@ private:
     }
 };
 
-// Claims characters to be available, but can't read them in bulk
+// Claims that characters are available, but can't read them in bulk
 class no_bulk_read_streambuf : public overpromising_streambuf {
 public:
     using overpromising_streambuf::overpromising_streambuf;

@@ -178,9 +178,8 @@ private:
     }
 };
 
-// A file without a buffer: it's read one character at a time,
-// and putback works like `ungetc` (only the previously read character can be
-// put back).
+// A file without a buffer. It's read one character at a time, and putback
+// works like `ungetc`: only the previously read character can be put back.
 struct unbuffered_mock_file : seekable_mock_file<unbuffered_mock_file> {
     static constexpr bool is_buffered = false;
 
@@ -260,9 +259,10 @@ struct unbuffered_mock_file : seekable_mock_file<unbuffered_mock_file> {
 
 // A file with a buffer, modeled after glibc:
 //  - every refill of the buffer gets the next chunk
-//  - characters can be put back into the buffer, if they match what was
-//    previously read from it; otherwise they go into a separate backup area,
-//    which is read from before the main buffer
+//  - characters that match what was previously read from the buffer are put
+//    back into it
+//  - put-back characters that don't match go into a separate backup area,
+//    which is read before the main buffer
 struct buffered_mock_file : seekable_mock_file<buffered_mock_file> {
     static constexpr bool is_buffered = true;
 

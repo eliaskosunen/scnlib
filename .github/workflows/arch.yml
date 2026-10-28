@@ -80,10 +80,10 @@ jobs:
           - sh4
           - sparc64
         exclude:
-          # Obsolete, and has nothing that other targets don't already cover:
+          # Obsolete, and covered by other targets:
           # little-endian, 64-bit, binary128 long double
           - target: alpha
-          # Obsolete, and has nothing that other targets don't already cover:
+          # Obsolete, and covered by other targets:
           # little-endian, 32-bit, long double == double
           - target: sh4
           # Legacy NaN encoding is covered by mips (32-bit big-endian)

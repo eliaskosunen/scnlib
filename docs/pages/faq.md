@@ -34,7 +34,7 @@ but until a comma, after which the comma is consumed with the literal <code>','<
 \section faq-standard-mode Can the library and my code be compiled in different C++ standard modes?
 
 Not when scanning `<chrono>` types.
-Depending on the standard mode, `scn::month`, `scn::weekday` and the other calendar types
+Depending on the standard mode, `scn::month`, `scn::weekday`, and the other calendar types
 are either the C++20 `std::chrono` types, or scnlib's own types.
 These are passed to the compiled part of the library,
 so the library and the code using it must be compiled in the same C++ standard mode
@@ -43,7 +43,7 @@ For example, a C++17 build of the library used from C++20 code isn't supported.
 
 \section faq-fixed-width How do I scan fixed-width fields?
 
-Use the width of the replacement fields, which reads exactly that many characters:
+A replacement field with a width reads exactly that many characters:
 `scn::scan<int, int, int>("20260131", "{:4}{:2}{:2}")` gives 2026, 1, and 31.
 If a value is shorter than its field, the scan fails with
 `scn::scan_error::length_too_short`.
@@ -54,7 +54,8 @@ Whitespace skipped before a value doesn't count toward the width, like in `scanf
 Because of that, fields padded with leading spaces can't be read this way:
 `{:5}` on `"   42"` fails, since the value is only two characters long.
 Instead, read the field into a `std::string_view` with `{:5U}`,
-which reads exactly five code points, whitespace included, and then scan the value from that:
+which reads exactly five code points, whitespace included.
+Then scan the value from the `std::string_view`:
 
 \code{.cpp}
 auto field = scn::scan<std::string_view>("   42  7", "{:5U}");
@@ -78,28 +79,28 @@ If either the pattern or the input is untrusted, use the `re2` backend
 
 \section faq-input-retry Why does my scn::input retry loop never end?
 
-A failed `scn::input` doesn't consume any input, so the next call sees the same input again.
+A failed `scn::input` doesn't consume any input, so the next call reads the same input again.
 For example, `while (!scn::input<int>("{}")) {}` loops forever on `abc`.
-Discard the rest of the line before retrying, for example with
+Discard the rest of the line before retrying, e.g., with
 `scn::input<std::string>(" {:[^\n]}")`.
 The leading space skips the newline left over from an earlier line:
 a character set doesn't skip whitespace, so `"{:[^\n]}"` would fail on it.
 
-Also, like with `scanf("%d\n")`, whitespace at the end of a format string (like in `"{}\n"`)
-keeps reading until a non-whitespace character or the end of the input.
-When reading from a terminal, this waits for more input.
+Also, like with `scanf("%%d\n")`, whitespace at the end of a format string (like in `"{}\n"`)
+makes the scan read until a non-whitespace character or the end of the input.
+When reading from a terminal, the scan waits for more input.
 
 \section faq-input-nested Can I call scn::input inside a custom scanner?
 
 No.
-`scn::input`, `scn::prompt`, and the other functions scanning from stdin
-use a single buffer while they run,
-so calling one of them from a scanner used by another one fails
-with `scn::scan_error::invalid_source_state`.
-The scan that is already running is not affected.
+`scn::input`, `scn::prompt`, and the other functions that scan from stdin
+share a single buffer while they run.
+Calling one of them from a scanner used by another one fails
+with `scn::scan_error::invalid_source_state`,
+and doesn't affect the scan that is already running.
 Read all the values you need in a single call instead.
 
-\section faq-ranges Can I scan containers, tuples and pairs with scn/ranges.h?
+\section faq-ranges Can I scan containers, tuples, and pairs with scn/ranges.h?
 
 `<scn/ranges.h>` is experimental, and its behavior may change.
 It lets `scn::scan` read sequences (like `std::vector<int>`), sets, maps, pairs, and tuples
@@ -112,7 +113,7 @@ It has the following limitations:
    `{::x}` reads a `std::vector<int>` from `[a, ff]`.
    With any element specifiers, even empty ones (`{::}`), string and character elements are read unquoted.
    With `{::s}`, a string ends at whitespace, so each separator needs a space before it (`[a , b ]`).
-   With `{::c}`, a character reads the space after a separator, so there can't be one (`[a,b]`).
+   With `{::c}`, a character element would read the space after a separator, so there can't be one (`[a,b]`).
  - Maps, pairs, and tuples take no format specifiers, and always read string and character elements quoted.
  - Other elements that read past the separator or the closing bracket don't work.
  - The range format specifiers of `std::format`, which come before the second colon
@@ -120,5 +121,5 @@ It has the following limitations:
  - A range type with its own `scn::scanner` partial specialization
    (like `template <typename T> struct scn::scanner<my_range<T>, char>`)
    becomes ambiguous when `<scn/ranges.h>` is included.
-   To fix that, specialize `scn::range_format_kind` for it,
+   To resolve the ambiguity, specialize `scn::range_format_kind` for it,
    inheriting from `std::integral_constant<scn::range_format, scn::range_format::disabled>`.

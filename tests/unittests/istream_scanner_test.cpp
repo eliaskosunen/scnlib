@@ -34,7 +34,7 @@ struct scn::scanner<has_istream_operator, CharT>
     : public scn::basic_istream_scanner<CharT> {};
 
 namespace {
-// Reads two characters, and puts them back in various ways
+// Reads two characters and puts them back in various ways
 struct uses_putback {
     std::string read{};
     bool putback_other_failed{false};

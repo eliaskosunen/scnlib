@@ -385,8 +385,9 @@ SCN_PUBLIC scan_file_buffer::scan_file_buffer(scan_file& file)
         m_owns_stdin_use = true;
     }
 
-    // If the file can't be read from, scanning fails before syncing,
-    // so the unsynced characters would be lost
+    // If the file can't be read from, the unsynced characters stay in the
+    // file. Scanning fails before syncing, so they would be lost from the
+    // buffer.
     if (!this->m_source_error) {
         return;
     }
@@ -461,7 +462,7 @@ SCN_PUBLIC void stdin_release() SCN_THREADSAFETY_NO_ANALYSIS
 SCN_PUBLIC scan_buffer& make_scan_buffer(stdin_tag_t,
                                          make_scan_buffer_tag) noexcept
 {
-    // stdin must be locked, so that stdin_buffer has been created
+    // The buffer exists only while stdin is locked by `stdin_acquire`
     SCN_EXPECT(get_stdin_buffer());
     return *get_stdin_buffer();
 }
@@ -552,8 +553,8 @@ namespace impl::float_conversion {
 namespace {
 
 // Detect +0.0, -0.0, +inf, and -inf, despite stuff like -ffast-math.
-// A type without a custom conversion (`float_traits_impl_none`) has unknown
-// bits, so for it, these rely on regular floating-point operations.
+// For a type without a custom conversion (`float_traits_impl_none`), the bit
+// layout is unknown, so these use regular floating-point operations.
 
 SCN_GCC_COMPAT_PUSH
 SCN_GCC_COMPAT_IGNORE("-Wfloat-equal")
@@ -683,8 +684,8 @@ SCN_GCC_COMPAT_POP  // -Wfloat-equal
 ////////////////////////////////////////////////////////////////////
 // strtod-based implementation
 // Fallback for a float, double, or long double with a binary format
-// that `convert_custom` doesn't support (exotic non-IEEE floats).
-// Uses the plain `strtof`, `strtod`, and `strtold` (and `wcsto*`),
+// that `convert_custom` doesn't support (non-IEEE formats).
+// Uses `strtof`, `strtod`, and `strtold` (and `wcsto*`),
 // which depend on the global C locale (see `convert_strtod_traits`).
 ////////////////////////////////////////////////////////////////////
 
@@ -821,8 +822,8 @@ private:
                                                   int c_errno,
                                                   T value) const
     {
-        // The source has already been checked to be a valid float, so it's
-        // an error for strtod not to read all of it
+        // The source is already known to be a valid float, so strtod must
+        // read all of it
         if (!read_all) {
             SCN_UNLIKELY_ATTR
             return detail::unexpected_scan_error(
@@ -862,12 +863,11 @@ private:
             }
         }
         else {
-            // Without infinities (like IBM hex float or VAX G_FLOAT),
-            // HUGE_VAL is the largest finite value, so an overflow is only
-            // told apart by errno. The result is compared with HUGE_VAL,
-            // instead of only checking for a nonzero value, because some
-            // C stdlibs set ERANGE for a (nonzero) result that's too small to
-            // be normal.
+            // Without infinities (e.g., IBM hex float or VAX G_FLOAT),
+            // HUGE_VAL is the largest finite value, so only errno tells an
+            // overflow apart. The result is compared with HUGE_VAL, because
+            // some C standard libraries also set ERANGE for a nonzero result
+            // that's too small to be normal.
             SCN_GCC_COMPAT_PUSH
             SCN_GCC_COMPAT_IGNORE("-Wfloat-equal")
             if (c_errno == ERANGE && value == huge_value()) {
@@ -1011,14 +1011,13 @@ struct convert_custom_hex {
                       sizeof(significand_int_type) * 8);
 
         // Parse all hex digits (before and after the radix point) into
-        // `significand`, maintaining the invariant
+        // `significand`, with the invariant
         //   actual_value ≈ significand * 2^exp2
-        // with `sticky` capturing any nonzero bits dropped below
-        // `significand`.
+        // `sticky` is set if a nonzero bit was dropped below `significand`.
         //
         // When `significand` is full (top 4 bits nonzero), further digits only
         // update `sticky`, and are counted in `dropped_significand_digits`.
-        // `exp2` is then raised by 4 for each of them, to keep the invariant.
+        // To keep the invariant, `exp2` is raised by 4 for each of them.
 
         static constexpr auto total_bits =
             static_cast<int>(sizeof(significand_int_type) * 8);
@@ -1056,7 +1055,8 @@ struct convert_custom_hex {
                  static_cast<std::int64_t>(parts.after_radix_point.size())));
 
         // Normalize value to 1.fraction * 2^exponent (for normal values).
-        // N is the bit-width of `significand`, so its MSB is at bit N-1:
+        // N is the bit width of the value in `significand`, so its MSB is at
+        // bit N-1:
         //   value = significand * 2^exp2
         //         = (1 + frac/2^(N - 1)) * 2^(N - 1 + exp2)
         const auto N = total_bits -
@@ -1075,10 +1075,9 @@ struct convert_custom_hex {
                 "Floating-point value too large");
         }
 
-        // Truncate and/or round the fraction to fit in the value.
-        //
-        // Right-shift `val` by `n` bits with round-to-nearest-even.
-        // Any bits shifted away are OR-ed into the outer `sticky` flag.
+        // Shifts `val` right by `n` bits to fit the fraction into the value,
+        // rounding to nearest even. The bits shifted out are OR-ed into
+        // `sticky`.
         auto right_shift_round = [&](significand_int_type val, unsigned n) {
             SCN_EXPECT(n >= 1 && n < total_bits);
             const auto round_bit =
@@ -1097,7 +1096,7 @@ struct convert_custom_hex {
 
         if (biased_exp > 0) {
             // Normal: strip the implicit leading 1, then shift the remaining
-            // N-1 fraction bits to fill the fraction_bits field.
+            // N-1 fraction bits to fill the `fraction_bits` field.
             significand ^= significand_int_type{1u} << (N - 1);
 
             const int shift = static_cast<int>(N) - 1 - fraction_bits;
@@ -1121,7 +1120,7 @@ struct convert_custom_hex {
         }
         else {
             // Subnormal (biased_exp <= 0): shift the full significand
-            // (including the leading 1) to fill the fraction_bits field:
+            // (including the leading 1) to fill the `fraction_bits` field:
             //   stored = significand * 2^(biased_exp + fraction_bits - N)
             const auto e_shift =
                 biased_exp + fraction_bits - static_cast<std::int64_t>(N);
@@ -1313,10 +1312,9 @@ struct convert_from_chars {
                 "Floating-point value out of range");
         }
         if (SCN_UNLIKELY(is_float_positive_infinity(value))) {
-            // We got infinity, even though the input wasn't infinity.
-            // This is most likely an overflow that the implementation didn't
-            // report with `result_out_of_range`.
-            // Fall back to make sure.
+            // An infinity from input that isn't infinity is most likely an
+            // overflow that the implementation didn't report with
+            // `result_out_of_range`. Fall back to make sure.
 
             can_fallback = true;
             return detail::unexpected_scan_error(
@@ -1328,10 +1326,9 @@ struct convert_from_chars {
                 detail::make_string_view_from_pointers(source.data() + offset,
                                                        result.ptr),
                 flags == std::chars_format::hex)) {
-            // We got zero, even though the input wasn't zero.
-            // That is an underflow, which musl's strtold doesn't report
-            // for hexfloats (and std::from_chars doesn't either).
-            // Fall back to make sure.
+            // A zero from nonzero input is an underflow, which musl's strtold
+            // doesn't report for hexfloats (and std::from_chars doesn't
+            // either). Fall back to make sure.
 
             can_fallback = true;
             return detail::unexpected_scan_error(
@@ -1663,7 +1660,7 @@ template <typename CharT>
 constexpr bool does_max_length_integer_overflow_u64(const CharT* digits,
                                                     int base)
 {
-    // `max_digits - 1` digits always fit in an uint64_t
+    // `max_digits - 1` digits always fit in a uint64_t
     const auto max_digits = maxdigits_u64(base);
     const auto unsigned_base = static_cast<std::uint64_t>(base);
     std::uint64_t high{};
@@ -1678,7 +1675,7 @@ constexpr bool does_max_length_integer_overflow_u64(const CharT* digits,
 }
 
 // `val` is the value of the `digits_count` digits starting at `digits`,
-// accumulated into an uint64_t without checking for wraparound.
+// computed in a uint64_t that may have wrapped around.
 // `digits` must not have leading zeroes.
 template <typename T, typename CharT>
 constexpr bool check_integer_overflow(std::uint64_t val,
@@ -2121,11 +2118,11 @@ scan_expected<std::ptrdiff_t> scan_simple_single_argument(
     return it.position();
 }
 
-// Parses the specs of a format string that passed
-// is_single_argument_with_specs_format_string into `specs`.
-// Returns false if the format string has more than one replacement field,
-// if parsing fails, or if the argument is missing or custom.
-// The caller then uses format_handler, which reports any error.
+// Parses the specs of `format` into `specs`. `format` must have passed
+// is_single_argument_with_specs_format_string.
+// Returns false if `format` has more than one replacement field, if parsing
+// fails, or if the argument is missing or custom. The caller then falls back
+// to format_handler, which reports any error.
 template <typename CharT, typename Context>
 bool parse_single_argument_specs(std::basic_string_view<CharT> format,
                                  const basic_scan_arg<Context>& arg,
@@ -2586,9 +2583,8 @@ scan_expected<std::ptrdiff_t> vscan_internal(
     return vscan_parse_format_string(format, handler);
 }
 
-// Calls `scan`, then syncs the buffer of `source` with its underlying source.
-// The position synced to is where scanning ended, or the beginning if scanning
-// failed.
+// Calls `scan`, then syncs the buffer of `source` with its underlying source:
+// to where scanning ended, or to the beginning if scanning failed.
 template <typename CharT, typename Scan>
 scan_expected<std::ptrdiff_t> scan_and_sync_buffer(
     typename detail::basic_scan_buffer<
@@ -4363,8 +4359,7 @@ SCN_PUBLIC bool basic_scan_istream_buffer<CharT>::do_fill()
     // Without a get area, putback is not generally possible.
     const auto n_avail = streambuf->in_avail();
     if (n_avail > 0) {
-        // in_avail() is a promise by the stream that we can't verify,
-        // and it may be arbitrarily large.
+        // `in_avail()` can't be verified, and may be arbitrarily large.
         // Read a limited amount at a time, and handle getting fewer
         // characters.
         constexpr std::streamsize max_bulk_read = 4096;
@@ -4379,9 +4374,9 @@ SCN_PUBLIC bool basic_scan_istream_buffer<CharT>::do_fill()
         }
     }
 
-    // Nothing could be read in bulk. Use the character we got with `sgetc`.
-    // Don't advance the sequence until it has been scanned, so that a stream
-    // without putback support can be scanned from, as long as no scan fails.
+    // Nothing could be read in bulk, so use the character from `sgetc`.
+    // The stream isn't advanced until the character has been scanned, so a
+    // stream without putback support works as long as no scan fails.
     m_buf.resize(1);
     m_buf[0] = traits::to_char_type(peek_result);
     this->m_current_view = std::basic_string_view<CharT>{m_buf.data(), 1};

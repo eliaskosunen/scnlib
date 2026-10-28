@@ -15,7 +15,7 @@ else()
     set(SCN_CXX_FRONTEND "Other")
 endif()
 
-# Appends the flags given after `out_var` to it, if the compiler accepts them.
+# Appends each flag after `out_var` to it, if the compiler accepts the flag.
 # -Wno-X is checked as -WX, because GCC accepts -Wno-X for any X.
 function(scn_append_supported_flags out_var)
     set(result ${${out_var}})
@@ -30,7 +30,7 @@ function(scn_append_supported_flags out_var)
     set(${out_var} ${result} PARENT_SCOPE)
 endfunction()
 
-# Options passed on to the code as a definition (OPTION=1), when ON
+# Options passed to the code as a definition (OPTION=1) when ON
 set(SCN_CONFIG_OPTIONS
     SCN_DISABLE_TYPE_SCHAR
     SCN_DISABLE_TYPE_SHORT
@@ -152,8 +152,8 @@ if(SCN_PEDANTIC)
             -Wvector-operation-performance
             -Wno-psabi
         )
-        # Before GCC 13, #pragma GCC diagnostic can't disable -Wundef in C++
-        # (GCC PR53431), which impl.h needs to do
+        # impl.h disables -Wundef with #pragma GCC diagnostic, which doesn't
+        # work in C++ before GCC 13 (GCC PR53431)
         if(CMAKE_CXX_COMPILER_VERSION VERSION_GREATER_EQUAL 13.0)
             list(APPEND SCN_WARNING_FLAGS -Wundef)
         endif()
@@ -216,7 +216,7 @@ if(SCN_CXX_FRONTEND STREQUAL "GNU")
     set(SCN_DISABLE_EXCEPTIONS_FLAGS -fno-exceptions)
 elseif(SCN_CXX_FRONTEND STREQUAL "MSVC")
     set(SCN_DISABLE_EXCEPTIONS_FLAGS /EHs-c-)
-    # Without it, the MSVC STL still uses exceptions, warning about it (C4530)
+    # Without this, the MSVC STL still uses exceptions, which triggers C4530
     set(SCN_DISABLE_EXCEPTIONS_DEFINITIONS _HAS_EXCEPTIONS=0)
 endif()
 
@@ -238,8 +238,8 @@ elseif(
     list(APPEND SCN_LIBRARY_PUBLIC_FLAGS /EHsc)
 endif()
 
-# Not part of the public flags, so that it doesn't leak into consumers.
-# The tests link scn_coverage, to also instrument the headers.
+# The coverage flags aren't public, so they don't leak into consumers.
+# The tests link scn_coverage to instrument the headers, too.
 set(SCN_COVERAGE_FLAGS)
 if(SCN_COVERAGE AND CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
     set(SCN_COVERAGE_FLAGS -O0 -g --coverage)

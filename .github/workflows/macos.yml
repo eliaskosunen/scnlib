@@ -76,13 +76,14 @@ jobs:
             std: 23
 
           # gcc on macos 26 (arm64)
-          # gcc 14 and 13 are also installed, but seem to be a little broken
+          # gcc 13 and 14 are also installed, but can't compile the SDK's
+          # <mach/message.h> (xnu_static_assert_struct_size)
           - os: 26
             cxx: g++-15
             std: 17
 
           # gcc on macos 15 (arm64)
-          # gcc 14 and 13 are also installed, but seem to be a little broken
+          # gcc 13 and 14 are skipped, like on macos 26
           - os: 15
             cxx: g++-15
             std: 17
@@ -129,7 +130,8 @@ jobs:
           ccache --show-stats
           ccache --show-config
 
-      # Using RelWithDebInfo with g++ on macOS to work around a GCC bug
+      # g++ miscompiles wide string literals at -O0 on macOS (GCC PR 126723),
+      # so it uses RelWithDebInfo instead of Debug
       - name: Run CMake
         working-directory: ${{ runner.workspace }}/build
         run: |

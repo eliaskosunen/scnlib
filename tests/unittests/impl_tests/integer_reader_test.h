@@ -674,7 +674,7 @@ TYPED_TEST_P(IntValueReaderTest, Underflow)
 
 TYPED_TEST_P(IntValueReaderTest, WrappingOverflow)
 {
-    // Max-length value for a uint64_t, that wraps around it
+    // Max-length value for a uint64_t that wraps around it
     const auto [result, val] = this->simple_test("30000000000000000000"sv);
     EXPECT_TRUE(this->check_failure_with_code(
         result, val, scn::scan_error::value_positive_overflow));

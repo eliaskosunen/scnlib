@@ -79,8 +79,8 @@
 // SCN_USE_EXCEPTIONS
 // If 0, the library behaves as if exceptions were disabled
 // (SCN_HAS_EXCEPTIONS is 0), even if the compiler supports them.
-// Then, `scn::expected::value()` aborts instead of throwing
-// `scn::bad_expected_access` when it contains an error.
+// For example, `scn::expected::value()`, called on an `expected` that
+// contains an error, aborts instead of throwing `scn::bad_expected_access`.
 #ifndef SCN_USE_EXCEPTIONS
 #define SCN_USE_EXCEPTIONS 1
 #endif
@@ -188,8 +188,9 @@
 // If 1, disallows the float scanner from falling back on strtof, strtod,
 // and strtold (and wcstof, wcstod, and wcstold).
 // They're only used for a float, double, or long double with a binary format
-// without a custom conversion, i.e., not binary32 or binary64 (or, for long
-// double, x87 or m68k extended, binary128, or double-double).
+// that has no custom conversion. Custom conversions exist for binary32 and
+// binary64, and for long double also x87 or m68k extended, binary128, and
+// double-double.
 // With SCN_DISABLE_STRTOD, scanning such a type is a compile-time error.
 #ifndef SCN_DISABLE_STRTOD
 #define SCN_DISABLE_STRTOD 0
@@ -292,10 +293,9 @@
 #include <cfloat>
 
 // SCN_FORCE_STRTOD_FALLBACK
-// Internal, for testing: if 1, the binary formats of float, double, and
-// long double are treated as unsupported, like on a platform with exotic
-// floating-point types, so that they're scanned with the strtod fallback.
-// std::from_chars isn't used for them either.
+// Internal, for testing: if 1, treats the formats of float, double, and
+// long double as unsupported, as on a platform with exotic floating-point
+// types. They're then scanned with the strtod fallback, not std::from_chars.
 #ifndef SCN_FORCE_STRTOD_FALLBACK
 #define SCN_FORCE_STRTOD_FALLBACK 0
 #endif
@@ -352,9 +352,8 @@
 
 // SCN_IS_FLOAT_SCANNABLE, SCN_IS_DOUBLE_SCANNABLE,
 // SCN_IS_LONG_DOUBLE_SCANNABLE
-// Internal: 1 if the type isn't disabled with SCN_DISABLE_TYPE_*, and can be
-// converted: either it has a supported format, or the strtod fallback is
-// allowed (not SCN_DISABLE_STRTOD)
+// Internal: 1 if the type isn't disabled with SCN_DISABLE_TYPE_*, and either
+// has a supported format or can use the strtod fallback (no SCN_DISABLE_STRTOD)
 #if !SCN_DISABLE_TYPE_FLOAT && \
     (SCN_FLOAT_FORMAT != SCN_FP_FORMAT_UNSUPPORTED || !SCN_DISABLE_STRTOD)
 #define SCN_IS_FLOAT_SCANNABLE 1
@@ -1181,10 +1180,10 @@
 #endif
 
 // SCN_ASSUME
-// Never evaluates `x`: without a non-evaluating builtin, it's a no-op.
-// Use it only for simple conditions on scalar variables:
-// with GCC, an assumption that calls a member function (like `has_value()`)
-// keeps the object in memory, which can make the surrounding code slower.
+// Never evaluates `x`. Without a builtin that leaves `x` unevaluated, it's a
+// no-op. Use it only for simple conditions on scalar variables. With GCC, an
+// assumption that calls a member function (like `has_value()`) keeps the
+// object in memory, which can slow down the surrounding code.
 #if SCN_HAS_ASSUME
 #define SCN_ASSUME(x) __assume(x)
 #elif SCN_HAS_BUILTIN_ASSUME
@@ -1196,7 +1195,7 @@
 #endif
 
 // SCN_UNREACHABLE
-// Asserts in debug builds, except on gcc 7 and 8, which reject an assert in a
+// Asserts in debug builds, except on GCC 7 and 8, which reject an assert in a
 // constexpr function even when it's not reached:
 // https://gcc.gnu.org/bugzilla/show_bug.cgi?id=86678
 #if SCN_HAS_BUILTIN_UNREACHABLE
@@ -1231,8 +1230,8 @@
 #define SCN_UNUSED(x) (void)sizeof(x)
 
 // SCN_ASSERT
-// Not an assumption in release builds: measured, it didn't make anything
-// faster, and a violated condition would be undefined behavior.
+// Not an assumption in release builds. Making it an assumption showed no
+// measurable speedup, and a violated condition would be undefined behavior.
 // `!!` makes `sizeof` accept bit-fields.
 #ifdef NDEBUG
 #define SCN_ASSERT_IMPL(cond, msg) SCN_UNUSED(!!(cond))

@@ -29,7 +29,7 @@
 #include <ranges>
 #endif
 
-// Not in an anonymous namespace, to not warn about unused members
+// Not in an anonymous namespace, to avoid warnings about unused members
 namespace polyfill_test {
 struct minimal_input_iterator {
     using iterator_concept = std::input_iterator_tag;
@@ -269,7 +269,7 @@ TEST(RangesPolyfillTest, IterConceptPointers)
 #endif
 }
 
-// The fallback needs to know if iterator_traits is the primary template
+// The fallback has to detect whether iterator_traits is the primary template
 #if SCN_STDLIB_GLIBCXX || SCN_STDLIB_LIBCPP || SCN_STDLIB_MS_STL
 TEST(RangesPolyfillTest, IterConceptRandomAccessFallback)
 {

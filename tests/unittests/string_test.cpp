@@ -490,8 +490,9 @@ TEST(StringTest, InvertedCharacterSetRejectsInvalidCodePoint)
     }
 }
 
-// A low surrogate can't start a UTF-16 code point, unlike a high surrogate
-// followed by something else, so this was skipped with a 16-bit wchar_t
+// Unlike a high surrogate followed by something else, a lone low surrogate
+// can't start a UTF-16 code point. Previously, it was skipped with a 16-bit
+// wchar_t.
 TEST(StringTest, CharacterSetStopsAtLoneSurrogateWide)
 {
     std::wstring input = L"ab";

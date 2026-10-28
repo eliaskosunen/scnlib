@@ -233,7 +233,7 @@ TEST(ExpectedTest, AssignValueAndError)
     EXPECT_EQ(*e, "b");
 }
 
-// std::any is constructible from anything, including the tags, `unexpected`
+// std::any is constructible from anything, including the tags, `unexpected`,
 // and `expected` itself
 TEST(ExpectedTest, ConstructAndAssignAny)
 {
@@ -351,8 +351,8 @@ TEST(ExpectedTest, ConvertingConstructorConstraints)
                                          scn::expected<int, int>>);
 
     // An `expected` is not converted to bool through its `operator bool`.
-    // Deliberately unlike std::expected, which constructs `expected<bool>`
-    // from another `expected` with the converting constructor.
+    // This is deliberately unlike std::expected, which constructs
+    // `expected<bool>` from another `expected` with the converting constructor.
     static_assert(std::is_convertible_v<bool, expected_bool>);
     static_assert(!std::is_constructible_v<expected_bool, expected_int>);
     static_assert(!std::is_constructible_v<expected_bool, const expected_int&>);

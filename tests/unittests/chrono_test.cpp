@@ -526,7 +526,7 @@ TEST(ChronoScanTest, ChronoTimePointWithContradictingWeekday)
     ymd = scn::scan<scn::year_month_day>("Wed 2024-09-10", "{:%a %F}");
     ASSERT_THAT(ymd, FailedWith(scn::scan_error::invalid_scanned_value));
 
-    // Types without a resolved date only get field-level checks
+    // Types without a resolved date get only field-level checks
     auto tm = scn::scan<std::tm>("Wed 2024-09-10", "{:%a %F}");
     EXPECT_THAT(tm, Succeeded());
 }
@@ -648,7 +648,7 @@ TEST(ChronoScanTest, DatetimeComponentsWithoutSubsec)
     EXPECT_EQ(result->value().sec, 56);
     EXPECT_FALSE(result->value().subsec);
 
-    // `%S` only reads a fraction for time points
+    // `%S` reads a fraction only for time points
     result = scn::scan<scn::datetime_components>("56.5", "{:%S}");
     ASSERT_THAT(result, Succeeded());
     EXPECT_EQ(result->value().sec, 56);
@@ -703,7 +703,7 @@ TEST(ChronoScanTest, InvalidDayOfMonth)
     // The year defaults to 1970, which isn't a leap year
     EXPECT_THAT(scn::scan<sys_seconds>("02-29", "{:%m-%d}"), Failed());
 
-    // std::tm only gets field-level checks
+    // std::tm gets only field-level checks
     EXPECT_THAT(scn::scan<std::tm>("2026-02-30", "{:%F}"), Succeeded());
 }
 

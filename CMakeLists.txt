@@ -119,7 +119,8 @@ target_link_libraries(
         ${SCN_REGEX_BACKEND_TARGET}
 )
 set_library_flags(scn)
-# Linking the scn_sanitizers and scn_coverage targets would break exporting scn
+# Pass the flags directly, because linking the scn_sanitizers and scn_coverage
+# targets would break exporting scn
 set(SCN_LIBRARY_INSTRUMENTATION_FLAGS
     ${SCN_LIBRARY_SANITIZER_FLAGS}
     ${SCN_COVERAGE_FLAGS}

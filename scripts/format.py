@@ -150,7 +150,7 @@ def unified_diff(path, before, after):
 def main():
     parser = ArgumentParser(
         "format.py",
-        description="Checks or fixes the formatting of C++, Python, CMake and shell files.",
+        description="Checks or fixes the formatting of C++, Python, CMake, and shell files.",
     )
     parser.add_argument(
         "--check", action="store_true", help="print diffs instead of writing files"
@@ -159,8 +159,8 @@ def main():
     parser.add_argument(
         "rev",
         nargs="?",
-        help="process files changed by a commit, or in a range (A..B); "
-        "default: staged files",
+        help="process files changed by a commit, or in a range (A..B) "
+        "(default: staged files)",
     )
     args = parser.parse_args()
     if args.all and args.rev:

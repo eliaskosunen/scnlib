@@ -43,7 +43,7 @@ enum class float_kind {
     f32,
     f64,
     f80,    // x87 long double
-    f128,   // ieee binary128
+    f128,   // IEEE binary128
     bf16,   // bfloat16
     f2x64,  // double-double
 };
@@ -359,9 +359,9 @@ float_classification classify_float(T value)
     return float_classification::classify(value);
 }
 
-// The payload of a NaN: its fraction without the quiet bit (and without the
-// explicit integer bit of an x87 long double), as {low 64 bits, high bits}.
-// For a double-double, the payload of the high double.
+// The payload of a NaN, as {low 64 bits, high bits}. This is the fraction
+// without the quiet bit, and without the explicit integer bit of an x87 long
+// double. For a double-double, it's the payload of the high double.
 template <typename T>
 std::pair<std::uint64_t, std::uint64_t> get_nan_payload(T value)
 {
@@ -386,8 +386,8 @@ std::pair<std::uint64_t, std::uint64_t> get_nan_payload(T value)
     }
 }
 
-// Checks that `value` is a quiet NaN with the given sign, and `payload`, if
-// given. Without one, checks that `value` has the payload of `quiet_NaN()`.
+// Checks that `value` is a quiet NaN with the given sign and payload.
+// Without a `payload`, the expected payload is that of `quiet_NaN()`.
 template <typename T>
 SCN_NODISCARD testing::AssertionResult
 check_nan(T value, bool negative, std::optional<std::uint64_t> payload)

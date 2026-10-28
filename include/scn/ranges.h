@@ -120,8 +120,9 @@ struct has_set_debug_format<
     std::void_t<decltype(SCN_DECLVAL(Scanner&).set_debug_format())>>
     : std::true_type {};
 
-// Like std::format, which writes the elements of ranges and tuples with `?`
-// where they support it, i.e. strings and characters quoted and escaped.
+// Scan the elements of ranges and tuples as if with `?`, where supported,
+// i.e., strings and characters quoted and escaped. std::format writes them the
+// same way.
 template <typename Scanner>
 constexpr void set_debug_format_for_element(Scanner& s)
 {
@@ -367,8 +368,8 @@ public:
     template <typename ParseCtx>
     constexpr typename ParseCtx::iterator parse(ParseCtx& pctx)
     {
-        // Tuples have no specs, and a non-empty one is left to the caller to
-        // reject. Each element parses the same empty spec.
+        // Tuples have no specs, and the caller rejects a non-empty one.
+        // Each element parses the same empty spec.
         const auto spec_begin = pctx.begin();
         if (spec_begin != pctx.end() &&
             *spec_begin != typename ParseCtx::char_type{'}'}) {
@@ -473,7 +474,7 @@ public:
     constexpr typename ParseCtx::iterator parse(ParseCtx& pctx)
     {
         // Only the element part of std::format's range-format-spec is
-        // supported: `{}`, `{:}` or `{::element-spec}`.
+        // supported: `{}`, `{:}`, or `{::element-spec}`.
         const auto spec_begin = pctx.begin();
         if (spec_begin == pctx.end() ||
             *spec_begin == typename ParseCtx::char_type{'}'}) {

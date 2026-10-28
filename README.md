@@ -389,10 +389,9 @@ and the results for "Test 1" and "Test 2" are thus quite similar.
 The benchmarks were compiled with `-O3 -DNDEBUG -march=x86-64-v3` and LTO enabled.
 
 The source code for these benchmarks can be found in the `benchmark` directory.
-All benchmarks in this section, and the charts and tables, are produced by
-`scripts/benchmark.py`.
-It builds with Clang and GCC, runs the benchmarks,
-saves the results as JSON, and renders the charts and tables from it
+`scripts/benchmark.py` produces all the results, charts, and tables in this section.
+It builds the benchmarks with Clang and GCC, runs them,
+saves the results as JSON, and renders the charts and tables from the JSON
 (see `scripts/benchmark.py --help`):
 
 ```sh
@@ -513,8 +512,8 @@ and 5x to 11x bigger than `<iostream>`.
 
 #### About
 
-In these tests, 17 translation units are generated, in all of which four values
-(`int`, `double`, `long long`, and a string) are read from `stdin`.
+In these tests, 17 translation units are generated, each of which reads four values
+(`int`, `double`, `long long`, and a string) from `stdin`.
 This is done to simulate a small project.
 `scnlib` is linked dynamically, to level the playing field with the standard
 library, which is also dynamically linked.
@@ -522,8 +521,9 @@ library, which is also dynamically linked.
 The code was compiled with `-march=x86-64-v3`, in addition to the flags above.
 See the directory `benchmark/binarysize` for the source code.
 
-The executables are built with the CMake variable `SCN_BENCHMARKS_BINARYSIZE`
-and `BUILD_SHARED_LIBS=ON`, in Debug, Release and MinSizeRel, the latter two with LTO.
+The executables are built with the CMake variables `SCN_BENCHMARKS_BINARYSIZE` and
+`BUILD_SHARED_LIBS` set to `ON`,
+in Debug, Release, and MinSizeRel builds (the latter two with LTO).
 `scripts/benchmark.py all --what binarysize` builds and measures them.
 
 ### Build time
@@ -576,7 +576,7 @@ GCC 16.2.1:
 
 #### Conclusions
 
-Code using scnlib takes about 1.7x to 1.9x longer to compile compared to `<iostream>`.
+Code using scnlib takes about 1.7x to 1.9x longer to compile than code using `<iostream>`.
 It uses about 15% more memory than `<iostream>` with Clang, and about 45% more with GCC.
 Release builds are slightly faster to compile than Debug builds, especially with GCC.
 
@@ -591,12 +591,12 @@ The compiler flags used for a Debug build were `-g`, and `-O3 -DNDEBUG` for a
 Release build.
 
 `scripts/benchmark.py all --what buildtime` compiles the sources in
-`benchmark/buildtime` and measures them.
+`benchmark/buildtime` and measures the time and memory used.
 It needs GNU `/usr/bin/time`.
 
 ## Development
 
-C++, Python, CMake and shell files are formatted with pinned formatter versions,
+C++, Python, CMake, and shell files are formatted with pinned formatter versions,
 and CI checks the formatting.
 
 ```sh
@@ -629,7 +629,7 @@ https://github.com/r1chardj0n3s/parse
 *fast_float* for floating-point number parsing:  
 https://github.com/fastfloat/fast_float
 
-*eknan* for NaN payloads:
+*eknan* for NaN payloads:  
 https://github.com/eliaskosunen/eknan
 
 *NanoRange* for a minimal `<ranges>` implementation:  

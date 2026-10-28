@@ -65,7 +65,7 @@ jobs:
       matrix:
         os: [ 24.04 ]
         cxx:
-          # all pre-installed gcc versions
+          # All pre-installed gcc versions
           - g++-14
           - g++-13
           - g++-12
@@ -93,7 +93,7 @@ jobs:
             cxx: clang++-16
             std: 17
 
-          # Preinstalled gcc versions on 26.04
+          # Pre-installed gcc versions on 26.04
           - os: 26.04
             cxx: g++-15
             std: 17
@@ -885,7 +885,7 @@ jobs:
             enable_tests: 0 # alters the behavior in float tests
           - key: force-strtod-fallback
             # Scans float, double, and long double with the strtod fallback,
-            # which is otherwise only used on platforms with exotic
+            # which is otherwise used only on platforms with exotic
             # floating-point types
             flags: "-DCMAKE_CXX_FLAGS=-DSCN_FORCE_STRTOD_FALLBACK=1"
             enable_tests: 1

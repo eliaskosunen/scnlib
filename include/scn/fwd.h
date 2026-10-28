@@ -171,10 +171,10 @@ struct scanner {
      * To report errors, an exception derived from
      * `scn::scan_format_string_error` can be thrown, or
      * `ParseContext::on_error` can be called.
-     * Either one is a compile-time error when the format string is checked at
-     * compile time. At runtime, a thrown `scn::scan_format_string_error` is
-     * caught, and the scan fails with `scn::scan_error::invalid_format_string`.
-     * With exceptions disabled, only `ParseContext::on_error` can be used.
+     * If the format string is checked at compile time, either one is a
+     * compile-time error. At runtime, the library catches the exception, and
+     * the scan fails with `scn::scan_error::invalid_format_string`.
+     * With exceptions disabled, only `ParseContext::on_error` is available.
      *
      * \return On success, an iterator pointing to the `}` character at the end
      * of the replacement field in the format string.
