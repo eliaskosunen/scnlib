@@ -131,11 +131,12 @@ jobs:
           ccache --show-config
 
       # g++ miscompiles wide string literals at -O0 on macOS (GCC PR 126723),
-      # so it uses RelWithDebInfo instead of Debug
+      # so it uses RelWithDebInfo instead of Debug, without -DNDEBUG to keep the
+      # assertions
       - name: Run CMake
         working-directory: ${{ runner.workspace }}/build
         run: |
-          cmake -DSCN_CI=ON -DCMAKE_CXX_STANDARD=${{ matrix.std }} -DCMAKE_BUILD_TYPE=${{ startsWith(matrix.cxx, 'g++') && 'RelWithDebInfo' || 'Debug' }} $GITHUB_WORKSPACE
+          cmake -DSCN_CI=ON -DCMAKE_CXX_STANDARD=${{ matrix.std }} ${{ startsWith(matrix.cxx, 'g++') && '-DCMAKE_BUILD_TYPE=RelWithDebInfo -DCMAKE_CXX_FLAGS_RELWITHDEBINFO="-O2 -g"' || '-DCMAKE_BUILD_TYPE=Debug' }} $GITHUB_WORKSPACE
 
       - name: Build
         working-directory: ${{ runner.workspace }}/build
