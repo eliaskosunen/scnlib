@@ -4361,7 +4361,6 @@ SCN_GCC_IGNORE("-Wconversion")
 template <typename F>
 struct float_traits_impl_f32 {
     using type = F;
-    // can hold the significand (only) + 4 bits
     using significand_int_type = std::uint32_t;
 
     static constexpr unsigned exponent_bits = 8;

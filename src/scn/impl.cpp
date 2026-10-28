@@ -1005,9 +1005,10 @@ struct convert_custom_hex {
     {
         using significand_int_type =
             typename float_traits<T>::significand_int_type;
-        // The entire significand, including a leading "1.",
-        // must be storable in `significand_int_type`
-        static_assert(float_traits<T>::fraction_bits + 1 <=
+        // The significand, including the leading 1, and one more hex digit
+        // must fit in `significand_int_type`, so that a full `significand`
+        // (see below) still has a rounding bit
+        static_assert(float_traits<T>::fraction_bits + 1 + 4 <=
                       sizeof(significand_int_type) * 8);
 
         // Parse all hex digits (before and after the radix point) into
