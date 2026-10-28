@@ -14,6 +14,12 @@ if(NOT POXY_FOUND)
     return()
 endif()
 
+find_package(Python3 QUIET COMPONENTS Interpreter)
+if(NOT Python3_Interpreter_FOUND)
+    message(STATUS "Target 'scn_docs' disabled for scnlib (Python 3 required)")
+    return()
+endif()
+
 set(SCN_ABSOLUTE_PUBLIC_HEADERS "${SCN_PUBLIC_HEADERS}")
 list(
     TRANSFORM SCN_ABSOLUTE_PUBLIC_HEADERS
@@ -21,6 +27,9 @@ list(
 )
 
 add_custom_command(
+    COMMAND
+        "${Python3_EXECUTABLE}"
+        "${CMAKE_CURRENT_LIST_DIR}/script/generate_inputs.py"
     COMMAND ${POXY_EXECUTABLE}
     WORKING_DIRECTORY "${CMAKE_CURRENT_LIST_DIR}"
     OUTPUT "${CMAKE_CURRENT_LIST_DIR}/html"
@@ -30,6 +39,7 @@ add_custom_command(
         "${CMAKE_CURRENT_LIST_DIR}/pages/guide.md"
         "${CMAKE_CURRENT_LIST_DIR}/pages/mainpage.md"
         "${CMAKE_CURRENT_LIST_DIR}/../CHANGELOG.md"
+        "${CMAKE_CURRENT_LIST_DIR}/script/generate_inputs.py"
         "${CMAKE_CURRENT_LIST_DIR}/script/monospace-headers.js"
         "${SCN_ABSOLUTE_PUBLIC_HEADERS}"
     COMMENT "Generating docs"

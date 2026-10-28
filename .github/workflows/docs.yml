@@ -70,6 +70,7 @@ jobs:
       - name: Generate docs
         run: |
           cd docs
+          python3 script/generate_inputs.py
           poxy --verbose --git-tags --min-version v2.0.0
 
       - name: Deploy

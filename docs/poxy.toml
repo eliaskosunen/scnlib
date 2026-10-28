@@ -7,7 +7,7 @@ license = ['Apache-2.0', 'https://github.com/eliaskosunen/scnlib/blob/master/LIC
 theme = "dark"
 show_includes = false
 navbar = ['namespaces', 'classes', 'modules', 'pages', 'repo']
-changelog = true
+changelog = 'generated/CHANGELOG.md'
 jquery = true
 scripts = [
     'script/monospace-headers.js'
@@ -19,9 +19,9 @@ treat_as_errors = false
 undocumented = true
 
 [sources]
-paths = ['pages', '../include/scn']
+paths = ['generated/pages', '../include/scn']
 patterns = ['*.h', '*.hpp', '*.md', '*.dox']
-strip_paths = ['../include', 'pages']
+strip_paths = ['../include', 'generated/pages']
 #extract_all = true
 
 [macros]

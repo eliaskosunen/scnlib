@@ -11110,10 +11110,11 @@ SCN_CLANG_IGNORE("-Wdocumentation-unknown-command")
  * <td>
  * Reads a string in double quotes and unescapes it, i.e., reads back what
  * `std::format` writes with `{:?}`.
- * The escape sequences are `\t`, `\n`, `\r`, `\"`, `\'`, `\\`, `\u{hex}`
- * (a code point, other than a surrogate), and `\x{hex}` (a single code unit).
- * Both `\"` and `\'` are accepted in either kind of quotes.
- * Any other escape sequence is an error, including the rest of C++'s escapes:
+ * The escape sequences are `\t`, `\n`, `\r`, <code>\\&quot;</code>, `\'`, `\\`,
+ * `\u{hex}` (a code point, other than a surrogate), and `\x{hex}` (a single
+ * code unit). Both <code>\\&quot;</code> and `\'` are accepted in either kind
+ * of quotes. Any other escape sequence is an error, including the rest of C++'s
+ * escapes:
  * `\a`, `\b`, `\f`, `\v`, `\?`, octal (`\0`, `\o{...}`), `\x` and `\u` without
  * braces, `\U`, and `\N{...}`.
  * A missing quote, an unescaped newline, and invalid encoding are errors, too.
