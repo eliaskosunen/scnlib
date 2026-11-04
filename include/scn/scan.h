@@ -265,7 +265,7 @@ struct wrapped_pointer_iterator<std::__wrap_iter<Elem*>> {
     SCN_FORCE_INLINE static constexpr auto to_address(
         const std::__wrap_iter<Elem*>& it) noexcept
     {
-        return it.base();
+        return it.operator->();
     }
 };
 #endif
