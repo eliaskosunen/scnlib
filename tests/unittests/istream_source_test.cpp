@@ -26,7 +26,6 @@
 #include <array>
 #include <cstdio>
 #include <fstream>
-#include <iterator>
 #include <limits>
 #include <locale>
 #include <sstream>
@@ -39,6 +38,23 @@
 using testing::FieldsAre;
 
 namespace {
+// Reads from the streambuf directly, ignoring the state of the stream, like
+// `std::istreambuf_iterator`. Constructing a string from an
+// `istreambuf_iterator` range triggers a bogus `-Wnull-dereference` in
+// libstdc++ with some GCC versions (GCC bug 105580).
+template <typename CharT>
+std::basic_string<CharT> read_rest(std::basic_istream<CharT>& stream)
+{
+    using traits = typename std::basic_istream<CharT>::traits_type;
+    auto& buffer = *stream.rdbuf();
+    std::basic_string<CharT> rest;
+    for (auto ch = buffer.sbumpc(); !traits::eq_int_type(ch, traits::eof());
+         ch = buffer.sbumpc()) {
+        rest.push_back(traits::to_char_type(ch));
+    }
+    return rest;
+}
+
 // Only has the bare minimum of a streambuf:
 // no get area, and thus no support for putback
 class string_streambuf : public std::streambuf {
@@ -612,8 +628,7 @@ TEST(IstreamSourceTest, IfstreamFailedScanAtEnd)
     ASSERT_THAT(result, FailedWith(scn::scan_error::end_of_input));
     EXPECT_TRUE(wrapper.unsynced().empty());
 
-    std::string rest{std::istreambuf_iterator<char>{stream},
-                     std::istreambuf_iterator<char>{}};
+    std::string rest = read_rest(stream);
     EXPECT_EQ(rest, "12");
 #endif
 }
@@ -637,8 +652,7 @@ TEST(IstreamSourceTest, IfstreamFailedScanAcrossBufferRefill)
     ASSERT_THAT(result, FailedWith(scn::scan_error::invalid_scanned_value));
     EXPECT_TRUE(wrapper.unsynced().empty());
 
-    std::string rest{std::istreambuf_iterator<char>{stream},
-                     std::istreambuf_iterator<char>{}};
+    std::string rest = read_rest(stream);
     EXPECT_EQ(rest, input);
 #endif
 }
@@ -1147,8 +1161,7 @@ TEST(IstreamSourceTest, IfstreamOnPipeFailedScan)
     ASSERT_THAT(result, Failed());
 
     const std::string unsynced{wrapper.unsynced()};
-    const std::string rest{std::istreambuf_iterator<char>{stream},
-                           std::istreambuf_iterator<char>{}};
+    const std::string rest = read_rest(stream);
     EXPECT_EQ(unsynced + rest, input);
 }
 
@@ -1164,8 +1177,7 @@ TEST(IstreamSourceTest, WideIfstreamFailedScanAtEnd)
     // The wide filebuf of some standard libraries has a variable-width
     // encoding. In that case, no seek is attempted, and characters stay
     // unsynced.
-    const std::wstring rest{std::istreambuf_iterator<wchar_t>{stream},
-                            std::istreambuf_iterator<wchar_t>{}};
+    const std::wstring rest = read_rest(stream);
     EXPECT_EQ(std::wstring{wrapper.unsynced()} + rest, L"12");
 }
 
@@ -1180,8 +1192,7 @@ TEST(IstreamSourceTest, Fstream)
     EXPECT_EQ(result->value(), 12);
     EXPECT_TRUE(wrapper.sync());
 
-    std::string rest{std::istreambuf_iterator<char>{stream},
-                     std::istreambuf_iterator<char>{}};
+    std::string rest = read_rest(stream);
     EXPECT_EQ(rest, " 34");
 }
 

@@ -6425,7 +6425,7 @@ SCN_PUBLIC locked_stdin_file stdin_file();
  * \ingroup scannable
  */
 class locked_stdin_file {
-    friend locked_stdin_file stdin_file();
+    friend SCN_PUBLIC locked_stdin_file stdin_file();
     friend struct detail::vscan_guard<locked_stdin_file>;
 
 public:

@@ -53,7 +53,7 @@ protected:
             return;
         }
         // On Windows, the file can't be removed while it's open as stdin
-        std::freopen(null_device(), "rb", stdin);
+        EXPECT_NE(std::freopen(null_device(), "rb", stdin), nullptr);
         std::remove(input_path().c_str());
     }
 
