@@ -43,6 +43,7 @@ if __name__ == "__main__":
     version = (int(version[1]), int(version[2]), int(version[3]))
     version_str = rf"{version[0]}.{version[1]}.{version[2]}"
     print(rf"version: {version_str}")
+    major_minor_str = rf"{version[0]}.{version[1]}"
 
     root = Path(__file__).parent.parent.resolve()
 
@@ -67,6 +68,11 @@ if __name__ == "__main__":
             r"docs/pages/mainpage.md",
             r"""(GIT_TAG\s+)(?:v\s*)?[0-9]+[.][0-9]+[.][0-9]+\b""",
             rf"\g<1>v{version_str}",
+        ),
+        (
+            r"docs/pages/mainpage.md",
+            r"""(documentation is for version\s+)[0-9]+[.][0-9]+\b""",
+            rf"\g<1>{major_minor_str}",
         ),
     ]
 
