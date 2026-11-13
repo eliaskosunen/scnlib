@@ -556,6 +556,14 @@ namespace {
 // For a type without a custom conversion (`float_traits_impl_none`), the bit
 // layout is unknown, so these use regular floating-point operations.
 
+// With SCN_FORCE_STRTOD_FALLBACK, the custom and std::from_chars conversions
+// below are compiled but never used
+#if SCN_FORCE_STRTOD_FALLBACK
+SCN_CLANG_PUSH
+SCN_CLANG_IGNORE("-Wunused-template")
+SCN_CLANG_IGNORE("-Wunneeded-member-function")
+#endif
+
 SCN_GCC_COMPAT_PUSH
 SCN_GCC_COMPAT_IGNORE("-Wfloat-equal")
 
@@ -1363,6 +1371,10 @@ private:
 };
 
 }  // namespace
+
+#if SCN_FORCE_STRTOD_FALLBACK
+SCN_CLANG_POP  // -Wunused-template, -Wunneeded-member-function
+#endif
 
 template <typename T>
 scan_expected<std::string_view::iterator> convert_from_chars_traits::convert(

@@ -52,8 +52,11 @@ protected:
         if (!m_fed) {
             return;
         }
-        // On Windows, the file can't be removed while it's open as stdin
-        EXPECT_NE(std::freopen(null_device(), "rb", stdin), nullptr);
+        // On Windows, the file can't be removed while it's open as stdin.
+        // `stdin` stays out of the gtest macro: glibc defines it as a macro
+        // that expands to itself, which Clang flags inside another macro.
+        std::FILE* const reopened = std::freopen(null_device(), "rb", stdin);
+        EXPECT_NE(reopened, nullptr);
         std::remove(input_path().c_str());
     }
 

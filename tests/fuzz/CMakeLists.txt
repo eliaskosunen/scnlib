@@ -15,7 +15,10 @@ function(add_fuzzer name)
     endif()
 
     if(CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
-        target_compile_options(scn_fuzz_${name} PRIVATE -Wno-missing-prototypes)
+        target_compile_options(
+            scn_fuzz_${name}
+            PRIVATE -Wno-missing-prototypes -Wno-exit-time-destructors
+        )
     endif()
 endfunction()
 

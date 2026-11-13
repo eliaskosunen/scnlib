@@ -57,6 +57,9 @@ SCN_TEST_NOINLINE bool take_self_referencing_by_value(T value)
 
 // Counts live instances, checks that only constructed ones are destroyed, and
 // has a potentially-throwing constructor from int
+// Without exceptions, the tests that move a `live_counted` aren't compiled
+SCN_CLANG_PUSH
+SCN_CLANG_IGNORE("-Wunneeded-member-function")
 struct live_counted {
     static inline int live = 0;
     static constexpr unsigned constructed = 0xC0FFEE;
@@ -88,6 +91,7 @@ struct live_counted {
 
     unsigned magic{constructed};
 };
+SCN_CLANG_POP
 
 struct nothrow_counted : live_counted {
     explicit nothrow_counted(int) noexcept {}
@@ -330,7 +334,11 @@ TEST(ExpectedTest, ValueOnErrorThrows)
 TEST(ExpectedTest, ValueOnErrorAborts)
 {
     scn::expected<int, int> e{scn::unexpect, 1};
+    // EXPECT_DEATH expands to a switch without a default label
+    SCN_CLANG_PUSH
+    SCN_CLANG_IGNORE("-Wswitch-default")
     EXPECT_DEATH((void)e.value(), "");
+    SCN_CLANG_POP
 }
 #endif
 
